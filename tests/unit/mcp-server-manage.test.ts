@@ -67,6 +67,7 @@ const originalEnv = process.env;
 beforeEach(() => {
   jest.clearAllMocks();
   process.env = { ...originalEnv };
+  delete process.env.KASTELL_SAFE_MODE;
   delete process.env.QUICKLIFY_SAFE_MODE;
   mockedSsh.assertValidIp.mockImplementation(() => {});
   mockedSsh.checkSshAvailable.mockReturnValue(true);
@@ -79,21 +80,34 @@ afterAll(() => {
 // ─── Core: isSafeMode ─────────────────────────────────────────────────────────
 
 describe("isSafeMode", () => {
-  it("should return false when env var not set", () => {
+  it("should return false when no env var is set", () => {
+    delete process.env.KASTELL_SAFE_MODE;
     delete process.env.QUICKLIFY_SAFE_MODE;
     expect(isSafeMode()).toBe(false);
   });
 
-  it("should return true when env var is 'true'", () => {
+  it("should return true when KASTELL_SAFE_MODE is 'true'", () => {
+    process.env.KASTELL_SAFE_MODE = "true";
+    expect(isSafeMode()).toBe(true);
+  });
+
+  it("should return false for other values of KASTELL_SAFE_MODE", () => {
+    process.env.KASTELL_SAFE_MODE = "false";
+    expect(isSafeMode()).toBe(false);
+
+    process.env.KASTELL_SAFE_MODE = "1";
+    expect(isSafeMode()).toBe(false);
+  });
+
+  it("should return true when only QUICKLIFY_SAFE_MODE is 'true' (backward compat)", () => {
+    delete process.env.KASTELL_SAFE_MODE;
     process.env.QUICKLIFY_SAFE_MODE = "true";
     expect(isSafeMode()).toBe(true);
   });
 
-  it("should return false for other values", () => {
-    process.env.QUICKLIFY_SAFE_MODE = "false";
-    expect(isSafeMode()).toBe(false);
-
-    process.env.QUICKLIFY_SAFE_MODE = "1";
+  it("KASTELL_SAFE_MODE takes precedence when both set", () => {
+    process.env.KASTELL_SAFE_MODE = "false";
+    process.env.QUICKLIFY_SAFE_MODE = "true";
     expect(isSafeMode()).toBe(false);
   });
 });
@@ -623,7 +637,7 @@ describe("handleServerManage — remove", () => {
 
 describe("handleServerManage — destroy", () => {
   it("should block destroy in SAFE_MODE", async () => {
-    process.env.QUICKLIFY_SAFE_MODE = "true";
+    process.env.KASTELL_SAFE_MODE = "true";
 
     const result = await handleServerManage({
       action: "destroy",

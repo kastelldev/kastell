@@ -27,7 +27,7 @@ jest.mock("../../src/utils/config");
 jest.mock("../../src/utils/ssh");
 jest.mock("../../src/commands/backup", () => ({
   listBackups: jest.fn(),
-  getBackupDir: jest.fn().mockReturnValue("/home/user/.quicklify/backups/bare-test"),
+  getBackupDir: jest.fn().mockReturnValue("/home/user/.kastell/backups/bare-test"),
 }));
 jest.mock("../../src/core/backup");
 
@@ -81,13 +81,14 @@ const coolifyManifest = {
 describe("restoreCommand — bare mode routing", () => {
   let consoleSpy: jest.SpyInstance;
   const originalSafeMode = process.env.SAFE_MODE;
+  const originalKastellSafeMode = process.env.KASTELL_SAFE_MODE;
   const originalQuicklifySafeMode = process.env.QUICKLIFY_SAFE_MODE;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
     jest.clearAllMocks();
     delete process.env.SAFE_MODE;
-    mockedBackup.getBackupDir.mockReturnValue("/home/user/.quicklify/backups/bare-test");
+    mockedBackup.getBackupDir.mockReturnValue("/home/user/.kastell/backups/bare-test");
     // Default: manifest exists
     mockedExistsSync.mockReturnValue(true);
     mockedReadFileSync.mockReturnValue(JSON.stringify(bareManifest));
@@ -109,6 +110,11 @@ describe("restoreCommand — bare mode routing", () => {
       delete process.env.SAFE_MODE;
     } else {
       process.env.SAFE_MODE = originalSafeMode;
+    }
+    if (originalKastellSafeMode === undefined) {
+      delete process.env.KASTELL_SAFE_MODE;
+    } else {
+      process.env.KASTELL_SAFE_MODE = originalKastellSafeMode;
     }
     if (originalQuicklifySafeMode === undefined) {
       delete process.env.QUICKLIFY_SAFE_MODE;
@@ -164,8 +170,8 @@ describe("restoreCommand — bare mode routing", () => {
     expect(mockedCoreBackup.restoreBareBackup).not.toHaveBeenCalled();
   });
 
-  it("should block bare restore with QUICKLIFY_SAFE_MODE=true and error message", async () => {
-    process.env.QUICKLIFY_SAFE_MODE = "true";
+  it("should block bare restore with KASTELL_SAFE_MODE=true and error message", async () => {
+    process.env.KASTELL_SAFE_MODE = "true";
     mockedSsh.checkSshAvailable.mockReturnValue(true);
     mockedConfig.findServers.mockReturnValue([bareServer]);
 
@@ -175,11 +181,11 @@ describe("restoreCommand — bare mode routing", () => {
     expect(output).toContain("SAFE_MODE");
     expect(mockedCoreBackup.restoreBareBackup).not.toHaveBeenCalled();
 
-    delete process.env.QUICKLIFY_SAFE_MODE;
+    delete process.env.KASTELL_SAFE_MODE;
   });
 
-  it("should block coolify restore with QUICKLIFY_SAFE_MODE=true as well", async () => {
-    process.env.QUICKLIFY_SAFE_MODE = "true";
+  it("should block coolify restore with KASTELL_SAFE_MODE=true as well", async () => {
+    process.env.KASTELL_SAFE_MODE = "true";
     mockedSsh.checkSshAvailable.mockReturnValue(true);
     mockedConfig.findServers.mockReturnValue([coolifyServer]);
 
@@ -190,7 +196,7 @@ describe("restoreCommand — bare mode routing", () => {
     // No core restore functions should be called
     expect(mockedCoreBackup.restoreBareBackup).not.toHaveBeenCalled();
 
-    delete process.env.QUICKLIFY_SAFE_MODE;
+    delete process.env.KASTELL_SAFE_MODE;
   });
 
   it("should show config restored message and service restart hint for bare restore success", async () => {

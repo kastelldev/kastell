@@ -1,5 +1,5 @@
 import { mergeConfig } from "../../src/utils/configMerge";
-import type { InitOptions, QuicklifyYamlConfig } from "../../src/types/index";
+import type { InitOptions, KastellYamlConfig } from "../../src/types/index";
 
 describe("configMerge", () => {
   describe("mergeConfig", () => {
@@ -15,49 +15,49 @@ describe("configMerge", () => {
     // CLI > YAML priority
     it("should prioritize CLI provider over YAML", () => {
       const cli: InitOptions = { provider: "hetzner" };
-      const yaml: QuicklifyYamlConfig = { provider: "digitalocean" };
+      const yaml: KastellYamlConfig = { provider: "digitalocean" };
       const result = mergeConfig(cli, yaml);
       expect(result.provider).toBe("hetzner");
     });
 
     it("should use YAML provider when CLI has none", () => {
       const cli: InitOptions = {};
-      const yaml: QuicklifyYamlConfig = { provider: "digitalocean" };
+      const yaml: KastellYamlConfig = { provider: "digitalocean" };
       const result = mergeConfig(cli, yaml);
       expect(result.provider).toBe("digitalocean");
     });
 
     it("should prioritize CLI region over YAML", () => {
       const cli: InitOptions = { region: "fsn1" };
-      const yaml: QuicklifyYamlConfig = { region: "nbg1" };
+      const yaml: KastellYamlConfig = { region: "nbg1" };
       const result = mergeConfig(cli, yaml);
       expect(result.region).toBe("fsn1");
     });
 
     it("should use YAML region when CLI has none", () => {
       const cli: InitOptions = {};
-      const yaml: QuicklifyYamlConfig = { region: "nbg1" };
+      const yaml: KastellYamlConfig = { region: "nbg1" };
       const result = mergeConfig(cli, yaml);
       expect(result.region).toBe("nbg1");
     });
 
     it("should prioritize CLI size over YAML", () => {
       const cli: InitOptions = { size: "cx43" };
-      const yaml: QuicklifyYamlConfig = { size: "cx33" };
+      const yaml: KastellYamlConfig = { size: "cx33" };
       const result = mergeConfig(cli, yaml);
       expect(result.size).toBe("cx43");
     });
 
     it("should prioritize CLI name over YAML", () => {
       const cli: InitOptions = { name: "cli-name" };
-      const yaml: QuicklifyYamlConfig = { name: "yaml-name" };
+      const yaml: KastellYamlConfig = { name: "yaml-name" };
       const result = mergeConfig(cli, yaml);
       expect(result.name).toBe("cli-name");
     });
 
     it("should prioritize CLI fullSetup over YAML", () => {
       const cli: InitOptions = { fullSetup: true };
-      const yaml: QuicklifyYamlConfig = { fullSetup: false };
+      const yaml: KastellYamlConfig = { fullSetup: false };
       const result = mergeConfig(cli, yaml);
       expect(result.fullSetup).toBe(true);
     });
@@ -96,21 +96,21 @@ describe("configMerge", () => {
     // CLI > YAML > template priority
     it("should prioritize YAML region over template defaults", () => {
       const cli: InitOptions = { provider: "hetzner", template: "production" };
-      const yaml: QuicklifyYamlConfig = { region: "fsn1" };
+      const yaml: KastellYamlConfig = { region: "fsn1" };
       const result = mergeConfig(cli, yaml);
       expect(result.region).toBe("fsn1");
     });
 
     it("should prioritize CLI region over YAML and template", () => {
       const cli: InitOptions = { provider: "hetzner", template: "production", region: "hel1" };
-      const yaml: QuicklifyYamlConfig = { region: "fsn1" };
+      const yaml: KastellYamlConfig = { region: "fsn1" };
       const result = mergeConfig(cli, yaml);
       expect(result.region).toBe("hel1");
     });
 
     it("should use YAML template when CLI has no template", () => {
       const cli: InitOptions = { provider: "hetzner" };
-      const yaml: QuicklifyYamlConfig = { template: "production" };
+      const yaml: KastellYamlConfig = { template: "production" };
       const result = mergeConfig(cli, yaml);
       expect(result.region).toBe("nbg1");
       expect(result.size).toBe("cx33");
@@ -119,7 +119,7 @@ describe("configMerge", () => {
 
     it("should prioritize CLI template over YAML template", () => {
       const cli: InitOptions = { provider: "hetzner", template: "starter" };
-      const yaml: QuicklifyYamlConfig = { template: "production" };
+      const yaml: KastellYamlConfig = { template: "production" };
       const result = mergeConfig(cli, yaml);
       expect(result.size).toBe("cax11"); // starter default, not production
     });
@@ -133,15 +133,15 @@ describe("configMerge", () => {
 
     it("should not take token from YAML", () => {
       const cli: InitOptions = {};
-      // token is not part of QuicklifyYamlConfig, so this tests that
-      const result = mergeConfig(cli, {} as QuicklifyYamlConfig);
+      // token is not part of KastellYamlConfig, so this tests that
+      const result = mergeConfig(cli, {} as KastellYamlConfig);
       expect(result.token).toBeUndefined();
     });
 
     // Domain from YAML only
     it("should pass domain from YAML", () => {
       const cli: InitOptions = {};
-      const yaml: QuicklifyYamlConfig = { domain: "coolify.example.com" };
+      const yaml: KastellYamlConfig = { domain: "coolify.example.com" };
       const result = mergeConfig(cli, yaml);
       expect(result.domain).toBe("coolify.example.com");
     });
@@ -159,7 +159,7 @@ describe("configMerge", () => {
     // fullSetup: YAML > template
     it("should prioritize YAML fullSetup over template", () => {
       const cli: InitOptions = { provider: "hetzner", template: "production" };
-      const yaml: QuicklifyYamlConfig = { fullSetup: false };
+      const yaml: KastellYamlConfig = { fullSetup: false };
       const result = mergeConfig(cli, yaml);
       expect(result.fullSetup).toBe(false); // YAML overrides production's true
     });

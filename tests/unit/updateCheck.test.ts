@@ -78,7 +78,7 @@ describe("updateCheck", () => {
       await checkForUpdate("1.0.2");
 
       expect(mockLoggerInfo).toHaveBeenCalledWith(
-        "Update available: 1.0.2 → 2.0.0 — Run: npm i -g quicklify",
+        "Update available: 1.0.2 → 2.0.0 — Run: npm i -g kastell",
       );
     });
 
@@ -112,7 +112,7 @@ describe("updateCheck", () => {
 
       expect(mockedAxios.get).not.toHaveBeenCalled();
       expect(mockLoggerInfo).toHaveBeenCalledWith(
-        "Update available: 1.0.2 → 2.0.0 — Run: npm i -g quicklify",
+        "Update available: 1.0.2 → 2.0.0 — Run: npm i -g kastell",
       );
     });
 
@@ -127,11 +127,11 @@ describe("updateCheck", () => {
 
       await checkForUpdate("1.0.2");
 
-      expect(mockedAxios.get).toHaveBeenCalledWith("https://registry.npmjs.org/quicklify/latest", {
+      expect(mockedAxios.get).toHaveBeenCalledWith("https://registry.npmjs.org/kastell/latest", {
         timeout: 3000,
       });
       expect(mockLoggerInfo).toHaveBeenCalledWith(
-        "Update available: 1.0.2 → 2.0.0 — Run: npm i -g quicklify",
+        "Update available: 1.0.2 → 2.0.0 — Run: npm i -g kastell",
       );
     });
 
@@ -152,7 +152,7 @@ describe("updateCheck", () => {
 
       expect(mockedAxios.get).toHaveBeenCalled();
       expect(mockLoggerInfo).toHaveBeenCalledWith(
-        "Update available: 1.0.2 → 2.0.0 — Run: npm i -g quicklify",
+        "Update available: 1.0.2 → 2.0.0 — Run: npm i -g kastell",
       );
     });
 
@@ -164,7 +164,7 @@ describe("updateCheck", () => {
 
       await checkForUpdate("1.0.2");
 
-      expect(mockedFs.mkdirSync).toHaveBeenCalledWith(expect.stringContaining(".quicklify"), {
+      expect(mockedFs.mkdirSync).toHaveBeenCalledWith(expect.stringContaining(".kastell"), {
         recursive: true,
       });
     });
@@ -232,7 +232,7 @@ describe("updateCheck", () => {
 
   describe("UPDATE_CHECK_FILE", () => {
     it("should have correct path", () => {
-      expect(UPDATE_CHECK_FILE).toContain(".quicklify");
+      expect(UPDATE_CHECK_FILE).toContain(".kastell");
       expect(UPDATE_CHECK_FILE).toContain(".update-check");
     });
   });

@@ -136,6 +136,7 @@ const originalEnv = process.env;
 beforeEach(() => {
   jest.clearAllMocks();
   process.env = { ...originalEnv };
+  delete process.env.KASTELL_SAFE_MODE;
   delete process.env.QUICKLIFY_SAFE_MODE;
   mockedSsh.assertValidIp.mockImplementation(() => {});
   mockedSsh.sanitizedEnv.mockReturnValue({} as NodeJS.ProcessEnv);
@@ -705,7 +706,7 @@ describe("handleServerBackup - backup-restore", () => {
   });
 
   test("blocks restore in SAFE_MODE", async () => {
-    process.env.QUICKLIFY_SAFE_MODE = "true";
+    process.env.KASTELL_SAFE_MODE = "true";
 
     const result = await handleServerBackup({ action: "backup-restore", server: "coolify-test", backupId: "backup-1" });
     const data = JSON.parse(result.content[0].text);
@@ -877,7 +878,7 @@ describe("handleServerBackup - snapshot-delete", () => {
   });
 
   test("blocks delete in SAFE_MODE", async () => {
-    process.env.QUICKLIFY_SAFE_MODE = "true";
+    process.env.KASTELL_SAFE_MODE = "true";
 
     const result = await handleServerBackup({ action: "snapshot-delete", server: "coolify-test", snapshotId: "snap-1" });
     const data = JSON.parse(result.content[0].text);
@@ -1015,7 +1016,7 @@ describe("handleServerBackup - bare mode backup-restore", () => {
   });
 
   test("blocks bare restore in SAFE_MODE", async () => {
-    process.env.QUICKLIFY_SAFE_MODE = "true";
+    process.env.KASTELL_SAFE_MODE = "true";
 
     const result = await handleServerBackup({
       action: "backup-restore",

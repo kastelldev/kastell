@@ -265,7 +265,7 @@ describe("config", () => {
 
   describe("constants", () => {
     it("should have correct config paths", () => {
-      expect(CONFIG_DIR).toContain(".quicklify");
+      expect(CONFIG_DIR).toContain(".kastell");
       expect(SERVERS_FILE).toContain("servers.json");
     });
   });

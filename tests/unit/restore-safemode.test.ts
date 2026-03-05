@@ -16,7 +16,7 @@ jest.mock("../../src/utils/ssh");
 jest.mock("../../src/utils/config");
 jest.mock("../../src/commands/backup", () => ({
   listBackups: jest.fn().mockReturnValue([]),
-  getBackupDir: jest.fn().mockReturnValue("/home/user/.quicklify/backups/test"),
+  getBackupDir: jest.fn().mockReturnValue("/home/user/.kastell/backups/test"),
 }));
 
 const mockedManage = manageModule as jest.Mocked<typeof manageModule>;
@@ -29,6 +29,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   process.env = { ...originalEnv };
   delete process.env.SAFE_MODE;
+  delete process.env.KASTELL_SAFE_MODE;
   delete process.env.QUICKLIFY_SAFE_MODE;
   // SSH available by default
   mockedSsh.checkSshAvailable.mockReturnValue(true);

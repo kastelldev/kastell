@@ -54,7 +54,7 @@ const coolifyServer = {
 
 const bareBackupResult = {
   success: true,
-  backupPath: "/home/user/.quicklify/backups/bare-test/2026-02-28_08-00-00-000",
+  backupPath: "/home/user/.kastell/backups/bare-test/2026-02-28_08-00-00-000",
   manifest: {
     serverName: "bare-test",
     provider: "hetzner",
@@ -73,7 +73,7 @@ describe("backupCommand — bare mode routing", () => {
     jest.clearAllMocks();
     // formatTimestamp is a pure function, keep real implementation via passthrough
     mockedCoreBackup.formatTimestamp.mockReturnValue("2026-02-28_08-00-00-000");
-    mockedCoreBackup.getBackupDir.mockReturnValue("/home/user/.quicklify/backups/bare-test");
+    mockedCoreBackup.getBackupDir.mockReturnValue("/home/user/.kastell/backups/bare-test");
   });
 
   afterEach(() => {

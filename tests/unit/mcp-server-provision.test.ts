@@ -56,6 +56,7 @@ const originalEnv = process.env;
 beforeEach(() => {
   jest.clearAllMocks();
   process.env = { ...originalEnv };
+  delete process.env.KASTELL_SAFE_MODE;
   delete process.env.QUICKLIFY_SAFE_MODE;
 
   mockProvider = createMockProvider();
@@ -449,7 +450,7 @@ describe("uploadSshKeyBestEffort", () => {
 
 describe("handleServerProvision — SAFE_MODE", () => {
   it("should block provision in SAFE_MODE", async () => {
-    process.env.QUICKLIFY_SAFE_MODE = "true";
+    process.env.KASTELL_SAFE_MODE = "true";
 
     const result = await handleServerProvision({
       provider: "hetzner",
@@ -459,7 +460,7 @@ describe("handleServerProvision — SAFE_MODE", () => {
 
     expect(result.isError).toBe(true);
     expect(data.error).toContain("SAFE_MODE");
-    expect(data.hint).toContain("QUICKLIFY_SAFE_MODE=false");
+    expect(data.hint).toContain("SAFE_MODE=false");
   });
 });
 

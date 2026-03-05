@@ -33,7 +33,7 @@ jest.mock("../../src/utils/config");
 jest.mock("../../src/utils/ssh");
 jest.mock("../../src/commands/backup", () => ({
   listBackups: jest.fn(),
-  getBackupDir: jest.fn().mockReturnValue("/home/user/.quicklify/backups/coolify-test"),
+  getBackupDir: jest.fn().mockReturnValue("/home/user/.kastell/backups/coolify-test"),
 }));
 
 const mockedConfig = config as jest.Mocked<typeof config>;
