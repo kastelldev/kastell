@@ -54,7 +54,7 @@ MCP server with 7 tools, 12 security fixes, SSH key auto-generation, full docs u
 
 **Milestone Goal:** Rename quicklify to kastell across entire codebase, switch to Apache 2.0 license, and add Dokploy as a second platform adapter alongside Coolify.
 
-- [ ] **Phase 7: Kastell Rebrand** - Quicklify identity fully replaced with Kastell across CLI, packages, config, docs, and CI
+- [x] **Phase 7: Kastell Rebrand** - Quicklify identity fully replaced with Kastell across CLI, packages, config, docs, and CI
 - [ ] **Phase 8: Platform Adapter Foundation** - Adapter abstraction layer established, existing Coolify logic extracted into adapter pattern with zero behavior change
 - [ ] **Phase 9: Dokploy Adapter** - Dokploy servers can be provisioned, monitored, and backed up through CLI and MCP
 
@@ -73,9 +73,9 @@ MCP server with 7 tools, 12 security fixes, SSH key auto-generation, full docs u
 **Plans**: 3 plans
 
 Plans:
-- [ ] 07-01-PLAN.md — Foundation: types, config paths, env vars, migration logic
-- [ ] 07-02-PLAN.md — Source + tests: remaining src/ string replacements and all test updates
-- [ ] 07-03-PLAN.md — Packaging + docs: bin scripts, package.json, license, documentation
+- [x] 07-01-PLAN.md — Foundation: types, config paths, env vars, migration logic
+- [x] 07-02-PLAN.md — Source + tests: remaining src/ string replacements and all test updates
+- [x] 07-03-PLAN.md — Packaging + docs: bin scripts, package.json, license, documentation
 
 ### Phase 8: Platform Adapter Foundation
 **Goal**: A `PlatformAdapter` interface exists, existing Coolify functionality is extracted into `CoolifyAdapter` with zero behavior change, and core modules route through the adapter factory
@@ -121,10 +121,10 @@ Plans:
 | 4. Provider & Utility Consolidation | v1.2.1 | 2/2 | Complete | 2026-03-02 |
 | 5. SCP Security Hardening | v1.2.1 | 2/2 | Complete | 2026-03-02 |
 | 6. init.ts Extract | v1.2.1 | 2/2 | Complete | 2026-03-02 |
-| 7. Kastell Rebrand | 2/3 | In Progress|  | - |
+| 7. Kastell Rebrand | v1.3 | 3/3 | Complete | 2026-03-05 |
 | 8. Platform Adapter Foundation | v1.3 | 0/? | Not started | - |
 | 9. Dokploy Adapter | v1.3 | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-02-27*
-*Last updated: 2026-03-05 — Phase 7 Plan 01 complete (internal foundation rebrand)*
+*Last updated: 2026-03-05 — Phase 7 complete (Kastell Rebrand: 3/3 plans)*
