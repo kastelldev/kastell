@@ -10,7 +10,7 @@ async function main(): Promise<void> {
   await server.connect(transport);
   // Server is now listening on stdin/stdout via JSON-RPC
   // All logging must go to stderr (stdout is reserved for MCP protocol)
-  process.stderr.write("quicklify-mcp server started\n");
+  process.stderr.write("kastell-mcp server started\n");
 }
 
 main().catch((error: unknown) => {

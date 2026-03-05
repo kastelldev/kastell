@@ -12,7 +12,7 @@ export async function configCommand(subcommand?: string, args?: string[]): Promi
   switch (subcommand) {
     case "set": {
       if (!args || args.length < 2) {
-        logger.error("Usage: quicklify config set <key> <value>");
+        logger.error("Usage: kastell config set <key> <value>");
         return;
       }
       const [key, value] = args;
@@ -26,7 +26,7 @@ export async function configCommand(subcommand?: string, args?: string[]): Promi
     }
     case "get": {
       if (!args || args.length < 1) {
-        logger.error("Usage: quicklify config get <key>");
+        logger.error("Usage: kastell config get <key>");
         return;
       }
       const val = getDefault(args[0]);
@@ -41,7 +41,7 @@ export async function configCommand(subcommand?: string, args?: string[]): Promi
       const config = getDefaults();
       const entries = Object.entries(config).filter(([, v]) => v !== undefined);
       if (entries.length === 0) {
-        logger.info("No default config set. Use: quicklify config set <key> <value>");
+        logger.info("No default config set. Use: kastell config set <key> <value>");
         return;
       }
       logger.title("Default Configuration");
@@ -56,7 +56,7 @@ export async function configCommand(subcommand?: string, args?: string[]): Promi
       break;
     }
     default:
-      logger.error("Usage: quicklify config <set|get|list|reset>");
+      logger.error("Usage: kastell config <set|get|list|reset>");
       logger.info(`  set <key> <value>  Set a default value`);
       logger.info(`  get <key>          Get a default value`);
       logger.info(`  list               Show all defaults`);

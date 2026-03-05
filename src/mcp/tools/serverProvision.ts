@@ -58,7 +58,7 @@ export async function handleServerProvision(params: {
   if (isSafeMode()) {
     return mcpError(
       "Provision is disabled in SAFE_MODE",
-      "Set QUICKLIFY_SAFE_MODE=false to enable server provisioning. WARNING: This creates billable cloud resources.",
+      "Set KASTELL_SAFE_MODE=false to enable server provisioning. WARNING: This creates billable cloud resources.",
     );
   }
 

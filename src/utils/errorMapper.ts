@@ -107,7 +107,7 @@ export function getErrorMessage(error: unknown): string {
 const SSH_ERROR_PATTERNS: { pattern: RegExp; message: (ip?: string) => string }[] = [
   {
     pattern: /Connection refused/i,
-    message: () => "SSH connection refused. Is the server running? Check: quicklify status",
+    message: () => "SSH connection refused. Is the server running? Check: kastell status",
   },
   {
     pattern: /Permission denied/i,
@@ -146,7 +146,7 @@ const SSH_ERROR_PATTERNS: { pattern: RegExp; message: (ip?: string) => string }[
   },
   {
     pattern: /No space left on device/i,
-    message: () => "Server disk is full. Free up space or check: quicklify monitor",
+    message: () => "Server disk is full. Free up space or check: kastell monitor",
   },
   {
     pattern: /Broken pipe/i,

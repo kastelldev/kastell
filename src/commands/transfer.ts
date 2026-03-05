@@ -42,11 +42,11 @@ export async function exportCommand(filePath?: string): Promise<void> {
   const servers = getServers();
 
   if (servers.length === 0) {
-    logger.info("No servers to export. Deploy one with: quicklify init");
+    logger.info("No servers to export. Deploy one with: kastell init");
     return;
   }
 
-  const outPath = resolve(filePath || "quicklify-export.json");
+  const outPath = resolve(filePath || "kastell-export.json");
 
   try {
     writeFileSync(outPath, JSON.stringify(servers, null, 2), { encoding: "utf-8", mode: 0o600 });
@@ -61,7 +61,7 @@ export async function exportCommand(filePath?: string): Promise<void> {
 
 export async function importCommand(filePath: string): Promise<void> {
   if (!filePath) {
-    logger.error("Usage: quicklify import <path>");
+    logger.error("Usage: kastell import <path>");
     return;
   }
 

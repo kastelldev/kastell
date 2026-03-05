@@ -82,7 +82,7 @@ async function domainAdd(
   dryRun?: boolean,
 ): Promise<void> {
   if (!options?.domain) {
-    logger.error("Missing --domain. Usage: quicklify domain add <server> --domain example.com");
+    logger.error("Missing --domain. Usage: kastell domain add <server> --domain example.com");
     return;
   }
 
@@ -119,7 +119,7 @@ async function domainAdd(
     if (!checkResult.stdout.includes(COOLIFY_DB_CONTAINER)) {
       spinner.fail("Coolify database container not found");
       logger.error("Is Coolify installed and running on this server?");
-      logger.info("Run: quicklify status <server> to check");
+      logger.info("Run: kastell status <server> to check");
       return;
     }
 
@@ -182,7 +182,7 @@ async function domainRemove(ip: string, name: string, dryRun: boolean): Promise<
 
 async function domainCheck(ip: string, options?: { domain?: string }): Promise<void> {
   if (!options?.domain) {
-    logger.error("Missing --domain. Usage: quicklify domain check <server> --domain example.com");
+    logger.error("Missing --domain. Usage: kastell domain check <server> --domain example.com");
     return;
   }
 

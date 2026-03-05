@@ -41,7 +41,7 @@ export async function createSnapshot(
       costEstimate = "unknown";
     }
 
-    const snapshotName = `quicklify-${Date.now()}`;
+    const snapshotName = `kastell-${Date.now()}`;
     const snapshot = await provider.createSnapshot(server.id, snapshotName);
 
     return { success: true, snapshot, costEstimate };

@@ -140,7 +140,7 @@ export async function handleServerManage(params: {
             return mcpError(
               "No servers found",
               undefined,
-              [{ command: "quicklify init", reason: "Deploy a server first" }],
+              [{ command: "kastell init", reason: "Deploy a server first" }],
             );
           }
           return {
@@ -186,7 +186,7 @@ export async function handleServerManage(params: {
         if (isSafeMode()) {
           return mcpError(
             "Destroy is disabled in SAFE_MODE",
-            "Set QUICKLIFY_SAFE_MODE=false to enable destructive operations",
+            "Set KASTELL_SAFE_MODE=false to enable destructive operations",
             [
               {
                 command: `server_manage { action: 'remove', server: '${params.server ?? ""}' }`,
@@ -202,7 +202,7 @@ export async function handleServerManage(params: {
             return mcpError(
               "No servers found",
               undefined,
-              [{ command: "quicklify init", reason: "Deploy a server first" }],
+              [{ command: "kastell init", reason: "Deploy a server first" }],
             );
           }
           return {
@@ -228,7 +228,7 @@ export async function handleServerManage(params: {
               } : {}),
               suggested_actions: [
                 { command: `server_manage { action: 'remove', server: '${params.server}' }`, reason: "Remove from local config only" },
-                { command: "quicklify doctor --check-tokens", reason: "Verify API tokens" },
+                { command: "kastell doctor --check-tokens", reason: "Verify API tokens" },
               ],
             }) }],
             isError: true,

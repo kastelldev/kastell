@@ -36,7 +36,7 @@ export function generateSshKey(): string | null {
 
     // Generate key with no passphrase
     // Use sanitizedEnv so tokens are not inherited by the ssh-keygen subprocess
-    spawnSync("ssh-keygen", ["-t", "ed25519", "-f", keyPath, "-N", "", "-C", "quicklify"], {
+    spawnSync("ssh-keygen", ["-t", "ed25519", "-f", keyPath, "-N", "", "-C", "kastell"], {
       stdio: "pipe",
       env: sanitizedEnv(),
     });
@@ -52,5 +52,5 @@ export function generateSshKey(): string | null {
 }
 
 export function getSshKeyName(): string {
-  return `quicklify-${Date.now()}`;
+  return `kastell-${Date.now()}`;
 }

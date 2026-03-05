@@ -328,7 +328,7 @@ export class LinodeProvider implements CloudProvider {
       );
       const images = response.data.data.filter(
         (img: { type: string; label: string }) =>
-          img.type === "manual" && img.label && img.label.startsWith("quicklify-"),
+          img.type === "manual" && img.label && (img.label.startsWith("kastell-") || img.label.startsWith("quicklify-")),
       );
       return images.map(
         (img: { id: string; label: string; status: string; size: number; created: string }) => ({

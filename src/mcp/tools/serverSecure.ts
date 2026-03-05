@@ -65,7 +65,7 @@ export async function handleServerSecure(params: {
     const servers = getServers();
     if (servers.length === 0) {
       return mcpError("No servers found", undefined, [
-        { command: "quicklify init", reason: "Deploy a server first" },
+        { command: "kastell init", reason: "Deploy a server first" },
       ]);
     }
 

@@ -19,7 +19,7 @@ export async function selectServer(promptMessage?: string): Promise<ServerRecord
   const servers = getServers();
 
   if (servers.length === 0) {
-    logger.info("No servers found. Deploy one with: quicklify init");
+    logger.info("No servers found. Deploy one with: kastell init");
     return undefined;
   }
 

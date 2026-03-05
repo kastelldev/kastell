@@ -68,5 +68,5 @@ export async function restartCommand(query?: string): Promise<void> {
   }
 
   pollSpinner.warn("Server did not come back in time");
-  logger.warning("The server may still be rebooting. Check status later with: quicklify status");
+  logger.warning("The server may still be rebooting. Check status later with: kastell status");
 }

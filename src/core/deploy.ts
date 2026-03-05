@@ -29,7 +29,7 @@ export async function uploadSshKeyToProvider(provider: CloudProvider): Promise<s
     } else {
       logger.warning("Could not generate SSH key — falling back to password auth");
       logger.info("Server will require password change on first SSH login");
-      logger.warning("Run 'quicklify secure setup' after deployment to harden SSH access");
+      logger.warning("Run 'kastell secure setup' after deployment to harden SSH access");
       return [];
     }
   }
@@ -43,7 +43,7 @@ export async function uploadSshKeyToProvider(provider: CloudProvider): Promise<s
   } catch (error: unknown) {
     spinner.fail("SSH key upload failed — falling back to password auth");
     logger.warning(getErrorMessage(error));
-    logger.warning("Run 'quicklify secure setup' after deployment to harden SSH access");
+    logger.warning("Run 'kastell secure setup' after deployment to harden SSH access");
     return [];
   }
 }
@@ -189,7 +189,7 @@ export async function deployServer(
       if (server.ip === "pending" || server.ip === "0.0.0.0" || server.ip === "") {
         ipSpinner.fail("Could not obtain server IP address");
         logger.warning("The server was created but IP assignment timed out.");
-        logger.info(`Check IP later with: quicklify status ${server.id}`);
+        logger.info(`Check IP later with: kastell status ${server.id}`);
       } else {
         ipSpinner.succeed(`IP address assigned: ${server.ip}`);
       }
@@ -283,11 +283,11 @@ export async function deployServer(
       console.log();
       if (!fullSetup) {
         logger.info("  Secure your server:");
-        logger.step(`     quicklify firewall setup ${serverName}`);
-        logger.step(`     quicklify secure setup ${serverName}`);
+        logger.step(`     kastell firewall setup ${serverName}`);
+        logger.step(`     kastell secure setup ${serverName}`);
         console.log();
       }
-      logger.info("  Server saved to local config. Use 'quicklify list' to see all servers.");
+      logger.info("  Server saved to local config. Use 'kastell list' to see all servers.");
       console.log();
       return;
     }
@@ -315,7 +315,7 @@ export async function deployServer(
       }
     } else if (fullSetup && !ready) {
       logger.warning("Skipping full setup: Coolify is not ready yet.");
-      logger.info("Run manually later: quicklify firewall setup && quicklify secure setup");
+      logger.info("Run manually later: kastell firewall setup && kastell secure setup");
     }
 
     // Success message
@@ -331,7 +331,7 @@ export async function deployServer(
       }
     } else {
       logger.warning("Coolify did not respond yet. Please check in a few minutes.");
-      logger.info(`You can check status later with: quicklify status ${server.ip}`);
+      logger.info(`You can check status later with: kastell status ${server.ip}`);
     }
 
     // Onboarding: next steps
@@ -339,33 +339,33 @@ export async function deployServer(
     logger.title("What's Next?");
     if (!fullSetup) {
       logger.info("  1. Secure your server:");
-      logger.step(`     quicklify firewall setup ${serverName}`);
-      logger.step(`     quicklify secure setup ${serverName}`);
+      logger.step(`     kastell firewall setup ${serverName}`);
+      logger.step(`     kastell secure setup ${serverName}`);
       console.log();
       logger.info("  2. Add a domain with SSL:");
-      logger.step(`     quicklify domain add ${serverName} --domain example.com`);
+      logger.step(`     kastell domain add ${serverName} --domain example.com`);
       console.log();
       logger.info("  3. Create your first backup:");
-      logger.step(`     quicklify backup ${serverName}`);
+      logger.step(`     kastell backup ${serverName}`);
       console.log();
       logger.info("  Tip: Do steps 1-3 automatically next time:");
-      logger.step("     quicklify init --full-setup");
+      logger.step("     kastell init --full-setup");
     } else {
       logger.info("  1. Add a domain with SSL:");
-      logger.step(`     quicklify domain add ${serverName} --domain example.com`);
+      logger.step(`     kastell domain add ${serverName} --domain example.com`);
       console.log();
       logger.info("  2. Create your first backup:");
-      logger.step(`     quicklify backup ${serverName}`);
+      logger.step(`     kastell backup ${serverName}`);
     }
     console.log();
     logger.info("  Check your environment anytime:");
-    logger.step("     quicklify doctor");
+    logger.step("     kastell doctor");
     console.log();
-    logger.info("  Server saved to local config. Use 'quicklify list' to see all servers.");
+    logger.info("  Server saved to local config. Use 'kastell list' to see all servers.");
     console.log();
-    logger.info("  Docs: https://github.com/omrfc/quicklify");
+    logger.info("  Docs: https://github.com/kastelldev/kastell");
     console.log(
-      "  \u2b50 Love Quicklify? Give us a star: https://github.com/omrfc/quicklify \u2b50",
+      "  \u2b50 Love Kastell? Give us a star: https://github.com/kastelldev/kastell \u2b50",
     );
     console.log();
   } catch (error: unknown) {

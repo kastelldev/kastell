@@ -160,7 +160,7 @@ async function backupAll(dryRun: boolean): Promise<void> {
 
   const servers = getServers();
   if (servers.length === 0) {
-    logger.info("No servers found. Deploy one with: quicklify init");
+    logger.info("No servers found. Deploy one with: kastell init");
     return;
   }
 

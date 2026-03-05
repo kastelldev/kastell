@@ -45,7 +45,7 @@ export async function handleServerLogs(params: {
     const servers = getServers();
     if (servers.length === 0) {
       return mcpError("No servers found", undefined, [
-        { command: "quicklify init", reason: "Deploy a server first" },
+        { command: "kastell init", reason: "Deploy a server first" },
       ]);
     }
 
@@ -94,7 +94,7 @@ export async function handleServerLogs(params: {
               ...(result.hint ? { hint: result.hint } : {}),
               ...(result.logs ? { partial_logs: result.logs } : {}),
               suggested_actions: [
-                { command: `quicklify logs ${server.name} --service ${service}`, reason: "Try from CLI for interactive mode" },
+                { command: `kastell logs ${server.name} --service ${service}`, reason: "Try from CLI for interactive mode" },
                 { command: `server_info { action: 'health', server: '${server.name}' }`, reason: "Check if server is reachable" },
               ],
             }) }],

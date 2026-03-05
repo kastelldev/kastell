@@ -36,7 +36,7 @@ async function snapshotCreate(
     logger.title("Dry Run - Create Snapshot");
     logger.info(`Server: ${server.name} (${server.ip})`);
     logger.info(`Estimated cost: ${costEstimate}`);
-    logger.info(`Snapshot name: quicklify-${Date.now()}`);
+    logger.info(`Snapshot name: kastell-${Date.now()}`);
     console.log();
     logger.warning("No changes applied. Remove --dry-run to execute.");
     return;
@@ -107,7 +107,7 @@ async function snapshotList(query?: string): Promise<void> {
 async function snapshotListAll(): Promise<void> {
   const servers = getServers();
   if (servers.length === 0) {
-    logger.info("No servers found. Deploy one with: quicklify init");
+    logger.info("No servers found. Deploy one with: kastell init");
     return;
   }
 

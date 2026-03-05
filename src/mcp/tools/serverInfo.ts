@@ -40,9 +40,9 @@ function formatServerList(servers: ServerRecord[]): Record<string, unknown> {
     return {
       servers: [],
       total: 0,
-      message: "No servers found. Deploy one with: quicklify init",
+      message: "No servers found. Deploy one with: kastell init",
       suggested_actions: [
-        { command: "quicklify init", reason: "Deploy your first Coolify server" },
+        { command: "kastell init", reason: "Deploy your first Coolify server" },
       ],
     };
   }
@@ -87,7 +87,7 @@ function formatStatusResults(results: StatusResult[]): Record<string, unknown> {
   if (notReachable.length > 0) {
     for (const r of notReachable) {
       suggestedActions.push({
-        command: `quicklify status ${r.server.name} --autostart`,
+        command: `kastell status ${r.server.name} --autostart`,
         reason: `Coolify is not reachable on ${r.server.name}, try auto-restart`,
       });
     }
@@ -96,7 +96,7 @@ function formatStatusResults(results: StatusResult[]): Record<string, unknown> {
   const errors = results.filter((r) => r.error);
   if (errors.length > 0) {
     suggestedActions.push({
-      command: "quicklify doctor --check-tokens",
+      command: "kastell doctor --check-tokens",
       reason: "API errors detected, verify provider tokens",
     });
   }
@@ -149,7 +149,7 @@ export async function handleServerInfo(params: {
           return mcpError(
             "No servers found",
             undefined,
-            [{ command: "quicklify init", reason: "Deploy a server first" }],
+            [{ command: "kastell init", reason: "Deploy a server first" }],
           );
         }
 
@@ -211,7 +211,7 @@ export async function handleServerInfo(params: {
           return mcpError(
             "No servers found",
             undefined,
-            [{ command: "quicklify init", reason: "Deploy a server first" }],
+            [{ command: "kastell init", reason: "Deploy a server first" }],
           );
         }
 
@@ -232,7 +232,7 @@ export async function handleServerInfo(params: {
             const sshReachable = await checkBareServerSsh(server);
             const suggestedActions: SuggestedAction[] = sshReachable
               ? [{ command: `ssh root@${server.ip}`, reason: "Connect to your bare server" }]
-              : [{ command: `quicklify status ${server.name}`, reason: "Check server cloud status" }];
+              : [{ command: `kastell status ${server.name}`, reason: "Check server cloud status" }];
 
             return mcpSuccess({
               server: server.name,
@@ -246,7 +246,7 @@ export async function handleServerInfo(params: {
           // Coolify server: check Coolify health
           const status = await checkCoolifyHealth(server.ip);
           const suggestedActions: SuggestedAction[] = status === "not reachable"
-            ? [{ command: `quicklify status ${server.name} --autostart`, reason: "Try auto-restart Coolify" }]
+            ? [{ command: `kastell status ${server.name} --autostart`, reason: "Try auto-restart Coolify" }]
             : [{ command: `http://${server.ip}:8000`, reason: "Access Coolify dashboard" }];
 
           return mcpSuccess({
@@ -287,7 +287,7 @@ export async function handleServerInfo(params: {
 
         const suggestedActions: SuggestedAction[] = notReachableCoolify.length > 0
           ? notReachableCoolify.map((r) => ({
-              command: `quicklify status ${r.name} --autostart`,
+              command: `kastell status ${r.name} --autostart`,
               reason: `Coolify not reachable on ${r.name}`,
             }))
           : [{ command: "server_info { action: 'status' }", reason: "All healthy, check full status" }];

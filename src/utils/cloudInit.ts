@@ -2,12 +2,12 @@ export function getBareCloudInit(serverName: string): string {
   const safeName = serverName.replace(/[^a-z0-9-]/g, "");
   return `#!/bin/bash
 set +e
-touch /var/log/quicklify-install.log
-chmod 600 /var/log/quicklify-install.log
-exec > >(tee /var/log/quicklify-install.log) 2>&1
+touch /var/log/kastell-install.log
+chmod 600 /var/log/kastell-install.log
+exec > >(tee /var/log/kastell-install.log) 2>&1
 
 echo "=================================="
-echo "Quicklify Bare Server Setup"
+echo "Kastell Bare Server Setup"
 echo "Server: ${safeName}"
 echo "=================================="
 
@@ -65,12 +65,12 @@ export function getCoolifyCloudInit(serverName: string): string {
   const safeName = serverName.replace(/[^a-z0-9-]/g, "");
   return `#!/bin/bash
 set +e
-touch /var/log/quicklify-install.log
-chmod 600 /var/log/quicklify-install.log
-exec > >(tee /var/log/quicklify-install.log) 2>&1
+touch /var/log/kastell-install.log
+chmod 600 /var/log/kastell-install.log
+exec > >(tee /var/log/kastell-install.log) 2>&1
 
 echo "=================================="
-echo "Quicklify Auto-Installer"
+echo "Kastell Auto-Installer"
 echo "Server: ${safeName}"
 echo "=================================="
 

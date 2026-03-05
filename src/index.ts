@@ -39,7 +39,7 @@ migrateConfigIfNeeded();
 const program = new Command();
 
 program
-  .name("quicklify")
+  .name("kastell")
   .description("Automate Coolify deployment on cloud providers")
   .version(pkg.version);
 
@@ -55,7 +55,7 @@ program
   .option("--size <size>", "Server size")
   .option("--name <name>", "Server name")
   .option("--full-setup", "Auto-configure firewall and SSH hardening after deploy")
-  .option("--config <path>", "Load deployment config from a YAML file (quicklify.yml)")
+  .option("--config <path>", "Load deployment config from a YAML file (kastell.yml)")
   .option("--template <template>", "Use a predefined template (starter, production, dev)")
   .option("--no-open", "Do not open browser after deployment")
   .option("--mode <mode>", "Server mode: coolify (default) or bare")
@@ -193,7 +193,7 @@ program
 
 program
   .command("add")
-  .description("Add an existing server to Quicklify management")
+  .description("Add an existing server to Kastell management")
   .option("--provider <provider>", "Cloud provider (hetzner, digitalocean, vultr, linode)")
   .option("--ip <ip>", "Server IP address")
   .option("--name <name>", "Server name")
@@ -237,7 +237,7 @@ const args = process.argv.slice(2);
 if (args.length === 0) {
   const selected = await interactiveMenu();
   if (selected) {
-    await program.parseAsync(["node", "quicklify", ...selected]);
+    await program.parseAsync(["node", "kastell", ...selected]);
   }
 } else {
   await program.parseAsync();

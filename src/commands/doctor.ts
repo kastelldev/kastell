@@ -104,11 +104,11 @@ function checkSsh(): CheckResult {
   };
 }
 
-function checkQuicklifyVersion(version?: string): CheckResult {
+function checkKastellVersion(version?: string): CheckResult {
   if (version) {
-    return { name: "quicklify", status: "pass", detail: `v${version}` };
+    return { name: "kastell", status: "pass", detail: `v${version}` };
   }
-  return { name: "quicklify", status: "warn", detail: "version unknown" };
+  return { name: "kastell", status: "warn", detail: "version unknown" };
 }
 
 function checkConfigDir(): CheckResult {
@@ -126,7 +126,7 @@ function checkConfigDir(): CheckResult {
 function checkRegisteredServers(): CheckResult {
   const servers = getServers();
   if (servers.length === 0) {
-    return { name: "Servers", status: "warn", detail: "0 registered (run quicklify init)" };
+    return { name: "Servers", status: "warn", detail: "0 registered (run kastell init)" };
   }
   return { name: "Servers", status: "pass", detail: `${servers.length} registered` };
 }
@@ -136,7 +136,7 @@ export function runDoctorChecks(version?: string): CheckResult[] {
     checkNodeVersion(),
     checkNpmVersion(),
     checkSsh(),
-    checkQuicklifyVersion(version),
+    checkKastellVersion(version),
     checkConfigDir(),
     checkRegisteredServers(),
   ];
@@ -146,7 +146,7 @@ export async function doctorCommand(
   options?: { checkTokens?: boolean },
   version?: string,
 ): Promise<void> {
-  logger.title("Quicklify Doctor");
+  logger.title("Kastell Doctor");
 
   const results = runDoctorChecks(version);
 

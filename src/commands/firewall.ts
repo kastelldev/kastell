@@ -249,7 +249,7 @@ async function firewallList(ip: string, name: string): Promise<void> {
     spinner.succeed(`Firewall rules for ${name} (${ip})`);
 
     if (!status.active) {
-      logger.warning("UFW is inactive. Run 'quicklify firewall setup' to enable.");
+      logger.warning("UFW is inactive. Run 'kastell firewall setup' to enable.");
       return;
     }
 
@@ -296,7 +296,7 @@ async function firewallStatusCheck(ip: string, name: string): Promise<void> {
       }
     } else {
       spinner.warn(`UFW is inactive on ${name}`);
-      logger.info("Run 'quicklify firewall setup' to enable.");
+      logger.info("Run 'kastell firewall setup' to enable.");
     }
   } catch (error: unknown) {
     spinner.fail("Failed to check firewall status");

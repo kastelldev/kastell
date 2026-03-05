@@ -57,7 +57,7 @@ export async function initCommand(options: InitOptions = {}): Promise<void> {
 
   const isNonInteractive = options.provider !== undefined;
 
-  logger.title("Quicklify - Self-hosting, fully managed");
+  logger.title("Kastell - Self-hosting, fully managed");
 
   let providerChoice: string;
   let apiToken: string;
@@ -97,7 +97,7 @@ export async function initCommand(options: InitOptions = {}): Promise<void> {
     logger.warning(
       "Token passed via --token flag is visible in shell history. Use environment variables instead: export HETZNER_TOKEN=...",
     );
-    process.title = "quicklify";
+    process.title = "kastell";
   } else {
     const envKey = PROVIDER_ENV_KEYS[providerChoice as keyof typeof PROVIDER_ENV_KEYS];
     if (envKey && process.env[envKey]) {

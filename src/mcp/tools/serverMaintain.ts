@@ -37,7 +37,7 @@ export async function handleServerMaintain(params: {
     const servers = getServers();
     if (servers.length === 0) {
       return mcpError("No servers found", undefined, [
-        { command: "quicklify init", reason: "Deploy a server first" },
+        { command: "kastell init", reason: "Deploy a server first" },
       ]);
     }
 
@@ -96,7 +96,7 @@ export async function handleServerMaintain(params: {
         if (isSafeMode()) {
           return mcpError(
             "Restart is disabled in SAFE_MODE",
-            "Set QUICKLIFY_SAFE_MODE=false to enable server reboot",
+            "Set KASTELL_SAFE_MODE=false to enable server reboot",
             [{ command: `server_maintain { action: 'update', server: '${server.name}' }`, reason: "Run Coolify update instead (non-destructive)" }],
           );
         }
@@ -158,7 +158,7 @@ export async function handleServerMaintain(params: {
         if (isSafeMode()) {
           return mcpError(
             "Maintenance is disabled in SAFE_MODE",
-            "Set QUICKLIFY_SAFE_MODE=false to enable full maintenance (includes reboot)",
+            "Set KASTELL_SAFE_MODE=false to enable full maintenance (includes reboot)",
             [{ command: `server_maintain { action: 'update', server: '${server.name}' }`, reason: "Run Coolify update only (non-destructive)" }],
           );
         }

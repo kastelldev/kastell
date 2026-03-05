@@ -48,7 +48,7 @@ export async function restoreCommand(
   // SAFE_MODE check — applies before mode routing (blocks ALL restore operations)
   if (isSafeMode()) {
     logger.error(
-      "Restore is blocked by SAFE_MODE. Set QUICKLIFY_SAFE_MODE=false to allow restore operations.",
+      "Restore is blocked by SAFE_MODE. Set KASTELL_SAFE_MODE=false to allow restore operations.",
     );
     return;
   }
@@ -66,7 +66,7 @@ export async function restoreCommand(
   } else {
     const backups = listBackups(server.name);
     if (backups.length === 0) {
-      logger.info(`No backups found for ${server.name}. Run 'quicklify backup' first.`);
+      logger.info(`No backups found for ${server.name}. Run 'kastell backup' first.`);
       return;
     }
 

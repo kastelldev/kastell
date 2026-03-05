@@ -24,7 +24,7 @@ async function promptBackupCleanup(serverName: string): Promise<void> {
       logger.warning("Failed to remove backups.");
     }
   } else {
-    logger.info("Backups kept. Run 'quicklify backup cleanup' later to remove orphans.");
+    logger.info("Backups kept. Run 'kastell backup cleanup' later to remove orphans.");
   }
 }
 

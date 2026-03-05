@@ -54,7 +54,7 @@ export async function handleServerBackup(params: {
     const servers = getServers();
     if (servers.length === 0) {
       return mcpError("No servers found", undefined, [
-        { command: "quicklify init", reason: "Deploy a server first" },
+        { command: "kastell init", reason: "Deploy a server first" },
       ]);
     }
 
@@ -152,7 +152,7 @@ export async function handleServerBackup(params: {
         if (isSafeMode()) {
           return mcpError(
             "Restore disabled in SAFE_MODE",
-            "Set QUICKLIFY_SAFE_MODE=false to enable restore operations",
+            "Set KASTELL_SAFE_MODE=false to enable restore operations",
           );
         }
 
@@ -210,7 +210,7 @@ export async function handleServerBackup(params: {
         if (isSafeMode()) {
           return mcpError(
             "Snapshot creation is disabled in SAFE_MODE",
-            "Set QUICKLIFY_SAFE_MODE=false to enable snapshot creation (billable operation)",
+            "Set KASTELL_SAFE_MODE=false to enable snapshot creation (billable operation)",
             [{ command: `server_backup { action: 'backup-create', server: '${server.name}' }`, reason: "Use SSH-based backup instead (free)" }],
           );
         }
@@ -306,7 +306,7 @@ export async function handleServerBackup(params: {
         if (isSafeMode()) {
           return mcpError(
             "Snapshot delete disabled in SAFE_MODE",
-            "Set QUICKLIFY_SAFE_MODE=false to enable snapshot deletion",
+            "Set KASTELL_SAFE_MODE=false to enable snapshot deletion",
           );
         }
 

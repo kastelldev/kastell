@@ -177,7 +177,7 @@ export async function secureSetup(
     logger.success(`Security setup complete for ${name}`);
   } else {
     logger.warning(
-      `Security setup partially complete for ${name} — fail2ban is not active. Retry with: quicklify secure setup ${name}`,
+      `Security setup partially complete for ${name} — fail2ban is not active. Retry with: kastell secure setup ${name}`,
     );
   }
   if (port && port !== 22) {
@@ -270,7 +270,7 @@ async function secureAudit(ip: string, name: string): Promise<void> {
 
     if (score < maxScore) {
       console.log();
-      logger.info("Run 'quicklify secure setup' to improve your security score.");
+      logger.info("Run 'kastell secure setup' to improve your security score.");
     }
   } catch (error: unknown) {
     spinner.fail("Failed to run security audit");

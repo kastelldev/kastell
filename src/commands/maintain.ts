@@ -82,7 +82,7 @@ async function maintainSingleServer(
         const snapSpinner = createSpinner("Step 0: Creating snapshot...");
         snapSpinner.start();
         try {
-          const snapshotName = `quicklify-maintain-${Date.now()}`;
+          const snapshotName = `kastell-maintain-${Date.now()}`;
           await provider.createSnapshot(server.id, snapshotName);
           snapSpinner.succeed(`Step 0: Snapshot created (${snapshotName})`);
         } catch (error: unknown) {
@@ -263,7 +263,7 @@ async function maintainAll(options: MaintainOptions): Promise<void> {
 
   const servers = getServers();
   if (servers.length === 0) {
-    logger.info("No servers found. Deploy one with: quicklify init");
+    logger.info("No servers found. Deploy one with: kastell init");
     return;
   }
 
