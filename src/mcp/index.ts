@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createMcpServer } from "./server.js";
+import { migrateConfigIfNeeded } from "../utils/migration.js";
 
 async function main(): Promise<void> {
+  migrateConfigIfNeeded();
   const server = createMcpServer();
   const transport = new StdioServerTransport();
   await server.connect(transport);

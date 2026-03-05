@@ -1,4 +1,4 @@
-import type { InitOptions, QuicklifyYamlConfig } from "../types/index.js";
+import type { InitOptions, KastellYamlConfig } from "../types/index.js";
 import { getTemplate, getTemplateDefaults } from "./templates.js";
 
 export interface ResolvedConfig {
@@ -17,7 +17,7 @@ export interface ResolvedConfig {
  */
 export function mergeConfig(
   cliOptions: InitOptions,
-  yamlConfig?: QuicklifyYamlConfig,
+  yamlConfig?: KastellYamlConfig,
 ): ResolvedConfig {
   const resolved: ResolvedConfig = {};
 

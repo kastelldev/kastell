@@ -4,7 +4,7 @@ import { join } from "path";
 import axios from "axios";
 import { logger } from "./logger.js";
 
-const CONFIG_DIR = join(homedir(), ".quicklify");
+const CONFIG_DIR = join(homedir(), ".kastell");
 export const UPDATE_CHECK_FILE = join(CONFIG_DIR, ".update-check");
 
 const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -76,7 +76,7 @@ function writeCache(cache: UpdateCache): void {
 
 async function fetchLatestVersion(): Promise<string | null> {
   try {
-    const response = await axios.get("https://registry.npmjs.org/quicklify/latest", {
+    const response = await axios.get("https://registry.npmjs.org/kastell/latest", {
       timeout: REQUEST_TIMEOUT_MS,
     });
     const version = response.data?.version;
@@ -102,7 +102,7 @@ export async function checkForUpdate(currentVersion: string): Promise<void> {
     if (cache && now - cache.lastCheck < CHECK_INTERVAL_MS) {
       if (isNewerVersion(currentVersion, cache.latestVersion)) {
         logger.info(
-          `Update available: ${currentVersion} → ${cache.latestVersion} — Run: npm i -g quicklify`,
+          `Update available: ${currentVersion} → ${cache.latestVersion} — Run: npm i -g kastell`,
         );
       }
       return;
@@ -120,7 +120,7 @@ export async function checkForUpdate(currentVersion: string): Promise<void> {
     // Display update message if newer version available
     if (isNewerVersion(currentVersion, latestVersion)) {
       logger.info(
-        `Update available: ${currentVersion} → ${latestVersion} — Run: npm i -g quicklify`,
+        `Update available: ${currentVersion} → ${latestVersion} — Run: npm i -g kastell`,
       );
     }
   } catch {

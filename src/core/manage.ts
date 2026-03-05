@@ -5,11 +5,34 @@ import { getErrorMessage, mapProviderError } from "../utils/errorMapper.js";
 import { getProviderToken } from "./tokens.js";
 import type { ServerRecord, ServerMode } from "../types/index.js";
 import { SUPPORTED_PROVIDERS, invalidProviderError } from "../constants.js";
+import chalk from "chalk";
 
 // ─── SAFE_MODE ────────────────────────────────────────────────────────────────
 
+let _safeModeWarningShown = false;
+
 export function isSafeMode(): boolean {
-  return process.env.QUICKLIFY_SAFE_MODE === "true";
+  // KASTELL_SAFE_MODE takes precedence — no deprecation warning
+  const kastell = process.env.KASTELL_SAFE_MODE;
+  if (kastell !== undefined) {
+    return kastell === "true";
+  }
+
+  // Backward compat: QUICKLIFY_SAFE_MODE with one-time deprecation warning
+  const quicklify = process.env.QUICKLIFY_SAFE_MODE;
+  if (quicklify !== undefined) {
+    if (!_safeModeWarningShown) {
+      _safeModeWarningShown = true;
+      process.stderr.write(
+        chalk.yellow(
+          "QUICKLIFY_SAFE_MODE is deprecated. Use KASTELL_SAFE_MODE instead.\n",
+        ),
+      );
+    }
+    return quicklify === "true";
+  }
+
+  return false;
 }
 
 // ─── Validation ───────────────────────────────────────────────────────────────

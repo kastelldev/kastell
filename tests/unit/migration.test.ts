@@ -10,11 +10,16 @@ jest.mock("os", () => ({
 }));
 
 // Mock chalk to avoid ANSI codes in test output
-jest.mock("chalk", () => ({
-  default: {
+jest.mock("chalk", () => {
+  const chalkObj = {
     yellow: (msg: string) => msg,
-  },
-}));
+  };
+  return {
+    __esModule: true,
+    default: chalkObj,
+    ...chalkObj,
+  };
+});
 
 const mockedFs = fs as jest.Mocked<typeof fs>;
 

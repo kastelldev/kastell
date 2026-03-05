@@ -1,6 +1,6 @@
 import { readFileSync } from "fs";
 import yaml from "js-yaml";
-import type { QuicklifyYamlConfig } from "../types/index.js";
+import type { KastellYamlConfig } from "../types/index.js";
 import { VALID_TEMPLATE_NAMES } from "./templates.js";
 import type { TemplateName } from "../types/index.js";
 import { SUPPORTED_PROVIDERS, invalidProviderError } from "../constants.js";
@@ -38,13 +38,13 @@ function checkSecurityKeys(obj: Record<string, unknown>, warnings: string[], pat
 }
 
 export interface YamlLoadResult {
-  config: QuicklifyYamlConfig;
+  config: KastellYamlConfig;
   warnings: string[];
 }
 
 export function validateYamlConfig(raw: unknown): YamlLoadResult {
   const warnings: string[] = [];
-  const config: QuicklifyYamlConfig = {};
+  const config: KastellYamlConfig = {};
 
   if (raw === null || raw === undefined) {
     return { config, warnings };

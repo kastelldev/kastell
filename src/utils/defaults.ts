@@ -1,10 +1,10 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
 import { homedir } from "os";
 import { join } from "path";
-import type { QuicklifyConfig } from "../types/index.js";
+import type { KastellConfig } from "../types/index.js";
 import { SUPPORTED_PROVIDERS, invalidProviderError } from "../constants.js";
 
-const CONFIG_DIR = join(homedir(), ".quicklify");
+const CONFIG_DIR = join(homedir(), ".kastell");
 const DEFAULTS_FILE = join(CONFIG_DIR, "config.json");
 
 const VALID_KEYS = ["provider", "region", "size", "name"];
@@ -15,13 +15,13 @@ function ensureConfigDir(): void {
   }
 }
 
-export function getDefaults(): QuicklifyConfig {
+export function getDefaults(): KastellConfig {
   try {
     if (!existsSync(DEFAULTS_FILE)) return {};
     const data = readFileSync(DEFAULTS_FILE, "utf-8");
     const parsed = JSON.parse(data);
     if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return {};
-    return parsed as QuicklifyConfig;
+    return parsed as KastellConfig;
   } catch {
     return {};
   }

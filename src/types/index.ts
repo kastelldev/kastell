@@ -78,7 +78,7 @@ export interface TemplateDefinition {
 }
 
 // YAML Config
-export interface QuicklifyYamlConfig {
+export interface KastellYamlConfig {
   template?: TemplateName;
   provider?: string;
   region?: string;
@@ -88,7 +88,7 @@ export interface QuicklifyYamlConfig {
   domain?: string;
 }
 
-export interface QuicklifyConfig {
+export interface KastellConfig {
   provider?: string;
   region?: string;
   size?: string;
@@ -143,7 +143,7 @@ export interface BackupManifest {
 }
 
 // Result pattern for core/ functions (no exceptions thrown)
-export interface QuicklifyResult<T = void> {
+export interface KastellResult<T = void> {
   success: boolean;
   data?: T;
   error?: string;

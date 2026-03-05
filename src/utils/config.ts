@@ -3,7 +3,7 @@ import { homedir } from "os";
 import { join } from "path";
 import type { ServerRecord } from "../types/index.js";
 
-const CONFIG_DIR = join(homedir(), ".quicklify");
+const CONFIG_DIR = join(homedir(), ".kastell");
 const SERVERS_FILE = join(CONFIG_DIR, "servers.json");
 const BACKUPS_DIR = join(CONFIG_DIR, "backups");
 
