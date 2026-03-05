@@ -17,7 +17,7 @@ jest.mock("../../src/utils/config", () => ({
 jest.mock("../../src/utils/sshKey", () => ({
   findLocalSshKey: jest.fn().mockReturnValue(null),
   generateSshKey: jest.fn().mockReturnValue(null),
-  getSshKeyName: jest.fn().mockReturnValue("quicklify-test"),
+  getSshKeyName: jest.fn().mockReturnValue("kastell-test"),
 }));
 
 jest.mock("child_process", () => ({
@@ -69,7 +69,7 @@ describe("security-init E2E", () => {
   });
 
   describe("process.title security", () => {
-    it("should set process.title to 'quicklify' when --token flag is used", async () => {
+    it("should set process.title to 'kastell' when --token flag is used", async () => {
       mockedAxios.get
         .mockResolvedValueOnce({ data: { servers: [] } })
         .mockResolvedValueOnce({ data: { server: { status: "running" } } });
@@ -92,7 +92,7 @@ describe("security-init E2E", () => {
         name: "test-server",
       });
 
-      expect(process.title).toBe("quicklify");
+      expect(process.title).toBe("kastell");
     });
 
     it("should show warning about --token being visible in shell history", async () => {
@@ -200,7 +200,7 @@ describe("security-init E2E", () => {
     it("should use spawnSync for ssh-keygen (not execSync)", async () => {
       const sshKey = jest.requireMock("../../src/utils/sshKey");
       sshKey.findLocalSshKey.mockReturnValue(null);
-      sshKey.generateSshKey.mockReturnValue("ssh-ed25519 AAAA... quicklify");
+      sshKey.generateSshKey.mockReturnValue("ssh-ed25519 AAAA... kastell");
 
       mockedAxios.get
         .mockResolvedValueOnce({ data: { servers: [] } })
@@ -316,7 +316,7 @@ describe("security-init E2E", () => {
       });
 
       // Even when failing early, process.title should be set for security
-      expect(process.title).toBe("quicklify");
+      expect(process.title).toBe("kastell");
     });
 
     it("should never show raw token in output even in error scenarios", async () => {

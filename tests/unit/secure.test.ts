@@ -493,7 +493,7 @@ describe("secure", () => {
       await secureCommand("audit", "1.2.3.4");
 
       const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
-      expect(output).toContain("quicklify secure setup");
+      expect(output).toContain("kastell secure setup");
     });
 
     it("should handle audit failure", async () => {

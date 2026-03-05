@@ -58,7 +58,7 @@ beforeEach(() => {
   mockedTokens.getProviderToken.mockReturnValue("test-token");
   mockedSsh.assertValidIp.mockImplementation(() => {});
   mockedSshKey.findLocalSshKey.mockReturnValue("ssh-ed25519 AAAA test@host");
-  mockedSshKey.getSshKeyName.mockReturnValue("quicklify-test");
+  mockedSshKey.getSshKeyName.mockReturnValue("kastell-test");
   mockedCloudInit.getCoolifyCloudInit.mockReturnValue("#!/bin/bash\necho coolify");
   mockedCloudInit.getBareCloudInit.mockReturnValue("#!/bin/bash\necho bare");
   mockedTemplates.getTemplateDefaults.mockReturnValue({ region: "nbg1", size: "cax11" });

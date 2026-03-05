@@ -17,7 +17,7 @@ jest.mock("../../src/utils/config", () => ({
 jest.mock("../../src/utils/sshKey", () => ({
   findLocalSshKey: jest.fn().mockReturnValue(null),
   generateSshKey: jest.fn().mockReturnValue(null),
-  getSshKeyName: jest.fn().mockReturnValue("quicklify-test"),
+  getSshKeyName: jest.fn().mockReturnValue("kastell-test"),
 }));
 
 jest.mock("../../src/commands/firewall", () => ({

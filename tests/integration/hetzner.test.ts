@@ -755,7 +755,7 @@ describe("HetznerProvider", () => {
         data: {
           image: {
             id: 100,
-            description: "quicklify-test",
+            description: "kastell-test",
             status: "creating",
             image_size: 5.2,
             created: "2026-02-24T00:00:00+00:00",
@@ -763,10 +763,10 @@ describe("HetznerProvider", () => {
         },
       });
 
-      const result = await provider.createSnapshot("123", "quicklify-test");
+      const result = await provider.createSnapshot("123", "kastell-test");
 
       expect(result.id).toBe("100");
-      expect(result.name).toBe("quicklify-test");
+      expect(result.name).toBe("kastell-test");
       expect(result.status).toBe("creating");
       expect(result.sizeGb).toBe(5.2);
       expect(result.costPerMonth).toBe("€0.03/mo");

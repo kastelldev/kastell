@@ -16,7 +16,7 @@ jest.mock("../../src/utils/config", () => ({
 jest.mock("../../src/utils/sshKey", () => ({
   findLocalSshKey: jest.fn().mockReturnValue(null),
   generateSshKey: jest.fn().mockReturnValue(null),
-  getSshKeyName: jest.fn().mockReturnValue("quicklify-test"),
+  getSshKeyName: jest.fn().mockReturnValue("kastell-test"),
 }));
 
 jest.mock("../../src/utils/openBrowser", () => ({
@@ -441,7 +441,7 @@ describe("initCommand Non-Interactive", () => {
 
       const allOutput = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
       expect(allOutput).toContain("IP assignment timed out");
-      expect(allOutput).toContain("quicklify status vultr-timeout");
+      expect(allOutput).toContain("kastell status vultr-timeout");
     });
 
     it("should assign Vultr IP after delayed response", async () => {

@@ -23,7 +23,7 @@ jest.mock("../../src/utils/config", () => ({
 jest.mock("../../src/utils/sshKey", () => ({
   findLocalSshKey: jest.fn().mockReturnValue(null),
   generateSshKey: jest.fn().mockReturnValue(null),
-  getSshKeyName: jest.fn().mockReturnValue("quicklify-test"),
+  getSshKeyName: jest.fn().mockReturnValue("kastell-test"),
 }));
 
 jest.mock("../../src/utils/openBrowser", () => ({
@@ -326,7 +326,7 @@ describe("initCommand — bare mode", () => {
     });
 
     const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
-    expect(output).toContain("quicklify firewall setup");
+    expect(output).toContain("kastell firewall setup");
   });
 
   it("should continue even when firewallSetup throws during bare fullSetup (BUG-1 resilience)", async () => {

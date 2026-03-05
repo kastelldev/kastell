@@ -19,7 +19,7 @@ jest.mock("../../src/utils/config", () => ({
 jest.mock("../../src/utils/sshKey", () => ({
   findLocalSshKey: jest.fn().mockReturnValue(null),
   generateSshKey: jest.fn().mockReturnValue(null),
-  getSshKeyName: jest.fn().mockReturnValue("quicklify-test"),
+  getSshKeyName: jest.fn().mockReturnValue("kastell-test"),
 }));
 
 jest.mock("fs");
@@ -218,7 +218,7 @@ describe("initCommand with --config and --template", () => {
       setupHetznerSuccess();
 
       await initCommand({
-        config: "/path/to/quicklify.yml",
+        config: "/path/to/kastell.yml",
         token: "valid-token",
       });
 
@@ -235,7 +235,7 @@ describe("initCommand with --config and --template", () => {
       setupHetznerSuccess();
 
       await initCommand({
-        config: "/path/to/quicklify.yml",
+        config: "/path/to/kastell.yml",
         token: "valid-token",
       });
 
@@ -252,7 +252,7 @@ describe("initCommand with --config and --template", () => {
       setupHetznerSuccess();
 
       await initCommand({
-        config: "/path/to/quicklify.yml",
+        config: "/path/to/kastell.yml",
         token: "valid-token",
         region: "fsn1",
         size: "cx43",
@@ -271,7 +271,7 @@ describe("initCommand with --config and --template", () => {
       setupHetznerSuccess();
 
       await initCommand({
-        config: "/path/to/quicklify.yml",
+        config: "/path/to/kastell.yml",
         token: "valid-token",
         name: "warn-test",
         region: "nbg1",
@@ -331,7 +331,7 @@ describe("initCommand with --config and --template", () => {
 
       // Don't pass fullSetup in CLI, let YAML provide it
       await initCommand({
-        config: "/path/to/quicklify.yml",
+        config: "/path/to/kastell.yml",
         token: "valid-token",
       });
 
@@ -347,7 +347,7 @@ describe("initCommand with --config and --template", () => {
       setupDOSuccess();
 
       await initCommand({
-        config: "/path/to/quicklify.yml",
+        config: "/path/to/kastell.yml",
         token: "do-token",
       });
 
@@ -367,7 +367,7 @@ describe("initCommand with --config and --template", () => {
       setupHetznerSuccess();
 
       await initCommand({
-        config: "/path/to/quicklify.yml",
+        config: "/path/to/kastell.yml",
         token: "valid-token",
         template: "production", // CLI override
       });

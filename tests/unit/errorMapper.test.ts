@@ -260,7 +260,7 @@ describe("errorMapper", () => {
     it("should map Connection refused", () => {
       const result = mapSshError(new Error("ssh: connect to host 1.2.3.4 port 22: Connection refused"));
       expect(result).toContain("SSH connection refused");
-      expect(result).toContain("quicklify status");
+      expect(result).toContain("kastell status");
     });
 
     it("should map Permission denied with IP", () => {

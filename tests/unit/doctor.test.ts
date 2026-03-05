@@ -107,26 +107,26 @@ describe("doctorCommand", () => {
     expect(sshCheck?.status).toBe("warn");
   });
 
-  it("should show quicklify version when provided", () => {
+  it("should show kastell version when provided", () => {
     mockedExecSync.mockReturnValue(Buffer.from("10.0.0"));
     mockedCheckSsh.mockReturnValue(true);
     mockedExistsSync.mockReturnValue(true);
     mockedAccessSync.mockImplementation(() => {});
 
     const results = runDoctorChecks("0.6.0");
-    const versionCheck = results.find((r) => r.name === "quicklify");
+    const versionCheck = results.find((r) => r.name === "kastell");
     expect(versionCheck?.status).toBe("pass");
     expect(versionCheck?.detail).toBe("v0.6.0");
   });
 
-  it("should warn quicklify version when not provided", () => {
+  it("should warn kastell version when not provided", () => {
     mockedExecSync.mockReturnValue(Buffer.from("10.0.0"));
     mockedCheckSsh.mockReturnValue(true);
     mockedExistsSync.mockReturnValue(true);
     mockedAccessSync.mockImplementation(() => {});
 
     const results = runDoctorChecks();
-    const versionCheck = results.find((r) => r.name === "quicklify");
+    const versionCheck = results.find((r) => r.name === "kastell");
     expect(versionCheck?.status).toBe("warn");
     expect(versionCheck?.detail).toBe("version unknown");
   });
@@ -164,7 +164,7 @@ describe("doctorCommand", () => {
     await doctorCommand(undefined, "0.6.0");
 
     const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
-    expect(output).toContain("Quicklify Doctor");
+    expect(output).toContain("Kastell Doctor");
     expect(output).toContain("Node.js");
     expect(output).toContain("npm");
   });

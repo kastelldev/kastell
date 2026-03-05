@@ -47,7 +47,7 @@ const mockProvider = {
 const sampleSnapshot = {
   id: "snap-123",
   serverId: "123",
-  name: "quicklify-1708765432",
+  name: "kastell-1708765432",
   status: "available",
   sizeGb: 5.2,
   createdAt: "2026-02-24T00:00:00Z",
@@ -310,7 +310,7 @@ describe("snapshotCommand", () => {
       mockProvider.createSnapshot.mockResolvedValue({
         id: "snap-bare",
         serverId: "123",
-        name: "quicklify-bare-snap",
+        name: "kastell-bare-snap",
         status: "available",
         sizeGb: 3.0,
         createdAt: "2026-02-28T00:00:00Z",

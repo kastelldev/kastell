@@ -24,7 +24,7 @@ describe("listCommand", () => {
 
     const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("No servers found");
-    expect(output).toContain("quicklify init");
+    expect(output).toContain("kastell init");
   });
 
   it("should display server table when servers exist", async () => {

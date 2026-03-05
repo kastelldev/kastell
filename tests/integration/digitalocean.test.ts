@@ -679,15 +679,15 @@ describe("DigitalOceanProvider", () => {
         data: { action: { id: 1, status: "in-progress" } },
       });
 
-      const result = await provider.createSnapshot("12345", "quicklify-test");
+      const result = await provider.createSnapshot("12345", "kastell-test");
 
       expect(result.id).toBe("pending");
       expect(result.serverId).toBe("12345");
-      expect(result.name).toBe("quicklify-test");
+      expect(result.name).toBe("kastell-test");
       expect(result.status).toBe("pending");
       expect(mockedAxios.post).toHaveBeenCalledWith(
         "https://api.digitalocean.com/v2/droplets/12345/actions",
-        { type: "snapshot", name: "quicklify-test" },
+        { type: "snapshot", name: "kastell-test" },
         expect.objectContaining({
           headers: expect.objectContaining({
             Authorization: "Bearer test-do-token",
@@ -724,7 +724,7 @@ describe("DigitalOceanProvider", () => {
           snapshots: [
             {
               id: 100,
-              name: "quicklify-test",
+              name: "kastell-test",
               size_gigabytes: 25,
               created_at: "2026-02-24T00:00:00Z",
             },
@@ -736,7 +736,7 @@ describe("DigitalOceanProvider", () => {
 
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe("100");
-      expect(result[0].name).toBe("quicklify-test");
+      expect(result[0].name).toBe("kastell-test");
       expect(result[0].status).toBe("available");
       expect(result[0].sizeGb).toBe(25);
       expect(result[0].costPerMonth).toBe("$1.50/mo");

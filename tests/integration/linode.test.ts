@@ -857,17 +857,17 @@ describe("LinodeProvider", () => {
       mockedAxios.post.mockResolvedValueOnce({
         data: {
           id: "private/12345",
-          label: "quicklify-test",
+          label: "kastell-test",
           status: "creating",
           size: 81920,
           created: "2026-02-24T00:00:00",
         },
       });
 
-      const result = await provider.createSnapshot("12345678", "quicklify-test");
+      const result = await provider.createSnapshot("12345678", "kastell-test");
 
       expect(result.id).toBe("private/12345");
-      expect(result.name).toBe("quicklify-test");
+      expect(result.name).toBe("kastell-test");
       expect(result.status).toBe("creating");
       expect(result.sizeGb).toBe(80);
       expect(result.costPerMonth).toBe("$0.32/mo");
@@ -879,7 +879,7 @@ describe("LinodeProvider", () => {
       );
       expect(mockedAxios.post).toHaveBeenCalledWith(
         "https://api.linode.com/v4/images",
-        { disk_id: 101, label: "quicklify-test" },
+        { disk_id: 101, label: "kastell-test" },
         expect.objectContaining({
           headers: expect.objectContaining({
             Authorization: "Bearer test-api-token",
@@ -926,7 +926,7 @@ describe("LinodeProvider", () => {
           data: [
             {
               id: "private/100",
-              label: "quicklify-test",
+              label: "kastell-test",
               type: "manual",
               status: "available",
               size: 81920,
@@ -956,7 +956,7 @@ describe("LinodeProvider", () => {
 
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe("private/100");
-      expect(result[0].name).toBe("quicklify-test");
+      expect(result[0].name).toBe("kastell-test");
       expect(result[0].sizeGb).toBe(80);
     });
 

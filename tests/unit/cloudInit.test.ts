@@ -51,10 +51,10 @@ describe("getCoolifyCloudInit", () => {
     expect(script).toContain("8000");
   });
 
-  it("should include logging to quicklify-install.log", () => {
+  it("should include logging to kastell-install.log", () => {
     const script = getCoolifyCloudInit("test");
-    expect(script).toContain("quicklify-install.log");
-    expect(script).toContain("exec > >(tee /var/log/quicklify-install.log) 2>&1");
+    expect(script).toContain("kastell-install.log");
+    expect(script).toContain("exec > >(tee /var/log/kastell-install.log) 2>&1");
   });
 
   it("should include network wait loop", () => {
@@ -113,9 +113,9 @@ describe("getBareCloudInit", () => {
     expect(script).toContain("set +e");
   });
 
-  it("should log to quicklify-install.log", () => {
+  it("should log to kastell-install.log", () => {
     const script = getBareCloudInit("my-server");
-    expect(script).toContain("quicklify-install.log");
+    expect(script).toContain("kastell-install.log");
   });
 
   it("should include apt-get update", () => {

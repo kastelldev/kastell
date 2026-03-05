@@ -123,7 +123,7 @@ describe("mcpError", () => {
   });
 
   it("includes suggested_actions when provided", () => {
-    const actions = [{ command: "quicklify list", reason: "See available servers" }];
+    const actions = [{ command: "kastell list", reason: "See available servers" }];
     const result = mcpError("No server found", undefined, actions);
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.suggested_actions).toEqual(actions);
@@ -136,7 +136,7 @@ describe("mcpError", () => {
   });
 
   it("includes both hint and suggested_actions when both provided", () => {
-    const actions = [{ command: "quicklify list", reason: "See available servers" }];
+    const actions = [{ command: "kastell list", reason: "See available servers" }];
     const result = mcpError("Error msg", "A hint", actions);
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.error).toBe("Error msg");

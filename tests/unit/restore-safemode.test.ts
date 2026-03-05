@@ -2,7 +2,7 @@
  * Tests specifically for the SAFE_MODE fix in restore.ts.
  *
  * Verifies that restore.ts uses isSafeMode() from core/manage.ts
- * (which checks QUICKLIFY_SAFE_MODE) rather than reading process.env.SAFE_MODE
+ * (which checks KASTELL_SAFE_MODE / QUICKLIFY_SAFE_MODE) rather than reading process.env.SAFE_MODE
  * directly.
  */
 
@@ -42,8 +42,8 @@ afterAll(() => {
 // ─── Core SAFE_MODE behavior via isSafeMode() ──────────────────────────────────
 
 describe("restoreCommand — SAFE_MODE via isSafeMode()", () => {
-  it("blocks restore when isSafeMode() returns true (QUICKLIFY_SAFE_MODE=true)", async () => {
-    // Mock isSafeMode to return true — this is what QUICKLIFY_SAFE_MODE=true does
+  it("blocks restore when isSafeMode() returns true (KASTELL_SAFE_MODE=true)", async () => {
+    // Mock isSafeMode to return true — this is what KASTELL_SAFE_MODE=true does
     mockedManage.isSafeMode.mockReturnValue(true);
 
     const consoleSpy = jest.spyOn(console, "log").mockImplementation();
@@ -56,7 +56,7 @@ describe("restoreCommand — SAFE_MODE via isSafeMode()", () => {
     expect(mockedSsh.sshExec).not.toHaveBeenCalled();
   });
 
-  it("does NOT block restore when isSafeMode() returns false (QUICKLIFY_SAFE_MODE unset)", async () => {
+  it("does NOT block restore when isSafeMode() returns false (KASTELL_SAFE_MODE unset)", async () => {
     // isSafeMode returns false — restore should proceed
     mockedManage.isSafeMode.mockReturnValue(false);
     // No server found → command exits early but NOT due to SAFE_MODE
@@ -71,9 +71,9 @@ describe("restoreCommand — SAFE_MODE via isSafeMode()", () => {
 
   it("does NOT block restore when SAFE_MODE=true (old env var, wrong one)", async () => {
     // The OLD bug: process.env.SAFE_MODE was read directly.
-    // After fix: only QUICKLIFY_SAFE_MODE matters (via isSafeMode()).
+    // After fix: only KASTELL_SAFE_MODE matters (via isSafeMode()).
     process.env.SAFE_MODE = "true";
-    // isSafeMode() checks QUICKLIFY_SAFE_MODE — which is unset → returns false
+    // isSafeMode() checks KASTELL_SAFE_MODE — which is unset → returns false
     mockedManage.isSafeMode.mockReturnValue(false);
     mockedConfig.findServers.mockReturnValue([]);
 
@@ -98,7 +98,7 @@ describe("restoreCommand — SAFE_MODE via isSafeMode()", () => {
     expect(mockedManage.isSafeMode).toHaveBeenCalledTimes(1);
   });
 
-  it("error message mentions QUICKLIFY_SAFE_MODE when blocked", async () => {
+  it("error message mentions KASTELL_SAFE_MODE when blocked", async () => {
     mockedManage.isSafeMode.mockReturnValue(true);
 
     const logCalls: string[] = [];
@@ -109,7 +109,7 @@ describe("restoreCommand — SAFE_MODE via isSafeMode()", () => {
     consoleSpy.mockRestore();
 
     const output = logCalls.join("\n");
-    expect(output).toContain("QUICKLIFY_SAFE_MODE");
+    expect(output).toContain("KASTELL_SAFE_MODE");
     // Must NOT mention old SAFE_MODE (without the prefix)
     // i.e. the error message text should not say "Set SAFE_MODE=false"
     expect(output).not.toMatch(/Set SAFE_MODE=false/);

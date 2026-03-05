@@ -100,7 +100,7 @@ describe("transfer", () => {
       await exportCommand();
 
       expect(mockedWriteFileSync).toHaveBeenCalledWith(
-        expect.stringContaining("quicklify-export.json"),
+        expect.stringContaining("kastell-export.json"),
         JSON.stringify([sampleServer], null, 2),
         { encoding: "utf-8", mode: 0o600 },
       );

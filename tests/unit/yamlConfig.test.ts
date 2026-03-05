@@ -451,7 +451,7 @@ describe("yamlConfig", () => {
       mockedFs.readFileSync.mockReturnValue(
         "provider: hetzner\nregion: nbg1\nsize: cx33\nname: my-server\n",
       );
-      const result = loadYamlConfig("/path/to/quicklify.yml");
+      const result = loadYamlConfig("/path/to/kastell.yml");
       expect(result.config.provider).toBe("hetzner");
       expect(result.config.region).toBe("nbg1");
       expect(result.config.size).toBe("cx33");

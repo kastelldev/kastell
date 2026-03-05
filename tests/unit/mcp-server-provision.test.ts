@@ -63,8 +63,8 @@ beforeEach(() => {
   mockedProviderFactory.createProviderWithToken.mockReturnValue(mockProvider);
   mockedTokens.getProviderToken.mockReturnValue("test-token-123");
   mockedSsh.assertValidIp.mockImplementation(() => {});
-  mockedSshKey.findLocalSshKey.mockReturnValue("ssh-ed25519 AAAA test@quicklify");
-  mockedSshKey.getSshKeyName.mockReturnValue("quicklify-1234567890");
+  mockedSshKey.findLocalSshKey.mockReturnValue("ssh-ed25519 AAAA test@kastell");
+  mockedSshKey.getSshKeyName.mockReturnValue("kastell-1234567890");
   mockedCloudInit.getCoolifyCloudInit.mockReturnValue("#!/bin/bash\necho hello");
   mockedTemplates.getTemplateDefaults.mockReturnValue({ region: "nbg1", size: "cax11" });
   mockedConfig.saveServer.mockImplementation(() => {});
@@ -406,8 +406,8 @@ describe("uploadSshKeyBestEffort", () => {
 
     expect(ids).toEqual(["key-456"]);
     expect(mockProvider.uploadSshKey).toHaveBeenCalledWith(
-      "quicklify-1234567890",
-      "ssh-ed25519 AAAA test@quicklify",
+      "kastell-1234567890",
+      "ssh-ed25519 AAAA test@kastell",
     );
   });
 
@@ -424,7 +424,7 @@ describe("uploadSshKeyBestEffort", () => {
 
   it("should generate and upload key when no local key exists", async () => {
     mockedSshKey.findLocalSshKey.mockReturnValue(null);
-    mockedSshKey.generateSshKey.mockReturnValue("ssh-ed25519 AAAA generated@quicklify");
+    mockedSshKey.generateSshKey.mockReturnValue("ssh-ed25519 AAAA generated@kastell");
     mockProvider.uploadSshKey.mockResolvedValue("key-gen-789");
 
     const ids = await uploadSshKeyBestEffort(mockProvider);
@@ -432,8 +432,8 @@ describe("uploadSshKeyBestEffort", () => {
     expect(ids).toEqual(["key-gen-789"]);
     expect(mockedSshKey.generateSshKey).toHaveBeenCalled();
     expect(mockProvider.uploadSshKey).toHaveBeenCalledWith(
-      "quicklify-1234567890",
-      "ssh-ed25519 AAAA generated@quicklify",
+      "kastell-1234567890",
+      "ssh-ed25519 AAAA generated@kastell",
     );
   });
 

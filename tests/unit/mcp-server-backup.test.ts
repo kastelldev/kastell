@@ -140,7 +140,7 @@ beforeEach(() => {
   delete process.env.QUICKLIFY_SAFE_MODE;
   mockedSsh.assertValidIp.mockImplementation(() => {});
   mockedSsh.sanitizedEnv.mockReturnValue({} as NodeJS.ProcessEnv);
-  mockedConfig.BACKUPS_DIR = "/tmp/quicklify-backups";
+  mockedConfig.BACKUPS_DIR = "/tmp/kastell-backups";
 });
 
 afterAll(() => {
@@ -484,7 +484,7 @@ describe("core/backup - restoreBackup", () => {
 
 describe("core/snapshot - createSnapshot", () => {
   test("returns success with snapshot and cost estimate", async () => {
-    const snap = { id: "snap-1", serverId: "123", name: "quicklify-1", status: "available", sizeGb: 20, createdAt: "2026-02-20", costPerMonth: "$1.00" };
+    const snap = { id: "snap-1", serverId: "123", name: "kastell-1", status: "available", sizeGb: 20, createdAt: "2026-02-20", costPerMonth: "$1.00" };
     (mockProvider.createSnapshot as jest.Mock).mockResolvedValue(snap);
     (mockProvider.getSnapshotCostEstimate as jest.Mock).mockResolvedValue("$1.00/mo");
     mockedProviderFactory.createProviderWithToken.mockReturnValue(mockProvider);
@@ -496,7 +496,7 @@ describe("core/snapshot - createSnapshot", () => {
   });
 
   test("returns success with unknown cost when estimate fails", async () => {
-    const snap = { id: "snap-1", serverId: "123", name: "quicklify-1", status: "available", sizeGb: 20, createdAt: "2026-02-20", costPerMonth: "$1.00" };
+    const snap = { id: "snap-1", serverId: "123", name: "kastell-1", status: "available", sizeGb: 20, createdAt: "2026-02-20", costPerMonth: "$1.00" };
     (mockProvider.createSnapshot as jest.Mock).mockResolvedValue(snap);
     (mockProvider.getSnapshotCostEstimate as jest.Mock).mockRejectedValue(new Error("not supported"));
     mockedProviderFactory.createProviderWithToken.mockReturnValue(mockProvider);
@@ -747,7 +747,7 @@ describe("handleServerBackup - snapshot-create", () => {
   });
 
   test("returns success with snapshot and cost estimate", async () => {
-    const snap = { id: "snap-1", serverId: "123", name: "quicklify-1", status: "available", sizeGb: 20, createdAt: "2026-02-20", costPerMonth: "$1.00" };
+    const snap = { id: "snap-1", serverId: "123", name: "kastell-1", status: "available", sizeGb: 20, createdAt: "2026-02-20", costPerMonth: "$1.00" };
     (mockProvider.createSnapshot as jest.Mock).mockResolvedValue(snap);
     (mockProvider.getSnapshotCostEstimate as jest.Mock).mockResolvedValue("$1.00/mo");
     mockedTokens.getProviderToken.mockReturnValue("test-token");

@@ -68,12 +68,12 @@ describe("sshKey", () => {
       mockedExistsSync
         .mockReturnValueOnce(true) // sshDir exists
         .mockReturnValueOnce(true); // pubkey exists
-      mockedReadFileSync.mockReturnValue("ssh-ed25519 AAAAC3Nz quicklify");
+      mockedReadFileSync.mockReturnValue("ssh-ed25519 AAAAC3Nz kastell");
       const result = generateSshKey();
-      expect(result).toBe("ssh-ed25519 AAAAC3Nz quicklify");
+      expect(result).toBe("ssh-ed25519 AAAAC3Nz kastell");
       expect(mockedSpawnSync).toHaveBeenCalledWith(
         "ssh-keygen",
-        ["-t", "ed25519", "-f", expect.stringContaining("id_ed25519"), "-N", "", "-C", "quicklify"],
+        ["-t", "ed25519", "-f", expect.stringContaining("id_ed25519"), "-N", "", "-C", "kastell"],
         expect.objectContaining({ stdio: "pipe" }),
       );
     });
@@ -82,7 +82,7 @@ describe("sshKey", () => {
       mockedExistsSync
         .mockReturnValueOnce(false) // sshDir doesn't exist
         .mockReturnValueOnce(true); // pubkey exists
-      mockedReadFileSync.mockReturnValue("ssh-ed25519 AAAAC3Nz quicklify");
+      mockedReadFileSync.mockReturnValue("ssh-ed25519 AAAAC3Nz kastell");
       generateSshKey();
       expect(mockedMkdirSync).toHaveBeenCalledWith(
         expect.stringContaining(".ssh"),
@@ -109,7 +109,7 @@ describe("sshKey", () => {
       mockedExistsSync
         .mockReturnValueOnce(true)
         .mockReturnValueOnce(true);
-      mockedReadFileSync.mockReturnValue("ssh-ed25519 AAAAC3Nz quicklify");
+      mockedReadFileSync.mockReturnValue("ssh-ed25519 AAAAC3Nz kastell");
       generateSshKey();
       // Verify spawnSync is called with array args (not string command)
       const args = mockedSpawnSync.mock.calls[0];
@@ -119,20 +119,20 @@ describe("sshKey", () => {
   });
 
   describe("getSshKeyName", () => {
-    it("should start with quicklify- prefix", () => {
+    it("should start with kastell- prefix", () => {
       const name = getSshKeyName();
-      expect(name).toMatch(/^quicklify-/);
+      expect(name).toMatch(/^kastell-/);
     });
 
     it("should contain a numeric timestamp", () => {
       const name = getSshKeyName();
-      const timestamp = name.replace("quicklify-", "");
+      const timestamp = name.replace("kastell-", "");
       expect(Number(timestamp)).toBeGreaterThan(0);
     });
 
     it("should match the expected format", () => {
       const name = getSshKeyName();
-      expect(name).toMatch(/^quicklify-\d+$/);
+      expect(name).toMatch(/^kastell-\d+$/);
     });
   });
 });

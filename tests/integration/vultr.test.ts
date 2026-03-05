@@ -765,7 +765,7 @@ describe("VultrProvider", () => {
         data: {
           snapshot: {
             id: "snap-abc-123",
-            description: "quicklify-test",
+            description: "kastell-test",
             status: "pending",
             size: 5368709120,
             date_created: "2026-02-24T00:00:00+00:00",
@@ -773,16 +773,16 @@ describe("VultrProvider", () => {
         },
       });
 
-      const result = await provider.createSnapshot("inst-abc-123", "quicklify-test");
+      const result = await provider.createSnapshot("inst-abc-123", "kastell-test");
 
       expect(result.id).toBe("snap-abc-123");
-      expect(result.name).toBe("quicklify-test");
+      expect(result.name).toBe("kastell-test");
       expect(result.status).toBe("pending");
       expect(result.sizeGb).toBe(5);
       expect(result.costPerMonth).toBe("$0.25/mo");
       expect(mockedAxios.post).toHaveBeenCalledWith(
         "https://api.vultr.com/v2/snapshots",
-        { instance_id: "inst-abc-123", description: "quicklify-test" },
+        { instance_id: "inst-abc-123", description: "kastell-test" },
         expect.objectContaining({
           headers: expect.objectContaining({
             Authorization: "Bearer test-api-token",
