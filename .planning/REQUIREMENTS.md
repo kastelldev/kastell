@@ -9,14 +9,14 @@ Requirements for Kastell Rebrand + Dokploy Adapter release. Each maps to roadmap
 
 ### Rebrand
 
-- [ ] **BRAND-01**: CLI komutu `kastell` olarak calisir (`kastell --version`, `kastell init`, vb.)
+- [x] **BRAND-01**: CLI komutu `kastell` olarak calisir (`kastell --version`, `kastell init`, vb.)
 - [x] **BRAND-02**: Config path `~/.kastell` kullanilir, `~/.quicklify` varsa otomatik migrate edilir
 - [x] **BRAND-03**: Tum src/ icinde "quicklify" referanslari "kastell" olarak guncellenir
-- [ ] **BRAND-04**: Test dosyalarinda "quicklify" referanslari "kastell" olarak guncellenir
+- [x] **BRAND-04**: Test dosyalarinda "quicklify" referanslari "kastell" olarak guncellenir
 - [ ] **BRAND-05**: LICENSE dosyasi MIT'den Apache 2.0'a gecer, NOTICE dosyasi olusturulur
 - [ ] **BRAND-06**: README.md, README.tr.md, CHANGELOG.md, SECURITY.md, CONTRIBUTING.md, llms.txt guncellenir
 - [ ] **BRAND-07**: GitHub Actions workflow'lari guncellenir
-- [ ] **BRAND-08**: MCP server adi "kastell" olarak guncellenir
+- [x] **BRAND-08**: MCP server adi "kastell" olarak guncellenir
 - [x] **BRAND-09**: Environment variable'lar `KASTELL_*` prefix'i kullanir (eski `QUICKLIFY_*` uyariyla desteklenir)
 - [ ] **BRAND-10**: npm'de `kastell@1.3.0` yayinlanir, `quicklify` deprecated olarak isaretlenir
 
@@ -72,14 +72,14 @@ Requirements for Kastell Rebrand + Dokploy Adapter release. Each maps to roadmap
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BRAND-01 | Phase 7 | Pending |
+| BRAND-01 | Phase 7 | Complete |
 | BRAND-02 | Phase 7 | Complete |
 | BRAND-03 | Phase 7 | Complete |
-| BRAND-04 | Phase 7 | Pending |
+| BRAND-04 | Phase 7 | Complete |
 | BRAND-05 | Phase 7 | Pending |
 | BRAND-06 | Phase 7 | Pending |
 | BRAND-07 | Phase 7 | Pending |
-| BRAND-08 | Phase 7 | Pending |
+| BRAND-08 | Phase 7 | Complete |
 | BRAND-09 | Phase 7 | Complete |
 | BRAND-10 | Phase 7 | Pending |
 | ADAPT-01 | Phase 8 | Pending |

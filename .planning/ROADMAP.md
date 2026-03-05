@@ -121,7 +121,7 @@ Plans:
 | 4. Provider & Utility Consolidation | v1.2.1 | 2/2 | Complete | 2026-03-02 |
 | 5. SCP Security Hardening | v1.2.1 | 2/2 | Complete | 2026-03-02 |
 | 6. init.ts Extract | v1.2.1 | 2/2 | Complete | 2026-03-02 |
-| 7. Kastell Rebrand | v1.3 | 1/3 | In Progress | - |
+| 7. Kastell Rebrand | 2/3 | In Progress|  | - |
 | 8. Platform Adapter Foundation | v1.3 | 0/? | Not started | - |
 | 9. Dokploy Adapter | v1.3 | 0/? | Not started | - |
 
