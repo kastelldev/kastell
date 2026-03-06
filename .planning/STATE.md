@@ -1,6 +1,21 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.3
+milestone_name: Kastell Rebrand + Dokploy Adapter
+status: completed
+stopped_at: Completed 09-02-PLAN.md -- v1.3 milestone COMPLETE
+last_updated: "2026-03-06T08:02:51.814Z"
+last_activity: "2026-03-06 -- Plan 09-02 executed: CLI/MCP integration for Dokploy"
+progress:
+  total_phases: 3
+  completed_phases: 3
+  total_plans: 7
+  completed_plans: 7
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.3
 milestone_name: Kastell Rebrand + Dokploy
 status: complete
 stopped_at: "Completed 09-02-PLAN.md -- v1.3 milestone COMPLETE"
