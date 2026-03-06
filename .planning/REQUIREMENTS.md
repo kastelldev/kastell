@@ -24,7 +24,7 @@ Requirements for Kastell Rebrand + Dokploy Adapter release. Each maps to roadmap
 
 - [x] **ADAPT-01**: `PlatformAdapter` interface tanimlanir (cloudInit, healthCheck, backup, status metodlari)
 - [x] **ADAPT-02**: `CoolifyAdapter` mevcut Coolify logic'inden refactor edilir (davranis degisikligi sifir)
-- [ ] **ADAPT-03**: `ServerRecord` tipi `platform` alani kazanir, geriye donuk uyumluluk korunur
+- [x] **ADAPT-03**: `ServerRecord` tipi `platform` alani kazanir, geriye donuk uyumluluk korunur
 - [x] **ADAPT-04**: `getAdapter(platform)` factory fonksiyonu olusturulur
 - [x] **ADAPT-05**: `core/deploy.ts`, `core/status.ts`, `core/backup.ts` adapter uzerinden calisir
 - [x] **ADAPT-06**: `modeGuard.ts` platform-aware hale gelir (`requireManagedMode()`)
@@ -36,7 +36,7 @@ Requirements for Kastell Rebrand + Dokploy Adapter release. Each maps to roadmap
 - [x] **DOKP-02**: Dokploy cloud-init script ile sunucu provision edilir
 - [x] **DOKP-03**: Dokploy health check calisir (API key ile /api/admin.getOne)
 - [x] **DOKP-04**: Dokploy backup SSH + SCP ile alinir (/etc/dokploy)
-- [ ] **DOKP-05**: CLI'da `--platform dokploy` flag'i desteklenir
+- [x] **DOKP-05**: CLI'da `--platform dokploy` flag'i desteklenir
 - [x] **DOKP-06**: MCP tool'lari platform parametresi ile Dokploy'a yonlendirilir
 - [x] **DOKP-07**: Interactive menude platform secimi sunulur
 
@@ -84,7 +84,7 @@ Requirements for Kastell Rebrand + Dokploy Adapter release. Each maps to roadmap
 | BRAND-10 | Phase 7 | Complete |
 | ADAPT-01 | Phase 8 | Complete |
 | ADAPT-02 | Phase 8 | Complete |
-| ADAPT-03 | Phase 10 | Pending |
+| ADAPT-03 | Phase 10 | Complete |
 | ADAPT-04 | Phase 8 | Complete |
 | ADAPT-05 | Phase 8 | Complete |
 | ADAPT-06 | Phase 8 | Complete |
@@ -93,7 +93,7 @@ Requirements for Kastell Rebrand + Dokploy Adapter release. Each maps to roadmap
 | DOKP-02 | Phase 9 | Complete |
 | DOKP-03 | Phase 9 | Complete |
 | DOKP-04 | Phase 9 | Complete |
-| DOKP-05 | Phase 10 | Pending |
+| DOKP-05 | Phase 10 | Complete |
 | DOKP-06 | Phase 9 | Complete |
 | DOKP-07 | Phase 9 | Complete |
 
@@ -104,4 +104,4 @@ Requirements for Kastell Rebrand + Dokploy Adapter release. Each maps to roadmap
 
 ---
 *Requirements defined: 2026-03-05*
-*Last updated: 2026-03-06 — 22/24 complete, 2 pending (DOKP-05, ADAPT-03 reassigned to Phase 10)*
+*Last updated: 2026-03-06 — All v1.3 requirements complete (24/24, Phase 10 gap closure done)*

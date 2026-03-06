@@ -57,7 +57,7 @@ MCP server with 7 tools, 12 security fixes, SSH key auto-generation, full docs u
 - [x] **Phase 7: Kastell Rebrand** - Quicklify identity fully replaced with Kastell across CLI, packages, config, docs, and CI
 - [x] **Phase 8: Platform Adapter Foundation** - Adapter abstraction layer established, existing Coolify logic extracted into adapter pattern with zero behavior change
 - [x] **Phase 9: Dokploy Adapter** - Dokploy servers can be provisioned, monitored, and backed up through CLI and MCP
-- [ ] **Phase 10: Fix addServerRecord Platform Routing** - Close integration gaps in kastell add path for Dokploy servers
+- [x] **Phase 10: Fix addServerRecord Platform Routing** - Close integration gaps in kastell add path for Dokploy servers
 
 ## Phase Details
 
@@ -122,7 +122,7 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 10-01-PLAN.md — Fix platform derivation and platform-aware health verification in addServerRecord
+- [x] 10-01-PLAN.md — Fix platform derivation and platform-aware health verification in addServerRecord
 
 ## Progress
 
@@ -137,8 +137,8 @@ Plans:
 | 7. Kastell Rebrand | v1.3 | 3/3 | Complete | 2026-03-05 |
 | 8. Platform Adapter Foundation | v1.3 | 2/2 | Complete | 2026-03-06 |
 | 9. Dokploy Adapter | v1.3 | 2/2 | Complete | 2026-03-06 |
-| 10. Fix addServerRecord Platform Routing | v1.3 | 0/1 | Pending | — |
+| 10. Fix addServerRecord Platform Routing | v1.3 | 1/1 | Complete | 2026-03-06 |
 
 ---
 *Roadmap created: 2026-02-27*
-*Last updated: 2026-03-06 — Phase 10 added (gap closure for INT-01, INT-02 from audit)*
+*Last updated: 2026-03-06 — Phase 10 complete (gap closure for INT-01, INT-02)*
