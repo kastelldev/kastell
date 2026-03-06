@@ -10,6 +10,7 @@ import * as tokens from "../../src/core/tokens";
 import * as sshKey from "../../src/utils/sshKey";
 import * as cloudInit from "../../src/utils/cloudInit";
 import * as templates from "../../src/utils/templates";
+import * as adapterFactory from "../../src/adapters/factory";
 import { provisionServer } from "../../src/core/provision";
 import type { CloudProvider } from "../../src/providers/base";
 
@@ -20,6 +21,7 @@ jest.mock("../../src/core/tokens");
 jest.mock("../../src/utils/sshKey");
 jest.mock("../../src/utils/cloudInit");
 jest.mock("../../src/utils/templates");
+jest.mock("../../src/adapters/factory");
 
 const mockedConfig = config as jest.Mocked<typeof config>;
 const mockedSsh = ssh as jest.Mocked<typeof ssh>;
@@ -28,6 +30,7 @@ const mockedTokens = tokens as jest.Mocked<typeof tokens>;
 const mockedSshKey = sshKey as jest.Mocked<typeof sshKey>;
 const mockedCloudInit = cloudInit as jest.Mocked<typeof cloudInit>;
 const mockedTemplates = templates as jest.Mocked<typeof templates>;
+const mockedAdapterFactory = adapterFactory as jest.Mocked<typeof adapterFactory>;
 
 const createMockProvider = (): jest.Mocked<CloudProvider> => ({
   name: "hetzner",
@@ -63,6 +66,8 @@ beforeEach(() => {
   mockedCloudInit.getBareCloudInit.mockReturnValue("#!/bin/bash\necho bare");
   mockedTemplates.getTemplateDefaults.mockReturnValue({ region: "nbg1", size: "cax11" });
   mockedConfig.saveServer.mockImplementation(() => {});
+  const mockAdapter = { name: "coolify", getCloudInit: jest.fn().mockReturnValue("#!/bin/bash\necho coolify") };
+  mockedAdapterFactory.getAdapter.mockReturnValue(mockAdapter as never);
 });
 
 describe("provisionServer — bare mode cloud-init selection", () => {
@@ -80,7 +85,7 @@ describe("provisionServer — bare mode cloud-init selection", () => {
     expect(mockedCloudInit.getCoolifyCloudInit).not.toHaveBeenCalled();
   });
 
-  it("should call getCoolifyCloudInit (not getBareCloudInit) when mode='coolify'", async () => {
+  it("should route through adapter getCloudInit (not getBareCloudInit) when mode='coolify'", async () => {
     const result = await provisionServer({
       provider: "hetzner",
       region: "nbg1",
@@ -90,11 +95,12 @@ describe("provisionServer — bare mode cloud-init selection", () => {
     });
 
     expect(result.success).toBe(true);
-    expect(mockedCloudInit.getCoolifyCloudInit).toHaveBeenCalledWith("coolify-srv");
+    expect(mockedAdapterFactory.getAdapter).toHaveBeenCalledWith("coolify");
+    expect(mockedAdapterFactory.getAdapter("coolify").getCloudInit).toHaveBeenCalledWith("coolify-srv");
     expect(mockedCloudInit.getBareCloudInit).not.toHaveBeenCalled();
   });
 
-  it("should call getCoolifyCloudInit when mode is not specified (backward compat)", async () => {
+  it("should route through adapter getCloudInit when mode is not specified (backward compat)", async () => {
     const result = await provisionServer({
       provider: "hetzner",
       region: "nbg1",
@@ -103,7 +109,8 @@ describe("provisionServer — bare mode cloud-init selection", () => {
     });
 
     expect(result.success).toBe(true);
-    expect(mockedCloudInit.getCoolifyCloudInit).toHaveBeenCalledWith("default-srv");
+    expect(mockedAdapterFactory.getAdapter).toHaveBeenCalledWith("coolify");
+    expect(mockedAdapterFactory.getAdapter("coolify").getCloudInit).toHaveBeenCalledWith("default-srv");
     expect(mockedCloudInit.getBareCloudInit).not.toHaveBeenCalled();
   });
 });

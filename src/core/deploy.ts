@@ -1,7 +1,8 @@
 import { spawnSync } from "child_process";
 import type { CloudProvider } from "../providers/base.js";
-import type { ServerMode } from "../types/index.js";
-import { getCoolifyCloudInit, getBareCloudInit } from "../utils/cloudInit.js";
+import type { ServerMode, Platform } from "../types/index.js";
+import { getBareCloudInit } from "../utils/cloudInit.js";
+import { getAdapter } from "../adapters/factory.js";
 import { logger, createSpinner } from "../utils/logger.js";
 import { getErrorMessage, mapProviderError } from "../utils/errorMapper.js";
 import { openBrowser } from "../utils/openBrowser.js";
@@ -62,7 +63,10 @@ export async function deployServer(
     // Upload SSH key before creating server
     const sshKeyIds = await uploadSshKeyToProvider(providerWithToken);
     const isBare = mode === "bare";
-    const cloudInit = isBare ? getBareCloudInit(serverName) : getCoolifyCloudInit(serverName);
+    const platform: Platform | undefined = isBare ? undefined : "coolify";
+    const cloudInit = platform
+      ? getAdapter(platform).getCloudInit(serverName)
+      : getBareCloudInit(serverName);
 
     let server: { id: string; ip: string; status: string } | undefined;
     let retries = 0;
@@ -209,7 +213,9 @@ export async function deployServer(
       region,
       size: serverSize,
       createdAt: new Date().toISOString(),
-      ...(isBare ? { mode: "bare" as const } : { mode: "coolify" as const }),
+      ...(isBare
+        ? { mode: "bare" as const }
+        : { mode: "coolify" as const, platform: "coolify" as const }),
     });
 
     // Bare mode: cloud-init wait + optional full setup + show SSH info

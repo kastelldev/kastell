@@ -6,6 +6,7 @@ import { BACKUPS_DIR } from "../utils/config.js";
 import { getErrorMessage, mapSshError, sanitizeStderr } from "../utils/errorMapper.js";
 import { SCP_TIMEOUT_MS } from "../constants.js";
 import type { BackupManifest } from "../types/index.js";
+import { getAdapter } from "../adapters/factory.js";
 
 // ─── Pure Functions (Backup) ─────────────────────────────────────────────────
 
@@ -366,78 +367,8 @@ export async function createBackup(
   serverName: string,
   provider: string,
 ): Promise<BackupResult> {
-  assertValidIp(ip);
-
-  try {
-    // Step 1: Get Coolify version (best-effort)
-    const versionResult = await sshExec(ip, buildCoolifyVersionCommand());
-    const coolifyVersion = versionResult.code === 0 ? versionResult.stdout.trim() : "unknown";
-
-    // Step 2: Database backup
-    const dbResult = await sshExec(ip, buildPgDumpCommand());
-    if (dbResult.code !== 0) {
-      return {
-        success: false,
-        error: "Database backup failed",
-        hint: sanitizeStderr(dbResult.stderr) || undefined,
-      };
-    }
-
-    // Step 3: Config backup
-    const configResult = await sshExec(ip, buildConfigTarCommand());
-    if (configResult.code !== 0) {
-      return {
-        success: false,
-        error: "Config backup failed",
-        hint: sanitizeStderr(configResult.stderr) || undefined,
-      };
-    }
-
-    // Step 4: Create local directory and download
-    const timestamp = formatTimestamp(new Date());
-    const backupPath = join(getBackupDir(serverName), timestamp);
-    mkdirSync(backupPath, { recursive: true, mode: 0o700 });
-
-    const dbDl = await scpDownload(
-      ip,
-      "/tmp/coolify-backup.sql.gz",
-      join(backupPath, "coolify-backup.sql.gz"),
-    );
-    if (dbDl.code !== 0) {
-      return { success: false, error: "Failed to download database backup", hint: sanitizeStderr(dbDl.stderr) || undefined };
-    }
-
-    const configDl = await scpDownload(
-      ip,
-      "/tmp/coolify-config.tar.gz",
-      join(backupPath, "coolify-config.tar.gz"),
-    );
-    if (configDl.code !== 0) {
-      return { success: false, error: "Failed to download config backup", hint: sanitizeStderr(configDl.stderr) || undefined };
-    }
-
-    // Step 5: Write manifest
-    const manifest: BackupManifest = {
-      serverName,
-      provider,
-      timestamp,
-      coolifyVersion,
-      files: ["coolify-backup.sql.gz", "coolify-config.tar.gz"],
-    };
-    writeFileSync(join(backupPath, "manifest.json"), JSON.stringify(manifest, null, 2), { mode: 0o600 });
-
-    // Step 6: Cleanup remote (best-effort)
-    await sshExec(ip, buildCleanupCommand()).catch(() => {});
-
-    return { success: true, backupPath, manifest };
-  } catch (error: unknown) {
-    const hint = mapSshError(error, ip);
-    return {
-      success: false,
-      error: getErrorMessage(error),
-      ...(hint ? { hint } : {}),
-    };
-  }
+  const adapter = getAdapter("coolify");
+  return adapter.createBackup(ip, serverName, provider);
 }
 
 export async function restoreBackup(

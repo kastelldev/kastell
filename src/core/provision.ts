@@ -1,14 +1,15 @@
 import { isValidProvider, validateServerName } from "./manage.js";
 import { getProviderToken } from "./tokens.js";
 import { createProviderWithToken } from "../utils/providerFactory.js";
-import { getCoolifyCloudInit, getBareCloudInit } from "../utils/cloudInit.js";
+import { getBareCloudInit } from "../utils/cloudInit.js";
+import { getAdapter } from "../adapters/factory.js";
 import { findLocalSshKey, generateSshKey, getSshKeyName } from "../utils/sshKey.js";
 import { saveServer } from "../utils/config.js";
 import { getTemplateDefaults } from "../utils/templates.js";
 import { getErrorMessage, mapProviderError } from "../utils/errorMapper.js";
 import { assertValidIp } from "../utils/ssh.js";
 import type { CloudProvider } from "../providers/base.js";
-import type { ServerRecord, ServerMode } from "../types/index.js";
+import type { ServerRecord, ServerMode, Platform } from "../types/index.js";
 import { IP_WAIT, BOOT_MAX_ATTEMPTS, BOOT_INTERVAL, invalidProviderError } from "../constants.js";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -124,9 +125,10 @@ export async function provisionServer(config: ProvisionConfig): Promise<Provisio
 
   // 8. Generate cloud-init
   const mode: ServerMode = config.mode || "coolify";
-  const cloudInit = mode === "bare"
-    ? getBareCloudInit(config.name)
-    : getCoolifyCloudInit(config.name);
+  const platform: Platform | undefined = mode === "bare" ? undefined : "coolify";
+  const cloudInit = platform
+    ? getAdapter(platform).getCloudInit(config.name)
+    : getBareCloudInit(config.name);
 
   // 9. Create server
   let serverId: string;
@@ -209,6 +211,7 @@ export async function provisionServer(config: ProvisionConfig): Promise<Provisio
     size,
     createdAt: new Date().toISOString(),
     mode,
+    platform: mode === "bare" ? undefined : ("coolify" as const),
   };
   saveServer(record);
 
