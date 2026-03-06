@@ -87,12 +87,11 @@ Plans:
   3. `ServerRecord` accepts an optional `platform` field, legacy records without it default to `"coolify"`, and `getServers()` normalizes them
   4. Mode guard checks are platform-aware (`requireManagedMode()` works for both coolify and dokploy platforms)
   5. All 2099+ existing tests pass with zero regressions after the adapter extraction
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 08-01: TBD
-- [ ] 08-02: TBD
-- [ ] 08-03: TBD
+- [ ] 08-01-PLAN.md — Adapter layer: types, PlatformAdapter interface, CoolifyAdapter, factory, modeGuard evolution
+- [ ] 08-02-PLAN.md — Core routing: deploy/provision/status/backup through adapter, requireManagedMode migration
 
 ### Phase 9: Dokploy Adapter
 **Goal**: Users can provision, health-check, and back up Dokploy servers through the same CLI commands and MCP tools used for Coolify, selecting Dokploy via `--platform dokploy` or interactive menu
@@ -122,9 +121,9 @@ Plans:
 | 5. SCP Security Hardening | v1.2.1 | 2/2 | Complete | 2026-03-02 |
 | 6. init.ts Extract | v1.2.1 | 2/2 | Complete | 2026-03-02 |
 | 7. Kastell Rebrand | v1.3 | 3/3 | Complete | 2026-03-05 |
-| 8. Platform Adapter Foundation | v1.3 | 0/? | Not started | - |
+| 8. Platform Adapter Foundation | v1.3 | 0/2 | Planned | - |
 | 9. Dokploy Adapter | v1.3 | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-02-27*
-*Last updated: 2026-03-05 — Phase 7 complete (Kastell Rebrand: 3/3 plans)*
+*Last updated: 2026-03-06 — Phase 8 planned (Platform Adapter Foundation: 2 plans)*
