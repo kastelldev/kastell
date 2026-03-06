@@ -367,7 +367,7 @@ describe("backup", () => {
 
       const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Backup saved to");
-      expect(output).toContain("Coolify version: 4.0.0");
+      expect(output).toContain("Platform version: 4.0.0");
       expect(mockedWriteFileSync).toHaveBeenCalled(); // manifest written
     });
 

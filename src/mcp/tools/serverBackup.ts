@@ -15,6 +15,7 @@ import {
   deleteSnapshot,
 } from "../../core/snapshot.js";
 import { isBareServer } from "../../utils/modeGuard.js";
+import { resolvePlatform } from "../../adapters/factory.js";
 import {
   resolveServerForMcp,
   mcpSuccess,
@@ -77,9 +78,10 @@ export async function handleServerBackup(params: {
 
       case "backup-create": {
         const bare = isBareServer(server);
+        const platform = resolvePlatform(server);
         const result = bare
           ? await createBareBackup(server.ip, server.name, server.provider)
-          : await createBackup(server.ip, server.name, server.provider);
+          : await createBackup(server.ip, server.name, server.provider, platform || "coolify");
 
         if (!result.success) {
           return {

@@ -1,13 +1,13 @@
-import { mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
 import inquirer from "inquirer";
 import { getServers } from "../utils/config.js";
 import { resolveServer } from "../utils/serverSelect.js";
-import { checkSshAvailable, sshExec } from "../utils/ssh.js";
+import { checkSshAvailable } from "../utils/ssh.js";
 import { logger, createSpinner } from "../utils/logger.js";
-import { getErrorMessage, mapSshError } from "../utils/errorMapper.js";
+import { getErrorMessage } from "../utils/errorMapper.js";
 import { isBareServer } from "../utils/modeGuard.js";
-import type { BackupManifest, ServerRecord } from "../types/index.js";
+import { resolvePlatform, getAdapter } from "../adapters/factory.js";
+import type { ServerRecord } from "../types/index.js";
 import {
   formatTimestamp,
   getBackupDir,
@@ -68,88 +68,30 @@ async function backupSingleServer(server: ServerRecord, dryRun: boolean): Promis
     }
   }
 
-  const versionResult = await sshExec(server.ip, buildCoolifyVersionCommand());
-  const coolifyVersion = versionResult.code === 0 ? versionResult.stdout.trim() : "unknown";
-
-  const dbSpinner = createSpinner(`[${server.name}] Creating database backup...`);
-  dbSpinner.start();
-  try {
-    const dbResult = await sshExec(server.ip, buildPgDumpCommand());
-    if (dbResult.code !== 0) {
-      dbSpinner.fail(`[${server.name}] Database backup failed`);
+  // Managed server: route through adapter
+  const platform = resolvePlatform(server);
+  if (platform) {
+    const spinner = createSpinner(`[${server.name}] Backing up via ${platform} adapter...`);
+    spinner.start();
+    try {
+      const adapter = getAdapter(platform);
+      const result = await adapter.createBackup(server.ip, server.name, server.provider);
+      if (result.success) {
+        spinner.succeed(`[${server.name}] Backup saved to ${result.backupPath}`);
+        return true;
+      } else {
+        spinner.fail(`[${server.name}] Backup failed: ${result.error}`);
+        if (result.hint) logger.info(result.hint);
+        return false;
+      }
+    } catch (error: unknown) {
+      spinner.fail(`[${server.name}] Backup failed`);
+      logger.error(getErrorMessage(error));
       return false;
     }
-    dbSpinner.succeed(`[${server.name}] Database backup created`);
-  } catch (error: unknown) {
-    dbSpinner.fail(`[${server.name}] Database backup failed`);
-    logger.error(getErrorMessage(error));
-    const hint = mapSshError(error, server.ip);
-    if (hint) logger.info(hint);
-    return false;
   }
 
-  const configSpinner = createSpinner(`[${server.name}] Creating config backup...`);
-  configSpinner.start();
-  try {
-    const configResult = await sshExec(server.ip, buildConfigTarCommand());
-    if (configResult.code !== 0) {
-      configSpinner.fail(`[${server.name}] Config backup failed`);
-      return false;
-    }
-    configSpinner.succeed(`[${server.name}] Config backup created`);
-  } catch (error: unknown) {
-    configSpinner.fail(`[${server.name}] Config backup failed`);
-    logger.error(getErrorMessage(error));
-    const hint = mapSshError(error, server.ip);
-    if (hint) logger.info(hint);
-    return false;
-  }
-
-  mkdirSync(backupPath, { recursive: true, mode: 0o700 });
-
-  const dlSpinner = createSpinner(`[${server.name}] Downloading backup files...`);
-  dlSpinner.start();
-  try {
-    const dbDl = await scpDownload(
-      server.ip,
-      "/tmp/coolify-backup.sql.gz",
-      join(backupPath, "coolify-backup.sql.gz"),
-    );
-    if (dbDl.code !== 0) {
-      dlSpinner.fail(`[${server.name}] Download failed`);
-      return false;
-    }
-    const configDl = await scpDownload(
-      server.ip,
-      "/tmp/coolify-config.tar.gz",
-      join(backupPath, "coolify-config.tar.gz"),
-    );
-    if (configDl.code !== 0) {
-      dlSpinner.fail(`[${server.name}] Download failed`);
-      return false;
-    }
-    dlSpinner.succeed(`[${server.name}] Backup files downloaded`);
-  } catch (error: unknown) {
-    dlSpinner.fail(`[${server.name}] Download failed`);
-    logger.error(getErrorMessage(error));
-    const hint = mapSshError(error, server.ip);
-    if (hint) logger.info(hint);
-    return false;
-  }
-
-  const manifest: BackupManifest = {
-    serverName: server.name,
-    provider: server.provider,
-    timestamp,
-    coolifyVersion,
-    files: ["coolify-backup.sql.gz", "coolify-config.tar.gz"],
-  };
-  writeFileSync(join(backupPath, "manifest.json"), JSON.stringify(manifest, null, 2), { mode: 0o600 });
-  await sshExec(server.ip, buildCleanupCommand()).catch(() => {});
-
-  logger.success(`[${server.name}] Backup saved to ${backupPath}`);
-  logger.info(`Provider: ${server.provider} | IP: ${server.ip} | Mode: ${server.mode || "coolify"}`);
-  return true;
+  return false;
 }
 
 async function backupAll(dryRun: boolean): Promise<void> {
@@ -266,11 +208,9 @@ export async function backupCommand(
       logger.step("tar czf /tmp/bare-config.tar.gz --ignore-failed-read -C / etc/nginx etc/ssh/sshd_config etc/ufw etc/fail2ban etc/crontab");
       logger.step(`scp root@${server.ip}:/tmp/bare-config.tar.gz ${backupPath}/`);
     } else {
-      logger.step(buildPgDumpCommand());
-      logger.step(buildConfigTarCommand());
-      logger.step(`scp root@${server.ip}:/tmp/coolify-backup.sql.gz ${backupPath}/`);
-      logger.step(`scp root@${server.ip}:/tmp/coolify-config.tar.gz ${backupPath}/`);
-      logger.step(buildCleanupCommand());
+      const platform = resolvePlatform(server);
+      logger.step(`Platform backup via ${platform || "coolify"} adapter`);
+      logger.step(`Commands executed remotely via SSH to ${server.ip}`);
     }
     console.log();
     logger.warning("No changes applied. Remove --dry-run to execute.");
@@ -299,103 +239,31 @@ export async function backupCommand(
     return;
   }
 
-  // Step 1: Get Coolify version
-  const versionResult = await sshExec(server.ip, buildCoolifyVersionCommand());
-  const coolifyVersion = versionResult.code === 0 ? versionResult.stdout.trim() : "unknown";
-
-  // Step 2: Database backup
-  const dbSpinner = createSpinner("Creating database backup...");
-  dbSpinner.start();
-
-  try {
-    const dbResult = await sshExec(server.ip, buildPgDumpCommand());
-    if (dbResult.code !== 0) {
-      dbSpinner.fail("Database backup failed");
-      if (dbResult.stderr) logger.error(dbResult.stderr);
-      return;
+  // Managed server: route through adapter
+  const platform = resolvePlatform(server);
+  if (platform) {
+    const spinner = createSpinner("Creating backup...");
+    spinner.start();
+    try {
+      const adapter = getAdapter(platform);
+      const result = await adapter.createBackup(server.ip, server.name, server.provider);
+      if (result.success) {
+        spinner.succeed("Backup created");
+        logger.success(`Backup saved to ${result.backupPath}`);
+        if (result.manifest) {
+          logger.info(`Platform version: ${result.manifest.coolifyVersion}`);
+          logger.info(`Provider: ${server.provider} | IP: ${server.ip} | Platform: ${platform}`);
+          logger.info(`Files: ${result.manifest.files.join(", ")}, manifest.json`);
+        }
+      } else {
+        spinner.fail("Backup failed");
+        logger.error(result.error ?? "Backup failed");
+        if (result.hint) logger.info(result.hint);
+      }
+    } catch (error: unknown) {
+      spinner.fail("Backup failed");
+      logger.error(getErrorMessage(error));
     }
-    dbSpinner.succeed("Database backup created");
-  } catch (error: unknown) {
-    dbSpinner.fail("Database backup failed");
-    logger.error(getErrorMessage(error));
-    const hint = mapSshError(error, server.ip);
-    if (hint) logger.info(hint);
     return;
   }
-
-  // Step 3: Config backup
-  const configSpinner = createSpinner("Creating config backup...");
-  configSpinner.start();
-
-  try {
-    const configResult = await sshExec(server.ip, buildConfigTarCommand());
-    if (configResult.code !== 0) {
-      configSpinner.fail("Config backup failed");
-      if (configResult.stderr) logger.error(configResult.stderr);
-      return;
-    }
-    configSpinner.succeed("Config backup created");
-  } catch (error: unknown) {
-    configSpinner.fail("Config backup failed");
-    logger.error(getErrorMessage(error));
-    const hint = mapSshError(error, server.ip);
-    if (hint) logger.info(hint);
-    return;
-  }
-
-  // Step 4: Download to local
-  mkdirSync(backupPath, { recursive: true, mode: 0o700 });
-
-  const dlSpinner = createSpinner("Downloading backup files...");
-  dlSpinner.start();
-
-  try {
-    const dbDl = await scpDownload(
-      server.ip,
-      "/tmp/coolify-backup.sql.gz",
-      join(backupPath, "coolify-backup.sql.gz"),
-    );
-    if (dbDl.code !== 0) {
-      dlSpinner.fail("Failed to download database backup");
-      if (dbDl.stderr) logger.error(dbDl.stderr);
-      return;
-    }
-
-    const configDl = await scpDownload(
-      server.ip,
-      "/tmp/coolify-config.tar.gz",
-      join(backupPath, "coolify-config.tar.gz"),
-    );
-    if (configDl.code !== 0) {
-      dlSpinner.fail("Failed to download config backup");
-      if (configDl.stderr) logger.error(configDl.stderr);
-      return;
-    }
-    dlSpinner.succeed("Backup files downloaded");
-  } catch (error: unknown) {
-    dlSpinner.fail("Failed to download backup files");
-    logger.error(getErrorMessage(error));
-    const hint = mapSshError(error, server.ip);
-    if (hint) logger.info(hint);
-    return;
-  }
-
-  // Step 5: Write manifest
-  const manifest: BackupManifest = {
-    serverName: server.name,
-    provider: server.provider,
-    timestamp,
-    coolifyVersion,
-    files: ["coolify-backup.sql.gz", "coolify-config.tar.gz"],
-  };
-
-  writeFileSync(join(backupPath, "manifest.json"), JSON.stringify(manifest, null, 2), { mode: 0o600 });
-
-  // Step 6: Cleanup remote
-  await sshExec(server.ip, buildCleanupCommand()).catch(() => {});
-
-  logger.success(`Backup saved to ${backupPath}`);
-  logger.info(`Coolify version: ${coolifyVersion}`);
-  logger.info(`Provider: ${server.provider} | IP: ${server.ip} | Mode: ${server.mode || "coolify"}`);
-  logger.info("Files: coolify-backup.sql.gz, coolify-config.tar.gz, manifest.json");
 }

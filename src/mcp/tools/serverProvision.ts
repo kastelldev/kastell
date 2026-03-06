@@ -35,10 +35,10 @@ export const serverProvisionSchema = {
       "Template for default region/size. 'starter' = cheapest, 'production' = more resources, 'dev' = development. Explicit region/size override template defaults. Default: starter",
     ),
   mode: z
-    .enum(["coolify", "bare"])
+    .enum(["coolify", "dokploy", "bare"])
     .default("coolify")
     .describe(
-      "Server mode: 'coolify' installs Coolify, 'bare' provisions generic VPS without Coolify. Default: coolify",
+      "Server mode: 'coolify' installs Coolify, 'dokploy' installs Dokploy, 'bare' provisions generic VPS. Default: coolify",
     ),
 };
 
@@ -50,7 +50,7 @@ export async function handleServerProvision(params: {
   size?: string;
   name: string;
   template?: "starter" | "production" | "dev";
-  mode?: "coolify" | "bare";
+  mode?: "coolify" | "dokploy" | "bare";
 }): Promise<{ content: Array<{ type: "text"; text: string }>; isError?: boolean }> {
   const mode = params.mode ?? "coolify";
 

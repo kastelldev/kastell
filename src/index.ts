@@ -58,7 +58,7 @@ program
   .option("--config <path>", "Load deployment config from a YAML file (kastell.yml)")
   .option("--template <template>", "Use a predefined template (starter, production, dev)")
   .option("--no-open", "Do not open browser after deployment")
-  .option("--mode <mode>", "Server mode: coolify (default) or bare")
+  .option("--mode <mode>", "Server mode: coolify (default), dokploy, or bare")
   .action(initCommand);
 
 program.command("list").description("List all registered servers").action(listCommand);
@@ -198,7 +198,7 @@ program
   .option("--ip <ip>", "Server IP address")
   .option("--name <name>", "Server name")
   .option("--skip-verify", "Skip Coolify installation verification")
-  .option("--mode <mode>", "Server mode: coolify (default) or bare")
+  .option("--mode <mode>", "Server mode: coolify (default), dokploy, or bare")
   .action((options?: { provider?: string; ip?: string; name?: string; skipVerify?: boolean; mode?: string }) =>
     addCommand(options),
   );

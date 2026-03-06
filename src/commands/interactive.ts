@@ -113,6 +113,7 @@ async function promptList(
 async function promptInit(): Promise<string[] | null> {
   const mode = await promptList("Server mode:", [
     { name: "Coolify (auto-install panel)", value: "coolify" },
+    { name: "Dokploy (auto-install panel)", value: "dokploy" },
     { name: "Bare (generic VPS, no panel)", value: "bare" },
   ]);
   if (!mode) return null;
