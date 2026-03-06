@@ -6,7 +6,7 @@
 - ✅ **v1.1.0 MCP Server + Security** — Phases pre-GSD (shipped 2026-02-27)
 - ✅ **v1.2.0 Generic Server Management** — Phases 1-3 (shipped 2026-02-28)
 - ✅ **v1.2.1 Refactor + Security Patch** — Phases 4-6 (shipped 2026-03-02)
-- ✅ **v1.3 Kastell Rebrand + Dokploy** — Phases 7-9 (completed 2026-03-06)
+- ✅ **v1.3 Kastell Rebrand + Dokploy** — Phases 7-10 (shipped 2026-03-06)
 - ⬜ **v1.5 Website + Audit** — TBD
 - ⬜ **v2.0 Guard Core** — TBD
 - ⬜ **v2.5 Risk Trend + Auto Patch** — TBD
@@ -50,79 +50,17 @@ MCP server with 7 tools, 12 security fixes, SSH key auto-generation, full docs u
 
 </details>
 
-### ✅ v1.3 Kastell Rebrand + Dokploy Adapter (COMPLETE)
+<details>
+<summary>✅ v1.3 Kastell Rebrand + Dokploy Adapter — SHIPPED 2026-03-06</summary>
 
-**Milestone Goal:** Rename quicklify to kastell across entire codebase, switch to Apache 2.0 license, and add Dokploy as a second platform adapter alongside Coolify.
+- [x] Phase 7: Kastell Rebrand (3/3 plans) — completed 2026-03-05
+- [x] Phase 8: Platform Adapter Foundation (2/2 plans) — completed 2026-03-06
+- [x] Phase 9: Dokploy Adapter (2/2 plans) — completed 2026-03-06
+- [x] Phase 10: Fix addServerRecord Platform Routing (1/1 plan) — completed 2026-03-06
 
-- [x] **Phase 7: Kastell Rebrand** - Quicklify identity fully replaced with Kastell across CLI, packages, config, docs, and CI
-- [x] **Phase 8: Platform Adapter Foundation** - Adapter abstraction layer established, existing Coolify logic extracted into adapter pattern with zero behavior change
-- [x] **Phase 9: Dokploy Adapter** - Dokploy servers can be provisioned, monitored, and backed up through CLI and MCP
-- [x] **Phase 10: Fix addServerRecord Platform Routing** - Close integration gaps in kastell add path for Dokploy servers
+4 phases, 8 plans, 24 requirements. Full details: [v1.3-ROADMAP.md](./milestones/v1.3-ROADMAP.md)
 
-## Phase Details
-
-### Phase 7: Kastell Rebrand
-**Goal**: Users interact with a CLI called `kastell`, all references to "quicklify" are replaced, config paths are migrated, and the package is published under the new name with Apache 2.0 license
-**Depends on**: Phase 6 (v1.2.1 complete)
-**Requirements**: BRAND-01, BRAND-02, BRAND-03, BRAND-04, BRAND-05, BRAND-06, BRAND-07, BRAND-08, BRAND-09, BRAND-10
-**Success Criteria** (what must be TRUE):
-  1. Running `kastell --version` prints the version and `kastell init` starts provisioning — the CLI binary is `kastell`, not `quicklify`
-  2. Config is read from `~/.kastell/` and if `~/.quicklify/` exists, its contents are automatically copied to `~/.kastell/` on first run without data loss
-  3. `grep -ri "quicklify" src/` returns zero hits (excluding historical CHANGELOG entries), and all test files reference "kastell"
-  4. LICENSE file contains Apache 2.0 text, NOTICE file exists, and README/docs reflect the Kastell brand and license
-  5. `npm info kastell version` returns `1.3.0` and `npm info quicklify deprecated` shows the deprecation message pointing to kastell
-**Plans**: 3 plans
-
-Plans:
-- [x] 07-01-PLAN.md — Foundation: types, config paths, env vars, migration logic
-- [x] 07-02-PLAN.md — Source + tests: remaining src/ string replacements and all test updates
-- [x] 07-03-PLAN.md — Packaging + docs: bin scripts, package.json, license, documentation
-
-### Phase 8: Platform Adapter Foundation
-**Goal**: A `PlatformAdapter` interface exists, existing Coolify functionality is extracted into `CoolifyAdapter` with zero behavior change, and core modules route through the adapter factory
-**Depends on**: Phase 7
-**Requirements**: ADAPT-01, ADAPT-02, ADAPT-03, ADAPT-04, ADAPT-05, ADAPT-06, ADAPT-07
-**Success Criteria** (what must be TRUE):
-  1. `PlatformAdapter` interface is defined with cloudInit, healthCheck, backup, and status methods, and a `getAdapter(platform)` factory returns the correct adapter
-  2. All existing Coolify operations (provision, status, backup) work identically through `CoolifyAdapter` — no user-facing behavior change
-  3. `ServerRecord` accepts an optional `platform` field, legacy records without it default to `"coolify"`, and `getServers()` normalizes them
-  4. Mode guard checks are platform-aware (`requireManagedMode()` works for both coolify and dokploy platforms)
-  5. All 2099+ existing tests pass with zero regressions after the adapter extraction
-**Plans**: 2 plans
-
-Plans:
-- [x] 08-01-PLAN.md — Adapter layer: types, PlatformAdapter interface, CoolifyAdapter, factory, modeGuard evolution
-- [x] 08-02-PLAN.md — Core routing: deploy/provision/status/backup through adapter, requireManagedMode migration
-
-### Phase 9: Dokploy Adapter
-**Goal**: Users can provision, health-check, and back up Dokploy servers through the same CLI commands and MCP tools used for Coolify, selecting Dokploy via `--mode dokploy` or interactive menu
-**Depends on**: Phase 8
-**Requirements**: DOKP-01, DOKP-02, DOKP-03, DOKP-04, DOKP-05, DOKP-06, DOKP-07
-**Success Criteria** (what must be TRUE):
-  1. `kastell init --mode dokploy --provider hetzner` provisions a server with Dokploy installed via cloud-init, and the server record stores `platform: "dokploy"`
-  2. `kastell status` on a Dokploy server checks health via port 3000 HTTP probe and reports server status
-  3. `kastell backup` on a Dokploy server copies `/etc/dokploy` and PostgreSQL dump via SSH+SCP to the local machine
-  4. MCP tools accept `mode: "dokploy"` and correctly route Dokploy server operations through `DokployAdapter`
-  5. Running `kastell` without arguments shows the interactive menu with a platform selection option for Dokploy
-**Plans**: 2 plans
-
-Plans:
-- [x] 09-01-PLAN.md — DokployAdapter implementation + factory registration + unit tests
-- [x] 09-02-PLAN.md — CLI/MCP integration: deploy, provision, backup routing, interactive menu, MCP schema
-
-### Phase 10: Fix addServerRecord Platform Routing
-**Goal**: `kastell add --mode dokploy` correctly stores `platform: "dokploy"` in the server record, and health verification uses the correct platform's port and container check
-**Depends on**: Phase 9
-**Requirements**: DOKP-05, ADAPT-03
-**Gap Closure:** Closes INT-01, INT-02, and broken flow from v1.3 milestone audit
-**Success Criteria** (what must be TRUE):
-  1. `kastell add --mode dokploy` creates a server record with `platform: "dokploy"` — subsequent operations (backup, status) use DokployAdapter
-  2. Health verification during `kastell add` uses the correct port for the platform (3000 for Dokploy, 8000 for Coolify) instead of hardcoding Coolify values
-  3. All existing tests pass with zero regressions, and new tests cover both integration gaps
-**Plans**: TBD
-
-Plans:
-- [x] 10-01-PLAN.md — Fix platform derivation and platform-aware health verification in addServerRecord
+</details>
 
 ## Progress
 
@@ -141,4 +79,4 @@ Plans:
 
 ---
 *Roadmap created: 2026-02-27*
-*Last updated: 2026-03-06 — Phase 10 complete (gap closure for INT-01, INT-02)*
+*Last updated: 2026-03-06 — v1.3 milestone shipped*

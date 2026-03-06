@@ -1,4 +1,29 @@
 # Milestones
+## v1.3 Kastell Rebrand + Dokploy Adapter (Shipped: 2026-03-06)
+
+**Goal:** Rename quicklify to kastell across entire codebase, switch to Apache 2.0 license, and add Dokploy as a second platform adapter alongside Coolify.
+
+**Phases completed:** 4 phases, 8 plans (7 documented + 1 quick fix)
+**Tests:** 2099 -> 2191 (+92 new)
+**Git range:** 46 commits over 2 days (2026-03-05 -> 2026-03-06)
+**Codebase:** ~13,400 LOC TypeScript
+
+**Key accomplishments:**
+- Full rebrand from Quicklify to Kastell (CLI, types, config, env vars, package name, docs, CI)
+- Auto-migration from ~/.quicklify to ~/.kastell with zero data loss
+- Apache 2.0 license with NOTICE file (from MIT)
+- PlatformAdapter interface + CoolifyAdapter extraction (adapter pattern for multi-platform support)
+- DokployAdapter implementation (provision, health check, backup, status via CLI and MCP)
+- Platform-aware health verification and mode guard (Dokploy:3000, Coolify:8000)
+
+**Known Gaps (accepted):**
+- Phase 10 GSD documentation missing (code complete, verified via integration check)
+- Nyquist validation not completed for any phase
+
+**Archive:** [v1.3-ROADMAP.md](./milestones/v1.3-ROADMAP.md) | [v1.3-REQUIREMENTS.md](./milestones/v1.3-REQUIREMENTS.md) | [v1.3-MILESTONE-AUDIT.md](./milestones/v1.3-MILESTONE-AUDIT.md)
+
+---
+
 ## v1.2.1 — Refactor + Security Patch (Shipped: 2026-03-02)
 
 **Goal:** Consolidate provider duplication, harden SCP security, and extract deployServer() — preparing codebase for Dokploy (v1.3.0).

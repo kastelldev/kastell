@@ -2,7 +2,7 @@
 
 ## What This Is
 
-Kastell is the autonomous security and maintenance layer for modern self-hosted infrastructure. CLI tool and MCP server that secures, monitors, and maintains servers on cloud VPS providers (Hetzner, DigitalOcean, Vultr, Linode). Supports both Coolify-managed and bare (generic) servers. Full lifecycle: provisioning, security hardening, domain management, firewall, backups, snapshots, monitoring, and maintenance — all from a single command line or via Claude AI integration.
+Kastell is the autonomous security and maintenance layer for modern self-hosted infrastructure. CLI tool and MCP server that secures, monitors, and maintains servers on cloud VPS providers (Hetzner, DigitalOcean, Vultr, Linode). Supports Coolify-managed, Dokploy-managed, and bare (generic) servers. Full lifecycle: provisioning, security hardening, domain management, firewall, backups, snapshots, monitoring, and maintenance — all from a single command line or via Claude AI integration.
 
 **Positioning:** Coolify deploys. Docker runs. Kastell protects.
 
@@ -39,35 +39,22 @@ Autonomous server security and maintenance across multiple cloud providers. Guar
 - ✓ SCP timeout for download/upload operations — v1.2.1
 - ✓ Token whitespace trim in getProviderToken() — v1.2.1
 - ✓ init.ts refactor — deployServer() extracted to core/deploy.ts — v1.2.1
+- ✓ Full rebrand: quicklify -> kastell (CLI, types, config, env vars, package, docs) — v1.3
+- ✓ Auto-migration ~/.quicklify -> ~/.kastell with zero data loss — v1.3
+- ✓ Apache 2.0 license with NOTICE file — v1.3
+- ✓ PlatformAdapter interface + CoolifyAdapter extraction (adapter pattern) — v1.3
+- ✓ DokployAdapter (provision, health check, backup, status) — v1.3
+- ✓ Platform-aware health verification + mode guard (Dokploy:3000, Coolify:8000) — v1.3
+- ✓ Dokploy MCP integration + interactive menu support — v1.3
 
 ### Active
 
-<!-- Current milestone: v1.3 Kastell Rebrand + Dokploy Adapter -->
+<!-- Next milestone: TBD -->
 
-**Part 1: Rebrand (quicklify -> kastell)**
-- [ ] package.json name + bin entry: quicklify -> kastell
-- [ ] All src/ "quicklify" string references -> "kastell"
-- [ ] Config path: ~/.quicklify -> ~/.kastell (migrate if old path exists)
-- [ ] Test files "quicklify" references -> "kastell"
-- [ ] LICENSE: MIT -> Apache 2.0
-- [ ] Docs: README.md, README.tr.md, CHANGELOG.md, SECURITY.md, CONTRIBUTING.md, llms.txt
-- [ ] GitHub Actions workflows update
-- [ ] MCP server name (settings.json + .mcp.json)
-- [ ] CLAUDE.md project instructions update
-- [ ] npm deprecate quicklify "Moved to kastell -- https://kastell.dev"
-- [ ] npm kastell placeholder -> real content (v0.0.1 -> v1.3.0)
-
-**Part 2: Dokploy Adapter**
-- [ ] Platform adapter interface + pattern infrastructure
-- [ ] Coolify adapter (refactor existing logic into adapter)
-- [ ] Dokploy adapter: cloud-init provisioning
-- [ ] Dokploy adapter: health check
-- [ ] Dokploy adapter: backup
-- [ ] Dokploy MCP tool support
+(No active requirements — next milestone not yet planned)
 
 ### Planned (Kastell Roadmap)
 
-- **v1.3** — Kastell rebrand (quicklify→kastell rename) + Dokploy adapter
 - **v1.5** — kastell.dev website + `kastell audit` (free security scan)
 - **v2.0** — Guard Core: `kastell lock`, `kastell fleet`, `kastell guard`, `kastell doctor`, notifications
 - **v2.5** — Risk trend scoring + auto security patch
@@ -82,15 +69,15 @@ Autonomous server security and maintenance across multiple cloud providers. Guar
 ## Context
 
 - **Brand**: Kastell (kastell.dev, npm: kastell, GitHub: kastelldev)
-- **Current npm**: `quicklify` v1.2.1 (transitioning to `kastell` in v1.3)
+- **Current npm**: `kastell` v1.3.0 (publish bekliyor), `quicklify` deprecated
 - 23 CLI commands + 7 MCP tools
-- 2099 tests across 78 suites (95%+ coverage)
+- 2191 tests across 84 suites (95%+ coverage)
 - CI: GitHub Actions (3 OS x 2 Node versions = 6 matrix)
-- Codebase: ~11,800 LOC TypeScript
-- Architecture: Commands (thin wrappers) → Core (business logic) → Providers (plugin pattern)
-- Supports two server modes: `coolify` (default, Coolify-managed) and `bare` (generic VPS)
-- v1.2.1 shipped: PROVIDER_REGISTRY centralization, SCP security hardening, init.ts extract
-- **Target audience**: Indie hackers (Y1) → Micro-DevOps teams (Y2) → SaaS compliance (Y3)
+- Codebase: ~13,400 LOC TypeScript
+- Architecture: Commands (thin wrappers) -> Core (business logic) -> Providers (plugin) / Adapters (platform)
+- Supports three server modes: `coolify` (default), `dokploy`, and `bare` (generic VPS)
+- v1.3 shipped: Kastell rebrand, Apache 2.0 license, PlatformAdapter pattern, DokployAdapter
+- **Target audience**: Indie hackers (Y1) -> Micro-DevOps teams (Y2) -> SaaS compliance (Y3)
 
 ### CLAUDE.md Yapisi (2026-03-05 yeniden yapilandirildi)
 IF-ELSE router pattern uygulandi — context bloat onleme:
@@ -128,6 +115,13 @@ IF-ELSE router pattern uygulandi — context bloat onleme:
 | Token sanitization at getProviderToken() boundary | DRY — single sanitization point, not at call sites | ✓ Good — v1.2.1 |
 | deployServer() in core/deploy.ts | Independently testable deployment logic, init.ts stays thin | ✓ Good — v1.2.1 |
 | sanitizeResponseData() whitelist approach | OWASP: only known-safe fields pass through, not blacklist | ✓ Good — v1.2.1 |
+| Adapter pattern for platform abstraction | Clean extension point: implement interface + add factory case | ✓ Good — v1.3 |
+| Apache 2.0 license (from MIT) | Patent protection for security tooling | ✓ Good — v1.3 |
+| Auto-migration ~/.quicklify -> ~/.kastell | Zero data loss rebrand, .migrated flag prevents re-copy | ✓ Good — v1.3 |
+| resolvePlatform() normalization | Legacy records without platform field default to coolify | ✓ Good — v1.3 |
+| requireManagedMode() evolution | Platform-aware guard replaces requireCoolifyMode (deprecated alias kept) | ✓ Good — v1.3 |
+| Dokploy restore deferred to v1.5 | Separate research needed for Dokploy restore flow | — Pending |
+| GitHub repo transfer deferred | Less risk, do after npm publish is stable | — Pending |
 
 ## Kastell Command Architecture (Future)
 
@@ -193,39 +187,21 @@ All simple statistics + cron. No AI/ML. Deterministic and predictable.
 - **Enterprise term** (future): "Infrastructure Integrity Layer" — not for Year 1
 - **Positioning**: Coolify deploys. Docker runs. Kastell protects.
 
-## v1.3 Rebrand Scope (Next Milestone)
+## Current State
 
-Rename quicklify → kastell across entire codebase:
-- `package.json` name + bin entry
-- All src/ references ("quicklify" string occurrences)
-- Config path: `~/.quicklify` → `~/.kastell`
-- README.md, README.tr.md, CHANGELOG.md, SECURITY.md, CONTRIBUTING.md, llms.txt
-- GitHub Actions workflows
-- MCP server name
-- Test files referencing "quicklify"
-- **LICENSE: MIT → Apache 2.0** (patent koruması)
-- `npm deprecate quicklify "Moved to kastell — https://kastell.dev"`
-- GitHub repo transfer: `omrfc/quicklify` → `kastelldev/kastell`
-- GitHub org description, topics, website URL güncelle
-- MCP settings: ~/.claude/settings.json + .mcp.json quicklify → kastell
-- CLAUDE.md project instructions: quicklify referansları güncelle
-- npm `kastell` placeholder'ı gerçek içerikle değiştir (v0.0.1 → v1.3.0)
-- Add Dokploy adapter: `--platform dokploy` flag + cloud-init + health check + backup
+**Shipped:** v1.3.0 Kastell Rebrand + Dokploy Adapter (2026-03-06)
+**Next milestone:** Not yet planned — use `/gsd:new-milestone` to start
 
-## Current Milestone: v1.3 Kastell Rebrand + Dokploy Adapter
+**Recent v1.3 delivery:**
+- Full rebrand from Quicklify to Kastell (CLI, config, docs, npm)
+- Apache 2.0 license with NOTICE file
+- PlatformAdapter pattern: CoolifyAdapter + DokployAdapter
+- Dokploy lifecycle: provision + health check + backup + MCP integration
 
-**Goal:** Rename quicklify to kastell across entire codebase, switch to Apache 2.0 license, and add Dokploy platform adapter using adapter pattern infrastructure.
-
-**Target features:**
-- Full rebrand: package name, bin, config paths, docs, CI, MCP, npm
-- Platform adapter pattern: interface + Coolify adapter + Dokploy adapter
-- Dokploy lifecycle: provision (cloud-init) + health check + backup
-- Dokploy MCP integration
-
-**Decisions:**
-- Adapter pattern for platform abstraction (not mode expansion)
-- GitHub repo transfer deferred to post-v1.3
-- Dokploy restore deferred to v1.5
+**Pending release actions:**
+- `npm publish` kastell@1.3.0
+- `npm deprecate quicklify`
+- GitHub repo transfer (omrfc/quicklify -> kastelldev/kastell)
 
 ---
-*Last updated: 2026-03-05 — v1.3 milestone started*
+*Last updated: 2026-03-06 after v1.3 milestone*
