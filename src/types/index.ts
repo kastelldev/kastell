@@ -60,6 +60,7 @@ export interface ServerRecord {
 export interface InitOptions {
   provider?: string;
   token?: string;
+  tokenStdin?: boolean;
   region?: string;
   size?: string;
   name?: string;

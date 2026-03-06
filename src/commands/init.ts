@@ -90,14 +90,31 @@ export async function initCommand(options: InitOptions = {}): Promise<void> {
     }
   }
 
-  // Step 2: Get API token (env var > interactive prompt)
-  if (options.token) {
+  // Step 2: Get API token (stdin > env var > interactive prompt)
+  if (options.tokenStdin) {
+    const chunks: Buffer[] = [];
+    for await (const chunk of process.stdin) {
+      chunks.push(chunk as Buffer);
+    }
+    apiToken = Buffer.concat(chunks).toString().trim();
+    if (!apiToken) {
+      logger.error("No token received from stdin");
+      process.exitCode = 1;
+      return;
+    }
+    tokenSource = "stdin";
+  } else if (options.token) {
     apiToken = options.token;
     tokenSource = "--token flag";
     logger.warning(
-      "Token passed via --token flag is visible in shell history. Use environment variables instead: export HETZNER_TOKEN=...",
+      "Token passed via --token flag is visible in shell history. Use --token-stdin or environment variables instead: echo $TOKEN | kastell init --token-stdin",
     );
+    // Hide token from process list
     process.title = "kastell";
+    const tokenIdx = process.argv.indexOf("--token");
+    if (tokenIdx !== -1) {
+      process.argv[tokenIdx + 1] = "***";
+    }
   } else {
     const envKey = PROVIDER_ENV_KEYS[providerChoice as keyof typeof PROVIDER_ENV_KEYS];
     if (envKey && process.env[envKey]) {

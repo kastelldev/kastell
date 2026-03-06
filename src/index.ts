@@ -51,6 +51,7 @@ program
     "--token <token>",
     "API token (or set HETZNER_TOKEN / DIGITALOCEAN_TOKEN / VULTR_TOKEN / LINODE_TOKEN env var)",
   )
+  .option("--token-stdin", "Read API token from stdin (pipe-friendly, avoids shell history)")
   .option("--region <region>", "Server region")
   .option("--size <size>", "Server size")
   .option("--name <name>", "Server name")

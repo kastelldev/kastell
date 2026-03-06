@@ -1,11 +1,11 @@
-import { exec } from "child_process";
+import { execFile } from "child_process";
 import { isValidBrowserUrl, canOpenBrowser, openBrowser } from "../../src/utils/openBrowser";
 
 jest.mock("child_process", () => ({
-  exec: jest.fn((_cmd: string, _opts: object, _cb: () => void) => {}),
+  execFile: jest.fn((_bin: string, _args: string[], _opts: object, _cb: () => void) => {}),
 }));
 
-const mockedExec = exec as unknown as jest.MockedFunction<typeof exec>;
+const mockedExecFile = execFile as unknown as jest.MockedFunction<typeof execFile>;
 
 describe("openBrowser", () => {
   const originalPlatform = process.platform;
@@ -140,16 +140,16 @@ describe("openBrowser", () => {
   describe("openBrowser", () => {
     it("should not exec for invalid URL", () => {
       openBrowser("javascript:alert(1)");
-      expect(mockedExec).not.toHaveBeenCalled();
+      expect(mockedExecFile).not.toHaveBeenCalled();
     });
 
     it("should not exec in headless environment", () => {
       process.env.CI = "true";
       openBrowser("http://1.2.3.4:8000");
-      expect(mockedExec).not.toHaveBeenCalled();
+      expect(mockedExecFile).not.toHaveBeenCalled();
     });
 
-    it("should exec open command on macOS", () => {
+    it("should execFile open command on macOS", () => {
       delete process.env.CI;
       delete process.env.GITHUB_ACTIONS;
       delete process.env.DOCKER_CONTAINER;
@@ -159,14 +159,15 @@ describe("openBrowser", () => {
       Object.defineProperty(process, "platform", { value: "darwin" });
 
       openBrowser("http://1.2.3.4:8000");
-      expect(mockedExec).toHaveBeenCalledWith(
-        'open "http://1.2.3.4:8000"',
+      expect(mockedExecFile).toHaveBeenCalledWith(
+        "open",
+        ["http://1.2.3.4:8000"],
         expect.any(Object),
         expect.any(Function),
       );
     });
 
-    it("should exec start command on Windows", () => {
+    it("should execFile cmd on Windows", () => {
       delete process.env.CI;
       delete process.env.GITHUB_ACTIONS;
       delete process.env.DOCKER_CONTAINER;
@@ -176,14 +177,15 @@ describe("openBrowser", () => {
       Object.defineProperty(process, "platform", { value: "win32" });
 
       openBrowser("http://1.2.3.4:8000");
-      expect(mockedExec).toHaveBeenCalledWith(
-        'start "" "http://1.2.3.4:8000"',
+      expect(mockedExecFile).toHaveBeenCalledWith(
+        "cmd",
+        ["/c", "start", "", "http://1.2.3.4:8000"],
         expect.any(Object),
         expect.any(Function),
       );
     });
 
-    it("should exec xdg-open on Linux with DISPLAY", () => {
+    it("should execFile xdg-open on Linux with DISPLAY", () => {
       delete process.env.CI;
       delete process.env.GITHUB_ACTIONS;
       delete process.env.DOCKER_CONTAINER;
@@ -194,8 +196,9 @@ describe("openBrowser", () => {
       Object.defineProperty(process, "platform", { value: "linux" });
 
       openBrowser("http://1.2.3.4:8000");
-      expect(mockedExec).toHaveBeenCalledWith(
-        'xdg-open "http://1.2.3.4:8000"',
+      expect(mockedExecFile).toHaveBeenCalledWith(
+        "xdg-open",
+        ["http://1.2.3.4:8000"],
         expect.any(Object),
         expect.any(Function),
       );
