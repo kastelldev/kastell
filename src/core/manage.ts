@@ -3,7 +3,7 @@ import { createProviderWithToken } from "../utils/providerFactory.js";
 import { sshExec, checkSshAvailable } from "../utils/ssh.js";
 import { getErrorMessage, mapProviderError } from "../utils/errorMapper.js";
 import { getProviderToken } from "./tokens.js";
-import type { ServerRecord, ServerMode } from "../types/index.js";
+import type { ServerRecord, ServerMode, Platform } from "../types/index.js";
 import { SUPPORTED_PROVIDERS, invalidProviderError } from "../constants.js";
 import chalk from "chalk";
 
@@ -75,7 +75,7 @@ export interface AddServerParams {
   name: string;
   skipVerify?: boolean;
   apiToken?: string;
-  mode?: ServerMode;
+  mode?: string;
 }
 
 export interface AddServerResult {
@@ -139,26 +139,35 @@ export async function addServerRecord(params: AddServerParams): Promise<AddServe
     };
   }
 
-  // Resolve mode
-  const mode: ServerMode = params.mode || "coolify";
+  // Resolve mode and platform
+  const modeStr = params.mode || "coolify";
+  const isBare = modeStr === "bare";
+  const platform: Platform | undefined = isBare ? undefined
+    : modeStr === "dokploy" ? "dokploy"
+    : "coolify";
+  const mode: ServerMode = isBare ? "bare" : "coolify";
 
-  // Optional Coolify verification via SSH (skip entirely for bare mode)
+  // Optional platform verification via SSH (skip entirely for bare mode)
   let coolifyStatus = "skipped";
   if (!params.skipVerify && mode !== "bare") {
+    const healthPort = platform === "dokploy" ? 3000 : 8000;
+    const healthPath = platform === "dokploy" ? "/" : "/api/health";
+    const containerGrep = platform === "dokploy" ? "dokploy" : "coolify";
+
     if (!checkSshAvailable()) {
       coolifyStatus = "ssh_unavailable";
     } else {
       try {
         const result = await sshExec(
           params.ip,
-          "curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/api/health",
+          `curl -s -o /dev/null -w '%{http_code}' http://localhost:${healthPort}${healthPath}`,
         );
         if (result.code === 0 && result.stdout.trim().includes("200")) {
           coolifyStatus = "running";
         } else {
           const dockerResult = await sshExec(
             params.ip,
-            "docker ps --format '{{.Names}}' 2>/dev/null | grep -q coolify && echo OK",
+            `docker ps --format '{{.Names}}' 2>/dev/null | grep -q ${containerGrep} && echo OK`,
           );
           if (dockerResult.code === 0 && dockerResult.stdout.trim().includes("OK")) {
             coolifyStatus = "containers_detected";
@@ -167,7 +176,7 @@ export async function addServerRecord(params: AddServerParams): Promise<AddServe
           }
         }
       } catch (error: unknown) {
-        process.stderr.write(`[warn] Coolify verification failed: ${getErrorMessage(error)}\n`);
+        process.stderr.write(`[warn] Platform verification failed: ${getErrorMessage(error)}\n`);
         coolifyStatus = "verification_failed";
       }
     }
@@ -183,6 +192,7 @@ export async function addServerRecord(params: AddServerParams): Promise<AddServe
     size: "unknown",
     createdAt: new Date().toISOString(),
     mode,
+    ...(platform ? { platform } : {}),
   };
 
   saveServer(record);
