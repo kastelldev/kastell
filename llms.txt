@@ -155,8 +155,8 @@ Destructive operations blocked by default: `destroy`, `restore`, `snapshot-delet
 
 ## Links
 
-- Repository: https://github.com/omrfc/kastell
+- Repository: https://github.com/kastelldev/kastell
 - npm: https://www.npmjs.com/package/kastell
 - Website: https://kastell.dev
-- Issues: https://github.com/omrfc/kastell/issues
+- Issues: https://github.com/kastelldev/kastell/issues
 - License: Apache-2.0

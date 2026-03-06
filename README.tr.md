@@ -4,12 +4,12 @@
 
 > [English](README.md) | Turkce
 
-![Tests](https://github.com/omrfc/kastell/actions/workflows/ci.yml/badge.svg)
-[![Coverage](https://codecov.io/gh/omrfc/kastell/branch/main/graph/badge.svg)](https://codecov.io/gh/omrfc/kastell)
+![Tests](https://github.com/kastelldev/kastell/actions/workflows/ci.yml/badge.svg)
+[![Coverage](https://codecov.io/gh/kastelldev/kastell/branch/main/graph/badge.svg)](https://codecov.io/gh/kastelldev/kastell)
 ![npm](https://img.shields.io/npm/v/kastell)
 ![Downloads](https://img.shields.io/npm/dt/kastell)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)
-![GitHub stars](https://img.shields.io/github/stars/omrfc/kastell?style=flat-square)
+![GitHub stars](https://img.shields.io/github/stars/kastelldev/kastell?style=flat-square)
 [![Socket Badge](https://socket.dev/api/badge/npm/package/kastell)](https://socket.dev/npm/package/kastell)
 [![Website](https://img.shields.io/website?url=https%3A%2F%2Fkastell.dev&label=website)](https://kastell.dev)
 
@@ -275,7 +275,7 @@ Apache 2.0 -- [LICENSE](LICENSE) dosyasina bakin
 
 ## Destek
 
-- [GitHub Issues](https://github.com/omrfc/kastell/issues) -- Hata bildirimleri ve ozellik istekleri
+- [GitHub Issues](https://github.com/kastelldev/kastell/issues) -- Hata bildirimleri ve ozellik istekleri
 - [Changelog](CHANGELOG.md) -- Surum gecmisi
 
 ---

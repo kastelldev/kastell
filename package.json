@@ -53,12 +53,12 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/omrfc/kastell.git"
+    "url": "https://github.com/kastelldev/kastell.git"
   },
   "bugs": {
-    "url": "https://github.com/omrfc/kastell/issues"
+    "url": "https://github.com/kastelldev/kastell/issues"
   },
-  "homepage": "https://github.com/omrfc/kastell",
+  "homepage": "https://github.com/kastelldev/kastell",
   "author": {
     "name": "Ömer",
     "email": "hello@omrfc.dev",

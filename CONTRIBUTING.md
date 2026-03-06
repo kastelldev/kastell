@@ -216,4 +216,4 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/):
 
 ## Questions?
 
-Open a [GitHub Discussion](https://github.com/omrfc/kastell/discussions) or [Issue](https://github.com/omrfc/kastell/issues).
+Open a [GitHub Discussion](https://github.com/kastelldev/kastell/discussions) or [Issue](https://github.com/kastelldev/kastell/issues).
