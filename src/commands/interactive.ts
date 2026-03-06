@@ -54,7 +54,7 @@ const MENU: MenuCategory[] = [
   {
     label: "Maintenance",
     actions: [
-      { name: "Update Coolify", value: "update" },
+      { name: "Update platform (Coolify/Dokploy)", value: "update" },
       { name: "Full maintenance cycle", value: "maintain" },
       { name: "Check local environment", value: "doctor" },
     ],

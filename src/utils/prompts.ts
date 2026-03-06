@@ -103,13 +103,14 @@ export async function getServerTypeConfig(
   return size;
 }
 
-export async function getServerNameConfig(): Promise<string> {
+export async function getServerNameConfig(mode?: string): Promise<string> {
+  const defaultName = mode === "bare" ? "bare-server" : mode === "dokploy" ? "dokploy-server" : "coolify-server";
   const { serverName } = await inquirer.prompt([
     {
       type: "input",
       name: "serverName",
       message: "Server name (leave empty to go back):",
-      default: "coolify-server",
+      default: defaultName,
       validate: (input: string) => {
         if (!input || input.trim().length === 0) {
           return true; // empty = back signal

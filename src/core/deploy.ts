@@ -96,7 +96,7 @@ export async function deployServer(
           logger.info("Please choose a different name:");
           let newName = BACK_SIGNAL;
           while (newName === BACK_SIGNAL) {
-            newName = await getServerNameConfig();
+            newName = await getServerNameConfig(mode);
           }
           serverName = newName;
           retries++;

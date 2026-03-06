@@ -70,7 +70,7 @@ export async function addCommand(options: AddOptions = {}): Promise<void> {
   // Step 4: Get server name
   let serverName = options.name;
   if (!serverName) {
-    const defaultName = options.mode === "bare" ? "bare-server" : "coolify-server";
+    const defaultName = options.mode === "bare" ? "bare-server" : options.mode === "dokploy" ? "dokploy-server" : "coolify-server";
     const { name } = await inquirer.prompt([
       {
         type: "input",

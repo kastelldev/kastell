@@ -7,10 +7,11 @@
 - ✅ **v1.2.0 Generic Server Management** — Phases 1-3 (shipped 2026-02-28)
 - ✅ **v1.2.1 Refactor + Security Patch** — Phases 4-6 (shipped 2026-03-02)
 - ✅ **v1.3 Kastell Rebrand + Dokploy** — Phases 7-10 (shipped 2026-03-06)
-- ⬜ **v1.5 Website + Audit** — TBD
-- ⬜ **v2.0 Guard Core** — TBD
-- ⬜ **v2.5 Risk Trend + Auto Patch** — TBD
-- ⬜ **v3.0 Web Dashboard + Plugins** — TBD
+- ⬜ **v1.4 TUI + Technical Debt** — TUI improvements + tech debt cleanup (split from v1.3)
+- ⬜ **v1.5 Website + Audit** — kastell.dev + kastell audit + IP abuse proof
+- ⬜ **v2.0 Guard Core** — daemon, lock, fleet, doctor, notifications
+- ⬜ **v2.5 Risk Trend + Auto Patch** — risk scoring + kastell compare
+- ⬜ **v3.0 Web Dashboard + Plugins** — premium dashboard + managed service
 
 ## Phases
 

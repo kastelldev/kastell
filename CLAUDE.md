@@ -55,4 +55,4 @@ Commands (thin) -> Core (logic) -> Providers (API) / Adapters (platform)
 
 ## Lessons
 
--> `LESSONS.md`
+-> `LESSONS.md` (tek kaynak — tum proje dersleri burada konsolide)

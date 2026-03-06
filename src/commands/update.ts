@@ -7,6 +7,7 @@ import { logger, createSpinner } from "../utils/logger.js";
 import { getErrorMessage, mapProviderError } from "../utils/errorMapper.js";
 import { executeCoolifyUpdate } from "../core/maintain.js";
 import { isBareServer, requireManagedMode } from "../utils/modeGuard.js";
+import { resolvePlatform } from "../adapters/factory.js";
 
 interface UpdateOptions {
   all?: boolean;
@@ -42,14 +43,14 @@ async function updateSingleServer(
     }
   }
 
-  logger.info(`Updating Coolify on ${serverName} (${serverIp})...`);
+  logger.info(`Updating platform on ${serverName} (${serverIp})...`);
 
   const result = await executeCoolifyUpdate(serverIp);
 
   if (result.output) console.log(result.output);
 
   if (result.success) {
-    logger.success(`${serverName}: Coolify update completed!`);
+    logger.success(`${serverName}: Platform update completed!`);
     return true;
   } else {
     logger.error(`${serverName}: Update failed with exit code`);
@@ -91,7 +92,15 @@ async function updateAll(): Promise<void> {
   for (const server of servers) {
     if (isBareServer(server)) {
       logger.warning(
-        `Skipping ${server.name}: update command is not available for bare servers (requires Coolify).`,
+        `Skipping ${server.name}: update command is not available for bare servers.`,
+      );
+      console.log();
+      continue;
+    }
+    const serverPlatform = resolvePlatform(server);
+    if (serverPlatform === "dokploy") {
+      logger.warning(
+        `Skipping ${server.name}: Dokploy update is not yet supported. Coming in v1.4.`,
       );
       console.log();
       continue;
@@ -128,6 +137,13 @@ export async function updateCommand(query?: string, options?: UpdateOptions): Pr
   const modeError = requireManagedMode(server, "update");
   if (modeError) {
     logger.error(modeError);
+    return;
+  }
+
+  const platform = resolvePlatform(server);
+  if (platform === "dokploy") {
+    logger.warning("Dokploy update is not yet supported. Coming in v1.4.");
+    logger.info("You can update Dokploy manually: ssh into server and run the Dokploy update script.");
     return;
   }
 

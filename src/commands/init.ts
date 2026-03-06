@@ -162,7 +162,7 @@ export async function initCommand(options: InitOptions = {}): Promise<void> {
             step = 7;
             break;
           }
-          const n = await getServerNameConfig();
+          const n = await getServerNameConfig(options.mode);
           if (n === BACK_SIGNAL) {
             step = 5;
             break;
@@ -224,7 +224,7 @@ export async function initCommand(options: InitOptions = {}): Promise<void> {
   } else {
     let n = BACK_SIGNAL;
     while (n === BACK_SIGNAL) {
-      n = await getServerNameConfig();
+      n = await getServerNameConfig(options.mode);
     }
     serverName = n;
   }

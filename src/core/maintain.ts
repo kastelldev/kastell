@@ -4,6 +4,7 @@ import { checkCoolifyHealth, getCloudServerStatus } from "./status.js";
 import { getErrorMessage, mapSshError, mapProviderError } from "../utils/errorMapper.js";
 import type { ServerRecord } from "../types/index.js";
 import { COOLIFY_UPDATE_CMD } from "../constants.js";
+import { resolvePlatform } from "../adapters/factory.js";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -141,6 +142,19 @@ export async function maintainServer(
   apiToken: string,
   options: MaintainOptions = {},
 ): Promise<MaintainResult> {
+  const platform = resolvePlatform(server);
+  if (platform === "dokploy") {
+    return {
+      server: server.name,
+      ip: server.ip,
+      provider: server.provider,
+      steps: [
+        { step: 1, name: "Platform Check", status: "skipped", detail: "Dokploy maintenance not yet supported. Coming in v1.4." },
+      ],
+      success: false,
+    };
+  }
+
   const isManual = server.id.startsWith("manual-");
   const healthAttempts = options.healthPollAttempts ?? 12;
   const healthInterval = options.healthPollIntervalMs ?? 5000;
