@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Kastell Rebrand + Dokploy
-status: executing
-stopped_at: "Completed 09-01-PLAN.md"
-last_updated: "2026-03-06T07:43:32Z"
-last_activity: "2026-03-06 -- Plan 09-01 executed: DokployAdapter implementation and factory registration"
+status: complete
+stopped_at: "Completed 09-02-PLAN.md -- v1.3 milestone COMPLETE"
+last_updated: "2026-03-06T07:55:16Z"
+last_activity: "2026-03-06 -- Plan 09-02 executed: CLI/MCP integration for Dokploy"
 progress:
   total_phases: 3
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 7
-  completed_plans: 6
-  percent: 86
+  completed_plans: 7
+  percent: 100
 ---
 
 # Project State
@@ -22,23 +22,23 @@ See: .planning/PROJECT.md (updated 2026-03-05)
 
 **Brand:** Kastell (kastell.dev | npm: kastell | GitHub: kastelldev)
 **Core value:** Autonomous server security and maintenance across multiple cloud providers
-**Current focus:** v1.3 Phase 9 -- Dokploy Adapter (Plan 01 COMPLETE)
+**Current focus:** v1.3 COMPLETE -- All phases (7, 8, 9) executed successfully
 
 ## Current Position
 
 Phase: 9 of 9 (Dokploy Adapter)
-Plan: 1 of 2 in current phase -- COMPLETE
-Status: Executing Phase 9
-Last activity: 2026-03-06 -- Plan 09-01 executed: DokployAdapter implementation and factory registration
+Plan: 2 of 2 in current phase -- COMPLETE
+Status: Phase 9 COMPLETE -- v1.3 milestone COMPLETE
+Last activity: 2026-03-06 -- Plan 09-02 executed: CLI/MCP integration for Dokploy
 
-Progress: [████████░░] 86% (v1.3 phases 7-9)
+Progress: [██████████] 100% (v1.3 phases 7-9)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6 (v1.3)
+- Total plans completed: 7 (v1.3)
 - Average duration: 9min
-- Total execution time: 52min
+- Total execution time: 60min
 
 **By Phase:**
 
@@ -46,7 +46,7 @@ Progress: [████████░░] 86% (v1.3 phases 7-9)
 |-------|-------|-------|----------|
 | 7. Kastell Rebrand | 3/3 | 33min | 11min |
 | 8. Platform Adapter Foundation | 2/2 | 15min | 7.5min |
-| 9. Dokploy Adapter | 1/2 | 4min | 4min |
+| 9. Dokploy Adapter | 2/2 | 12min | 6min |
 
 ## Accumulated Context
 
@@ -80,6 +80,10 @@ Recent decisions affecting current work:
 - Reuse BackupManifest.coolifyVersion field for Dokploy version (backward compat, platform field distinguishes)
 - Docker Swarm container resolution via docker ps -qf name=dokploy-postgres for pg_dump
 - Simple port 3000 HTTP probe for health check (not /api/health endpoint)
+- ProvisionConfig.mode changed to string type (ServerMode deprecated, platform is truth)
+- Backup command routes all managed servers through adapter (no direct Coolify SSH in command layer)
+- waitForCoolify kept for backward compat but made platform-generic with port parameter
+- mode=dokploy stored as mode=coolify in ServerRecord (platform field is the truth)
 
 ### Pending Todos
 
@@ -91,7 +95,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-06T07:43:32Z
-Stopped at: Completed 09-01-PLAN.md
-Resume file: .planning/phases/09-dokploy-adapter/09-01-SUMMARY.md
-Next action: Plan 09-02 (CLI/MCP integration)
+Last session: 2026-03-06T07:55:16Z
+Stopped at: Completed 09-02-PLAN.md -- v1.3 milestone COMPLETE
+Resume file: .planning/phases/09-dokploy-adapter/09-02-SUMMARY.md
+Next action: v1.3 complete -- npm publish, version check, API token docs remain outside GSD scope

@@ -36,9 +36,9 @@ Requirements for Kastell Rebrand + Dokploy Adapter release. Each maps to roadmap
 - [x] **DOKP-02**: Dokploy cloud-init script ile sunucu provision edilir
 - [x] **DOKP-03**: Dokploy health check calisir (API key ile /api/admin.getOne)
 - [x] **DOKP-04**: Dokploy backup SSH + SCP ile alinir (/etc/dokploy)
-- [ ] **DOKP-05**: CLI'da `--platform dokploy` flag'i desteklenir
-- [ ] **DOKP-06**: MCP tool'lari platform parametresi ile Dokploy'a yonlendirilir
-- [ ] **DOKP-07**: Interactive menude platform secimi sunulur
+- [x] **DOKP-05**: CLI'da `--platform dokploy` flag'i desteklenir
+- [x] **DOKP-06**: MCP tool'lari platform parametresi ile Dokploy'a yonlendirilir
+- [x] **DOKP-07**: Interactive menude platform secimi sunulur
 
 ## Future Requirements (v1.5+)
 
@@ -93,9 +93,9 @@ Requirements for Kastell Rebrand + Dokploy Adapter release. Each maps to roadmap
 | DOKP-02 | Phase 9 | Complete |
 | DOKP-03 | Phase 9 | Complete |
 | DOKP-04 | Phase 9 | Complete |
-| DOKP-05 | Phase 9 | Pending |
-| DOKP-06 | Phase 9 | Pending |
-| DOKP-07 | Phase 9 | Pending |
+| DOKP-05 | Phase 9 | Complete |
+| DOKP-06 | Phase 9 | Complete |
+| DOKP-07 | Phase 9 | Complete |
 
 **Coverage:**
 - v1.3 requirements: 24 total
@@ -104,4 +104,4 @@ Requirements for Kastell Rebrand + Dokploy Adapter release. Each maps to roadmap
 
 ---
 *Requirements defined: 2026-03-05*
-*Last updated: 2026-03-05 — Phase 7 complete (BRAND-01 through BRAND-10 all complete)*
+*Last updated: 2026-03-06 — All v1.3 requirements complete (24/24)*

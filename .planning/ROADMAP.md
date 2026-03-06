@@ -6,7 +6,7 @@
 - ✅ **v1.1.0 MCP Server + Security** — Phases pre-GSD (shipped 2026-02-27)
 - ✅ **v1.2.0 Generic Server Management** — Phases 1-3 (shipped 2026-02-28)
 - ✅ **v1.2.1 Refactor + Security Patch** — Phases 4-6 (shipped 2026-03-02)
-- 🚧 **v1.3 Kastell Rebrand + Dokploy** — Phases 7-9 (in progress)
+- ✅ **v1.3 Kastell Rebrand + Dokploy** — Phases 7-9 (completed 2026-03-06)
 - ⬜ **v1.5 Website + Audit** — TBD
 - ⬜ **v2.0 Guard Core** — TBD
 - ⬜ **v2.5 Risk Trend + Auto Patch** — TBD
@@ -50,13 +50,13 @@ MCP server with 7 tools, 12 security fixes, SSH key auto-generation, full docs u
 
 </details>
 
-### 🚧 v1.3 Kastell Rebrand + Dokploy Adapter (In Progress)
+### ✅ v1.3 Kastell Rebrand + Dokploy Adapter (COMPLETE)
 
 **Milestone Goal:** Rename quicklify to kastell across entire codebase, switch to Apache 2.0 license, and add Dokploy as a second platform adapter alongside Coolify.
 
 - [x] **Phase 7: Kastell Rebrand** - Quicklify identity fully replaced with Kastell across CLI, packages, config, docs, and CI
 - [x] **Phase 8: Platform Adapter Foundation** - Adapter abstraction layer established, existing Coolify logic extracted into adapter pattern with zero behavior change
-- [ ] **Phase 9: Dokploy Adapter** - Dokploy servers can be provisioned, monitored, and backed up through CLI and MCP
+- [x] **Phase 9: Dokploy Adapter** - Dokploy servers can be provisioned, monitored, and backed up through CLI and MCP
 
 ## Phase Details
 
@@ -106,8 +106,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 09-01-PLAN.md — DokployAdapter implementation + factory registration + unit tests
-- [ ] 09-02-PLAN.md — CLI/MCP integration: deploy, provision, backup routing, interactive menu, MCP schema
+- [x] 09-01-PLAN.md — DokployAdapter implementation + factory registration + unit tests
+- [x] 09-02-PLAN.md — CLI/MCP integration: deploy, provision, backup routing, interactive menu, MCP schema
 
 ## Progress
 
@@ -121,8 +121,8 @@ Plans:
 | 6. init.ts Extract | v1.2.1 | 2/2 | Complete | 2026-03-02 |
 | 7. Kastell Rebrand | v1.3 | 3/3 | Complete | 2026-03-05 |
 | 8. Platform Adapter Foundation | v1.3 | 2/2 | Complete | 2026-03-06 |
-| 9. Dokploy Adapter | v1.3 | 0/2 | Planned | - |
+| 9. Dokploy Adapter | v1.3 | 2/2 | Complete | 2026-03-06 |
 
 ---
 *Roadmap created: 2026-02-27*
-*Last updated: 2026-03-06 — Phase 9 planned (Dokploy Adapter: 2 plans in 2 waves)*
+*Last updated: 2026-03-06 — Phase 9 complete (v1.3 milestone done: 3 phases, 7 plans)*
