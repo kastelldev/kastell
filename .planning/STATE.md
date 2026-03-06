@@ -3,30 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Kastell Rebrand + Dokploy
 status: executing
-stopped_at: Completed 08-02-PLAN.md
-last_updated: "2026-03-06T06:47:34.034Z"
-last_activity: "2026-03-06 -- Plan 08-02 executed: core routing through adapter, requireManagedMode migration"
+stopped_at: "Completed 09-01-PLAN.md"
+last_updated: "2026-03-06T07:43:32Z"
+last_activity: "2026-03-06 -- Plan 09-01 executed: DokployAdapter implementation and factory registration"
 progress:
   total_phases: 3
   completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
----
-
----
-gsd_state_version: 1.0
-milestone: v1.3
-milestone_name: Kastell Rebrand + Dokploy
-status: executing
-stopped_at: "Completed 08-02-PLAN.md"
-last_updated: "2026-03-06T06:40:47Z"
-last_activity: "2026-03-06 — Plan 08-02 executed: core routing through adapter, requireManagedMode migration"
-progress:
-  total_phases: 3
-  completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
-  percent: 100
+  total_plans: 7
+  completed_plans: 6
+  percent: 86
 ---
 
 # Project State
@@ -37,23 +22,23 @@ See: .planning/PROJECT.md (updated 2026-03-05)
 
 **Brand:** Kastell (kastell.dev | npm: kastell | GitHub: kastelldev)
 **Core value:** Autonomous server security and maintenance across multiple cloud providers
-**Current focus:** v1.3 Phase 8 -- Platform Adapter Foundation COMPLETE
+**Current focus:** v1.3 Phase 9 -- Dokploy Adapter (Plan 01 COMPLETE)
 
 ## Current Position
 
-Phase: 8 of 9 (Platform Adapter Foundation) -- COMPLETE
-Plan: 2 of 2 in current phase -- COMPLETE
-Status: Phase 8 Complete
-Last activity: 2026-03-06 -- Plan 08-02 executed: core routing through adapter, requireManagedMode migration
+Phase: 9 of 9 (Dokploy Adapter)
+Plan: 1 of 2 in current phase -- COMPLETE
+Status: Executing Phase 9
+Last activity: 2026-03-06 -- Plan 09-01 executed: DokployAdapter implementation and factory registration
 
-Progress: [██████████] 100% (v1.3 phases 7-8)
+Progress: [████████░░] 86% (v1.3 phases 7-9)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5 (v1.3)
-- Average duration: 10min
-- Total execution time: 48min
+- Total plans completed: 6 (v1.3)
+- Average duration: 9min
+- Total execution time: 52min
 
 **By Phase:**
 
@@ -61,7 +46,7 @@ Progress: [██████████] 100% (v1.3 phases 7-8)
 |-------|-------|-------|----------|
 | 7. Kastell Rebrand | 3/3 | 33min | 11min |
 | 8. Platform Adapter Foundation | 2/2 | 15min | 7.5min |
-| 9. Dokploy Adapter | 0/? | - | - |
+| 9. Dokploy Adapter | 1/2 | 4min | 4min |
 
 ## Accumulated Context
 
@@ -92,6 +77,9 @@ Recent decisions affecting current work:
 - backup.ts createBackup delegates entirely to CoolifyAdapter, other exports preserved for backward compat
 - status.ts uses resolvePlatform + getAdapter for health check routing (handles legacy mode normalization)
 - All 5 requireCoolifyMode call sites switched to requireManagedMode (same behavior, clearer intent)
+- Reuse BackupManifest.coolifyVersion field for Dokploy version (backward compat, platform field distinguishes)
+- Docker Swarm container resolution via docker ps -qf name=dokploy-postgres for pg_dump
+- Simple port 3000 HTTP probe for health check (not /api/health endpoint)
 
 ### Pending Todos
 
@@ -103,7 +91,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-06T06:40:47Z
-Stopped at: Completed 08-02-PLAN.md
-Resume file: .planning/phases/08-platform-adapter-foundation/08-02-SUMMARY.md
-Next action: Phase 9 (Dokploy Adapter) when ready
+Last session: 2026-03-06T07:43:32Z
+Stopped at: Completed 09-01-PLAN.md
+Resume file: .planning/phases/09-dokploy-adapter/09-01-SUMMARY.md
+Next action: Plan 09-02 (CLI/MCP integration)

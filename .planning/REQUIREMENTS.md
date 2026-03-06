@@ -32,10 +32,10 @@ Requirements for Kastell Rebrand + Dokploy Adapter release. Each maps to roadmap
 
 ### Dokploy
 
-- [ ] **DOKP-01**: `DokployAdapter` implement edilir (PlatformAdapter interface)
-- [ ] **DOKP-02**: Dokploy cloud-init script ile sunucu provision edilir
-- [ ] **DOKP-03**: Dokploy health check calisir (API key ile /api/admin.getOne)
-- [ ] **DOKP-04**: Dokploy backup SSH + SCP ile alinir (/etc/dokploy)
+- [x] **DOKP-01**: `DokployAdapter` implement edilir (PlatformAdapter interface)
+- [x] **DOKP-02**: Dokploy cloud-init script ile sunucu provision edilir
+- [x] **DOKP-03**: Dokploy health check calisir (API key ile /api/admin.getOne)
+- [x] **DOKP-04**: Dokploy backup SSH + SCP ile alinir (/etc/dokploy)
 - [ ] **DOKP-05**: CLI'da `--platform dokploy` flag'i desteklenir
 - [ ] **DOKP-06**: MCP tool'lari platform parametresi ile Dokploy'a yonlendirilir
 - [ ] **DOKP-07**: Interactive menude platform secimi sunulur
@@ -89,10 +89,10 @@ Requirements for Kastell Rebrand + Dokploy Adapter release. Each maps to roadmap
 | ADAPT-05 | Phase 8 | Complete |
 | ADAPT-06 | Phase 8 | Complete |
 | ADAPT-07 | Phase 8 | Complete |
-| DOKP-01 | Phase 9 | Pending |
-| DOKP-02 | Phase 9 | Pending |
-| DOKP-03 | Phase 9 | Pending |
-| DOKP-04 | Phase 9 | Pending |
+| DOKP-01 | Phase 9 | Complete |
+| DOKP-02 | Phase 9 | Complete |
+| DOKP-03 | Phase 9 | Complete |
+| DOKP-04 | Phase 9 | Complete |
 | DOKP-05 | Phase 9 | Pending |
 | DOKP-06 | Phase 9 | Pending |
 | DOKP-07 | Phase 9 | Pending |
