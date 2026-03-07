@@ -1,8 +1,8 @@
 # Kastell
 
-> Self-hosted sunucularinizi kurmak, guvenligini saglamak ve yonetmek icin CLI araci.
+> Self-hosted sunucularınızı kurmak, güvenliğini sağlamak ve yönetmek için CLI aracı.
 
-> [English](README.md) | Turkce
+> [English](README.md) | Türkçe
 
 ![Tests](https://github.com/kastelldev/kastell/actions/workflows/ci.yml/badge.svg)
 [![Coverage](https://codecov.io/gh/kastelldev/kastell/branch/main/graph/badge.svg)](https://codecov.io/gh/kastelldev/kastell)
@@ -15,144 +15,173 @@
 
 ## Kastell Neden Var?
 
-Self-hosted sunucularin cogu su nedenlerle coker:
+Self-hosted sunucuların çoğu şu nedenlerle çöker:
 
 - Yedekleme disiplini yok
-- Guncelleme stratejisi yok
-- Guvenlik sikilastirmasi yok
-- Izleme yok
+- Güncelleme stratejisi yok
+- Güvenlik sıkılaştırması yok
+- İzleme yok
 - Snapshot rutini yok
 
-Sunuculariniza cocuk bakiciligi yapmayi birakin. Kastell bunu cozmek icin yapildi.
+Sunucularınıza çocuk bakıcılığı yapmayı bırakın. Kastell bunu çözmek için yapıldı.
 
-## Hizli Baslangic
+## Hızlı Başlangıç
 
 ```bash
-# Interaktif mod -- komut ezberlemeye gerek yok
+# İnteraktif mod -- komut ezberlemeye gerek yok
 npx kastell
 ```
 
-`kastell` komutunu argumansiz calistirdiginizda **interaktif bir menu** acilir. Tum islemleri kategorilere gore gorebilir, ok tuslariyla secim yapabilir ve alt secenekleri adim adim yapilandirabilirsiniz -- komut adi veya flag ezberlemek zorunda degilsiniz.
+`kastell` komutunu argümansız çalıştırdığınızda markalı ASCII logosuyla birlikte **interaktif arama menüsü** açılır. Emoji kategorileriyle gruplanmış tüm işlemleri görebilir, yazarak anında filtreleyebilir ve alt seçenekleri adım adım yapılandırabilirsiniz -- komut adı veya flag ezberlemek zorunda değilsiniz.
 
 ```
-? What would you like to do?
-  Server Management
+  _  __          _       _ _
+ | |/ /__ _ ___ | |_ ___| | |
+ | ' // _` / __|| __/ _ \ | |
+ | . \ (_| \__ \| ||  __/ | |
+ |_|\_\__,_|___/ \__\___|_|_|
+
+? What would you like to do? (Type to search)
+  -- Server Management --
 >   Deploy a new server
     Add an existing server
     List all servers
     Check server status
     ...
-  Security
+  -- Security --
     Harden SSH & fail2ban
     Manage firewall (UFW)
     ...
 ```
 
-Her islem alt secenekler (sunucu modu, sablon, log kaynagi, port numarasi vb.) icerir ve istediginiz noktada ana menuye donmek icin **<- Back** secenegi sunar.
+Her işlem alt seçenekler (sunucu modu, şablon, log kaynağı, port numarası vb.) içerir ve istediğiniz noktada ana menüye dönmek için **<- Back** seçeneği sunar.
 
-Komutlari zaten biliyorsaniz, dogrudan da kullanabilirsiniz:
+Komutları zaten biliyorsanız, doğrudan da kullanabilirsiniz:
 
 ```bash
 kastell init                    # Yeni sunucu kur
 kastell status sunucum          # Sunucu durumunu kontrol et
-kastell backup --all            # Tum sunuculari yedekle
+kastell backup --all            # Tüm sunucuları yedekle
 ```
 
-Kastell sunucu olusturma, SSH anahtar kurulumu, guvenlik duvari yapilandirmasi ve platform kurulumunu otomatik yapar.
+Kastell sunucu oluşturma, SSH anahtar kurulumu, güvenlik duvarı yapılandırması ve platform kurulumunu otomatik yapar.
 
-## Kastell'i Farkli Kilan Ne?
+## Kastell'i Farklı Kılan Ne?
 
-| Problem | Cozum |
+| Problem | Çözüm |
 |---------|-------|
-| Guncelleme sunucuyu bozdu mu? | `maintain` ile guncelleme oncesi snapshot korumasi |
-| Sunucunuz saglikli mi bilmiyor musunuz? | Yerlesik izleme, saglik kontrolleri ve `doctor` tanilama |
-| Guvenlik sonradan mi dusunuluyor? | Guvenlik duvari, SSH sikilastirma, SSL ve guvenlik denetimi hazir |
-| Yedekleme? Belki bir gun... | Tek komutla yedekleme ve geri yukleme, manifest takibiyle |
-| Birden fazla sunucu mu yonetiyorsunuz? | Yedekleme, bakim, durum ve saglikta `--all` destegi |
-| Mevcut sunucu takip disi mi? | `kastell add` ile her sunucuyu yonetime alin |
-| Komutlari ezberlemek mi? | `kastell` yazin -- interaktif menu sizi yonlendirir |
+| Güncelleme sunucuyu bozdu mu? | `maintain` ile güncelleme öncesi snapshot koruması |
+| Sunucunuz sağlıklı mı bilmiyor musunuz? | Yerleşik izleme, sağlık kontrolleri ve `doctor` tanılama |
+| Güvenlik sonradan mı düşünülüyor? | Güvenlik duvarı, SSH sıkılaştırma, SSL ve güvenlik denetimi hazır |
+| Yedekleme? Belki bir gün... | Tek komutla yedekleme ve geri yükleme, manifest takibiyle |
+| Birden fazla sunucu mu yönetiyorsunuz? | Yedekleme, bakım, durum ve sağlıkta `--all` desteği |
+| Mevcut sunucu takip dışı mı? | `kastell add` ile her sunucuyu yönetime alın |
+| Komutları ezberlemek mi? | `kastell` yazın -- interaktif menü sizi yönlendirir |
 
 ## Neler Yapabilirsiniz?
 
 ### Kurulum
 ```bash
-kastell                               # Interaktif menu (onerilen)
-kastell init                          # Interaktif kurulum (dogrudan)
+kastell                               # İnteraktif menü (önerilen)
+kastell init                          # İnteraktif kurulum (doğrudan)
 kastell init --provider hetzner       # Otomatik kurulum
 kastell init --config kastell.yml     # YAML ile kurulum
-kastell init --template production    # Sablon kullanarak
-kastell init --mode bare              # Genel VPS (Coolify olmadan)
+kastell init --template production    # Şablon kullanarak
+kastell init --mode bare              # Genel VPS (platform yok)
+kastell init --mode dokploy           # Dokploy (Docker Swarm PaaS)
 ```
 
-### Yonetim
+### Yönetim
 ```bash
-kastell list                  # Sunuculari listele
+kastell list                  # Sunucuları listele
 kastell status sunucum        # Sunucu durumu
-kastell status --all          # Tum sunuculari kontrol et
-kastell ssh sunucum           # Sunucuya SSH baglantisi
-kastell restart sunucum       # Sunucuyu yeniden baslat
+kastell status --all          # Tüm sunucuları kontrol et
+kastell ssh sunucum           # Sunucuya SSH bağlantısı
+kastell restart sunucum       # Sunucuyu yeniden başlat
 kastell destroy sunucum       # Bulut sunucusunu tamamen sil
 kastell add                   # Mevcut sunucu ekle
-kastell remove sunucum        # Yerel yapilandirmadan kaldir
-kastell config set key value  # Varsayilan yapilandirma yonet
+kastell remove sunucum        # Yerel yapılandırmadan kaldır
+kastell config set key value  # Varsayılan yapılandırma yönet
+kastell config validate       # servers.yaml yapısını ve tiplerini doğrula
 kastell export                # Sunucu listesini JSON'a aktar
-kastell import servers.json   # JSON'dan sunuculari ice aktar
+kastell import servers.json   # JSON'dan sunucuları içe aktar
 ```
 
-### Guncelleme ve Bakim
+### Güncelleme ve Bakım
 ```bash
-kastell update sunucum        # Coolify guncelle (Coolify sunuculari)
-kastell maintain sunucum      # Tam bakim (snapshot + guncelleme + saglik + yeniden baslatma)
-kastell maintain --all        # Tum sunuculari bakima al
+kastell update sunucum                # Platformu güncelle (Coolify veya Dokploy, sunucu kaydından otomatik algılanır)
+kastell update sunucum --dry-run      # Güncellemeyi çalıştırmadan önizle
+kastell maintain sunucum              # Tam bakım (snapshot + güncelleme + sağlık + yeniden başlatma)
+kastell maintain sunucum --dry-run    # Bakım adımlarını önizle
+kastell maintain --all                # Tüm sunucuları bakıma al
 ```
 
-### Yedekleme ve Geri Yukleme
+### Yedekleme ve Geri Yükleme
 ```bash
-kastell backup sunucum        # Veritabani + yapilandirma yedegi
-kastell backup --all          # Tum sunuculari yedekle
-kastell restore sunucum       # Yedekten geri yukle
+kastell backup sunucum        # Veritabanı + yapılandırma yedeği
+kastell backup --all          # Tüm sunucuları yedekle
+kastell restore sunucum       # Yedekten geri yükle
 ```
 
 ### Snapshot'lar
 ```bash
-kastell snapshot create sunucum   # VPS snapshot'i olustur (maliyet tahminiyle)
-kastell snapshot list sunucum     # Snapshot'lari listele
-kastell snapshot list --all       # Tum sunuculardaki snapshot'lari listele
+kastell snapshot create sunucum   # VPS snapshot'ı oluştur (maliyet tahminiyle)
+kastell snapshot list sunucum     # Snapshot'ları listele
+kastell snapshot list --all       # Tüm sunuculardaki snapshot'ları listele
 kastell snapshot delete sunucum   # Snapshot sil
 ```
 
-### Guvenlik
+### Güvenlik
 ```bash
-kastell firewall status sunucum   # Guvenlik duvari durumu
-kastell firewall setup sunucum    # UFW yapilandirmasi
-kastell secure audit sunucum      # Guvenlik denetimi
-kastell secure setup sunucum      # SSH sikilastirma + fail2ban
+kastell firewall status sunucum   # Güvenlik duvarı durumu
+kastell firewall setup sunucum    # UFW yapılandırması
+kastell secure audit sunucum      # Güvenlik denetimi
+kastell secure setup sunucum      # SSH sıkılaştırma + fail2ban
 kastell domain add sunucum --domain ornek.com  # Domain + SSL ayarla
 ```
 
-### Izleme ve Hata Ayiklama
+### İzleme ve Hata Ayıklama
 ```bash
-kastell monitor sunucum             # CPU, RAM, disk kullanimi
-kastell logs sunucum                 # Sunucu loglari
-kastell logs sunucum -f              # Loglari canli takip et
-kastell health                       # Tum sunucularin saglik kontrolu
-kastell doctor                       # Yerel ortam kontrolu
+kastell monitor sunucum             # CPU, RAM, disk kullanımı
+kastell logs sunucum                 # Platform logları (Coolify veya Dokploy)
+kastell logs sunucum -f              # Logları canlı takip et
+kastell health                       # Tüm sunucuların sağlık kontrolü
+kastell doctor                       # Yerel ortam kontrolü
 ```
 
-## Desteklenen Saglayicilar
+## Desteklenen Sağlayıcılar
 
-| Saglayici | Durum | Bolgeler | Baslangic Fiyati |
+| Sağlayıcı | Durum | Bölgeler | Başlangıç Fiyatı |
 |-----------|-------|----------|------------------|
-| [Hetzner Cloud](https://hetzner.cloud) | Kararli | Avrupa, ABD | ~EUR4/ay |
-| [DigitalOcean](https://digitalocean.com) | Kararli | Kuresel | ~$18/ay |
-| [Vultr](https://vultr.com) | Kararli | Kuresel | ~$10/ay |
-| [Linode (Akamai)](https://linode.com) | Beta | Kuresel | ~$24/ay |
+| [Hetzner Cloud](https://hetzner.cloud) | Kararlı | Avrupa, ABD | ~EUR4/ay |
+| [DigitalOcean](https://digitalocean.com) | Kararlı | Küresel | ~$18/ay |
+| [Vultr](https://vultr.com) | Kararlı | Küresel | ~$10/ay |
+| [Linode (Akamai)](https://linode.com) | Beta | Küresel | ~$24/ay |
 
-> Fiyatlar provider basina varsayilan starter sablonunu yansitir. Kurulum sirasinda farkli boyut secebilirsiniz. Linode destegi beta asamasindadir -- topluluk testleri memnuniyetle karsilanir.
+> Fiyatlar provider başına varsayılan starter şablonunu yansıtır. Kurulum sırasında farklı boyut seçebilirsiniz. Linode desteği beta aşamasındadır -- topluluk testleri memnuniyetle karşılanır.
 
-## YAML Yapilandirmasi
+## Desteklenen Platformlar
 
-Tek bir yapilandirma dosyasiyla kurulum yapin:
+| Platform | Mod Bayrağı | Açıklama |
+|----------|-------------|----------|
+| Coolify | `--mode coolify` (varsayılan) | Docker tabanlı PaaS |
+| Dokploy | `--mode dokploy` | Docker Swarm tabanlı PaaS |
+| Bare | `--mode bare` | Genel VPS (platform yok) |
+
+Kastell **PlatformAdapter** mimarisini kullanır -- aynı komutlar (`update`, `maintain`, `logs`, `health`) tüm platformlarda çalışır. Platform sunucu kaydınızda saklanır ve her komutta otomatik algılanır.
+
+## Geliştirici Deneyimi
+
+| Özellik | Komut / Bayrak | Açıklama |
+|---------|---------------|----------|
+| Kuru Çalıştırma | `--dry-run` | Yıkıcı komutları çalıştırmadan önizleyin. Destekleyen komutlar: destroy, update, restart, remove, maintain, restore, firewall, domain, backup, snapshot, secure. |
+| Kabuk Tamamlama | `kastell completions bash\|zsh\|fish` | Komut ve seçeneklerin sekme ile tamamlanması için kabuk tamamlama betikleri oluşturur. |
+| Yapılandırma Doğrulama | `kastell config validate` | `servers.yaml` dosyasını Zod strict şemaları ile yapısal ve tip hataları açısından kontrol eder. |
+| Sürüm Kontrolü | `kastell --version` | Mevcut sürümü gösterir ve npm'de daha yeni bir sürüm varsa bildirir. |
+
+## YAML Yapılandırması
+
+Tek bir yapılandırma dosyasıyla kurulum yapın:
 
 ```yaml
 # kastell.yml
@@ -168,37 +197,37 @@ domain: coolify.ornek.com
 kastell init --config kastell.yml
 ```
 
-## Sablonlar
+## Şablonlar
 
-| Sablon | Kullanim Alani | Icerik |
+| Şablon | Kullanım Alanı | İçerik |
 |--------|---------------|--------|
 | `starter` | Test, yan projeler | 1-2 vCPU, 2-4 GB RAM |
-| `production` | Canli uygulamalar | 2-4 vCPU, 4-8 GB RAM, tam sikilastirma |
-| `dev` | Gelistirme ve CI/CD | Starter ile ayni, sikilastirma yok |
+| `production` | Canlı uygulamalar | 2-4 vCPU, 4-8 GB RAM, tam sıkılaştırma |
+| `dev` | Geliştirme ve CI/CD | Starter ile aynı, sıkılaştırma yok |
 
 ```bash
 kastell init --template production --provider hetzner
 ```
 
-## Guvenlik
+## Güvenlik
 
-Kastell guvenlik oncelikli olarak gelistirilmektedir -- 78 test suite'inde **2.099 test**, ozel guvenlik test suite'leri dahil.
+Kastell güvenlik öncelikli olarak geliştirilmektedir -- 86 test suite'inde **2.266 test**, özel güvenlik test suite'leri dahil.
 
-- API token'lari asla diske kaydedilmez -- calisma zamaninda sorulur veya ortam degiskenlerinden alinir
-- SSH anahtarlari gerekirse otomatik olusturulur (Ed25519)
-- Tum SSH baglantilari `StrictHostKeyChecking=accept-new` ile IP dogrulama (oktet araligi) ve ortam filtreleme kullanir
-- Tum kullanici girdilerinde shell injection korumasi (`spawn`/`spawnSync`, `execSync` yok)
-- Provider hata mesajlari token sizintisini onlemek icin temizlenir
-- stderr temizleme -- hata ciktisindan IP'ler, home dizinleri, token'lar ve gizli veriler otomatik redakte edilir
-- Yapilandirma dosyasinda token tespiti (22+ anahtar pattern, buyuk/kucuk harf duyarsiz, ic ice yapilar)
-- Ice/disa aktarma islemleri hassas alanlari temizler ve dosya izinlerini sikilastirir (`0o600`)
-- `--full-setup` guvenlik duvari ve SSH sikilastirmasini otomatik etkinlestirir
-- MCP: SAFE_MODE (varsayilan: acik) tum yikici islemleri engeller, tum girdilerde Zod sema dogrulamasi, yedek geri yuklemede path traversal korumasi
+- API token'ları asla diske kaydedilmez -- çalışma zamanında sorulur veya ortam değişkenlerinden alınır
+- SSH anahtarları gerekirse otomatik oluşturulur (Ed25519)
+- Tüm SSH bağlantıları `StrictHostKeyChecking=accept-new` ile IP doğrulama (oktet aralığı) ve ortam filtreleme kullanır
+- Tüm kullanıcı girdilerinde shell injection koruması (`spawn`/`spawnSync`, `execSync` yok)
+- Provider hata mesajları token sızıntısını önlemek için temizlenir
+- stderr temizleme -- hata çıktısından IP'ler, home dizinleri, token'lar ve gizli veriler otomatik redakte edilir
+- Yapılandırma dosyasında token tespiti (22+ anahtar pattern, büyük/küçük harf duyarsız, iç içe yapılar)
+- İçe/dışa aktarma işlemleri hassas alanları temizler ve dosya izinlerini sıkılaştırır (`0o600`)
+- `--full-setup` güvenlik duvarı ve SSH sıkılaştırmasını otomatik etkinleştirir
+- MCP: SAFE_MODE (varsayılan: açık) tüm yıkıcı işlemleri engeller, tüm girdilerde Zod şema doğrulaması, yedek geri yüklemede path traversal koruması
 
 ## Kurulum
 
 ```bash
-# Dogrudan calistirin (onerilen)
+# Doğrudan çalıştırın (önerilen)
 npx kastell <komut>
 
 # Veya global olarak kurun
@@ -206,26 +235,26 @@ npm install -g kastell
 kastell <komut>
 ```
 
-Node.js 20 veya ustu gereklidir.
+Node.js 20 veya üstü gereklidir.
 
 ## Sorun Giderme
 
-**Sunucu olusturma basarisiz mi?**
-API token'inizi ve yerel ortaminizi dogrulamak icin `kastell doctor --check-tokens` komutunu calistirin.
+**Sunucu oluşturma başarısız mı?**
+API token'ınızı ve yerel ortamınızı doğrulamak için `kastell doctor --check-tokens` komutunu çalıştırın.
 
-**Coolify yanit vermiyor mu?**
-Durumu kontrol edip gerekirse otomatik yeniden baslatmak icin `kastell status sunucum --autostart` kullanin.
+**Sunucu yanıt vermiyor mu?**
+Platform durumunu kontrol edip gerekirse otomatik yeniden başlatmak için `kastell status sunucum --autostart` kullanın veya tüm sunucuları kontrol etmek için `kastell health` çalıştırın.
 
-**Sifirdan baslamak mi istiyorsunuz?**
-`kastell destroy sunucum` bulut sunucusunu tamamen kaldirir.
+**Sıfırdan başlamak mı istiyorsunuz?**
+`kastell destroy sunucum` bulut sunucusunu tamamen kaldırır.
 
-## Katkida Bulunma
+## Katkıda Bulunma
 
-Gelistirme ortami kurulumu, test ve katki rehberi icin [CONTRIBUTING.md](CONTRIBUTING.md) dosyasina bakin.
+Geliştirme ortamı kurulumu, test ve katkı rehberi için [CONTRIBUTING.md](CONTRIBUTING.md) dosyasına bakın.
 
 ## MCP Sunucusu (Yapay Zeka Entegrasyonu)
 
-Kastell, yapay zeka destekli sunucu yonetimi icin yerlesik bir [Model Context Protocol](https://modelcontextprotocol.io/) sunucusu icerir. Claude Code, Cursor, Windsurf ve diger MCP uyumlu istemcilerle calisir.
+Kastell, yapay zeka destekli sunucu yönetimi için yerleşik bir [Model Context Protocol](https://modelcontextprotocol.io/) sunucusu içerir. Claude Code, Cursor, Windsurf ve diğer MCP uyumlu istemcilerle çalışır.
 
 ```json
 {
@@ -244,40 +273,42 @@ Kastell, yapay zeka destekli sunucu yonetimi icin yerlesik bir [Model Context Pr
 }
 ```
 
-Mevcut araclar:
+Mevcut araçlar:
 
-| Arac | Eylemler | Aciklama |
+| Araç | Eylemler | Açıklama |
 |------|----------|----------|
-| `server_info` | list, status, health | Sunucu bilgilerini sorgula, bulut saglayici ve Coolify durumunu kontrol et |
-| `server_logs` | logs, monitor | SSH ile Coolify/Docker loglarini ve sistem metriklerini getir |
-| `server_manage` | add, remove, destroy | Sunuculari kaydet, kaldir veya bulut sunucusunu sil |
-| `server_maintain` | update, restart, maintain | Coolify guncelle, sunuculari yeniden baslat, tam bakim yap |
-| `server_secure` | secure, firewall, domain | SSH sikilastirma, guvenlik duvari kurallari, domain/SSL yonetimi (10 alt komut) |
-| `server_backup` | backup, snapshot | Veritabani yedekle/geri yukle ve VPS snapshot olustur/yonet |
-| `server_provision` | create | Bulut saglayicilarda yeni sunucu olustur |
+| `server_info` | list, status, health | Sunucu bilgilerini sorgula, bulut sağlayıcı ve platform durumunu kontrol et |
+| `server_logs` | logs, monitor | SSH ile platform/Docker loglarını ve sistem metriklerini getir |
+| `server_manage` | add, remove, destroy | Sunucuları kaydet, kaldır veya bulut sunucusunu sil |
+| `server_maintain` | update, restart, maintain | Platformu güncelle, sunucuları yeniden başlat, tam bakım yap |
+| `server_secure` | secure, firewall, domain | SSH sıkılaştırma, güvenlik duvarı kuralları, domain/SSL yönetimi (10 alt komut) |
+| `server_backup` | backup, snapshot | Veritabanı yedekle/geri yükle ve VPS snapshot oluştur/yönet |
+| `server_provision` | create | Bulut sağlayıcılarda yeni sunucu oluştur |
 
-> Tum yikici islemler (destroy, restore, snapshot-delete, provision, restart, maintain, snapshot-create) calistirilmak icin `SAFE_MODE=false` gerektirir.
+> Tüm yıkıcı işlemler (destroy, restore, snapshot-delete, provision, restart, maintain, snapshot-create) çalıştırılmak için `SAFE_MODE=false` gerektirir.
 
 ## Gelecek Planlar
 
-- Zamanlanmis bakim (cron tabanli otomatik bakim)
-- Dokploy platform destegi (`--platform dokploy`)
+- `kastell audit` -- güvenlik taraması ve uyumluluk raporları (v1.5)
+- kastell.dev web sitesi (v1.5)
+- Guard daemon ve fleet yönetimi (v1.6)
+- AI IDE'ler için plugin ekosistemi (v2.0)
 
 ## Felsefe
 
-> Altyapi sikici, ongorulebilir ve guvenli olmalidir.
+> Altyapı sıkıcı, öngörülebilir ve güvenli olmalıdır.
 
-Kastell bir script degildir. Self-hosted altyapiniz icin DevOps guvenlik katmaninizdir.
+Kastell bir script değildir. Self-hosted altyapınız için DevOps güvenlik katmanınızdır.
 
 ## Lisans
 
-Apache 2.0 -- [LICENSE](LICENSE) dosyasina bakin
+Apache 2.0 -- [LICENSE](LICENSE) dosyasına bakın
 
 ## Destek
 
-- [GitHub Issues](https://github.com/kastelldev/kastell/issues) -- Hata bildirimleri ve ozellik istekleri
-- [Changelog](CHANGELOG.md) -- Surum gecmisi
+- [GitHub Issues](https://github.com/kastelldev/kastell/issues) -- Hata bildirimleri ve özellik istekleri
+- [Changelog](CHANGELOG.md) -- Sürüm geçmişi
 
 ---
 
-[@omrfc](https://github.com/omrfc) tarafindan gelistirilmektedir.
+[@omrfc](https://github.com/omrfc) tarafından geliştirilmektedir.
