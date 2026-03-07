@@ -3,29 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: TUI + Dokploy + DX
 status: active
-stopped_at: Completed 14-02-PLAN.md
-last_updated: "2026-03-07T19:49:56.544Z"
+stopped_at: Completed 15-01-PLAN.md
+last_updated: "2026-03-07T20:11:31.338Z"
 last_activity: 2026-03-07 — Completed 14-02 interactive search & logo wiring
 progress:
   total_phases: 5
-  completed_phases: 4
-  total_plans: 8
-  completed_plans: 8
----
-
----
-gsd_state_version: 1.0
-milestone: v1.4
-milestone_name: TUI + Dokploy + DX
-status: active
-stopped_at: Completed 14-02-PLAN.md
-last_updated: "2026-03-07T13:00:00Z"
-last_activity: 2026-03-07 — Completed 14-02 interactive search & logo wiring
-progress:
-  total_phases: 5
-  completed_phases: 4
-  total_plans: 8
-  completed_plans: 8
+  completed_phases: 5
+  total_plans: 9
+  completed_plans: 9
 ---
 
 # Project State
@@ -36,16 +21,16 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Brand:** Kastell (kastell.dev | npm: kastell | GitHub: kastelldev)
 **Core value:** Autonomous server security and maintenance across multiple cloud providers
-**Current focus:** Phase 15 - Documentation (next)
+**Current focus:** v1.4 milestone COMPLETE
 
 ## Current Position
 
-Phase: 14 of 15 (TUI Enhancements) -- COMPLETE
-Plan: 2 of 2 in current phase (all complete)
-Status: Phase 14 complete, Phase 15 pending
-Last activity: 2026-03-07 — Completed 14-02 interactive search & logo wiring
+Phase: 15 of 15 (Documentation) -- COMPLETE
+Plan: 1 of 1 in current phase (all complete)
+Status: All v1.4 phases complete (11-15)
+Last activity: 2026-03-07 — Completed 15-01 README documentation update
 
-Progress: [██████████] 100% v1.4 (8/8 plans complete)
+Progress: [██████████] 100% v1.4 (9/9 plans complete)
 
 ## Performance Metrics
 
@@ -67,6 +52,7 @@ Progress: [██████████] 100% v1.4 (8/8 plans complete)
 | 12. Bug Fixes | 1/1 | 10min | 10min |
 | 13. DX | 3/3 | ~30min | ~10min |
 | 14. TUI Enhancements | 2/2 | 9min | 4.5min |
+| 15. Documentation | 1/1 | 4min | 4min |
 
 ## Accumulated Context
 
@@ -99,6 +85,7 @@ Recent decisions affecting current work:
 - [14-01]: Unicode emoji for category separators (well-supported subset)
 - [14-02]: Search prompt replaces list prompt for main menu (type: search with source function)
 - [14-02]: buildSearchSource exported for testability, filters by name/value/description
+- [Phase 15]: MCP tool descriptions changed from Coolify-specific to platform-neutral
 
 ### Pending Todos
 
@@ -110,6 +97,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-07T13:00:00Z
-Stopped at: Completed 14-02-PLAN.md
-Next action: Phase 15 (Documentation) planning and execution
+Last session: 2026-03-07T20:11:31.327Z
+Stopped at: Completed 15-01-PLAN.md
+Next action: v1.4 release (npm publish)

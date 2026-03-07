@@ -35,7 +35,7 @@ Requirements for v1.4 release. Each maps to roadmap phases.
 
 ### Documentation
 
-- [ ] **DOCS-01**: README.md and README.tr.md accurately reflect all v1.4 features, Dokploy support, and current test counts
+- [x] **DOCS-01**: README.md and README.tr.md accurately reflect all v1.4 features, Dokploy support, and current test counts
 
 ## Future Requirements
 
@@ -81,7 +81,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TUI-02 | Phase 14 | Complete |
 | TUI-03 | Phase 14 | Complete |
 | TUI-04 | Phase 14 | Complete |
-| DOCS-01 | Phase 15 | Pending |
+| DOCS-01 | Phase 15 | Complete |
 
 **Coverage:**
 - v1.4 requirements: 15 total

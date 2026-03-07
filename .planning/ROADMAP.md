@@ -72,7 +72,7 @@ MCP server with 7 tools, 12 security fixes, SSH key auto-generation, full docs u
 - [x] **Phase 12: Bug Fixes** - SCP Windows, locale-dependent metrics, sshd_config Include directives (completed 2026-03-07)
 - [x] **Phase 13: Developer Experience** - dry-run, shell completions, config validation, version check (completed 2026-03-07)
 - [x] **Phase 14: TUI Enhancements** - ASCII logo, emoji categories, tooltips, menu search (completed 2026-03-07)
-- [ ] **Phase 15: Documentation** - README.md and README.tr.md update for all v1.4 features
+- [x] **Phase 15: Documentation** - README.md and README.tr.md update for all v1.4 features (completed 2026-03-07)
 
 ## Phase Details
 
@@ -277,7 +277,7 @@ Plans:
 | 12. Bug Fixes | v1.4 | 1/1 | Complete | 2026-03-07 |
 | 13. Developer Experience | 3/3 | Complete    | 2026-03-07 | - |
 | 14. TUI Enhancements | v1.4 | Complete    | 2026-03-07 | 2026-03-07 |
-| 15. Documentation | v1.4 | 0/? | Not started | - |
+| 15. Documentation | 1/1 | Complete   | 2026-03-07 | - |
 
 ---
 *Roadmap created: 2026-02-27*

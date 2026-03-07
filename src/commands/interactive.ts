@@ -175,6 +175,7 @@ async function promptInit(): Promise<string[] | null> {
 async function promptLogs(): Promise<string[] | null> {
   const service = await promptList("Log source:", [
     { name: "Coolify container logs", value: "coolify" },
+    { name: "Dokploy container logs", value: "dokploy" },
     { name: "Docker service logs", value: "docker" },
     { name: "Full system journal", value: "system" },
   ]);
