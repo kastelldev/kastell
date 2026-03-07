@@ -2,7 +2,7 @@
 
 > CLI toolkit for provisioning, securing, and managing self-hosted servers.
 
-> English | [Turkce](README.tr.md)
+> English | [Türkçe](README.tr.md)
 
 ![Tests](https://github.com/kastelldev/kastell/actions/workflows/ci.yml/badge.svg)
 [![Coverage](https://codecov.io/gh/kastelldev/kastell/branch/main/graph/badge.svg)](https://codecov.io/gh/kastelldev/kastell)
@@ -32,17 +32,23 @@ Stop babysitting your servers. Kastell was built to fix that.
 npx kastell
 ```
 
-Running `kastell` without any arguments launches an **interactive menu** where you can browse all available actions by category, pick what you need with arrow keys, and configure options step by step -- no need to remember any command names or flags.
+Running `kastell` without any arguments launches an **interactive search menu** with a branded ASCII logo. Browse actions by emoji-categorized groups, type to filter results instantly, and configure options step by step -- no need to remember any command names or flags.
 
 ```
-? What would you like to do?
-  Server Management
+  _  __          _       _ _
+ | |/ /__ _ ___ | |_ ___| | |
+ | ' // _` / __|| __/ _ \ | |
+ | . \ (_| \__ \| ||  __/ | |
+ |_|\_\__,_|___/ \__\___|_|_|
+
+? What would you like to do? (Type to search)
+  -- Server Management --
 >   Deploy a new server
     Add an existing server
     List all servers
     Check server status
     ...
-  Security
+  -- Security --
     Harden SSH & fail2ban
     Manage firewall (UFW)
     ...
@@ -81,7 +87,8 @@ kastell init                          # Interactive setup (direct)
 kastell init --provider hetzner       # Non-interactive
 kastell init --config kastell.yml     # From YAML config
 kastell init --template production    # Use a template
-kastell init --mode bare              # Generic VPS (no Coolify)
+kastell init --mode bare              # Generic VPS (no platform)
+kastell init --mode dokploy           # Dokploy (Docker Swarm PaaS)
 ```
 
 ### Manage
@@ -95,15 +102,18 @@ kastell destroy my-server     # Destroy cloud server entirely
 kastell add                   # Add existing server
 kastell remove my-server      # Remove from local config
 kastell config set key value  # Manage default configuration
+kastell config validate       # Validate servers.yaml structure and types
 kastell export                # Export server list to JSON
 kastell import servers.json   # Import servers from JSON
 ```
 
 ### Update & Maintain
 ```bash
-kastell update my-server      # Update Coolify (Coolify servers)
-kastell maintain my-server    # Full maintenance (snapshot + update + health + reboot)
-kastell maintain --all        # Maintain all servers
+kastell update my-server              # Update platform (Coolify or Dokploy, auto-detected)
+kastell update my-server --dry-run    # Preview update without executing
+kastell maintain my-server            # Full maintenance (snapshot + update + health + reboot)
+kastell maintain my-server --dry-run  # Preview maintenance steps
+kastell maintain --all                # Maintain all servers
 ```
 
 ### Back Up & Restore
@@ -133,7 +143,7 @@ kastell domain add my-server --domain example.com  # Set domain + SSL
 ### Monitor & Debug
 ```bash
 kastell monitor my-server             # CPU, RAM, disk usage
-kastell logs my-server                 # View server logs
+kastell logs my-server                 # View platform logs (Coolify or Dokploy)
 kastell logs my-server -f              # Follow logs
 kastell health                         # Health check all servers
 kastell doctor                         # Check local environment
@@ -149,6 +159,25 @@ kastell doctor                         # Check local environment
 | [Linode (Akamai)](https://linode.com) | Beta | Global | ~$24/mo |
 
 > Prices reflect the default starter template per provider. You can choose a different size during setup. Linode support is in beta -- community testing welcome.
+
+## Supported Platforms
+
+| Platform | Mode Flag | Description |
+|----------|-----------|-------------|
+| Coolify | `--mode coolify` (default) | Docker-based PaaS |
+| Dokploy | `--mode dokploy` | Docker Swarm-based PaaS |
+| Bare | `--mode bare` | Generic VPS (no platform) |
+
+Kastell uses a **PlatformAdapter** architecture -- the same commands (`update`, `maintain`, `logs`, `health`) work across all platforms. The platform is stored in your server record and auto-detected on each command.
+
+## Developer Experience
+
+| Feature | Command / Flag | Description |
+|---------|---------------|-------------|
+| Dry Run | `--dry-run` | Preview destructive commands without executing. Available on: destroy, update, restart, remove, maintain, restore, firewall, domain, backup, snapshot, secure. |
+| Shell Completions | `kastell completions bash\|zsh\|fish` | Generate shell completion scripts for tab-completion of commands and options. |
+| Config Validation | `kastell config validate` | Check `servers.yaml` for structural and type errors using Zod strict schemas. |
+| Version Check | `kastell --version` | Shows current version and notifies if a newer version is available on npm. |
 
 ## YAML Config
 
@@ -182,7 +211,7 @@ kastell init --template production --provider hetzner
 
 ## Security
 
-Kastell is built with security as a priority -- **2,191 tests** across 84 suites, including dedicated security test suites.
+Kastell is built with security as a priority -- **2,266 tests** across 86 suites, including dedicated security test suites.
 
 - API tokens are never stored on disk -- prompted at runtime or via environment variables
 - SSH keys are auto-generated if needed (Ed25519)
@@ -214,7 +243,7 @@ Requires Node.js 20 or later.
 Run `kastell doctor --check-tokens` to verify your API token and local environment.
 
 **Server not responding?**
-Use `kastell status my-server --autostart` for Coolify servers, or `kastell health` to check all servers at once.
+Use `kastell status my-server --autostart` to check platform status and auto-restart if needed, or `kastell health` to check all servers at once.
 
 **Need to start fresh?**
 `kastell destroy my-server` removes the cloud server entirely.
@@ -248,10 +277,10 @@ Available tools:
 
 | Tool | Actions | Description |
 |------|---------|-------------|
-| `server_info` | list, status, health | Query server information, check cloud provider & Coolify status |
-| `server_logs` | logs, monitor | Fetch Coolify/Docker logs and system metrics via SSH |
+| `server_info` | list, status, health | Query server information, check cloud provider and platform status |
+| `server_logs` | logs, monitor | Fetch platform/Docker logs and system metrics via SSH |
 | `server_manage` | add, remove, destroy | Register, unregister, or destroy cloud servers |
-| `server_maintain` | update, restart, maintain | Update Coolify, restart servers, run full maintenance |
+| `server_maintain` | update, restart, maintain | Update platform, restart servers, run full maintenance |
 | `server_secure` | secure, firewall, domain | SSH hardening, firewall rules, domain/SSL management (10 subcommands) |
 | `server_backup` | backup, snapshot | Backup/restore databases and create/manage VPS snapshots |
 | `server_provision` | create | Provision new servers on cloud providers |
@@ -260,9 +289,10 @@ Available tools:
 
 ## What's Next
 
-- Dokploy update/maintain/logs support (v1.4)
-- TUI improvements and technical debt cleanup (v1.4)
-- Scheduled maintenance and autonomous security patrol (v2.0)
+- `kastell audit` -- security scanning and compliance reports (v1.5)
+- kastell.dev website (v1.5)
+- Guard daemon and fleet management (v1.6)
+- Plugin ecosystem for AI IDEs (v2.0)
 
 ## Philosophy
 
