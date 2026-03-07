@@ -1,19 +1,10 @@
 import { readFileSync } from "fs";
 import yaml from "js-yaml";
+import { z } from "zod";
 import type { KastellYamlConfig } from "../types/index.js";
 import { VALID_TEMPLATE_NAMES } from "./templates.js";
 import type { TemplateName } from "../types/index.js";
 import { SUPPORTED_PROVIDERS, invalidProviderError } from "../constants.js";
-
-const KNOWN_KEYS = new Set([
-  "template",
-  "provider",
-  "region",
-  "size",
-  "name",
-  "fullSetup",
-  "domain",
-]);
 
 const SECURITY_KEYS = new Set([
   "token", "apitoken", "api_token", "apikey", "api_key", "secret",
@@ -37,6 +28,63 @@ function checkSecurityKeys(obj: Record<string, unknown>, warnings: string[], pat
   }
 }
 
+// Zod schema for kastell.yml config
+const KastellYamlSchema = z.object({
+  provider: z.enum(SUPPORTED_PROVIDERS).optional(),
+  template: z.enum(VALID_TEMPLATE_NAMES as [TemplateName, ...TemplateName[]]).optional(),
+  name: z.string().min(3).max(63).regex(/^[a-z][a-z0-9-]*[a-z0-9]$/).optional(),
+  region: z.string().optional(),
+  size: z.string().optional(),
+  fullSetup: z.boolean().optional(),
+  domain: z.string().optional(),
+}).strict();
+
+/**
+ * Map a Zod issue to a user-friendly warning string.
+ */
+function formatZodIssue(issue: z.core.$ZodIssue, rawObj: Record<string, unknown>): string {
+  const field = issue.path.length > 0 ? String(issue.path[issue.path.length - 1]) : "value";
+
+  switch (issue.code) {
+    case "invalid_value": {
+      // Enum validation failure -- provide the invalidProviderError for provider
+      const values = (issue as any).values as string[] | undefined;
+      if (field === "provider" && values) {
+        const received = rawObj.provider;
+        if (typeof received === "string") {
+          return invalidProviderError(received);
+        }
+        return `Invalid provider: expected ${values.map((v: string) => `"${v}"`).join(", ")}`;
+      }
+      if (field === "template" && values) {
+        const received = rawObj.template;
+        if (typeof received === "string") {
+          return `Invalid template: "${received}". Use ${values.map((v: string) => `"${v}"`).join(", ")}.`;
+        }
+        return `Invalid template: expected ${values.map((v: string) => `"${v}"`).join(", ")}`;
+      }
+      return `Invalid ${field}: ${issue.message}`;
+    }
+    case "invalid_type":
+      return `Invalid ${field}: expected ${(issue as any).expected}, received ${(issue as any).received ?? typeof issue.input}`;
+    case "too_small":
+      return `Invalid ${field}: must be at least ${(issue as any).minimum} characters`;
+    case "too_big":
+      return `Invalid ${field}: must be at most ${(issue as any).maximum} characters`;
+    case "invalid_format":
+      if (field === "name") {
+        return "Invalid name: must start with a lowercase letter, end with a letter or number, and contain only lowercase letters, numbers, and hyphens";
+      }
+      return `Invalid ${field}: ${issue.message}`;
+    case "unrecognized_keys": {
+      const keys = (issue as any).keys as string[];
+      return keys.map((k: string) => `Unknown config key: "${k}"`).join("\n");
+    }
+    default:
+      return `Invalid ${field}: ${issue.message}`;
+  }
+}
+
 export interface YamlLoadResult {
   config: KastellYamlConfig;
   warnings: string[];
@@ -57,91 +105,52 @@ export function validateYamlConfig(raw: unknown): YamlLoadResult {
 
   const obj = raw as Record<string, unknown>;
 
-  // Security check: token fields (case-insensitive + nested)
+  // Security check: token fields (case-insensitive + nested) -- before Zod
   checkSecurityKeys(obj, warnings);
 
-  // Unknown keys
-  for (const key of Object.keys(obj)) {
-    if (!KNOWN_KEYS.has(key) && !SECURITY_KEYS.has(key.toLowerCase())) {
-      warnings.push(`Unknown config key: "${key}"`);
-    }
-  }
+  // Run Zod validation
+  const result = KastellYamlSchema.safeParse(raw);
 
-  // provider
-  if (obj.provider !== undefined) {
-    if (typeof obj.provider !== "string") {
-      warnings.push(
-        `Invalid provider: must be a string (${SUPPORTED_PROVIDERS.map((p) => `"${p}"`).join(", ")})`,
-      );
-    } else if (!(SUPPORTED_PROVIDERS as readonly string[]).includes(obj.provider)) {
-      warnings.push(invalidProviderError(obj.provider));
-    } else {
-      config.provider = obj.provider;
-    }
-  }
-
-  // template
-  if (obj.template !== undefined) {
-    if (typeof obj.template !== "string") {
-      warnings.push('Invalid template: must be a string ("starter", "production", or "dev")');
-    } else if (!VALID_TEMPLATE_NAMES.includes(obj.template as TemplateName)) {
-      warnings.push(`Invalid template: "${obj.template}". Use "starter", "production", or "dev".`);
-    } else {
-      config.template = obj.template as TemplateName;
-    }
-  }
-
-  // name validation: 3-63 chars, lowercase, hyphens, starts with letter
-  if (obj.name !== undefined) {
-    if (typeof obj.name !== "string") {
-      warnings.push("Invalid name: must be a string");
-    } else {
-      const name = obj.name;
-      if (name.length < 3 || name.length > 63) {
-        warnings.push("Invalid name: must be between 3 and 63 characters");
-      } else if (!/^[a-z][a-z0-9-]*[a-z0-9]$/.test(name)) {
-        warnings.push(
-          "Invalid name: must start with a lowercase letter, end with a letter or number, and contain only lowercase letters, numbers, and hyphens",
-        );
-      } else {
-        config.name = name;
+  if (result.success) {
+    // All fields valid
+    const data = result.data;
+    if (data.provider !== undefined) config.provider = data.provider;
+    if (data.template !== undefined) config.template = data.template;
+    if (data.name !== undefined) config.name = data.name;
+    if (data.region !== undefined) config.region = data.region;
+    if (data.size !== undefined) config.size = data.size;
+    if (data.fullSetup !== undefined) config.fullSetup = data.fullSetup;
+    if (data.domain !== undefined) config.domain = data.domain;
+  } else {
+    // Collect warnings from Zod issues
+    const issueFields = new Set<string>();
+    for (const issue of result.error.issues) {
+      const warning = formatZodIssue(issue, obj);
+      // unrecognized_keys returns newline-separated warnings
+      for (const line of warning.split("\n")) {
+        warnings.push(line);
+      }
+      // Track which fields had errors
+      if (issue.path.length > 0) {
+        issueFields.add(String(issue.path[issue.path.length - 1]));
+      }
+      if (issue.code === "unrecognized_keys") {
+        const keys = (issue as any).keys as string[];
+        for (const k of keys) issueFields.add(k);
       }
     }
-  }
 
-  // region (string)
-  if (obj.region !== undefined) {
-    if (typeof obj.region !== "string") {
-      warnings.push("Invalid region: must be a string");
-    } else {
-      config.region = obj.region;
-    }
-  }
-
-  // size (string)
-  if (obj.size !== undefined) {
-    if (typeof obj.size !== "string") {
-      warnings.push("Invalid size: must be a string");
-    } else {
-      config.size = obj.size;
-    }
-  }
-
-  // fullSetup (boolean)
-  if (obj.fullSetup !== undefined) {
-    if (typeof obj.fullSetup !== "boolean") {
-      warnings.push("Invalid fullSetup: must be true or false");
-    } else {
-      config.fullSetup = obj.fullSetup;
-    }
-  }
-
-  // domain (string)
-  if (obj.domain !== undefined) {
-    if (typeof obj.domain !== "string") {
-      warnings.push("Invalid domain: must be a string");
-    } else {
-      config.domain = obj.domain;
+    // Build partial config from fields that didn't have errors
+    // Parse each known field individually to get valid values
+    const knownFields = ["provider", "template", "name", "region", "size", "fullSetup", "domain"] as const;
+    for (const field of knownFields) {
+      if (obj[field] !== undefined && !issueFields.has(field)) {
+        const fieldSchema = KastellYamlSchema.shape[field];
+        const fieldResult = fieldSchema.safeParse(obj[field]);
+        if (fieldResult.success && fieldResult.data !== undefined) {
+          (config as any)[field] = fieldResult.data;
+        }
+      }
     }
   }
 

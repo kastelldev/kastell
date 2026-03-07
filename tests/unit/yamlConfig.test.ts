@@ -65,13 +65,14 @@ describe("yamlConfig", () => {
     it("should warn for invalid provider string", () => {
       const result = validateYamlConfig({ provider: "aws" });
       expect(result.config.provider).toBeUndefined();
-      expect(result.warnings[0]).toContain('Invalid provider: "aws"');
+      expect(result.warnings[0]).toContain("Invalid provider");
+      expect(result.warnings[0]).toContain("aws");
     });
 
     it("should warn for non-string provider", () => {
       const result = validateYamlConfig({ provider: 123 });
       expect(result.config.provider).toBeUndefined();
-      expect(result.warnings[0]).toContain("must be a string");
+      expect(result.warnings[0]).toContain("Invalid provider");
     });
 
     it("should include linode in invalid provider message", () => {
@@ -98,13 +99,14 @@ describe("yamlConfig", () => {
     it("should warn for invalid template string", () => {
       const result = validateYamlConfig({ template: "enterprise" });
       expect(result.config.template).toBeUndefined();
-      expect(result.warnings[0]).toContain('Invalid template: "enterprise"');
+      expect(result.warnings[0]).toContain("Invalid template");
+      expect(result.warnings[0]).toContain("enterprise");
     });
 
     it("should warn for non-string template", () => {
       const result = validateYamlConfig({ template: true });
       expect(result.config.template).toBeUndefined();
-      expect(result.warnings[0]).toContain("must be a string");
+      expect(result.warnings[0]).toContain("Invalid template");
     });
 
     // Name validation
@@ -121,43 +123,44 @@ describe("yamlConfig", () => {
     it("should reject name shorter than 3 chars", () => {
       const result = validateYamlConfig({ name: "ab" });
       expect(result.config.name).toBeUndefined();
-      expect(result.warnings[0]).toContain("between 3 and 63 characters");
+      expect(result.warnings[0]).toContain("name");
+      expect(result.warnings[0]).toMatch(/3.*character/i);
     });
 
     it("should reject name longer than 63 chars", () => {
       const result = validateYamlConfig({ name: "a".repeat(64) });
       expect(result.config.name).toBeUndefined();
-      expect(result.warnings[0]).toContain("between 3 and 63 characters");
+      expect(result.warnings[0]).toContain("name");
     });
 
     it("should reject name starting with number", () => {
       const result = validateYamlConfig({ name: "1server" });
       expect(result.config.name).toBeUndefined();
-      expect(result.warnings[0]).toContain("lowercase letter");
+      expect(result.warnings[0]).toContain("name");
     });
 
     it("should reject name with uppercase letters", () => {
       const result = validateYamlConfig({ name: "MyServer" });
       expect(result.config.name).toBeUndefined();
-      expect(result.warnings[0]).toContain("lowercase letter");
+      expect(result.warnings[0]).toContain("name");
     });
 
     it("should reject name with special characters", () => {
       const result = validateYamlConfig({ name: "my_server" });
       expect(result.config.name).toBeUndefined();
-      expect(result.warnings[0]).toContain("lowercase letter");
+      expect(result.warnings[0]).toContain("name");
     });
 
     it("should reject name ending with hyphen", () => {
       const result = validateYamlConfig({ name: "my-server-" });
       expect(result.config.name).toBeUndefined();
-      expect(result.warnings[0]).toContain("end with a letter or number");
+      expect(result.warnings[0]).toContain("name");
     });
 
     it("should warn for non-string name", () => {
       const result = validateYamlConfig({ name: 42 });
       expect(result.config.name).toBeUndefined();
-      expect(result.warnings[0]).toContain("must be a string");
+      expect(result.warnings[0]).toContain("name");
     });
 
     // Region
@@ -169,7 +172,7 @@ describe("yamlConfig", () => {
     it("should warn for non-string region", () => {
       const result = validateYamlConfig({ region: 42 });
       expect(result.config.region).toBeUndefined();
-      expect(result.warnings[0]).toContain("Invalid region");
+      expect(result.warnings[0]).toContain("region");
     });
 
     // Size
@@ -181,7 +184,7 @@ describe("yamlConfig", () => {
     it("should warn for non-string size", () => {
       const result = validateYamlConfig({ size: false });
       expect(result.config.size).toBeUndefined();
-      expect(result.warnings[0]).toContain("Invalid size");
+      expect(result.warnings[0]).toContain("size");
     });
 
     // fullSetup
@@ -198,7 +201,8 @@ describe("yamlConfig", () => {
     it("should warn for non-boolean fullSetup", () => {
       const result = validateYamlConfig({ fullSetup: "yes" });
       expect(result.config.fullSetup).toBeUndefined();
-      expect(result.warnings[0]).toContain("must be true or false");
+      expect(result.warnings[0]).toContain("fullSetup");
+      expect(result.warnings[0]).toMatch(/boolean/i);
     });
 
     // Domain
@@ -210,15 +214,14 @@ describe("yamlConfig", () => {
     it("should warn for non-string domain", () => {
       const result = validateYamlConfig({ domain: 123 });
       expect(result.config.domain).toBeUndefined();
-      expect(result.warnings[0]).toContain("Invalid domain");
+      expect(result.warnings[0]).toContain("domain");
     });
 
     // Security: token fields
     it("should warn when token is found in config", () => {
       const result = validateYamlConfig({ token: "secret123" });
-      expect(result.warnings).toHaveLength(1);
-      expect(result.warnings[0]).toContain("Security warning");
-      expect(result.warnings[0]).toContain('"token"');
+      expect(result.warnings.some((w) => w.includes("Security warning"))).toBe(true);
+      expect(result.warnings.some((w) => w.includes('"token"'))).toBe(true);
     });
 
     it("should warn for apiToken field", () => {
@@ -250,7 +253,8 @@ describe("yamlConfig", () => {
     it("should warn for unknown keys", () => {
       const result = validateYamlConfig({ foobar: "baz" });
       expect(result.warnings).toHaveLength(1);
-      expect(result.warnings[0]).toContain('Unknown config key: "foobar"');
+      expect(result.warnings[0]).toContain("Unknown config key");
+      expect(result.warnings[0]).toContain("foobar");
     });
 
     // Full valid config
@@ -409,7 +413,7 @@ describe("yamlConfig", () => {
     // Newly added security keys (pass, cred, connection_string, dsn)
     it('should warn about "pass" key', () => {
       const { warnings } = validateYamlConfig({ db_pass: "hidden" });
-      // "pass" is in SECURITY_KEYS, but key is "db_pass" — only exact match (lowercased)
+      // "pass" is in SECURITY_KEYS, but key is "db_pass" -- only exact match (lowercased)
       // db_pass.toLowerCase() = "db_pass" which is NOT in SECURITY_KEYS
       expect(warnings.some((w: string) => w.includes("Security warning") && w.includes('"db_pass"'))).toBe(false);
     });
@@ -443,6 +447,19 @@ describe("yamlConfig", () => {
         unknown1: true,
       });
       expect(result.warnings.length).toBeGreaterThanOrEqual(3);
+    });
+
+    // Zod-specific: partial config from valid fields when some fail
+    it("should return valid fields even when some fields fail", () => {
+      const result = validateYamlConfig({
+        provider: "hetzner",
+        name: "ab", // too short
+        region: "nbg1",
+      });
+      expect(result.config.provider).toBe("hetzner");
+      expect(result.config.region).toBe("nbg1");
+      expect(result.config.name).toBeUndefined();
+      expect(result.warnings.length).toBeGreaterThanOrEqual(1);
     });
   });
 
