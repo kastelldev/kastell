@@ -251,8 +251,15 @@ program
   .description("Generate shell completion scripts (bash, zsh, fish)")
   .action(completionsCommand);
 
-// If no arguments provided, show interactive menu
+// If --version or -V, print version and await update check before exiting
 const args = process.argv.slice(2);
+if (args.includes("--version") || args.includes("-V")) {
+  console.log(pkg.version);
+  await checkForUpdate(pkg.version);
+  process.exit(0);
+}
+
+// If no arguments provided, show interactive menu
 if (args.length === 0) {
   const selected = await interactiveMenu();
   if (selected) {
