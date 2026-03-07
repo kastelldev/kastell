@@ -8,6 +8,7 @@ module.exports = {
     '^ora$': '<rootDir>/tests/__mocks__/ora.ts',
     '^inquirer$': '<rootDir>/tests/__mocks__/inquirer.ts',
     '^axios$': '<rootDir>/tests/__mocks__/axios.ts',
+    '^figlet$': '<rootDir>/tests/__mocks__/figlet.ts',
   },
   transform: {
     '^.+\\.tsx?$': ['ts-jest', {

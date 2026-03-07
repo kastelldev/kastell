@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: TUI + Dokploy + DX
 status: active
-stopped_at: Completed 13-01-PLAN.md
-last_updated: "2026-03-07T10:13:19.161Z"
-last_activity: 2026-03-07 — Completed 13-02 shell completions (bash/zsh/fish)
+stopped_at: Completed 13-03-PLAN.md -- Phase 13 complete
+last_updated: "2026-03-07T10:14:47Z"
+last_activity: 2026-03-07 — Completed 13-03 Zod config validation + validate subcommand
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 6
-  completed_plans: 5
+  completed_plans: 6
 ---
 
 # Project State
@@ -21,16 +21,16 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Brand:** Kastell (kastell.dev | npm: kastell | GitHub: kastelldev)
 **Core value:** Autonomous server security and maintenance across multiple cloud providers
-**Current focus:** Phase 13 - DX Improvements (2/3 plans complete)
+**Current focus:** Phase 13 complete, next: Phase 14 - TUI Improvements
 
 ## Current Position
 
-Phase: 13 of 15 (Developer Experience)
-Plan: 2 of 3 in current phase
-Status: 13-02 complete, 13-03 remaining
-Last activity: 2026-03-07 — Completed 13-02 shell completions (bash/zsh/fish)
+Phase: 13 of 15 (Developer Experience) -- COMPLETE
+Plan: 3 of 3 in current phase (all done)
+Status: Phase 13 complete
+Last activity: 2026-03-07 — Completed 13-03 Zod config validation + validate subcommand
 
-Progress: [#####-----] 50% v1.4 (plans: 4/5 complete across phases 11-13)
+Progress: [######----] 60% v1.4 (3/5 phases complete)
 
 ## Performance Metrics
 
@@ -50,7 +50,7 @@ Progress: [#####-----] 50% v1.4 (plans: 4/5 complete across phases 11-13)
 | 10. Fix addServerRecord | 1/1 | ~5min | 5min |
 | 11. Dokploy Lifecycle | 2/2 | 18min | 9min |
 | 12. Bug Fixes | 1/1 | 10min | 10min |
-| 13. DX (so far) | 2/3 | ~18min | ~9min |
+| 13. DX | 3/3 | ~30min | ~10min |
 
 ## Accumulated Context
 
@@ -75,6 +75,9 @@ Recent decisions affecting current work:
 - [13-01]: --version intercept before Commander to await checkForUpdate instead of fire-and-forget
 - [13-02]: Static hardcoded completion scripts, not runtime-derived from Commander
 - [13-02]: Three separate generator functions for clean shell-specific separation
+- [13-03]: Zod .strict() replaces manual KNOWN_KEYS set for unknown key detection
+- [13-03]: Security keys filtered from Zod unrecognized_keys to avoid duplicate warnings
+- [13-03]: Dynamic import of yamlConfig in validate subcommand to keep config.ts lightweight
 
 ### Pending Todos
 
@@ -86,6 +89,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-07T10:13:19.147Z
-Stopped at: Completed 13-01-PLAN.md
-Next action: `/gsd:execute-phase 13-03`
+Last session: 2026-03-07T10:14:47Z
+Stopped at: Completed 13-03-PLAN.md -- Phase 13 complete
+Next action: `/gsd:plan-phase 14` or `/gsd:execute-phase 14-01`
