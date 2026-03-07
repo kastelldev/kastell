@@ -297,10 +297,10 @@ Mevcut araçlar:
 
 ## Gelecek Planlar
 
-- `kastell audit` -- güvenlik taraması ve uyumluluk raporları (v1.5)
-- kastell.dev web sitesi (v1.5)
-- Guard daemon ve fleet yönetimi (v1.6)
-- AI IDE'ler için plugin ekosistemi (v2.0)
+- Güvenlik taraması ve uyumluluk raporları
+- kastell.dev web sitesi
+- Guard daemon ve fleet yönetimi
+- AI IDE'ler için plugin ekosistemi
 
 ## Felsefe
 

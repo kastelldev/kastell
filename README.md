@@ -297,10 +297,10 @@ Available tools:
 
 ## What's Next
 
-- `kastell audit` -- security scanning and compliance reports (v1.5)
-- kastell.dev website (v1.5)
-- Guard daemon and fleet management (v1.6)
-- Plugin ecosystem for AI IDEs (v2.0)
+- Security audit & compliance reports
+- kastell.dev website
+- Guard daemon and fleet management
+- Plugin ecosystem for AI IDEs
 
 ## Philosophy
 
