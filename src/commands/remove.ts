@@ -4,9 +4,24 @@ import { resolveServer } from "../utils/serverSelect.js";
 import { logger } from "../utils/logger.js";
 import { listBackups, cleanupServerBackups } from "../core/backup.js";
 
-export async function removeCommand(query?: string): Promise<void> {
+function showDryRun(server: { name: string; ip: string }): void {
+  logger.title("Dry Run: Remove Server");
+  logger.step(`Server: ${server.name} (${server.ip})`);
+  console.log();
+  logger.step("Step 1: Remove from local config (~/.kastell/servers.json)");
+  logger.step("Note: Cloud server is NOT destroyed");
+  console.log();
+  logger.info("No changes applied (dry run).");
+}
+
+export async function removeCommand(query?: string, options?: { dryRun?: boolean }): Promise<void> {
   const server = await resolveServer(query, "Select a server to remove:");
   if (!server) return;
+
+  if (options?.dryRun) {
+    showDryRun(server);
+    return;
+  }
 
   const { confirm } = await inquirer.prompt([
     {

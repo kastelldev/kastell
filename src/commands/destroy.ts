@@ -28,9 +28,25 @@ async function promptBackupCleanup(serverName: string): Promise<void> {
   }
 }
 
-export async function destroyCommand(query?: string): Promise<void> {
+function showDryRun(server: { name: string; ip: string; provider: string }): void {
+  logger.title("Dry Run: Destroy Server");
+  logger.step(`Server: ${server.name} (${server.ip})`);
+  logger.step(`Provider: ${server.provider}`);
+  console.log();
+  logger.step("Step 1: Delete from provider API");
+  logger.step("Step 2: Remove from local config");
+  console.log();
+  logger.info("No changes applied (dry run).");
+}
+
+export async function destroyCommand(query?: string, options?: { dryRun?: boolean }): Promise<void> {
   const server = await resolveServer(query, "Select a server to destroy:");
   if (!server) return;
+
+  if (options?.dryRun) {
+    showDryRun(server);
+    return;
+  }
 
   // First confirmation
   const { confirm } = await inquirer.prompt([

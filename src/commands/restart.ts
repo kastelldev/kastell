@@ -6,9 +6,25 @@ import { getProviderToken } from "../core/tokens.js";
 import { isBareServer } from "../utils/modeGuard.js";
 import { logger, createSpinner } from "../utils/logger.js";
 
-export async function restartCommand(query?: string): Promise<void> {
+function showDryRun(server: { name: string; ip: string; provider: string }): void {
+  logger.title("Dry Run: Restart Server");
+  logger.step(`Server: ${server.name} (${server.ip})`);
+  logger.step(`Provider: ${server.provider}`);
+  console.log();
+  logger.step("Step 1: Reboot server via provider API");
+  logger.step("Step 2: Wait for server to come back online");
+  console.log();
+  logger.info("No changes applied (dry run).");
+}
+
+export async function restartCommand(query?: string, options?: { dryRun?: boolean }): Promise<void> {
   const server = await resolveServer(query, "Select a server to restart:");
   if (!server) return;
+
+  if (options?.dryRun) {
+    showDryRun(server);
+    return;
+  }
 
   const { confirm } = await inquirer.prompt([
     {

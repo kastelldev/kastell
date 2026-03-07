@@ -29,6 +29,7 @@ import { addCommand } from "./commands/add.js";
 import { removeCommand } from "./commands/remove.js";
 import { maintainCommand } from "./commands/maintain.js";
 import { snapshotCommand } from "./commands/snapshot.js";
+import { completionsCommand } from "./commands/completions.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -76,7 +77,10 @@ program
 program
   .command("destroy [query]")
   .description("Destroy a registered server")
-  .action(destroyCommand);
+  .option("--dry-run", "Show what would happen without executing")
+  .action((query?: string, options?: { dryRun?: boolean }) =>
+    destroyCommand(query, options),
+  );
 
 program
   .command("config [subcommand] [args...]")
@@ -93,12 +97,18 @@ program
   .command("update [query]")
   .description("Update Coolify on a registered server")
   .option("--all", "Update Coolify on all servers")
-  .action((query?: string, options?: { all?: boolean }) => updateCommand(query, options));
+  .option("--dry-run", "Show what would happen without executing")
+  .action((query?: string, options?: { all?: boolean; dryRun?: boolean }) =>
+    updateCommand(query, options),
+  );
 
 program
   .command("restart [query]")
   .description("Restart a registered server")
-  .action(restartCommand);
+  .option("--dry-run", "Show what would happen without executing")
+  .action((query?: string, options?: { dryRun?: boolean }) =>
+    restartCommand(query, options),
+  );
 
 program
   .command("logs [query]")
@@ -207,7 +217,10 @@ program
 program
   .command("remove [query]")
   .description("Remove a server from local config (does not destroy the cloud server)")
-  .action(removeCommand);
+  .option("--dry-run", "Show what would happen without executing")
+  .action((query?: string, options?: { dryRun?: boolean }) =>
+    removeCommand(query, options),
+  );
 
 program
   .command("maintain [query]")
@@ -232,6 +245,11 @@ program
       options?: { all?: boolean; dryRun?: boolean; force?: boolean },
     ) => snapshotCommand(subcommand, query, options),
   );
+
+program
+  .command("completions [shell]")
+  .description("Generate shell completion scripts (bash, zsh, fish)")
+  .action(completionsCommand);
 
 // If no arguments provided, show interactive menu
 const args = process.argv.slice(2);

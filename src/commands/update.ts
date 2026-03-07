@@ -10,6 +10,18 @@ import { getAdapter, resolvePlatform } from "../adapters/factory.js";
 
 interface UpdateOptions {
   all?: boolean;
+  dryRun?: boolean;
+}
+
+function showDryRun(server: { name: string; ip: string }, platformDisplayName: string): void {
+  logger.title("Dry Run: Update Server");
+  logger.step(`Server: ${server.name} (${server.ip})`);
+  logger.step(`Platform: ${platformDisplayName}`);
+  console.log();
+  logger.step("Step 1: Validate server status via provider API");
+  logger.step("Step 2: Run update script via SSH");
+  console.log();
+  logger.info("No changes applied (dry run).");
 }
 
 async function updateSingleServer(
@@ -62,7 +74,7 @@ async function updateSingleServer(
   }
 }
 
-async function updateAll(): Promise<void> {
+async function updateAll(options?: UpdateOptions): Promise<void> {
   if (!checkSshAvailable()) {
     logger.error("SSH client not found. Required for platform update.");
     return;
@@ -71,6 +83,29 @@ async function updateAll(): Promise<void> {
   const servers = getServers();
   if (servers.length === 0) {
     logger.info("No servers found. Deploy one with: kastell init");
+    return;
+  }
+
+  if (options?.dryRun) {
+    for (const server of servers) {
+      if (isBareServer(server)) {
+        logger.warning(
+          `Skipping ${server.name}: update command is not available for bare servers.`,
+        );
+        console.log();
+        continue;
+      }
+      const serverPlatform = resolvePlatform(server);
+      if (!serverPlatform) {
+        logger.warning(`Skipping ${server.name}: no platform detected.`);
+        console.log();
+        continue;
+      }
+      const adapter = getAdapter(serverPlatform);
+      const displayName = adapter.name.charAt(0).toUpperCase() + adapter.name.slice(1);
+      showDryRun(server, displayName);
+      console.log();
+    }
     return;
   }
 
@@ -123,7 +158,7 @@ async function updateAll(): Promise<void> {
 
 export async function updateCommand(query?: string, options?: UpdateOptions): Promise<void> {
   if (options?.all) {
-    return updateAll();
+    return updateAll(options);
   }
 
   if (!checkSshAvailable()) {
@@ -150,6 +185,11 @@ export async function updateCommand(query?: string, options?: UpdateOptions): Pr
 
   const adapter = getAdapter(platform);
   const adapterDisplayName = adapter.name.charAt(0).toUpperCase() + adapter.name.slice(1);
+
+  if (options?.dryRun) {
+    showDryRun(server, adapterDisplayName);
+    return;
+  }
 
   const { confirm } = await inquirer.prompt([
     {
