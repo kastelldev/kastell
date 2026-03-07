@@ -276,7 +276,7 @@ Plans:
 | 10. Fix addServerRecord Platform Routing | v1.3 | 1/1 | Complete | 2026-03-06 |
 | 11. Dokploy Lifecycle Completion | v1.4 | 2/2 | Complete | 2026-03-07 |
 | 12. Bug Fixes | v1.4 | 1/1 | Complete | 2026-03-07 |
-| 13. Developer Experience | 1/3 | In Progress|  | - |
+| 13. Developer Experience | 2/3 | In Progress|  | - |
 | 14. TUI Enhancements | v1.4 | 0/? | Not started | - |
 | 15. Documentation | v1.4 | 0/? | Not started | - |
 

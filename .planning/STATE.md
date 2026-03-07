@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: TUI + Dokploy + DX
 status: active
-stopped_at: "Completed 13-02-PLAN.md"
-last_updated: "2026-03-07T10:10:56Z"
+stopped_at: Completed 13-01-PLAN.md
+last_updated: "2026-03-07T10:13:19.161Z"
 last_activity: 2026-03-07 — Completed 13-02 shell completions (bash/zsh/fish)
 progress:
   total_phases: 5
   completed_phases: 2
-  total_plans: 5
-  completed_plans: 4
+  total_plans: 6
+  completed_plans: 5
 ---
 
 # Project State
@@ -71,6 +71,8 @@ Recent decisions affecting current work:
 - [12-01]: LANG=C prefix on top/free/df but NOT docker ps
 - [12-01]: monitor.ts refactored to use buildMonitorCommand() eliminating duplication
 - [12-01]: sshd -T with || cat fallback for audit command
+- [13-01]: showDryRun() as local function per command, matching maintain.ts pattern
+- [13-01]: --version intercept before Commander to await checkForUpdate instead of fire-and-forget
 - [13-02]: Static hardcoded completion scripts, not runtime-derived from Commander
 - [13-02]: Three separate generator functions for clean shell-specific separation
 
@@ -84,6 +86,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-07T10:10:56Z
-Stopped at: Completed 13-02-PLAN.md
+Last session: 2026-03-07T10:13:19.147Z
+Stopped at: Completed 13-01-PLAN.md
 Next action: `/gsd:execute-phase 13-03`

@@ -21,10 +21,10 @@ Requirements for v1.4 release. Each maps to roadmap phases.
 
 ### Developer Experience
 
-- [ ] **DX-01**: User can preview destructive command effects with `--dry-run` flag
+- [x] **DX-01**: User can preview destructive command effects with `--dry-run` flag
 - [x] **DX-02**: User can generate shell completions via `kastell completions bash|zsh|fish`
 - [ ] **DX-03**: User gets clear validation errors for malformed YAML config files
-- [ ] **DX-04**: User sees new version notification when running `kastell --version`
+- [x] **DX-04**: User sees new version notification when running `kastell --version`
 
 ### TUI
 
@@ -73,10 +73,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BUGF-01 | Phase 12 | Complete |
 | BUGF-02 | Phase 12 | Complete |
 | BUGF-03 | Phase 12 | Complete |
-| DX-01 | Phase 13 | Pending |
+| DX-01 | Phase 13 | Complete |
 | DX-02 | Phase 13 | Complete |
 | DX-03 | Phase 13 | Pending |
-| DX-04 | Phase 13 | Pending |
+| DX-04 | Phase 13 | Complete |
 | TUI-01 | Phase 14 | Pending |
 | TUI-02 | Phase 14 | Pending |
 | TUI-03 | Phase 14 | Pending |
