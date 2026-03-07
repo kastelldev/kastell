@@ -133,6 +133,34 @@ describe("restartCommand", () => {
     expect(mockedCoreStatus.getCloudServerStatus).not.toHaveBeenCalled();
   });
 
+  // ---- DX-01: --dry-run support ----
+
+  it("should show dry-run preview without rebooting or prompts", async () => {
+    mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+
+    await restartCommand("1.2.3.4", { dryRun: true });
+
+    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    expect(output).toContain("Dry Run");
+    expect(output).toContain("coolify-test");
+    expect(output).toContain("1.2.3.4");
+    expect(output).toContain("No changes applied");
+    // No side effects
+    expect(mockedCoreManage.rebootServer).not.toHaveBeenCalled();
+    // No confirmation prompts
+    expect(mockedInquirer.prompt).not.toHaveBeenCalled();
+  });
+
+  it("should show provider and action in dry-run output", async () => {
+    mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+
+    await restartCommand("1.2.3.4", { dryRun: true });
+
+    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    expect(output).toContain("hetzner");
+    expect(output).toContain("Reboot server via provider API");
+  });
+
   // ---- BUG-8: restart bare message ----
 
   it("should show SSH info (not Coolify URL) after restarting a bare server (BUG-8)", async () => {

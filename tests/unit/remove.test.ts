@@ -84,6 +84,34 @@ describe("removeCommand", () => {
     expect(mockedConfig.removeServer).toHaveBeenCalledWith("123");
   });
 
+  // ---- DX-01: --dry-run support ----
+
+  it("should show dry-run preview without removing or prompts", async () => {
+    mockedServerSelect.resolveServer.mockResolvedValue(mockServer);
+
+    await removeCommand("coolify-test", { dryRun: true });
+
+    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    expect(output).toContain("Dry Run");
+    expect(output).toContain("coolify-test");
+    expect(output).toContain("1.2.3.4");
+    expect(output).toContain("No changes applied");
+    // No side effects
+    expect(mockedConfig.removeServer).not.toHaveBeenCalled();
+    // No confirmation prompts
+    expect(mockedInquirer.prompt).not.toHaveBeenCalled();
+  });
+
+  it("should show config path and note in dry-run output", async () => {
+    mockedServerSelect.resolveServer.mockResolvedValue(mockServer);
+
+    await removeCommand("coolify-test", { dryRun: true });
+
+    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    expect(output).toContain("Remove from local config");
+    expect(output).toContain("NOT destroyed");
+  });
+
   it("should show server name and IP in confirmation prompt", async () => {
     mockedServerSelect.resolveServer.mockResolvedValue(mockServer);
     mockedInquirer.prompt.mockResolvedValue({ confirm: false });

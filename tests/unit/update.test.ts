@@ -160,6 +160,50 @@ describe("updateCommand", () => {
     expect(mockedSsh.sshExec).not.toHaveBeenCalled();
   });
 
+  // ---- DX-01: --dry-run support ----
+
+  it("should show dry-run preview without calling SSH or prompts", async () => {
+    mockedSsh.checkSshAvailable.mockReturnValue(true);
+    mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+
+    await updateCommand("1.2.3.4", { dryRun: true });
+
+    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    expect(output).toContain("Dry Run");
+    expect(output).toContain("coolify-test");
+    expect(output).toContain("1.2.3.4");
+    expect(output).toContain("No changes applied");
+    // No side effects
+    expect(mockedSsh.sshExec).not.toHaveBeenCalled();
+    // No confirmation prompts
+    expect(mockedInquirer.prompt).not.toHaveBeenCalled();
+  });
+
+  it("should show platform and action in dry-run output", async () => {
+    mockedSsh.checkSshAvailable.mockReturnValue(true);
+    mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+
+    await updateCommand("1.2.3.4", { dryRun: true });
+
+    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    expect(output).toContain("Run update script via SSH");
+  });
+
+  it("should show dry-run per server in --all mode", async () => {
+    mockedSsh.checkSshAvailable.mockReturnValue(true);
+    mockedConfig.getServers.mockReturnValue([sampleServer]);
+
+    await updateCommand(undefined, { all: true, dryRun: true });
+
+    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    expect(output).toContain("Dry Run");
+    expect(output).toContain("coolify-test");
+    expect(output).toContain("No changes applied");
+    // No SSH or prompt calls
+    expect(mockedSsh.sshExec).not.toHaveBeenCalled();
+    expect(mockedInquirer.prompt).not.toHaveBeenCalled();
+  });
+
   // ---- Bare mode tests ----
 
   describe("bare server guard", () => {

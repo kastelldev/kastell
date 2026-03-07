@@ -252,6 +252,35 @@ describe("destroyCommand", () => {
     expect(mockedInquirer.prompt).toHaveBeenCalledTimes(3);
   });
 
+  // ---- DX-01: --dry-run support ----
+
+  it("should show dry-run preview without calling destroyCloudServer or prompts", async () => {
+    mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+
+    await destroyCommand("1.2.3.4", { dryRun: true });
+
+    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    expect(output).toContain("Dry Run");
+    expect(output).toContain("coolify-test");
+    expect(output).toContain("1.2.3.4");
+    expect(output).toContain("No changes applied");
+    // No side effects
+    expect(mockedCoreManage.destroyCloudServer).not.toHaveBeenCalled();
+    // No confirmation prompts triggered
+    expect(mockedInquirer.prompt).not.toHaveBeenCalled();
+  });
+
+  it("should show provider info in dry-run output", async () => {
+    mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+
+    await destroyCommand("1.2.3.4", { dryRun: true });
+
+    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    expect(output).toContain("hetzner");
+    expect(output).toContain("Delete from provider API");
+    expect(output).toContain("Remove from local config");
+  });
+
   // ---- BARE-03 regression: destroy works on bare servers ----
 
   it("should destroy bare-mode server successfully (BARE-03 regression)", async () => {
