@@ -31,7 +31,7 @@ Requirements for v1.4 release. Each maps to roadmap phases.
 - [x] **TUI-01**: User sees branded ASCII logo in interactive menu
 - [x] **TUI-02**: User sees emoji icons on menu categories
 - [x] **TUI-03**: User sees tooltip descriptions on menu items
-- [ ] **TUI-04**: User can search/filter menu items by typing
+- [x] **TUI-04**: User can search/filter menu items by typing
 
 ### Documentation
 
@@ -80,7 +80,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TUI-01 | Phase 14 | Complete |
 | TUI-02 | Phase 14 | Complete |
 | TUI-03 | Phase 14 | Complete |
-| TUI-04 | Phase 14 | Pending |
+| TUI-04 | Phase 14 | Complete |
 | DOCS-01 | Phase 15 | Pending |
 
 **Coverage:**

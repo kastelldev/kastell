@@ -71,7 +71,7 @@ MCP server with 7 tools, 12 security fixes, SSH key auto-generation, full docs u
 - [x] **Phase 11: Dokploy Lifecycle Completion** - Platform-aware update, maintain, and logs for Dokploy servers (completed 2026-03-07)
 - [x] **Phase 12: Bug Fixes** - SCP Windows, locale-dependent metrics, sshd_config Include directives (completed 2026-03-07)
 - [x] **Phase 13: Developer Experience** - dry-run, shell completions, config validation, version check (completed 2026-03-07)
-- [ ] **Phase 14: TUI Enhancements** - ASCII logo, emoji categories, tooltips, menu search
+- [x] **Phase 14: TUI Enhancements** - ASCII logo, emoji categories, tooltips, menu search (completed 2026-03-07)
 - [ ] **Phase 15: Documentation** - README.md and README.tr.md update for all v1.4 features
 
 ## Phase Details
@@ -85,10 +85,9 @@ MCP server with 7 tools, 12 security fixes, SSH key auto-generation, full docs u
   2. User can run `kastell maintain` on a Dokploy server and the full 5-step maintenance cycle completes (update + security patches + disk cleanup + Docker prune + reboot if needed)
   3. User can run `kastell logs` on a Dokploy server and see Dokploy container logs (using correct Docker Swarm service names)
   4. All three commands delegate through PlatformAdapter interface -- no platform conditionals in command files
-**Plans**: 2 plans
+**Plans**: 1 plan
 Plans:
-- [ ] 11-01-PLAN.md — Extend PlatformAdapter interface, implement adapter methods, add pollHealth()
-- [ ] 11-02-PLAN.md — Refactor core/commands to adapter dispatch, remove Dokploy guards
+- [ ] 15-01-PLAN.md — Update README.md and README.tr.md for all v1.4 features
 
 ### Phase 12: Bug Fixes
 **Goal**: Existing functionality works correctly on Windows, non-English locales, and Ubuntu 22.04+
@@ -277,9 +276,9 @@ Plans:
 | 11. Dokploy Lifecycle Completion | v1.4 | 2/2 | Complete | 2026-03-07 |
 | 12. Bug Fixes | v1.4 | 1/1 | Complete | 2026-03-07 |
 | 13. Developer Experience | 3/3 | Complete    | 2026-03-07 | - |
-| 14. TUI Enhancements | 1/2 | In Progress|  | - |
+| 14. TUI Enhancements | v1.4 | Complete    | 2026-03-07 | 2026-03-07 |
 | 15. Documentation | v1.4 | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-02-27*
-*Last updated: 2026-03-07 — Phase 14 plans created (2 plans, Wave 1-2)*
+*Last updated: 2026-03-07 — Phase 14 complete (2/2 plans)*
