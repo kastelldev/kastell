@@ -7,6 +7,7 @@ import { logger, createSpinner } from "../utils/logger.js";
 import { getErrorMessage, mapProviderError } from "../utils/errorMapper.js";
 import { isBareServer, requireManagedMode } from "../utils/modeGuard.js";
 import { getAdapter, resolvePlatform } from "../adapters/factory.js";
+import type { Platform } from "../types/index.js";
 
 interface UpdateOptions {
   all?: boolean;
@@ -30,9 +31,9 @@ async function updateSingleServer(
   serverId: string,
   provider: string,
   apiToken: string,
-  platform: string,
+  platform: Platform,
 ): Promise<boolean> {
-  const adapter = getAdapter(platform as any);
+  const adapter = getAdapter(platform);
   const adapterDisplayName = adapter.name.charAt(0).toUpperCase() + adapter.name.slice(1);
 
   const spinner = createSpinner(`Validating ${serverName}...`);

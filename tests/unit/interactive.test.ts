@@ -5,6 +5,7 @@ jest.mock("inquirer");
 jest.mock("../../src/utils/logo.js", () => ({
   renderLogo: jest.fn(() => "MOCK_LOGO"),
 }));
+// Note: renderLogo is no longer called by interactiveMenu (header is printed by index.ts)
 
 const mockedInquirer = inquirer as jest.Mocked<typeof inquirer>;
 
@@ -70,12 +71,11 @@ describe("interactiveMenu", () => {
     jest.restoreAllMocks();
   });
 
-  it("displays logo on menu entry", async () => {
+  it("does not call renderLogo (header printed by index.ts)", async () => {
     const { renderLogo } = require("../../src/utils/logo.js");
     mockedInquirer.prompt.mockResolvedValueOnce({ action: "exit" });
     await interactiveMenu();
-    expect(renderLogo).toHaveBeenCalled();
-    expect(console.log).toHaveBeenCalledWith("MOCK_LOGO");
+    expect(renderLogo).not.toHaveBeenCalled();
   });
 
   // ─── Main menu ──────────────────────────────────────────────────────────────

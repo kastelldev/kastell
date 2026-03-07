@@ -1,6 +1,5 @@
 import inquirer from "inquirer";
 import chalk from "chalk";
-import { renderLogo } from "../utils/logo.js";
 
 const BACK = "__back__";
 
@@ -399,8 +398,7 @@ const DIRECT_COMMANDS = new Set([
 ]);
 
 export async function interactiveMenu(): Promise<string[] | null> {
-  console.log(renderLogo());
-  console.log();
+  // Header is printed by index.ts before calling interactiveMenu()
 
   // Loop: back from sub-menus returns here
   for (;;) {

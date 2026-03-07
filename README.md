@@ -1,6 +1,9 @@
-# Kastell
+<p align="center">
+  <img src="assets/logo.png" alt="Kastell" width="120" />
+</p>
 
-> CLI toolkit for provisioning, securing, and managing self-hosted servers.
+<h1 align="center">Kastell</h1>
+<p align="center">Your infrastructure, fortified.</p>
 
 > English | [Türkçe](README.tr.md)
 
@@ -32,26 +35,33 @@ Stop babysitting your servers. Kastell was built to fix that.
 npx kastell
 ```
 
-Running `kastell` without any arguments launches an **interactive search menu** with a branded ASCII logo. Browse actions by emoji-categorized groups, type to filter results instantly, and configure options step by step -- no need to remember any command names or flags.
+Running `kastell` without any arguments launches an **interactive search menu** with a gradient ASCII banner and quick-start examples. Browse actions by emoji-categorized groups, type to filter results instantly, and configure options step by step -- no need to remember any command names or flags.
 
 ```
-  _  __          _       _ _
- | |/ /__ _ ___ | |_ ___| | |
- | ' // _` / __|| __/ _ \ | |
- | . \ (_| \__ \| ||  __/ | |
- |_|\_\__,_|___/ \__\___|_|_|
+ ██╗  ██╗  ██████╗  ███████╗████████╗███████╗██╗     ██╗
+ ██║ ██╔╝  ██╔══██╗ ██╔════╝╚══██╔══╝██╔════╝██║     ██║
+ █████╔╝   ███████║ ███████╗   ██║   █████╗  ██║     ██║
+ ██╔═██╗   ██╔══██║ ╚════██║   ██║   ██╔══╝  ██║     ██║
+ ██║  ██╗  ██║  ██║ ███████║   ██║   ███████╗███████╗███████╗
+ ╚═╝  ╚═╝  ╚═╝  ╚═╝ ╚══════╝   ╚═╝   ╚══════╝╚══════╝╚══════╝
 
-? What would you like to do? (Type to search)
-  -- Server Management --
->   Deploy a new server
-    Add an existing server
-    List all servers
-    Check server status
-    ...
-  -- Security --
-    Harden SSH & fail2ban
-    Manage firewall (UFW)
-    ...
+  KASTELL  v1.4.0  ·  Your infrastructure, fortified.
+
+  $ kastell init --template production  → deploy a new server
+  $ kastell status --all                → check all servers
+  $ kastell secure setup                → harden SSH + fail2ban
+  $ kastell maintain --all              → full maintenance cycle
+
+? What would you like to do?
+   Server Management
+❯    Deploy a new server
+     Add an existing server
+     List all servers
+     ...
+   Security
+     Harden SSH & fail2ban
+     Manage firewall (UFW)
+     ...
 ```
 
 Each action includes sub-options (server mode, template, log source, port number, etc.) and a **<- Back** option to return to the main menu at any point.

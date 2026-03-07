@@ -48,7 +48,7 @@ function formatZodIssue(issue: z.core.$ZodIssue, rawObj: Record<string, unknown>
   switch (issue.code) {
     case "invalid_value": {
       // Enum validation failure -- provide the invalidProviderError for provider
-      const values = (issue as any).values as string[] | undefined;
+      const values = "values" in issue ? (issue.values as string[]) : undefined;
       if (field === "provider" && values) {
         const received = rawObj.provider;
         if (typeof received === "string") {
@@ -66,18 +66,18 @@ function formatZodIssue(issue: z.core.$ZodIssue, rawObj: Record<string, unknown>
       return `Invalid ${field}: ${issue.message}`;
     }
     case "invalid_type":
-      return `Invalid ${field}: expected ${(issue as any).expected}, received ${(issue as any).received ?? typeof issue.input}`;
+      return `Invalid ${field}: expected ${"expected" in issue ? issue.expected : "unknown"}, received ${"received" in issue ? issue.received : typeof issue.input}`;
     case "too_small":
-      return `Invalid ${field}: must be at least ${(issue as any).minimum} characters`;
+      return `Invalid ${field}: must be at least ${"minimum" in issue ? issue.minimum : 0} characters`;
     case "too_big":
-      return `Invalid ${field}: must be at most ${(issue as any).maximum} characters`;
+      return `Invalid ${field}: must be at most ${"maximum" in issue ? issue.maximum : 0} characters`;
     case "invalid_format":
       if (field === "name") {
         return "Invalid name: must start with a lowercase letter, end with a letter or number, and contain only lowercase letters, numbers, and hyphens";
       }
       return `Invalid ${field}: ${issue.message}`;
     case "unrecognized_keys": {
-      const keys = (issue as any).keys as string[];
+      const keys = "keys" in issue ? (issue.keys as string[]) : [];
       // Filter out security keys -- they already get security-specific warnings from checkSecurityKeys()
       const nonSecurityKeys = keys.filter((k: string) => !SECURITY_KEYS.has(k.toLowerCase()));
       if (nonSecurityKeys.length === 0) return "";
@@ -138,7 +138,7 @@ export function validateYamlConfig(raw: unknown): YamlLoadResult {
         issueFields.add(String(issue.path[issue.path.length - 1]));
       }
       if (issue.code === "unrecognized_keys") {
-        const keys = (issue as any).keys as string[];
+        const keys = "keys" in issue ? (issue.keys as string[]) : [];
         for (const k of keys) issueFields.add(k);
       }
     }
@@ -151,7 +151,7 @@ export function validateYamlConfig(raw: unknown): YamlLoadResult {
         const fieldSchema = KastellYamlSchema.shape[field];
         const fieldResult = fieldSchema.safeParse(obj[field]);
         if (fieldResult.success && fieldResult.data !== undefined) {
-          (config as any)[field] = fieldResult.data;
+          (config as Record<string, unknown>)[field] = fieldResult.data;
         }
       }
     }

@@ -26,7 +26,7 @@ npm run dev -- init
 4. **Run Tests**
 
 ```bash
-npm test                # Run all tests (2,191 tests, 84 suites)
+npm test                # Run all tests (2,266 tests, 86 suites)
 npm run test:watch      # Watch mode
 npm run test:coverage   # Coverage report
 ```
@@ -42,14 +42,17 @@ npm run build
 ```
 src/
 ├── index.ts              # CLI entry point (Commander.js)
+├── constants.ts          # PROVIDER_REGISTRY (single source of truth)
+├── cli/
+│   └── header.ts         # Gradient ASCII banner + quick help
 ├── commands/
-│   ├── init.ts           # Deploy a new Coolify instance
+│   ├── init.ts           # Deploy a new server instance
 │   ├── list.ts           # List all registered servers
-│   ├── status.ts         # Check server and Coolify status
+│   ├── status.ts         # Check server and platform status
 │   ├── destroy.ts        # Destroy a cloud server
 │   ├── config.ts         # Manage default configuration
 │   ├── ssh.ts            # SSH into a server
-│   ├── update.ts         # Update Coolify on a server
+│   ├── update.ts         # Update platform on a server
 │   ├── restart.ts        # Restart a server
 │   ├── logs.ts           # View server logs
 │   ├── monitor.ts        # Show server resource usage
@@ -58,26 +61,33 @@ src/
 │   ├── firewall.ts       # Manage server firewall (UFW)
 │   ├── domain.ts         # Manage server domain and SSL
 │   ├── secure.ts         # SSH hardening and fail2ban
-│   ├── backup.ts         # Backup Coolify database and config
+│   ├── backup.ts         # Backup database and config
 │   ├── restore.ts        # Restore from a backup
 │   ├── transfer.ts       # Export/import server list (JSON)
-│   ├── add.ts            # Add an existing Coolify server
+│   ├── add.ts            # Add an existing server
 │   ├── remove.ts         # Remove server from local config
 │   ├── maintain.ts       # Full maintenance cycle
 │   ├── snapshot.ts       # Manage VPS snapshots
+│   ├── completions.ts    # Shell completion scripts (bash/zsh/fish)
 │   └── interactive.ts    # Interactive menu (no-arg mode)
 ├── core/                   # Pure business logic (no CLI dependencies)
-│   ├── status.ts          # Server & Coolify status checks
+│   ├── status.ts          # Server & platform status checks
 │   ├── tokens.ts          # Non-interactive token resolution from env vars
+│   ├── deploy.ts          # Deployment orchestration
 │   ├── secure.ts          # SSH hardening + audit (pure functions)
 │   ├── firewall.ts        # UFW management (pure functions)
 │   ├── domain.ts          # FQDN/DNS management (pure functions)
 │   ├── backup.ts          # Backup/restore operations (20 pure functions)
 │   ├── snapshot.ts        # Snapshot create/list/delete + cost estimate
 │   └── provision.ts       # Server provisioning (13-step flow)
+├── adapters/               # Platform adapters (Coolify, Dokploy)
+│   ├── base.ts            # PlatformAdapter interface
+│   ├── coolify.ts         # Coolify adapter
+│   └── dokploy.ts         # Dokploy adapter
 ├── mcp/                    # MCP (Model Context Protocol) server
 │   ├── index.ts           # MCP stdio transport entry point
 │   ├── server.ts          # MCP server setup + 7 tool registrations
+│   ├── utils.ts           # Shared MCP utilities
 │   └── tools/
 │       ├── serverInfo.ts      # server_info (list/status/health)
 │       ├── serverLogs.ts      # server_logs (logs/monitor)
@@ -93,15 +103,18 @@ src/
 │   ├── vultr.ts          # Vultr implementation
 │   └── linode.ts         # Linode (Akamai) implementation (Beta)
 ├── types/
-│   └── index.ts          # Shared TypeScript types and interfaces
+│   └── index.ts          # Shared TypeScript types (ServerMode, ServerRecord)
 └── utils/
     ├── cloudInit.ts      # Cloud-init script generator
     ├── config.ts         # Server record CRUD (~/.kastell/)
     ├── configMerge.ts    # Multi-source config merge logic
     ├── defaults.ts       # Default config management
     ├── errorMapper.ts    # Provider/SSH/FS error → actionable hints
-    ├── healthCheck.ts    # Coolify health check polling
+    ├── healthCheck.ts    # Platform health check polling
     ├── logger.ts         # Chalk-based logging + spinner
+    ├── logo.ts           # Legacy logo renderer (figlet)
+    ├── migration.ts      # Config migration (~/.quicklify → ~/.kastell)
+    ├── modeGuard.ts      # SAFE_MODE + platform mode guards
     ├── openBrowser.ts    # Platform-aware browser open
     ├── prompts.ts        # Inquirer.js prompts with back navigation
     ├── providerFactory.ts # Provider factory (create by name)

@@ -30,6 +30,7 @@ import { removeCommand } from "./commands/remove.js";
 import { maintainCommand } from "./commands/maintain.js";
 import { snapshotCommand } from "./commands/snapshot.js";
 import { completionsCommand } from "./commands/completions.js";
+import { printHeader, printQuickHelp } from "./cli/header.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -259,8 +260,10 @@ if (args.includes("--version") || args.includes("-V")) {
   process.exit(0);
 }
 
-// If no arguments provided, show interactive menu
+// If no arguments provided, show header + interactive menu
 if (args.length === 0) {
+  printHeader(pkg.version);
+  printQuickHelp();
   const selected = await interactiveMenu();
   if (selected) {
     await program.parseAsync(["node", "kastell", ...selected]);

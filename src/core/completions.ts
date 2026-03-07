@@ -18,27 +18,27 @@ _kastell() {
   # Subcommand completions
   case "\${prev}" in
     config)
-      COMPREPLY=( \$(compgen -W "set get list reset validate" -- "\${cur}") )
+      COMPREPLY=( $(compgen -W "set get list reset validate" -- "\${cur}") )
       return 0
       ;;
     firewall)
-      COMPREPLY=( \$(compgen -W "setup add remove status --port --protocol --dry-run" -- "\${cur}") )
+      COMPREPLY=( $(compgen -W "setup add remove status --port --protocol --dry-run" -- "\${cur}") )
       return 0
       ;;
     domain)
-      COMPREPLY=( \$(compgen -W "add check remove --domain --no-ssl --dry-run" -- "\${cur}") )
+      COMPREPLY=( $(compgen -W "add check remove --domain --no-ssl --dry-run" -- "\${cur}") )
       return 0
       ;;
     secure)
-      COMPREPLY=( \$(compgen -W "setup status audit --port --dry-run" -- "\${cur}") )
+      COMPREPLY=( $(compgen -W "setup status audit --port --dry-run" -- "\${cur}") )
       return 0
       ;;
     snapshot)
-      COMPREPLY=( \$(compgen -W "create list delete --all --dry-run --force" -- "\${cur}") )
+      COMPREPLY=( $(compgen -W "create list delete --all --dry-run --force" -- "\${cur}") )
       return 0
       ;;
     completions)
-      COMPREPLY=( \$(compgen -W "bash zsh fish" -- "\${cur}") )
+      COMPREPLY=( $(compgen -W "bash zsh fish" -- "\${cur}") )
       return 0
       ;;
   esac
@@ -47,75 +47,75 @@ _kastell() {
   if [[ "\${cur}" == -* ]]; then
     case "\${COMP_WORDS[1]}" in
       init)
-        COMPREPLY=( \$(compgen -W "--provider --token --token-stdin --region --size --name --full-setup --config --template --no-open --mode --dry-run" -- "\${cur}") )
+        COMPREPLY=( $(compgen -W "--provider --token --token-stdin --region --size --name --full-setup --config --template --no-open --mode --dry-run" -- "\${cur}") )
         return 0
         ;;
       status)
-        COMPREPLY=( \$(compgen -W "--all --autostart" -- "\${cur}") )
+        COMPREPLY=( $(compgen -W "--all --autostart" -- "\${cur}") )
         return 0
         ;;
       destroy)
-        COMPREPLY=( \$(compgen -W "--dry-run" -- "\${cur}") )
+        COMPREPLY=( $(compgen -W "--dry-run" -- "\${cur}") )
         return 0
         ;;
       ssh)
-        COMPREPLY=( \$(compgen -W "-c --command" -- "\${cur}") )
+        COMPREPLY=( $(compgen -W "-c --command" -- "\${cur}") )
         return 0
         ;;
       update)
-        COMPREPLY=( \$(compgen -W "--all --dry-run" -- "\${cur}") )
+        COMPREPLY=( $(compgen -W "--all --dry-run" -- "\${cur}") )
         return 0
         ;;
       restart)
-        COMPREPLY=( \$(compgen -W "--dry-run" -- "\${cur}") )
+        COMPREPLY=( $(compgen -W "--dry-run" -- "\${cur}") )
         return 0
         ;;
       logs)
-        COMPREPLY=( \$(compgen -W "-n --lines -f --follow -s --service" -- "\${cur}") )
+        COMPREPLY=( $(compgen -W "-n --lines -f --follow -s --service" -- "\${cur}") )
         return 0
         ;;
       monitor)
-        COMPREPLY=( \$(compgen -W "--containers" -- "\${cur}") )
+        COMPREPLY=( $(compgen -W "--containers" -- "\${cur}") )
         return 0
         ;;
       doctor)
-        COMPREPLY=( \$(compgen -W "--check-tokens" -- "\${cur}") )
+        COMPREPLY=( $(compgen -W "--check-tokens" -- "\${cur}") )
         return 0
         ;;
       firewall)
-        COMPREPLY=( \$(compgen -W "--port --protocol --dry-run" -- "\${cur}") )
+        COMPREPLY=( $(compgen -W "--port --protocol --dry-run" -- "\${cur}") )
         return 0
         ;;
       domain)
-        COMPREPLY=( \$(compgen -W "--domain --no-ssl --dry-run" -- "\${cur}") )
+        COMPREPLY=( $(compgen -W "--domain --no-ssl --dry-run" -- "\${cur}") )
         return 0
         ;;
       secure)
-        COMPREPLY=( \$(compgen -W "--port --dry-run" -- "\${cur}") )
+        COMPREPLY=( $(compgen -W "--port --dry-run" -- "\${cur}") )
         return 0
         ;;
       backup)
-        COMPREPLY=( \$(compgen -W "--dry-run --all" -- "\${cur}") )
+        COMPREPLY=( $(compgen -W "--dry-run --all" -- "\${cur}") )
         return 0
         ;;
       restore)
-        COMPREPLY=( \$(compgen -W "--backup --dry-run" -- "\${cur}") )
+        COMPREPLY=( $(compgen -W "--backup --dry-run" -- "\${cur}") )
         return 0
         ;;
       add)
-        COMPREPLY=( \$(compgen -W "--provider --ip --name --skip-verify --mode" -- "\${cur}") )
+        COMPREPLY=( $(compgen -W "--provider --ip --name --skip-verify --mode" -- "\${cur}") )
         return 0
         ;;
       remove)
-        COMPREPLY=( \$(compgen -W "--dry-run" -- "\${cur}") )
+        COMPREPLY=( $(compgen -W "--dry-run" -- "\${cur}") )
         return 0
         ;;
       maintain)
-        COMPREPLY=( \$(compgen -W "--skip-reboot --all --dry-run" -- "\${cur}") )
+        COMPREPLY=( $(compgen -W "--skip-reboot --all --dry-run" -- "\${cur}") )
         return 0
         ;;
       snapshot)
-        COMPREPLY=( \$(compgen -W "--all --dry-run --force" -- "\${cur}") )
+        COMPREPLY=( $(compgen -W "--all --dry-run --force" -- "\${cur}") )
         return 0
         ;;
     esac
@@ -123,7 +123,7 @@ _kastell() {
 
   # Top-level command completions
   if [[ \${COMP_CWORD} -eq 1 ]]; then
-    COMPREPLY=( \$(compgen -W "\${commands}" -- "\${cur}") )
+    COMPREPLY=( $(compgen -W "\${commands}" -- "\${cur}") )
     return 0
   fi
 }
@@ -169,12 +169,12 @@ _kastell() {
     '1:command:->command' \\
     '*::arg:->args'
 
-  case \$state in
+  case $state in
     command)
       _describe 'command' commands
       ;;
     args)
-      case \$words[1] in
+      case $words[1] in
         init)
           _arguments \\
             '--provider[Cloud provider]:provider:(hetzner digitalocean vultr linode)' \\

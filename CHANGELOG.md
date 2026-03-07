@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0] - 2026-03-08
+
+### Added
+- **CLI header**: Gradient ASCII banner with cyan-to-blue color scheme, version info bar, and quick-start command examples on interactive mode launch
+- **Shell completions**: `kastell completions bash|zsh|fish` generates shell completion scripts for tab-completion
+- **Config validation**: `kastell config validate` checks `servers.yaml` for structural and type errors using Zod strict schemas
+- **Version check**: `kastell --version` now notifies if a newer version is available on npm
+- **Dry-run support**: Added `--dry-run` flag to `destroy`, `remove`, `backup`, `snapshot`, and `secure` commands
+- **Dokploy lifecycle**: Full Dokploy adapter with update, maintain, logs, health, backup, and restore support
+- **Platform adapters**: `src/adapters/` architecture — Coolify and Dokploy adapters implement `PlatformAdapter` interface
+
+### Changed
+- Interactive menu no longer uses figlet — replaced with custom gradient ASCII art header
+- `PROVIDER_REGISTRY` centralized in `src/constants.ts` as single source of truth
+- Test count: 2,099 → 2,266 (+167 new tests)
+- Test suites: 78 → 86 (+8 new suites)
+
+## [1.3.1] - 2026-03-05
+
+### Changed
+- **Metadata update**: Package description, keywords, and homepage updated for Kastell branding
+- **Repository references**: All internal references updated from `omrfc/kastell` to `kastelldev/kastell`
+
 ## [1.3.0] - 2026-03-05
 
 ### Breaking Changes

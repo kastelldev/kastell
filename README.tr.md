@@ -1,6 +1,9 @@
-# Kastell
+<p align="center">
+  <img src="assets/logo.png" alt="Kastell" width="120" />
+</p>
 
-> Self-hosted sunucularınızı kurmak, güvenliğini sağlamak ve yönetmek için CLI aracı.
+<h1 align="center">Kastell</h1>
+<p align="center">Altyapınız, güçlendirilmiş.</p>
 
 > [English](README.md) | Türkçe
 
@@ -32,26 +35,33 @@ Sunucularınıza çocuk bakıcılığı yapmayı bırakın. Kastell bunu çözme
 npx kastell
 ```
 
-`kastell` komutunu argümansız çalıştırdığınızda markalı ASCII logosuyla birlikte **interaktif arama menüsü** açılır. Emoji kategorileriyle gruplanmış tüm işlemleri görebilir, yazarak anında filtreleyebilir ve alt seçenekleri adım adım yapılandırabilirsiniz -- komut adı veya flag ezberlemek zorunda değilsiniz.
+`kastell` komutunu argümansız çalıştırdığınızda gradient ASCII banner ve hızlı başlangıç örnekleriyle birlikte **interaktif arama menüsü** açılır. Emoji kategorileriyle gruplanmış tüm işlemleri görebilir, yazarak anında filtreleyebilir ve alt seçenekleri adım adım yapılandırabilirsiniz -- komut adı veya flag ezberlemek zorunda değilsiniz.
 
 ```
-  _  __          _       _ _
- | |/ /__ _ ___ | |_ ___| | |
- | ' // _` / __|| __/ _ \ | |
- | . \ (_| \__ \| ||  __/ | |
- |_|\_\__,_|___/ \__\___|_|_|
+ ██╗  ██╗  ██████╗  ███████╗████████╗███████╗██╗     ██╗
+ ██║ ██╔╝  ██╔══██╗ ██╔════╝╚══██╔══╝██╔════╝██║     ██║
+ █████╔╝   ███████║ ███████╗   ██║   █████╗  ██║     ██║
+ ██╔═██╗   ██╔══██║ ╚════██║   ██║   ██╔══╝  ██║     ██║
+ ██║  ██╗  ██║  ██║ ███████║   ██║   ███████╗███████╗███████╗
+ ╚═╝  ╚═╝  ╚═╝  ╚═╝ ╚══════╝   ╚═╝   ╚══════╝╚══════╝╚══════╝
 
-? What would you like to do? (Type to search)
-  -- Server Management --
->   Deploy a new server
-    Add an existing server
-    List all servers
-    Check server status
-    ...
-  -- Security --
-    Harden SSH & fail2ban
-    Manage firewall (UFW)
-    ...
+  KASTELL  v1.4.0  ·  Your infrastructure, fortified.
+
+  $ kastell init --template production  → deploy a new server
+  $ kastell status --all                → check all servers
+  $ kastell secure setup                → harden SSH + fail2ban
+  $ kastell maintain --all              → full maintenance cycle
+
+? What would you like to do?
+   Server Management
+❯    Deploy a new server
+     Add an existing server
+     List all servers
+     ...
+   Security
+     Harden SSH & fail2ban
+     Manage firewall (UFW)
+     ...
 ```
 
 Her işlem alt seçenekler (sunucu modu, şablon, log kaynağı, port numarası vb.) içerir ve istediğiniz noktada ana menüye dönmek için **<- Back** seçeneği sunar.

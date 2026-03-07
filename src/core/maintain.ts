@@ -2,7 +2,7 @@ import { createProviderWithToken } from "../utils/providerFactory.js";
 import { getCloudServerStatus } from "./status.js";
 import { getErrorMessage, mapProviderError } from "../utils/errorMapper.js";
 import type { ServerRecord } from "../types/index.js";
-import type { PlatformAdapter, UpdateResult } from "../adapters/interface.js";
+import type { PlatformAdapter } from "../adapters/interface.js";
 import { getAdapter, resolvePlatform } from "../adapters/factory.js";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
