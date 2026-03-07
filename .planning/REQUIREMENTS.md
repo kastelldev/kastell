@@ -15,9 +15,9 @@ Requirements for v1.4 release. Each maps to roadmap phases.
 
 ### Bug Fixes
 
-- [ ] **BUGF-01**: User can use SCP operations on Windows without path resolution failure
-- [ ] **BUGF-02**: User can view accurate server metrics on non-English locale servers
-- [ ] **BUGF-03**: User can get correct security audit results on Ubuntu 22.04+ with Include directives
+- [x] **BUGF-01**: User can use SCP operations on Windows without path resolution failure
+- [x] **BUGF-02**: User can view accurate server metrics on non-English locale servers
+- [x] **BUGF-03**: User can get correct security audit results on Ubuntu 22.04+ with Include directives
 
 ### Developer Experience
 
@@ -70,9 +70,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DOKP-01 | Phase 11 | Complete |
 | DOKP-02 | Phase 11 | Complete |
 | DOKP-03 | Phase 11 | Complete |
-| BUGF-01 | Phase 12 | Pending |
-| BUGF-02 | Phase 12 | Pending |
-| BUGF-03 | Phase 12 | Pending |
+| BUGF-01 | Phase 12 | Complete |
+| BUGF-02 | Phase 12 | Complete |
+| BUGF-03 | Phase 12 | Complete |
 | DX-01 | Phase 13 | Pending |
 | DX-02 | Phase 13 | Pending |
 | DX-03 | Phase 13 | Pending |

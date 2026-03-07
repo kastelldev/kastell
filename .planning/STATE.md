@@ -3,15 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: TUI + Dokploy + DX
 status: active
-stopped_at: "Completed 11-02-PLAN.md — Phase 11 complete"
-last_updated: "2026-03-07T09:01:57Z"
-last_activity: 2026-03-07 — Completed 11-02 adapter dispatch refactor (phase 11 complete)
+stopped_at: "Completed 12-01-PLAN.md -- Phase 12 complete"
+last_updated: "2026-03-07T09:37:46Z"
+last_activity: 2026-03-07 — Completed 12-01 bug fixes (SCP path, locale, sshd -T)
 progress:
   total_phases: 5
-  completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
-  percent: 100
+  completed_phases: 2
+  total_plans: 3
+  completed_plans: 3
 ---
 
 # Project State
@@ -22,16 +21,16 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Brand:** Kastell (kastell.dev | npm: kastell | GitHub: kastelldev)
 **Core value:** Autonomous server security and maintenance across multiple cloud providers
-**Current focus:** Phase 11 complete, next: Phase 12 - Bug Fixes
+**Current focus:** Phase 12 complete, next: Phase 13 - DX Improvements
 
 ## Current Position
 
-Phase: 11 of 15 (Dokploy Lifecycle Completion) -- COMPLETE
-Plan: 2 of 2 in current phase (all done)
-Status: Phase 11 complete
-Last activity: 2026-03-07 — Completed 11-02 adapter dispatch refactor (phase 11 complete)
+Phase: 12 of 15 (Bug Fixes) -- COMPLETE
+Plan: 1 of 1 in current phase (all done)
+Status: Phase 12 complete
+Last activity: 2026-03-07 — Completed 12-01 bug fixes (SCP path, locale, sshd -T)
 
-Progress: [##########] 100% Phase 11 (2/2 plans complete)
+Progress: [####------] 40% v1.4 (2/5 phases complete)
 
 ## Performance Metrics
 
@@ -50,6 +49,7 @@ Progress: [##########] 100% Phase 11 (2/2 plans complete)
 | 9. Dokploy Adapter | 2/2 | 12min | 6min |
 | 10. Fix addServerRecord | 1/1 | ~5min | 5min |
 | 11. Dokploy Lifecycle | 2/2 | 18min | 9min |
+| 12. Bug Fixes | 1/1 | 10min | 10min |
 
 ## Accumulated Context
 
@@ -66,6 +66,10 @@ Recent decisions affecting current work:
 - [11-02]: checkCoolifyHealth() kept with @deprecated -- still has callers in health.ts, status.ts, MCP
 - [11-02]: Cross-platform log validation: coolify service on dokploy (and vice versa) returns clear error
 - [11-02]: MCP serverMaintain update action uses adapter dispatch
+- [12-01]: resolveScpPath derives from resolveSshPath -- no separate cache needed
+- [12-01]: LANG=C prefix on top/free/df but NOT docker ps
+- [12-01]: monitor.ts refactored to use buildMonitorCommand() eliminating duplication
+- [12-01]: sshd -T with || cat fallback for audit command
 
 ### Pending Todos
 
@@ -73,10 +77,10 @@ None.
 
 ### Blockers/Concerns
 
-- `sshd -T` output uses lowercase keys -- parseSshdConfig() regex needs adjustment in Phase 12
+None.
 
 ## Session Continuity
 
-Last session: 2026-03-07T09:01:57Z
-Stopped at: Completed 11-02-PLAN.md -- Phase 11 complete
-Next action: `/gsd:plan-phase 12` or `/gsd:execute-phase 12-01`
+Last session: 2026-03-07T09:37:46Z
+Stopped at: Completed 12-01-PLAN.md -- Phase 12 complete
+Next action: `/gsd:plan-phase 13` or `/gsd:execute-phase 13-01`
