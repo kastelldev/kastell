@@ -6,8 +6,10 @@ import type {
   HealthResult,
   PlatformStatusResult,
   PlatformBackupResult,
+  UpdateResult,
 } from "./interface.js";
 import type { BackupManifest } from "../types/index.js";
+import { COOLIFY_UPDATE_CMD } from "../constants.js";
 import { assertValidIp, sshExec } from "../utils/ssh.js";
 import {
   formatTimestamp,
@@ -203,6 +205,32 @@ echo "Then access your instance at: http://YOUR_SERVER_IP:8000"
       platformVersion,
       status: health.status,
     };
+  }
+
+  async update(ip: string): Promise<UpdateResult> {
+    assertValidIp(ip);
+    try {
+      const result = await sshExec(ip, COOLIFY_UPDATE_CMD);
+      if (result.code === 0) {
+        return { success: true, output: result.stdout || undefined };
+      }
+      return {
+        success: false,
+        error: `Update failed (exit code ${result.code})`,
+        output: result.stderr || result.stdout || undefined,
+      };
+    } catch (error: unknown) {
+      const hint = mapSshError(error, ip);
+      return {
+        success: false,
+        error: getErrorMessage(error),
+        ...(hint ? { hint } : {}),
+      };
+    }
+  }
+
+  getLogCommand(lines: number, follow: boolean): string {
+    return `docker logs coolify --tail ${lines}${follow ? " --follow" : ""}`;
   }
 
   // ─── Private Helpers ────────────────────────────────────────────────────────
