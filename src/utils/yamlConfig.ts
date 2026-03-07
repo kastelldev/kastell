@@ -78,7 +78,10 @@ function formatZodIssue(issue: z.core.$ZodIssue, rawObj: Record<string, unknown>
       return `Invalid ${field}: ${issue.message}`;
     case "unrecognized_keys": {
       const keys = (issue as any).keys as string[];
-      return keys.map((k: string) => `Unknown config key: "${k}"`).join("\n");
+      // Filter out security keys -- they already get security-specific warnings from checkSecurityKeys()
+      const nonSecurityKeys = keys.filter((k: string) => !SECURITY_KEYS.has(k.toLowerCase()));
+      if (nonSecurityKeys.length === 0) return "";
+      return nonSecurityKeys.map((k: string) => `Unknown config key: "${k}"`).join("\n");
     }
     default:
       return `Invalid ${field}: ${issue.message}`;
@@ -126,9 +129,9 @@ export function validateYamlConfig(raw: unknown): YamlLoadResult {
     const issueFields = new Set<string>();
     for (const issue of result.error.issues) {
       const warning = formatZodIssue(issue, obj);
-      // unrecognized_keys returns newline-separated warnings
+      // unrecognized_keys returns newline-separated warnings; may be empty if all keys are security keys
       for (const line of warning.split("\n")) {
-        warnings.push(line);
+        if (line) warnings.push(line);
       }
       // Track which fields had errors
       if (issue.path.length > 0) {

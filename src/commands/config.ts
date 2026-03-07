@@ -55,12 +55,38 @@ export async function configCommand(subcommand?: string, args?: string[]): Promi
       logger.success("Default configuration reset");
       break;
     }
+    case "validate": {
+      if (!args || args.length < 1) {
+        logger.error("Usage: kastell config validate <path>");
+        logger.info("Example: kastell config validate kastell.yml");
+        return;
+      }
+      const { loadYamlConfig } = await import("../utils/yamlConfig.js");
+      const result = loadYamlConfig(args[0]);
+      if (result.warnings.length === 0) {
+        logger.success(`Config file "${args[0]}" is valid`);
+        // Show parsed config summary
+        const entries = Object.entries(result.config).filter(([, v]) => v !== undefined);
+        if (entries.length > 0) {
+          for (const [k, v] of entries) {
+            logger.info(`  ${k}: ${v}`);
+          }
+        }
+      } else {
+        logger.error(`Validation errors in "${args[0]}":`);
+        for (const w of result.warnings) {
+          logger.warning(`  ${w}`);
+        }
+      }
+      break;
+    }
     default:
-      logger.error("Usage: kastell config <set|get|list|reset>");
+      logger.error("Usage: kastell config <set|get|list|reset|validate>");
       logger.info(`  set <key> <value>  Set a default value`);
       logger.info(`  get <key>          Get a default value`);
       logger.info(`  list               Show all defaults`);
       logger.info(`  reset              Clear all defaults`);
+      logger.info(`  validate <path>    Validate a kastell.yml config file`);
       logger.info(``);
       logger.info(`Valid keys: ${VALID_KEYS.join(", ")}`);
       break;

@@ -1,9 +1,12 @@
 import { configCommand } from "../../src/commands/config";
 import * as defaults from "../../src/utils/defaults";
+import * as yamlConfig from "../../src/utils/yamlConfig";
 
 jest.mock("../../src/utils/defaults");
+jest.mock("../../src/utils/yamlConfig");
 
 const mockedDefaults = defaults as jest.Mocked<typeof defaults>;
+const mockedYamlConfig = yamlConfig as jest.Mocked<typeof yamlConfig>;
 
 describe("configCommand", () => {
   let consoleSpy: jest.SpyInstance;
@@ -100,11 +103,50 @@ describe("configCommand", () => {
     });
   });
 
+  describe("validate subcommand", () => {
+    it("should show valid message for valid YAML", async () => {
+      mockedYamlConfig.loadYamlConfig.mockReturnValue({
+        config: { provider: "hetzner", region: "nbg1" },
+        warnings: [],
+      });
+      await configCommand("validate", ["kastell.yml"]);
+      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      expect(output).toContain("is valid");
+      expect(output).toContain("provider");
+      expect(output).toContain("hetzner");
+    });
+
+    it("should show warnings for invalid YAML", async () => {
+      mockedYamlConfig.loadYamlConfig.mockReturnValue({
+        config: {},
+        warnings: ['Invalid provider: "aws"'],
+      });
+      await configCommand("validate", ["bad.yml"]);
+      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      expect(output).toContain("Validation errors");
+      expect(output).toContain("Invalid provider");
+    });
+
+    it("should show usage error when no path provided", async () => {
+      await configCommand("validate", []);
+      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      expect(output).toContain("Usage");
+      expect(output).toContain("validate");
+    });
+
+    it("should show usage error when args is undefined", async () => {
+      await configCommand("validate");
+      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      expect(output).toContain("Usage");
+    });
+  });
+
   describe("no subcommand", () => {
-    it("should show usage", async () => {
+    it("should show usage with validate option", async () => {
       await configCommand();
       const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Usage");
+      expect(output).toContain("validate");
     });
 
     it("should show usage for unknown subcommand", async () => {
