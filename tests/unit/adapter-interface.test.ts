@@ -3,6 +3,7 @@ import type {
   HealthResult,
   PlatformStatusResult,
   PlatformBackupResult,
+  UpdateResult,
 } from "../../src/adapters/interface";
 
 describe("PlatformAdapter interface", () => {
@@ -24,6 +25,12 @@ describe("PlatformAdapter interface", () => {
     },
     async getStatus(_ip: string): Promise<PlatformStatusResult> {
       return { platformVersion: "1.0.0", status: "running" };
+    },
+    async update(_ip: string): Promise<UpdateResult> {
+      return { success: true, output: "updated" };
+    },
+    getLogCommand(lines: number, follow: boolean): string {
+      return `logs --tail ${lines}${follow ? " --follow" : ""}`;
     },
   };
 
@@ -82,5 +89,22 @@ describe("PlatformAdapter interface", () => {
       },
     };
     expect(result.manifest?.serverName).toBe("test");
+  });
+
+  it("should have an update method returning UpdateResult", async () => {
+    const result = await mockAdapter.update("1.2.3.4");
+    expect(result.success).toBe(true);
+    expect(result.output).toBe("updated");
+  });
+
+  it("should have a getLogCommand method returning a string", () => {
+    const cmd = mockAdapter.getLogCommand(50, false);
+    expect(typeof cmd).toBe("string");
+    expect(cmd).toContain("--tail 50");
+  });
+
+  it("should have getLogCommand with follow flag", () => {
+    const cmd = mockAdapter.getLogCommand(100, true);
+    expect(cmd).toContain("--follow");
   });
 });

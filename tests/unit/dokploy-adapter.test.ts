@@ -1,4 +1,5 @@
 import { DokployAdapter } from "../../src/adapters/dokploy";
+import { DOKPLOY_UPDATE_CMD } from "../../src/constants";
 
 // Mock dependencies
 jest.mock("../../src/utils/ssh", () => ({
@@ -25,12 +26,14 @@ jest.mock("fs", () => ({
 
 import { assertValidIp, sshExec } from "../../src/utils/ssh";
 import { scpDownload } from "../../src/core/backup";
+import { mapSshError } from "../../src/utils/errorMapper";
 import axios from "axios";
 
 const mockSshExec = sshExec as jest.MockedFunction<typeof sshExec>;
 const mockScpDownload = scpDownload as jest.MockedFunction<typeof scpDownload>;
 const mockAssertValidIp = assertValidIp as jest.MockedFunction<typeof assertValidIp>;
 const mockAxiosGet = axios.get as jest.MockedFunction<typeof axios.get>;
+const mockMapSshError = mapSshError as jest.MockedFunction<typeof mapSshError>;
 
 describe("DokployAdapter", () => {
   let adapter: DokployAdapter;
@@ -264,6 +267,42 @@ describe("DokployAdapter", () => {
 
       await adapter.getStatus("1.2.3.4");
       expect(mockAssertValidIp).toHaveBeenCalledWith("1.2.3.4");
+    });
+  });
+
+  describe("update", () => {
+    it("should call sshExec with DOKPLOY_UPDATE_CMD and return success on code 0", async () => {
+      mockSshExec.mockResolvedValueOnce({ code: 0, stdout: "Updated successfully", stderr: "" });
+      const result = await adapter.update("1.2.3.4");
+      expect(mockSshExec).toHaveBeenCalledWith("1.2.3.4", DOKPLOY_UPDATE_CMD);
+      expect(result).toEqual({ success: true, output: "Updated successfully" });
+    });
+
+    it("should return success:false with error on non-zero exit code", async () => {
+      mockSshExec.mockResolvedValueOnce({ code: 1, stdout: "", stderr: "update failed" });
+      const result = await adapter.update("1.2.3.4");
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("exit code 1");
+    });
+
+    it("should return success:false with hint on SSH error", async () => {
+      mockMapSshError.mockReturnValueOnce("SSH connection refused");
+      mockSshExec.mockRejectedValueOnce(new Error("Connection refused"));
+      const result = await adapter.update("1.2.3.4");
+      expect(result.success).toBe(false);
+      expect(result.hint).toBe("SSH connection refused");
+    });
+  });
+
+  describe("getLogCommand", () => {
+    it("should return docker service logs dokploy_dokploy --tail 50 without follow", () => {
+      const cmd = adapter.getLogCommand(50, false);
+      expect(cmd).toBe("docker service logs dokploy_dokploy --tail 50");
+    });
+
+    it("should return docker service logs dokploy_dokploy --tail 100 --follow with follow", () => {
+      const cmd = adapter.getLogCommand(100, true);
+      expect(cmd).toBe("docker service logs dokploy_dokploy --tail 100 --follow");
     });
   });
 });
