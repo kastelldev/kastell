@@ -5,6 +5,7 @@ import inquirer from "inquirer";
 import * as config from "../../src/utils/config";
 import * as sshUtils from "../../src/utils/ssh";
 import * as backupModule from "../../src/commands/backup";
+import * as adapterFactory from "../../src/adapters/factory";
 import {
   restoreCommand,
   tryRestartCoolify,
@@ -35,10 +36,16 @@ jest.mock("../../src/commands/backup", () => ({
   listBackups: jest.fn(),
   getBackupDir: jest.fn().mockReturnValue("/home/user/.kastell/backups/coolify-test"),
 }));
+jest.mock("../../src/adapters/factory", () => ({
+  getAdapter: jest.fn(),
+  resolvePlatform: jest.fn().mockReturnValue("coolify"),
+  detectPlatform: jest.fn(),
+}));
 
 const mockedConfig = config as jest.Mocked<typeof config>;
 const mockedSsh = sshUtils as jest.Mocked<typeof sshUtils>;
 const mockedBackup = backupModule as jest.Mocked<typeof backupModule>;
+const mockedAdapterFactory = adapterFactory as jest.Mocked<typeof adapterFactory>;
 const mockedExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;
 const mockedReadFileSync = readFileSync as jest.MockedFunction<typeof readFileSync>;
 const mockedInquirer = inquirer as jest.Mocked<typeof inquirer>;
@@ -310,588 +317,162 @@ describe("restore", () => {
       expect(output).toContain("cancelled");
     });
 
-    it("should handle SCP upload failure", async () => {
-      mockedSsh.checkSshAvailable.mockReturnValue(true);
-      mockedConfig.findServers.mockReturnValue([sampleServer]);
-      mockedExistsSync.mockReturnValue(true);
-      mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
-      mockedInquirer.prompt = jest
-        .fn()
-        .mockResolvedValueOnce({ confirm: true })
-        .mockResolvedValueOnce({ confirmName: "coolify-test" }) as any;
-      mockedSpawn.mockReturnValueOnce(createMockProcess(1, "upload failed"));
+    describe("adapter-delegated restore (actual, non-dry-run)", () => {
+      const mockRestoreBackup = jest.fn();
+      const mockAdapter = {
+        name: "coolify",
+        restoreBackup: mockRestoreBackup,
+        getCloudInit: jest.fn(),
+        healthCheck: jest.fn(),
+        createBackup: jest.fn(),
+        getStatus: jest.fn(),
+        update: jest.fn(),
+        getLogCommand: jest.fn(),
+      };
 
-      await restoreCommand("1.2.3.4", { backup: "my-backup" });
-
-      // Should not proceed to stop Coolify
-      expect(mockedSsh.sshExec).not.toHaveBeenCalled();
-    });
-
-    it("should handle SCP config upload failure with stderr", async () => {
-      mockedSsh.checkSshAvailable.mockReturnValue(true);
-      mockedConfig.findServers.mockReturnValue([sampleServer]);
-      mockedExistsSync.mockReturnValue(true);
-      mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
-      mockedInquirer.prompt = jest
-        .fn()
-        .mockResolvedValueOnce({ confirm: true })
-        .mockResolvedValueOnce({ confirmName: "coolify-test" }) as any;
-      mockedSpawn
-        .mockReturnValueOnce(createMockProcess(0)) // db upload OK
-        .mockReturnValueOnce(createMockProcess(1, "upload failed")); // config upload fail
-
-      await restoreCommand("1.2.3.4", { backup: "my-backup" });
-      expect(mockedSsh.sshExec).not.toHaveBeenCalled();
-    });
-
-    it("should handle SCP config upload failure without stderr", async () => {
-      mockedSsh.checkSshAvailable.mockReturnValue(true);
-      mockedConfig.findServers.mockReturnValue([sampleServer]);
-      mockedExistsSync.mockReturnValue(true);
-      mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
-      mockedInquirer.prompt = jest
-        .fn()
-        .mockResolvedValueOnce({ confirm: true })
-        .mockResolvedValueOnce({ confirmName: "coolify-test" }) as any;
-      mockedSpawn
-        .mockReturnValueOnce(createMockProcess(0))
-        .mockReturnValueOnce(createMockProcess(1)); // config upload fail, no stderr
-
-      await restoreCommand("1.2.3.4", { backup: "my-backup" });
-      expect(mockedSsh.sshExec).not.toHaveBeenCalled();
-    });
-
-    it("should handle stop Coolify failure", async () => {
-      mockedSsh.checkSshAvailable.mockReturnValue(true);
-      mockedConfig.findServers.mockReturnValue([sampleServer]);
-      mockedExistsSync.mockReturnValue(true);
-      mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
-      mockedInquirer.prompt = jest
-        .fn()
-        .mockResolvedValueOnce({ confirm: true })
-        .mockResolvedValueOnce({ confirmName: "coolify-test" }) as any;
-      mockedSpawn
-        .mockReturnValueOnce(createMockProcess(0))
-        .mockReturnValueOnce(createMockProcess(0));
-      mockedSsh.sshExec.mockResolvedValueOnce({ code: 1, stdout: "", stderr: "stop error" });
-
-      await restoreCommand("1.2.3.4", { backup: "my-backup" });
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(1);
-    });
-
-    it("should complete full restore successfully", async () => {
-      mockedSsh.checkSshAvailable.mockReturnValue(true);
-      mockedConfig.findServers.mockReturnValue([sampleServer]);
-      mockedExistsSync.mockReturnValue(true);
-      mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
-      mockedInquirer.prompt = jest
-        .fn()
-        .mockResolvedValueOnce({ confirm: true })
-        .mockResolvedValueOnce({ confirmName: "coolify-test" }) as any;
-      // SCP uploads
-      mockedSpawn
-        .mockReturnValueOnce(createMockProcess(0)) // db upload
-        .mockReturnValueOnce(createMockProcess(0)); // config upload
-      // SSH steps: stop, start-db, restore-db, restore-config, start, cleanup
-      mockedSsh.sshExec
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // stop
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // start db
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // restore db
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // restore config
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // start all
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }); // cleanup
-
-      await restoreCommand("1.2.3.4", { backup: "my-backup" });
-
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
-      expect(output).toContain("Restore complete");
-      expect(output).toContain("Coolify 4.0.0");
-    });
-
-    it("should handle db start failure with stderr", async () => {
-      mockedSsh.checkSshAvailable.mockReturnValue(true);
-      mockedConfig.findServers.mockReturnValue([sampleServer]);
-      mockedExistsSync.mockReturnValue(true);
-      mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
-      mockedInquirer.prompt = jest
-        .fn()
-        .mockResolvedValueOnce({ confirm: true })
-        .mockResolvedValueOnce({ confirmName: "coolify-test" }) as any;
-      mockedSpawn
-        .mockReturnValueOnce(createMockProcess(0))
-        .mockReturnValueOnce(createMockProcess(0));
-      mockedSsh.sshExec
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // stop OK
-        .mockResolvedValueOnce({ code: 1, stdout: "", stderr: "db start error" }) // db start fail
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }); // tryRestartCoolify
-
-      await restoreCommand("1.2.3.4", { backup: "my-backup" });
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(3);
-    });
-
-    it("should handle db start failure without stderr", async () => {
-      mockedSsh.checkSshAvailable.mockReturnValue(true);
-      mockedConfig.findServers.mockReturnValue([sampleServer]);
-      mockedExistsSync.mockReturnValue(true);
-      mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
-      mockedInquirer.prompt = jest
-        .fn()
-        .mockResolvedValueOnce({ confirm: true })
-        .mockResolvedValueOnce({ confirmName: "coolify-test" }) as any;
-      mockedSpawn
-        .mockReturnValueOnce(createMockProcess(0))
-        .mockReturnValueOnce(createMockProcess(0));
-      mockedSsh.sshExec
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
-        .mockResolvedValueOnce({ code: 1, stdout: "", stderr: "" })
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }); // tryRestartCoolify
-
-      await restoreCommand("1.2.3.4", { backup: "my-backup" });
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(3);
-    });
-
-    it("should handle db restore failure with stderr", async () => {
-      mockedSsh.checkSshAvailable.mockReturnValue(true);
-      mockedConfig.findServers.mockReturnValue([sampleServer]);
-      mockedExistsSync.mockReturnValue(true);
-      mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
-      mockedInquirer.prompt = jest
-        .fn()
-        .mockResolvedValueOnce({ confirm: true })
-        .mockResolvedValueOnce({ confirmName: "coolify-test" }) as any;
-      mockedSpawn
-        .mockReturnValueOnce(createMockProcess(0))
-        .mockReturnValueOnce(createMockProcess(0));
-      mockedSsh.sshExec
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // stop
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // db start
-        .mockResolvedValueOnce({ code: 1, stdout: "", stderr: "psql error" }) // db restore fail
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }); // tryRestartCoolify
-
-      await restoreCommand("1.2.3.4", { backup: "my-backup" });
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(4);
-    });
-
-    it("should handle db restore failure without stderr", async () => {
-      mockedSsh.checkSshAvailable.mockReturnValue(true);
-      mockedConfig.findServers.mockReturnValue([sampleServer]);
-      mockedExistsSync.mockReturnValue(true);
-      mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
-      mockedInquirer.prompt = jest
-        .fn()
-        .mockResolvedValueOnce({ confirm: true })
-        .mockResolvedValueOnce({ confirmName: "coolify-test" }) as any;
-      mockedSpawn
-        .mockReturnValueOnce(createMockProcess(0))
-        .mockReturnValueOnce(createMockProcess(0));
-      mockedSsh.sshExec
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
-        .mockResolvedValueOnce({ code: 1, stdout: "", stderr: "" })
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }); // tryRestartCoolify
-
-      await restoreCommand("1.2.3.4", { backup: "my-backup" });
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(4);
-    });
-
-    it("should handle config restore failure with stderr", async () => {
-      mockedSsh.checkSshAvailable.mockReturnValue(true);
-      mockedConfig.findServers.mockReturnValue([sampleServer]);
-      mockedExistsSync.mockReturnValue(true);
-      mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
-      mockedInquirer.prompt = jest
-        .fn()
-        .mockResolvedValueOnce({ confirm: true })
-        .mockResolvedValueOnce({ confirmName: "coolify-test" }) as any;
-      mockedSpawn
-        .mockReturnValueOnce(createMockProcess(0))
-        .mockReturnValueOnce(createMockProcess(0));
-      mockedSsh.sshExec
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // stop
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // db start
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // db restore
-        .mockResolvedValueOnce({ code: 1, stdout: "", stderr: "tar error" }) // config restore fail
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }); // tryRestartCoolify
-
-      await restoreCommand("1.2.3.4", { backup: "my-backup" });
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(5);
-    });
-
-    it("should handle config restore failure without stderr", async () => {
-      mockedSsh.checkSshAvailable.mockReturnValue(true);
-      mockedConfig.findServers.mockReturnValue([sampleServer]);
-      mockedExistsSync.mockReturnValue(true);
-      mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
-      mockedInquirer.prompt = jest
-        .fn()
-        .mockResolvedValueOnce({ confirm: true })
-        .mockResolvedValueOnce({ confirmName: "coolify-test" }) as any;
-      mockedSpawn
-        .mockReturnValueOnce(createMockProcess(0))
-        .mockReturnValueOnce(createMockProcess(0));
-      mockedSsh.sshExec
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
-        .mockResolvedValueOnce({ code: 1, stdout: "", stderr: "" })
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }); // tryRestartCoolify
-
-      await restoreCommand("1.2.3.4", { backup: "my-backup" });
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(5);
-    });
-
-    it("should handle start Coolify failure with stderr", async () => {
-      mockedSsh.checkSshAvailable.mockReturnValue(true);
-      mockedConfig.findServers.mockReturnValue([sampleServer]);
-      mockedExistsSync.mockReturnValue(true);
-      mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
-      mockedInquirer.prompt = jest
-        .fn()
-        .mockResolvedValueOnce({ confirm: true })
-        .mockResolvedValueOnce({ confirmName: "coolify-test" }) as any;
-      mockedSpawn
-        .mockReturnValueOnce(createMockProcess(0))
-        .mockReturnValueOnce(createMockProcess(0));
-      mockedSsh.sshExec
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // stop
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // db start
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // db restore
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // config restore
-        .mockResolvedValueOnce({ code: 1, stdout: "", stderr: "start error" }); // start fail
-
-      await restoreCommand("1.2.3.4", { backup: "my-backup" });
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(5);
-    });
-
-    it("should handle start Coolify failure without stderr", async () => {
-      mockedSsh.checkSshAvailable.mockReturnValue(true);
-      mockedConfig.findServers.mockReturnValue([sampleServer]);
-      mockedExistsSync.mockReturnValue(true);
-      mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
-      mockedInquirer.prompt = jest
-        .fn()
-        .mockResolvedValueOnce({ confirm: true })
-        .mockResolvedValueOnce({ confirmName: "coolify-test" }) as any;
-      mockedSpawn
-        .mockReturnValueOnce(createMockProcess(0))
-        .mockReturnValueOnce(createMockProcess(0));
-      mockedSsh.sshExec
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
-        .mockResolvedValueOnce({ code: 1, stdout: "", stderr: "" });
-
-      await restoreCommand("1.2.3.4", { backup: "my-backup" });
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(5);
-    });
-
-    it("should handle SCP upload exception", async () => {
-      mockedSsh.checkSshAvailable.mockReturnValue(true);
-      mockedConfig.findServers.mockReturnValue([sampleServer]);
-      mockedExistsSync.mockReturnValue(true);
-      mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
-      mockedInquirer.prompt = jest
-        .fn()
-        .mockResolvedValueOnce({ confirm: true })
-        .mockResolvedValueOnce({ confirmName: "coolify-test" }) as any;
-      // spawn throws synchronously → Promise rejects → catch block triggered
-      mockedSpawn.mockImplementationOnce(() => {
-        throw new Error("ENOMEM");
-      });
-
-      await restoreCommand("1.2.3.4", { backup: "my-backup" });
-      expect(mockedSsh.sshExec).not.toHaveBeenCalled();
-    });
-
-    it("should handle stop exception", async () => {
-      mockedSsh.checkSshAvailable.mockReturnValue(true);
-      mockedConfig.findServers.mockReturnValue([sampleServer]);
-      mockedExistsSync.mockReturnValue(true);
-      mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
-      mockedInquirer.prompt = jest
-        .fn()
-        .mockResolvedValueOnce({ confirm: true })
-        .mockResolvedValueOnce({ confirmName: "coolify-test" }) as any;
-      mockedSpawn
-        .mockReturnValueOnce(createMockProcess(0))
-        .mockReturnValueOnce(createMockProcess(0));
-      mockedSsh.sshExec.mockRejectedValueOnce(new Error("SSH timeout"));
-
-      await restoreCommand("1.2.3.4", { backup: "my-backup" });
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(1);
-    });
-
-    it("should handle db start exception", async () => {
-      mockedSsh.checkSshAvailable.mockReturnValue(true);
-      mockedConfig.findServers.mockReturnValue([sampleServer]);
-      mockedExistsSync.mockReturnValue(true);
-      mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
-      mockedInquirer.prompt = jest
-        .fn()
-        .mockResolvedValueOnce({ confirm: true })
-        .mockResolvedValueOnce({ confirmName: "coolify-test" }) as any;
-      mockedSpawn
-        .mockReturnValueOnce(createMockProcess(0))
-        .mockReturnValueOnce(createMockProcess(0));
-      mockedSsh.sshExec
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // stop OK
-        .mockRejectedValueOnce(new Error("Connection reset")) // db start throws
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }); // tryRestartCoolify
-
-      await restoreCommand("1.2.3.4", { backup: "my-backup" });
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(3);
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
-      expect(output).toContain("SSH connection reset");
-    });
-
-    it("should handle db restore exception", async () => {
-      mockedSsh.checkSshAvailable.mockReturnValue(true);
-      mockedConfig.findServers.mockReturnValue([sampleServer]);
-      mockedExistsSync.mockReturnValue(true);
-      mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
-      mockedInquirer.prompt = jest
-        .fn()
-        .mockResolvedValueOnce({ confirm: true })
-        .mockResolvedValueOnce({ confirmName: "coolify-test" }) as any;
-      mockedSpawn
-        .mockReturnValueOnce(createMockProcess(0))
-        .mockReturnValueOnce(createMockProcess(0));
-      mockedSsh.sshExec
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // stop
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // db start
-        .mockRejectedValueOnce(new Error("psql crash")) // db restore throws
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }); // tryRestartCoolify
-
-      await restoreCommand("1.2.3.4", { backup: "my-backup" });
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(4);
-    });
-
-    it("should handle config restore exception", async () => {
-      mockedSsh.checkSshAvailable.mockReturnValue(true);
-      mockedConfig.findServers.mockReturnValue([sampleServer]);
-      mockedExistsSync.mockReturnValue(true);
-      mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
-      mockedInquirer.prompt = jest
-        .fn()
-        .mockResolvedValueOnce({ confirm: true })
-        .mockResolvedValueOnce({ confirmName: "coolify-test" }) as any;
-      mockedSpawn
-        .mockReturnValueOnce(createMockProcess(0))
-        .mockReturnValueOnce(createMockProcess(0));
-      mockedSsh.sshExec
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // stop
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // db start
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // db restore
-        .mockRejectedValueOnce(new Error("tar crash")) // config restore throws
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }); // tryRestartCoolify
-
-      await restoreCommand("1.2.3.4", { backup: "my-backup" });
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(5);
-    });
-
-    it("should handle start Coolify exception", async () => {
-      mockedSsh.checkSshAvailable.mockReturnValue(true);
-      mockedConfig.findServers.mockReturnValue([sampleServer]);
-      mockedExistsSync.mockReturnValue(true);
-      mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
-      mockedInquirer.prompt = jest
-        .fn()
-        .mockResolvedValueOnce({ confirm: true })
-        .mockResolvedValueOnce({ confirmName: "coolify-test" }) as any;
-      mockedSpawn
-        .mockReturnValueOnce(createMockProcess(0))
-        .mockReturnValueOnce(createMockProcess(0));
-      mockedSsh.sshExec
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // stop
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // db start
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // db restore
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // config restore
-        .mockRejectedValueOnce(new Error("compose up failed")); // start throws
-
-      await restoreCommand("1.2.3.4", { backup: "my-backup" });
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(5);
-    });
-
-    it("should handle SCP db upload failure without stderr", async () => {
-      mockedSsh.checkSshAvailable.mockReturnValue(true);
-      mockedConfig.findServers.mockReturnValue([sampleServer]);
-      mockedExistsSync.mockReturnValue(true);
-      mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
-      mockedInquirer.prompt = jest
-        .fn()
-        .mockResolvedValueOnce({ confirm: true })
-        .mockResolvedValueOnce({ confirmName: "coolify-test" }) as any;
-      mockedSpawn.mockReturnValueOnce(createMockProcess(1)); // code 1, no stderr
-
-      await restoreCommand("1.2.3.4", { backup: "my-backup" });
-      expect(mockedSsh.sshExec).not.toHaveBeenCalled();
-    });
-
-    it("should handle stop failure without stderr", async () => {
-      mockedSsh.checkSshAvailable.mockReturnValue(true);
-      mockedConfig.findServers.mockReturnValue([sampleServer]);
-      mockedExistsSync.mockReturnValue(true);
-      mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
-      mockedInquirer.prompt = jest
-        .fn()
-        .mockResolvedValueOnce({ confirm: true })
-        .mockResolvedValueOnce({ confirmName: "coolify-test" }) as any;
-      mockedSpawn
-        .mockReturnValueOnce(createMockProcess(0))
-        .mockReturnValueOnce(createMockProcess(0));
-      mockedSsh.sshExec.mockResolvedValueOnce({ code: 1, stdout: "", stderr: "" });
-
-      await restoreCommand("1.2.3.4", { backup: "my-backup" });
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(1);
-    });
-
-    describe("rollback — tryRestartCoolify on failure after stop", () => {
-      it("should call tryRestartCoolify when db start fails (non-zero code)", async () => {
+      function setupActualRestore(manifest = sampleManifest, server = sampleServer) {
         mockedSsh.checkSshAvailable.mockReturnValue(true);
-        mockedConfig.findServers.mockReturnValue([sampleServer]);
+        mockedConfig.findServers.mockReturnValue([server]);
         mockedExistsSync.mockReturnValue(true);
-        mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
+        mockedReadFileSync.mockReturnValue(JSON.stringify(manifest));
         mockedInquirer.prompt = jest
           .fn()
           .mockResolvedValueOnce({ confirm: true })
-          .mockResolvedValueOnce({ confirmName: "coolify-test" }) as any;
-        mockedSpawn
-          .mockReturnValueOnce(createMockProcess(0))
-          .mockReturnValueOnce(createMockProcess(0));
-        mockedSsh.sshExec
-          .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // stop OK
-          .mockResolvedValueOnce({ code: 1, stdout: "", stderr: "db error" }) // db start fail
-          .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }); // tryRestartCoolify
+          .mockResolvedValueOnce({ confirmName: server.name }) as any;
+        mockedAdapterFactory.getAdapter.mockReturnValue(mockAdapter as any);
+      }
+
+      beforeEach(() => {
+        mockRestoreBackup.mockReset();
+      });
+
+      it("should complete full restore successfully via adapter (coolify)", async () => {
+        setupActualRestore();
+        mockRestoreBackup.mockResolvedValue({
+          success: true,
+          steps: [
+            { name: "Upload backup files", status: "success" },
+            { name: "Stop Coolify", status: "success" },
+            { name: "Restore database", status: "success" },
+            { name: "Start Coolify", status: "success" },
+          ],
+        });
 
         await restoreCommand("1.2.3.4", { backup: "my-backup" });
 
-        // Last sshExec call should be the restart attempt (buildStartCoolifyCommand)
-        const lastCall = mockedSsh.sshExec.mock.calls[2];
-        expect(lastCall[1]).toContain("up -d");
+        const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+        expect(output).toContain("Restore complete");
+        expect(output).toContain("Coolify 4.0.0");
+        expect(output).toContain(":8000");
+        expect(mockedAdapterFactory.getAdapter).toHaveBeenCalledWith("coolify");
+        expect(mockRestoreBackup).toHaveBeenCalledWith(
+          "1.2.3.4",
+          expect.stringContaining("my-backup"),
+          expect.objectContaining({ coolifyVersion: "4.0.0" }),
+        );
       });
 
-      it("should call tryRestartCoolify when db start throws exception", async () => {
-        mockedSsh.checkSshAvailable.mockReturnValue(true);
-        mockedConfig.findServers.mockReturnValue([sampleServer]);
-        mockedExistsSync.mockReturnValue(true);
-        mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
-        mockedInquirer.prompt = jest
-          .fn()
-          .mockResolvedValueOnce({ confirm: true })
-          .mockResolvedValueOnce({ confirmName: "coolify-test" }) as any;
-        mockedSpawn
-          .mockReturnValueOnce(createMockProcess(0))
-          .mockReturnValueOnce(createMockProcess(0));
-        mockedSsh.sshExec
-          .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // stop OK
-          .mockRejectedValueOnce(new Error("Connection reset")) // db start throws
-          .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }); // tryRestartCoolify
+      it("should route to dokploy adapter when manifest has platform: dokploy", async () => {
+        const dokployManifest = {
+          ...sampleManifest,
+          platform: "dokploy",
+          files: ["dokploy-backup.sql.gz", "dokploy-config.tar.gz"],
+        };
+        const dokployServer = { ...sampleServer, platform: "dokploy" };
+        setupActualRestore(dokployManifest, dokployServer);
+        mockRestoreBackup.mockResolvedValue({
+          success: true,
+          steps: [
+            { name: "Upload backup files", status: "success" },
+            { name: "Scale down Dokploy", status: "success" },
+            { name: "Restore database", status: "success" },
+            { name: "Scale up Dokploy", status: "success" },
+          ],
+        });
 
         await restoreCommand("1.2.3.4", { backup: "my-backup" });
 
-        expect(mockedSsh.sshExec).toHaveBeenCalledTimes(3);
-        const lastCall = mockedSsh.sshExec.mock.calls[2];
-        expect(lastCall[1]).toContain("up -d");
+        const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+        expect(output).toContain("Restore complete");
+        expect(output).toContain("Dokploy 4.0.0");
+        expect(output).toContain(":3000");
+        expect(mockedAdapterFactory.getAdapter).toHaveBeenCalledWith("dokploy");
       });
 
-      it("should call tryRestartCoolify when db restore fails (non-zero code)", async () => {
-        mockedSsh.checkSshAvailable.mockReturnValue(true);
-        mockedConfig.findServers.mockReturnValue([sampleServer]);
-        mockedExistsSync.mockReturnValue(true);
-        mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
-        mockedInquirer.prompt = jest
-          .fn()
-          .mockResolvedValueOnce({ confirm: true })
-          .mockResolvedValueOnce({ confirmName: "coolify-test" }) as any;
-        mockedSpawn
-          .mockReturnValueOnce(createMockProcess(0))
-          .mockReturnValueOnce(createMockProcess(0));
-        mockedSsh.sshExec
-          .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // stop
-          .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // db start
-          .mockResolvedValueOnce({ code: 1, stdout: "", stderr: "psql error" }) // db restore fail
-          .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }); // tryRestartCoolify
+      it("should default to coolify adapter when manifest has no platform field", async () => {
+        const noPlatformManifest = { ...sampleManifest };
+        delete (noPlatformManifest as any).platform;
+        setupActualRestore(noPlatformManifest);
+        mockRestoreBackup.mockResolvedValue({
+          success: true,
+          steps: [{ name: "Restore", status: "success" }],
+        });
 
         await restoreCommand("1.2.3.4", { backup: "my-backup" });
 
-        expect(mockedSsh.sshExec).toHaveBeenCalledTimes(4);
-        const lastCall = mockedSsh.sshExec.mock.calls[3];
-        expect(lastCall[1]).toContain("up -d");
+        expect(mockedAdapterFactory.getAdapter).toHaveBeenCalledWith("coolify");
+        const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+        expect(output).toContain(":8000");
       });
 
-      it("should call tryRestartCoolify when config restore fails (non-zero code)", async () => {
-        mockedSsh.checkSshAvailable.mockReturnValue(true);
-        mockedConfig.findServers.mockReturnValue([sampleServer]);
-        mockedExistsSync.mockReturnValue(true);
-        mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
-        mockedInquirer.prompt = jest
-          .fn()
-          .mockResolvedValueOnce({ confirm: true })
-          .mockResolvedValueOnce({ confirmName: "coolify-test" }) as any;
-        mockedSpawn
-          .mockReturnValueOnce(createMockProcess(0))
-          .mockReturnValueOnce(createMockProcess(0));
-        mockedSsh.sshExec
-          .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // stop
-          .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // db start
-          .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // db restore
-          .mockResolvedValueOnce({ code: 1, stdout: "", stderr: "tar error" }) // config fail
-          .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }); // tryRestartCoolify
+      it("should show failure details when adapter.restoreBackup returns failure", async () => {
+        setupActualRestore();
+        mockRestoreBackup.mockResolvedValue({
+          success: false,
+          steps: [
+            { name: "Upload backup files", status: "success" },
+            { name: "Stop Coolify", status: "success" },
+            { name: "Restore database", status: "failure", error: "psql error" },
+          ],
+          error: "Database restore failed",
+          hint: "Check database connectivity",
+        });
 
         await restoreCommand("1.2.3.4", { backup: "my-backup" });
 
-        expect(mockedSsh.sshExec).toHaveBeenCalledTimes(5);
-        const lastCall = mockedSsh.sshExec.mock.calls[4];
-        expect(lastCall[1]).toContain("up -d");
+        const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+        expect(output).toContain("restore failed");
+        expect(output).toContain("psql error");
+        expect(output).toContain("Database restore failed");
+        expect(output).toContain("Check database connectivity");
       });
 
-      it("should call tryRestartCoolify when config restore throws exception", async () => {
-        mockedSsh.checkSshAvailable.mockReturnValue(true);
-        mockedConfig.findServers.mockReturnValue([sampleServer]);
-        mockedExistsSync.mockReturnValue(true);
-        mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
-        mockedInquirer.prompt = jest
-          .fn()
-          .mockResolvedValueOnce({ confirm: true })
-          .mockResolvedValueOnce({ confirmName: "coolify-test" }) as any;
-        mockedSpawn
-          .mockReturnValueOnce(createMockProcess(0))
-          .mockReturnValueOnce(createMockProcess(0));
-        mockedSsh.sshExec
-          .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // stop
-          .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // db start
-          .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // db restore
-          .mockRejectedValueOnce(new Error("tar crash")) // config restore throws
-          .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }); // tryRestartCoolify
+      it("should show failure step with default 'failed' when no error message", async () => {
+        setupActualRestore();
+        mockRestoreBackup.mockResolvedValue({
+          success: false,
+          steps: [
+            { name: "Upload backup files", status: "failure" },
+          ],
+        });
 
         await restoreCommand("1.2.3.4", { backup: "my-backup" });
 
-        expect(mockedSsh.sshExec).toHaveBeenCalledTimes(5);
-        const lastCall = mockedSsh.sshExec.mock.calls[4];
-        expect(lastCall[1]).toContain("up -d");
+        const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+        expect(output).toContain("Upload backup files: failed");
       });
 
-      it("should not crash if tryRestartCoolify itself fails", async () => {
-        mockedSsh.checkSshAvailable.mockReturnValue(true);
-        mockedConfig.findServers.mockReturnValue([sampleServer]);
-        mockedExistsSync.mockReturnValue(true);
-        mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
-        mockedInquirer.prompt = jest
-          .fn()
-          .mockResolvedValueOnce({ confirm: true })
-          .mockResolvedValueOnce({ confirmName: "coolify-test" }) as any;
-        mockedSpawn
-          .mockReturnValueOnce(createMockProcess(0))
-          .mockReturnValueOnce(createMockProcess(0));
-        mockedSsh.sshExec
-          .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // stop
-          .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // db start
-          .mockResolvedValueOnce({ code: 1, stdout: "", stderr: "psql error" }) // db restore fail
-          .mockRejectedValueOnce(new Error("restart also failed")); // tryRestartCoolify throws
+      it("should handle adapter.restoreBackup throwing an exception", async () => {
+        setupActualRestore();
+        mockRestoreBackup.mockRejectedValue(new Error("SSH timeout"));
 
-        // Should not throw — tryRestartCoolify swallows errors
-        await expect(restoreCommand("1.2.3.4", { backup: "my-backup" })).resolves.toBeUndefined();
+        await restoreCommand("1.2.3.4", { backup: "my-backup" });
+
+        const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+        expect(output).toContain("SSH timeout");
+      });
+
+      it("should not call sshExec directly during adapter-delegated restore", async () => {
+        setupActualRestore();
+        mockRestoreBackup.mockResolvedValue({
+          success: true,
+          steps: [{ name: "All steps", status: "success" }],
+        });
+
+        await restoreCommand("1.2.3.4", { backup: "my-backup" });
+
+        // sshExec should NOT be called -- adapter handles SSH internally
+        expect(mockedSsh.sshExec).not.toHaveBeenCalled();
       });
     });
 
