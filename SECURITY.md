@@ -24,9 +24,11 @@ Response time: Within 48 hours
 ## Security Architecture
 
 ### Token Handling (A2 — Sensitive Data Exposure)
-- API tokens are **never stored on disk** — runtime prompt or environment variables only
+- Token resolution chain: OS keychain (primary) -> environment variable (fallback) -> undefined
 - Supported env vars: `HETZNER_TOKEN`, `DIGITALOCEAN_TOKEN`, `VULTR_TOKEN`, `LINODE_TOKEN`
-- API tokens collected via interactive secure prompts (masked input) when env vars are not set
+- `kastell auth set <provider>` stores tokens in OS keychain (Windows Credential Manager, macOS Keychain, Linux Secret Service)
+- Tokens are never written to disk in plaintext
+- API tokens collected via interactive secure prompts (masked input) when neither keychain nor env var is available
 - `sanitizedEnv()` strips all keys containing TOKEN, SECRET, PASSWORD, CREDENTIAL from child process environments before every `spawn`/`spawnSync`/`exec` call
 - Provider errors sanitized via `stripSensitiveData()` — removes Authorization headers, request data, response headers, and non-whitelisted response body fields from axios errors before they propagate via error cause chains
 
@@ -108,6 +110,43 @@ All production dependencies use audited, versioned packages:
 No known vulnerabilities (minimatch pinned to ^10.2.4 via npm overrides).
 
 Security scan: https://socket.dev/npm/package/kastell
+
+## Token Security
+
+### OS Keychain Integration
+
+Kastell stores provider API tokens in the OS keychain using `@napi-rs/keyring`:
+
+- **Windows:** Windows Credential Manager
+- **macOS:** Keychain
+- **Linux:** Secret Service (GNOME Keyring, KWallet)
+
+Use `kastell auth set <provider>` to store tokens securely. Use `kastell auth list` to see which providers have stored tokens (token values are never displayed). Use `kastell auth remove <provider>` to delete a stored token.
+
+In CI/headless environments where no keychain is available, Kastell automatically falls back to environment variables.
+
+### Subprocess Security
+
+All child processes spawned by Kastell use `sanitizedEnv()` which strips TOKEN, SECRET, PASSWORD, and CREDENTIAL environment variables. This prevents accidental token leakage to SSH sessions and other subprocesses.
+
+### Disabling Core Dumps (Recommended for MCP/Long-Running Mode)
+
+Core dumps can expose in-memory tokens. Disable on production servers:
+
+**Linux:**
+- `ulimit -c 0` (current session)
+- `echo "* hard core 0" >> /etc/security/limits.conf` (permanent)
+
+**macOS:**
+- `launchctl limit core 0 0`
+
+### Swap Encryption (Recommended)
+
+Unencrypted swap can expose in-memory tokens when pages are swapped to disk.
+
+- **Linux:** Use encrypted swap (`cryptsetup` or `dm-crypt`)
+- **macOS:** Encrypted by default with FileVault
+- **Windows:** BitLocker encrypts the entire volume including pagefile
 
 ## Known Limitations & Accepted Risks
 
