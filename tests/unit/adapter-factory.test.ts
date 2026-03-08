@@ -1,6 +1,16 @@
-import { getAdapter, resolvePlatform } from "../../src/adapters/factory";
+import { getAdapter, resolvePlatform, detectPlatform } from "../../src/adapters/factory";
 import type { ServerRecord } from "../../src/types/index";
 import type { Platform } from "../../src/types/index";
+
+jest.mock("../../src/utils/ssh", () => ({
+  assertValidIp: jest.fn(),
+  sshExec: jest.fn(),
+}));
+
+import { assertValidIp, sshExec } from "../../src/utils/ssh";
+
+const mockAssertValidIp = assertValidIp as jest.MockedFunction<typeof assertValidIp>;
+const mockSshExec = sshExec as jest.MockedFunction<typeof sshExec>;
 
 const makeRecord = (overrides: Partial<ServerRecord> = {}): ServerRecord => ({
   id: "1",
@@ -11,6 +21,59 @@ const makeRecord = (overrides: Partial<ServerRecord> = {}): ServerRecord => ({
   size: "cax11",
   createdAt: "2026-01-01T00:00:00Z",
   ...overrides,
+});
+
+describe("detectPlatform", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("should return 'dokploy' when /etc/dokploy exists on server", async () => {
+    mockSshExec.mockResolvedValueOnce({ code: 0, stdout: "dokploy\n", stderr: "" });
+    const result = await detectPlatform("1.2.3.4");
+    expect(result).toBe("dokploy");
+  });
+
+  it("should return 'coolify' when /data/coolify/source exists on server", async () => {
+    // Dokploy check returns "no"
+    mockSshExec.mockResolvedValueOnce({ code: 0, stdout: "no\n", stderr: "" });
+    // Coolify check returns "coolify"
+    mockSshExec.mockResolvedValueOnce({ code: 0, stdout: "coolify\n", stderr: "" });
+    const result = await detectPlatform("1.2.3.4");
+    expect(result).toBe("coolify");
+  });
+
+  it("should return 'bare' when neither platform marker exists", async () => {
+    mockSshExec.mockResolvedValueOnce({ code: 0, stdout: "no\n", stderr: "" });
+    mockSshExec.mockResolvedValueOnce({ code: 0, stdout: "no\n", stderr: "" });
+    const result = await detectPlatform("1.2.3.4");
+    expect(result).toBe("bare");
+  });
+
+  it("should return 'dokploy' when both exist (Dokploy checked first)", async () => {
+    mockSshExec.mockResolvedValueOnce({ code: 0, stdout: "dokploy\n", stderr: "" });
+    const result = await detectPlatform("1.2.3.4");
+    expect(result).toBe("dokploy");
+    // Only one SSH call needed since Dokploy matched first
+    expect(mockSshExec).toHaveBeenCalledTimes(1);
+  });
+
+  it("should call assertValidIp before SSH", async () => {
+    mockSshExec.mockResolvedValueOnce({ code: 0, stdout: "no\n", stderr: "" });
+    mockSshExec.mockResolvedValueOnce({ code: 0, stdout: "no\n", stderr: "" });
+    await detectPlatform("1.2.3.4");
+    expect(mockAssertValidIp).toHaveBeenCalledWith("1.2.3.4");
+    // assertValidIp called before sshExec
+    const assertOrder = mockAssertValidIp.mock.invocationCallOrder[0];
+    const sshOrder = mockSshExec.mock.invocationCallOrder[0];
+    expect(assertOrder).toBeLessThan(sshOrder);
+  });
+
+  it("should return 'bare' on SSH connection error", async () => {
+    mockSshExec.mockRejectedValueOnce(new Error("Connection refused"));
+    const result = await detectPlatform("1.2.3.4");
+    expect(result).toBe("bare");
+  });
 });
 
 describe("Platform type", () => {
