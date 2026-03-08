@@ -37,6 +37,7 @@ const MENU: MenuCategory[] = [
       { name: "Harden SSH & fail2ban", value: "secure", description: "Configure SSH security and brute-force protection" },
       { name: "Manage firewall (UFW)", value: "firewall", description: "View, add, or remove UFW firewall port rules" },
       { name: "Manage domain & SSL", value: "domain", description: "Set custom domains and configure SSL certificates" },
+      { name: "Manage auth tokens", value: "auth", description: "Store, remove, or list provider API tokens in OS keychain" },
     ],
   },
   {
@@ -337,6 +338,28 @@ async function promptDoctor(): Promise<string[] | null> {
   return args;
 }
 
+async function promptAuth(): Promise<string[] | null> {
+  const sub = await promptList("Auth action:", [
+    { name: "List stored tokens", value: "list" },
+    { name: "Store a provider token", value: "set" },
+    { name: "Remove a provider token", value: "remove" },
+  ]);
+  if (!sub) return null;
+
+  if (sub === "set" || sub === "remove") {
+    const provider = await promptList("Provider:", [
+      { name: "Hetzner Cloud", value: "hetzner" },
+      { name: "DigitalOcean", value: "digitalocean" },
+      { name: "Vultr", value: "vultr" },
+      { name: "Linode", value: "linode" },
+    ]);
+    if (!provider) return null;
+    return ["auth", sub, provider];
+  }
+
+  return ["auth", sub];
+}
+
 async function promptSsh(): Promise<string[] | null> {
   const mode = await promptList("SSH mode:", [
     { name: "Open interactive SSH session", value: "interactive" },
@@ -378,6 +401,7 @@ async function promptImport(): Promise<string[] | null> {
 
 const SUB_PROMPTS: Record<string, () => Promise<string[] | null>> = {
   init: promptInit,
+  auth: promptAuth,
   logs: promptLogs,
   firewall: promptFirewall,
   secure: promptSecure,

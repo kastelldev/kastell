@@ -55,6 +55,16 @@ describe("buildSearchSource", () => {
     expect(choices.some((c: unknown) => typeof c === "object" && c !== null && "value" in c && (c as { value: string }).value === "init")).toBe(true);
   });
 
+  it("matches auth by value", () => {
+    const choices = buildSearchSource("auth");
+    expect(choices.some((c: unknown) => typeof c === "object" && c !== null && "value" in c && (c as { value: string }).value === "auth")).toBe(true);
+  });
+
+  it("matches auth by description (keychain)", () => {
+    const choices = buildSearchSource("keychain");
+    expect(choices.some((c: unknown) => typeof c === "object" && c !== null && "value" in c && (c as { value: string }).value === "auth")).toBe(true);
+  });
+
   it("matches case-insensitively", () => {
     const choices = buildSearchSource("BACKUP");
     expect(choices.some((c: unknown) => typeof c === "object" && c !== null && "value" in c && (c as { value: string }).value === "backup")).toBe(true);
@@ -483,6 +493,53 @@ describe("interactiveMenu", () => {
       .mockResolvedValueOnce({ path: "./servers.json" });
 
     expect(await interactiveMenu()).toEqual(["import", "./servers.json"]);
+  });
+
+  // ─── Auth sub-prompt ──────────────────────────────────────────────────────
+
+  it("auth: returns list subcommand", async () => {
+    mockedInquirer.prompt
+      .mockResolvedValueOnce({ action: "auth" })
+      .mockResolvedValueOnce({ answer: "list" });
+
+    expect(await interactiveMenu()).toEqual(["auth", "list"]);
+  });
+
+  it("auth: returns set with provider", async () => {
+    mockedInquirer.prompt
+      .mockResolvedValueOnce({ action: "auth" })
+      .mockResolvedValueOnce({ answer: "set" })
+      .mockResolvedValueOnce({ answer: "hetzner" });
+
+    expect(await interactiveMenu()).toEqual(["auth", "set", "hetzner"]);
+  });
+
+  it("auth: returns remove with provider", async () => {
+    mockedInquirer.prompt
+      .mockResolvedValueOnce({ action: "auth" })
+      .mockResolvedValueOnce({ answer: "remove" })
+      .mockResolvedValueOnce({ answer: "digitalocean" });
+
+    expect(await interactiveMenu()).toEqual(["auth", "remove", "digitalocean"]);
+  });
+
+  it("auth: back on action returns to main menu", async () => {
+    mockedInquirer.prompt
+      .mockResolvedValueOnce({ action: "auth" })
+      .mockResolvedValueOnce({ answer: "__back__" })
+      .mockResolvedValueOnce({ action: "exit" });
+
+    expect(await interactiveMenu()).toBeNull();
+  });
+
+  it("auth: back on provider returns to main menu", async () => {
+    mockedInquirer.prompt
+      .mockResolvedValueOnce({ action: "auth" })
+      .mockResolvedValueOnce({ answer: "set" })
+      .mockResolvedValueOnce({ answer: "__back__" })
+      .mockResolvedValueOnce({ action: "exit" });
+
+    expect(await interactiveMenu()).toBeNull();
   });
 
   // ─── Health (no sub-prompt, falls through) ──────────────────────────────────
