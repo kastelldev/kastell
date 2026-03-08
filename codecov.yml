@@ -1,0 +1,15 @@
+coverage:
+  status:
+    project:
+      default:
+        target: 85%
+        threshold: 2%
+    patch:
+      default:
+        target: 80%
+        threshold: 5%
+
+ignore:
+  - "src/index.ts"
+  - "dist/**"
+  - "**/__tests__/**"
