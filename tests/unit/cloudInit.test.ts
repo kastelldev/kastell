@@ -18,7 +18,9 @@ describe("getCoolifyCloudInit", () => {
 
   it("should include Coolify install command", () => {
     const script = getCoolifyCloudInit("test");
-    expect(script).toContain("curl -fsSL https://cdn.coollabs.io/coolify/install.sh -o /tmp/coolify-install.sh && bash /tmp/coolify-install.sh");
+    expect(script).toContain("curl -fsSL https://cdn.coollabs.io/coolify/install.sh -o /tmp/coolify-install.sh");
+    expect(script).toContain("bash /tmp/coolify-install.sh");
+    expect(script).toContain('head -c2 /tmp/coolify-install.sh | grep -q "#!"');
   });
 
   it("should include system update step", () => {

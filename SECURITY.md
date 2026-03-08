@@ -102,13 +102,61 @@ All production dependencies use audited, versioned packages:
 - Linode API v4 (via Axios, HTTPS)
 - Model Context Protocol SDK (`@modelcontextprotocol/sdk`) for MCP server
 - Zod for runtime input validation
-- Coolify installed via `curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash` (official method, HTTPS)
+- Coolify installed via download-then-execute pattern: `curl -fsSL URL -o /tmp/install.sh && bash /tmp/install.sh` (prevents partial execution on network failure)
 
 ### Dev Dependencies
-One moderate-severity ReDoS vulnerability remains in `test-exclude` → `glob` → `minimatch@10.0.0-10.2.2` (jest code coverage toolchain). This is a dev-only dependency not present in production builds. Remediation is blocked by the dependency chain — `npm audit fix --force` would cause lock file breakage per project policy. Risk accepted as dev-only, not exploitable in production.
+No known vulnerabilities (minimatch pinned to ^10.2.4 via npm overrides).
 
 Security scan: https://socket.dev/npm/package/kastell
 
-## HTTP Usage
+## Known Limitations & Accepted Risks
 
-Kastell accesses Coolify at `http://IP:8000` during initial setup. This is expected because SSL/TLS is not configured on a fresh Coolify installation. Users are warned to set up a domain and enable SSL for production use.
+### 1. SSH Trust-On-First-Use (TOFU)
+
+All SSH connections use `StrictHostKeyChecking=accept-new`. This automatically trusts the host key on first connection. A MITM attack during the very first SSH connection to a newly provisioned server would succeed silently.
+
+**Why accepted:** Newly provisioned servers have unknown host keys — there is no known-good key to verify against. This is inherent to any server provisioning tool. Subsequent connections verify the stored key, so only the first connection is vulnerable.
+
+**Mitigation:**
+- Servers are provisioned via authenticated cloud provider APIs (HTTPS + API token), reducing the likelihood of a MITM during the narrow window between provision and first SSH connection.
+- Set `KASTELL_STRICT_HOST_KEY=true` to reject unknown host keys entirely. This requires manual host key management but eliminates TOFU risk.
+
+### 2. Health Checks Over HTTP
+
+Coolify (`http://IP:8000`) and Dokploy (`http://IP:3000`) health checks use unencrypted HTTP. No sensitive data is sent — only an HTTP status code is checked.
+
+**Why accepted:** Fresh Coolify/Dokploy installations only listen on HTTP. HTTPS requires a domain + SSL certificate, which is configured after initial setup via `kastell domain-set --ssl`.
+
+**Mitigation:** When a domain is configured via `kastell domain add --domain example.com`, health checks automatically try HTTPS first, falling back to HTTP only if HTTPS fails. The domain is stored in the server record for persistent HTTPS health checks.
+
+**Recommendation:** Always configure a domain with SSL for production access: `kastell domain add <server> --domain example.com`
+
+### 3. API Token In-Memory Exposure
+
+Provider API tokens are held as class properties in memory for the lifetime of the process.
+
+**CLI mode (low risk):** Process runs for seconds, then exits. Token is freed with the process.
+
+**MCP mode (elevated risk):** MCP server runs for hours. Token stays in memory and could theoretically be exposed via heap dump, core dump, or debugger attachment.
+
+**Why accepted:** Node.js strings are immutable and managed by V8's garbage collector — there is no reliable way to zero a string in memory. Alternative approaches (Buffer-based token storage) would require changing all axios header construction and provide marginal benefit since `process.env` also holds the token in memory.
+
+**Mitigations in place:**
+- `sanitizedEnv()` strips tokens from all child process environments
+- `stripSensitiveData()` removes Authorization headers from error objects
+- Provider instances are not cached across MCP tool calls — each call creates a fresh instance, allowing GC to collect the previous one
+- Tokens are never written to disk
+
+**Future consideration:** Getter pattern that reads from `process.env` on each API call instead of storing as class property — reduces in-memory copies but does not eliminate the underlying exposure since `process.env` itself holds the value.
+
+### 4. Remote Install Scripts
+
+Coolify and Dokploy are installed via remote shell scripts downloaded over HTTPS. A compromised CDN or DNS hijack could serve a malicious install script.
+
+**Why accepted:** This is the official installation method provided by both Coolify and Dokploy upstream projects. There are no published checksums to verify against.
+
+**Mitigations in place:**
+- HTTPS transport security (TLS certificate validation)
+- Download-then-execute pattern (prevents partial execution on network interruption)
+- **Script validation before execution:** Downloaded scripts are verified to start with a shebang (`#!`) and have a minimum size (>100 bytes) before being executed. A truncated, empty, or non-script response will be rejected.
+- Install scripts are downloaded to `/tmp/` and cleaned up after execution

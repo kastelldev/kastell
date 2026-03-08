@@ -40,9 +40,10 @@ export async function pollHealth(
   ip: string,
   maxAttempts: number,
   intervalMs: number,
+  domain?: string,
 ): Promise<boolean> {
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const result = await adapter.healthCheck(ip);
+    const result = await adapter.healthCheck(ip, domain);
     if (result.status === "running") return true;
     if (attempt < maxAttempts - 1) {
       await new Promise((resolve) => setTimeout(resolve, intervalMs));
@@ -191,7 +192,7 @@ export async function maintainServer(
   steps.push({ step: 2, name: `${adapterName} Update`, status: "success" });
 
   // Step 3: Health check after update
-  const healthOk = await pollHealth(adapter, server.ip, healthAttempts, healthInterval);
+  const healthOk = await pollHealth(adapter, server.ip, healthAttempts, healthInterval, server.domain);
   if (!healthOk) {
     steps.push({ step: 3, name: "Health Check", status: "failure", detail: `${adapterName} did not respond after update` });
     // Continue — partial success
@@ -222,7 +223,7 @@ export async function maintainServer(
   steps.push({ step: 4, name: "Reboot", status: "success", detail: "Server rebooted" });
 
   // Step 5: Final health check after reboot
-  const finalHealthOk = await pollHealth(adapter, server.ip, healthAttempts, healthInterval);
+  const finalHealthOk = await pollHealth(adapter, server.ip, healthAttempts, healthInterval, server.domain);
   if (finalHealthOk) {
     steps.push({ step: 5, name: "Final Check", status: "success", detail: `Server and ${adapterName} are running` });
   } else {

@@ -55,7 +55,7 @@ apt-get update -y
 
 # Install Dokploy
 echo "Installing Dokploy..."
-curl -sSL https://dokploy.com/install.sh -o /tmp/dokploy-install.sh && sh /tmp/dokploy-install.sh && rm -f /tmp/dokploy-install.sh
+curl -sSL https://dokploy.com/install.sh -o /tmp/dokploy-install.sh && head -c2 /tmp/dokploy-install.sh | grep -q "#!" && [ "$(wc -c < /tmp/dokploy-install.sh)" -gt 100 ] && sh /tmp/dokploy-install.sh && rm -f /tmp/dokploy-install.sh
 
 # Wait for services
 echo "Waiting for Dokploy services to start..."
@@ -97,8 +97,20 @@ echo "Then access your instance at: http://YOUR_SERVER_IP:3000"
 `;
   }
 
-  async healthCheck(ip: string): Promise<HealthResult> {
+  async healthCheck(ip: string, domain?: string): Promise<HealthResult> {
     assertValidIp(ip);
+    // Try HTTPS via domain first if available
+    if (domain) {
+      try {
+        await axios.get(`https://${domain}`, {
+          timeout: 5000,
+          validateStatus: () => true,
+        });
+        return { status: "running" };
+      } catch {
+        // HTTPS failed, fall back to HTTP
+      }
+    }
     try {
       await axios.get(`http://${ip}:3000`, {
         timeout: 5000,

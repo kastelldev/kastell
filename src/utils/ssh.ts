@@ -9,6 +9,15 @@ const SSH_EXEC_TIMEOUT_MS = 30_000;
 /** Max stdout/stderr buffer size in bytes (1MB) */
 const MAX_BUFFER_SIZE = 1024 * 1024;
 
+/**
+ * Returns the SSH StrictHostKeyChecking policy.
+ * Set KASTELL_STRICT_HOST_KEY=true to reject unknown host keys (more secure, requires manual key management).
+ * Default: "accept-new" (TOFU — trust on first use, verify on subsequent connections).
+ */
+export function getHostKeyPolicy(): string {
+  return process.env.KASTELL_STRICT_HOST_KEY === "true" ? "yes" : "accept-new";
+}
+
 let cachedSshPath: string | null = null;
 
 export function resolveSshPath(): string {
@@ -116,7 +125,7 @@ export function sshConnect(ip: string): Promise<number> {
     const child = spawn(
       sshBin,
       [
-        "-o", "StrictHostKeyChecking=accept-new",
+        "-o", `StrictHostKeyChecking=${getHostKeyPolicy()}`,
         "-o", `ConnectTimeout=${SSH_CONNECT_TIMEOUT}`,
         `root@${ip}`,
       ],
@@ -144,7 +153,7 @@ function sshStreamInner(ip: string, command: string, retried: boolean): Promise<
     const child = spawn(
       sshBin,
       [
-        "-o", "StrictHostKeyChecking=accept-new",
+        "-o", `StrictHostKeyChecking=${getHostKeyPolicy()}`,
         "-o", "BatchMode=yes",
         "-o", `ConnectTimeout=${SSH_CONNECT_TIMEOUT}`,
         `root@${ip}`,
@@ -219,7 +228,7 @@ function sshExecInner(
     const child = spawn(
       sshBin,
       [
-        "-o", "StrictHostKeyChecking=accept-new",
+        "-o", `StrictHostKeyChecking=${getHostKeyPolicy()}`,
         "-o", "BatchMode=yes",
         "-o", `ConnectTimeout=${SSH_CONNECT_TIMEOUT}`,
         `root@${ip}`,

@@ -27,7 +27,7 @@ export interface UpdateResult {
 export interface PlatformAdapter {
   readonly name: string;
   getCloudInit(serverName: string): string;
-  healthCheck(ip: string): Promise<HealthResult>;
+  healthCheck(ip: string, domain?: string): Promise<HealthResult>;
   createBackup(ip: string, serverName: string, provider: string): Promise<PlatformBackupResult>;
   getStatus(ip: string): Promise<PlatformStatusResult>;
   update(ip: string): Promise<UpdateResult>;

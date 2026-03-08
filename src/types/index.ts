@@ -55,6 +55,8 @@ export interface ServerRecord {
   mode?: ServerMode;
   /** Platform adapter. undefined = bare (no platform) */
   platform?: Platform;
+  /** Custom domain set via domain-set. Used for HTTPS health checks. */
+  domain?: string;
 }
 
 export interface InitOptions {

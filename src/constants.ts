@@ -63,9 +63,12 @@ export const SCP_TIMEOUT_MS = 300_000; // 5 minutes
 export const COOLIFY_INSTALL_URL = "https://cdn.coollabs.io/coolify/install.sh";
 export const DOKPLOY_INSTALL_URL = "https://dokploy.com/install.sh";
 
-// Platform update commands — download-then-execute for auditability
-export const COOLIFY_UPDATE_CMD = `curl -fsSL ${COOLIFY_INSTALL_URL} -o /tmp/coolify-install.sh && bash /tmp/coolify-install.sh && rm -f /tmp/coolify-install.sh`;
-export const DOKPLOY_UPDATE_CMD = `curl -sSL ${DOKPLOY_INSTALL_URL} -o /tmp/dokploy-install.sh && sh /tmp/dokploy-install.sh && rm -f /tmp/dokploy-install.sh`;
+// Install script validation — verify shebang and minimum size before execution
+const SCRIPT_VALIDATE = 'head -c2 "$1" | grep -q "#!" && [ "$(wc -c < "$1")" -gt 100 ]';
+
+// Platform update commands — download-then-execute with validation for auditability
+export const COOLIFY_UPDATE_CMD = `curl -fsSL ${COOLIFY_INSTALL_URL} -o /tmp/coolify-install.sh && ${SCRIPT_VALIDATE.replace(/\$1/g, "/tmp/coolify-install.sh")} && bash /tmp/coolify-install.sh && rm -f /tmp/coolify-install.sh`;
+export const DOKPLOY_UPDATE_CMD = `curl -sSL ${DOKPLOY_INSTALL_URL} -o /tmp/dokploy-install.sh && ${SCRIPT_VALIDATE.replace(/\$1/g, "/tmp/dokploy-install.sh")} && sh /tmp/dokploy-install.sh && rm -f /tmp/dokploy-install.sh`;
 export const COOLIFY_RESTART_CMD =
   "cd /data/coolify/source && docker compose -f docker-compose.yml -f docker-compose.prod.yml restart coolify";
 

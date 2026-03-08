@@ -36,6 +36,16 @@ export function saveServer(record: ServerRecord): void {
   writeFileSync(SERVERS_FILE, JSON.stringify(servers, null, 2), { mode: 0o600 });
 }
 
+export function updateServer(name: string, updates: Partial<ServerRecord>): boolean {
+  const servers = getServers();
+  const index = servers.findIndex((s) => s.name === name);
+  if (index === -1) return false;
+  servers[index] = { ...servers[index], ...updates };
+  ensureConfigDir();
+  writeFileSync(SERVERS_FILE, JSON.stringify(servers, null, 2), { mode: 0o600 });
+  return true;
+}
+
 export function removeServer(id: string): boolean {
   const servers = getServers();
   const filtered = servers.filter((s) => s.id !== id);

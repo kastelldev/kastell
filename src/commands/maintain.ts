@@ -161,7 +161,7 @@ async function maintainSingleServer(
   const healthSpinner = createSpinner(`Step 3: Checking ${adapterDisplayName} health...`);
   healthSpinner.start();
 
-  const healthOk = await pollHealth(adapter, server.ip, 12, 5000);
+  const healthOk = await pollHealth(adapter, server.ip, 12, 5000, server.domain);
   if (!healthOk) {
     healthSpinner.fail(`Step 3: ${adapterDisplayName} did not respond after update`);
     return result;
@@ -225,7 +225,7 @@ async function maintainSingleServer(
       }
 
       // Check platform health after reboot
-      const platformBack = adapter ? await pollHealth(adapter, server.ip, 12, 5000) : false;
+      const platformBack = adapter ? await pollHealth(adapter, server.ip, 12, 5000, server.domain) : false;
       if (platformBack) {
         finalSpinner.succeed(`Step 5: Server and ${adapterDisplayName} are running`);
         result.finalCheck = true;

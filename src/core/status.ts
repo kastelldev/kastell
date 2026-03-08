@@ -45,7 +45,7 @@ export async function checkServerStatus(
     const serverStatus = await getCloudServerStatus(server, apiToken);
     const platform = resolvePlatform(server);
     const coolifyStatus = platform
-      ? (await getAdapter(platform).healthCheck(server.ip)).status
+      ? (await getAdapter(platform).healthCheck(server.ip, server.domain)).status
       : "n/a";
     return { server, serverStatus, coolifyStatus };
   } catch (error: unknown) {

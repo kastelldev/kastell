@@ -54,7 +54,7 @@ apt-get update -y
 
 # Install Coolify
 echo "Installing Coolify..."
-curl -fsSL https://cdn.coollabs.io/coolify/install.sh -o /tmp/coolify-install.sh && bash /tmp/coolify-install.sh && rm -f /tmp/coolify-install.sh
+curl -fsSL https://cdn.coollabs.io/coolify/install.sh -o /tmp/coolify-install.sh && head -c2 /tmp/coolify-install.sh | grep -q "#!" && [ "$(wc -c < /tmp/coolify-install.sh)" -gt 100 ] && bash /tmp/coolify-install.sh && rm -f /tmp/coolify-install.sh
 
 # Wait for services
 echo "Waiting for Coolify services to start..."
@@ -92,8 +92,20 @@ echo "Then access your instance at: http://YOUR_SERVER_IP:8000"
 `;
   }
 
-  async healthCheck(ip: string): Promise<HealthResult> {
+  async healthCheck(ip: string, domain?: string): Promise<HealthResult> {
     assertValidIp(ip);
+    // Try HTTPS via domain first if available
+    if (domain) {
+      try {
+        await axios.get(`https://${domain}`, {
+          timeout: 5000,
+          validateStatus: () => true,
+        });
+        return { status: "running" };
+      } catch {
+        // HTTPS failed, fall back to HTTP
+      }
+    }
     try {
       await axios.get(`http://${ip}:8000`, {
         timeout: 5000,
