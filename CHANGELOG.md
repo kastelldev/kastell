@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.1] - 2026-03-08
+
+### Fixed
+- **Dokploy update command**: Install script now called with `update` argument — previously ran fresh-install mode which failed on port 80/443 conflict with running Dokploy instance
+- 5 Dokploy integration bugs found during real-server testing (health check port, firewall ports, backup paths, restore commands, version detection)
+
+## [1.5.0] - 2026-03-08
+
+### Added
+- **Security audit system**: `kastell audit` command with 9 check categories (SSH, auth, firewall, Docker, kernel, filesystem, network, logging, updates), scoring 0-100, terminal/JSON/summary/badge formatters
+- **Audit history**: `kastell audit --history` tracks score trends over time with comparison
+- **Audit watch mode**: `kastell audit --watch` monitors security score changes on interval
+- **Audit quick wins**: `kastell audit --quick-wins` suggests highest-impact fixes
+- **Audit auto-fix**: `kastell audit --fix` applies safe remediations automatically
+- **MCP server_audit tool**: Full audit capabilities exposed via MCP (summary/json/score formats)
+- **Token buffer**: In-memory token protection with controlled exposure window
+- **Platform auto-detection**: SSH-based `detectPlatform()` checks filesystem markers for Dokploy/Coolify/bare
+
+### Changed
+- Test count: 2,266 → 2,467 (+201 new tests)
+- Test suites: 86 → 112 (+26 new suites)
+- MCP tools: 7 → 8 (server_audit added)
+
 ## [1.4.0] - 2026-03-08
 
 ### Added
