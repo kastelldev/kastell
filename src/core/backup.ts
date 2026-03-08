@@ -393,14 +393,12 @@ export async function restoreBackup(
     return { success: false, steps: [], error: "Invalid backupId: path traversal detected" };
   }
 
-  const steps: Array<{ name: string; status: "success" | "failure"; error?: string }> = [];
-
   // Validate manifest
   const manifest = loadManifest(backupPath);
   if (!manifest) {
     return {
       success: false,
-      steps,
+      steps: [],
       error: `Backup not found or corrupt: ${backupId}`,
     };
   }
@@ -410,94 +408,17 @@ export async function restoreBackup(
     if (!existsSync(join(backupPath, file))) {
       return {
         success: false,
-        steps,
+        steps: [],
         error: `Missing backup file: ${file}`,
       };
     }
   }
 
-  try {
-    // Upload backup files (before stopping Coolify — safe to fail here)
-    const dbUpload = await scpUpload(
-      ip,
-      join(backupPath, "coolify-backup.sql.gz"),
-      "/tmp/coolify-backup.sql.gz",
-    );
-    if (dbUpload.code !== 0) {
-      return {
-        success: false,
-        steps: [{ name: "Upload database backup", status: "failure", error: sanitizeStderr(dbUpload.stderr) }],
-        error: "Failed to upload database backup",
-      };
-    }
-
-    const configUpload = await scpUpload(
-      ip,
-      join(backupPath, "coolify-config.tar.gz"),
-      "/tmp/coolify-config.tar.gz",
-    );
-    if (configUpload.code !== 0) {
-      return {
-        success: false,
-        steps: [{ name: "Upload config backup", status: "failure", error: sanitizeStderr(configUpload.stderr) }],
-        error: "Failed to upload config backup",
-      };
-    }
-
-    // Step 1: Stop Coolify
-    const stopResult = await sshExec(ip, buildStopCoolifyCommand());
-    if (stopResult.code !== 0) {
-      steps.push({ name: "Stop Coolify", status: "failure", error: sanitizeStderr(stopResult.stderr) });
-      return { success: false, steps, error: "Failed to stop Coolify" };
-    }
-    steps.push({ name: "Stop Coolify", status: "success" });
-
-    // Step 2: Start DB only
-    const dbStartResult = await sshExec(ip, buildStartDbCommand());
-    if (dbStartResult.code !== 0) {
-      steps.push({ name: "Start database", status: "failure", error: sanitizeStderr(dbStartResult.stderr) });
-      await tryRestartCoolify(ip);
-      return { success: false, steps, error: "Failed to start database" };
-    }
-    steps.push({ name: "Start database", status: "success" });
-
-    // Step 3: Restore database
-    const restoreDbResult = await sshExec(ip, buildRestoreDbCommand());
-    if (restoreDbResult.code !== 0) {
-      steps.push({ name: "Restore database", status: "failure", error: sanitizeStderr(restoreDbResult.stderr) });
-      await tryRestartCoolify(ip);
-      return { success: false, steps, error: "Database restore failed" };
-    }
-    steps.push({ name: "Restore database", status: "success" });
-
-    // Step 4: Restore config
-    const restoreConfigResult = await sshExec(ip, buildRestoreConfigCommand());
-    if (restoreConfigResult.code !== 0) {
-      steps.push({ name: "Restore config", status: "failure", error: sanitizeStderr(restoreConfigResult.stderr) });
-      await tryRestartCoolify(ip);
-      return { success: false, steps, error: "Config restore failed" };
-    }
-    steps.push({ name: "Restore config", status: "success" });
-
-    // Step 5: Start Coolify
-    const startResult = await sshExec(ip, buildStartCoolifyCommand());
-    if (startResult.code !== 0) {
-      steps.push({ name: "Start Coolify", status: "failure", error: sanitizeStderr(startResult.stderr) });
-      return { success: false, steps, error: "Failed to start Coolify" };
-    }
-    steps.push({ name: "Start Coolify", status: "success" });
-
-    // Cleanup remote (best-effort)
-    await sshExec(ip, buildCleanupCommand()).catch(() => {});
-
-    return { success: true, steps };
-  } catch (error: unknown) {
-    const hint = mapSshError(error, ip);
-    return {
-      success: false,
-      steps,
-      error: getErrorMessage(error),
-      ...(hint ? { hint } : {}),
-    };
+  // Delegate to platform adapter (default to coolify for backward compat)
+  const platform = manifest.platform || "coolify";
+  const adapter = getAdapter(platform);
+  if (!adapter.restoreBackup) {
+    return { success: false, steps: [], error: `Adapter ${platform} does not support restore` };
   }
+  return adapter.restoreBackup(ip, backupPath, manifest);
 }

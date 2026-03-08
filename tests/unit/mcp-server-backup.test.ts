@@ -429,7 +429,7 @@ describe("core/backup - restoreBackup", () => {
   test("returns success with all steps on full restore", async () => {
     const result = await restoreBackup("1.2.3.4", "coolify-test", "2026-02-20_12-00-00-000");
     expect(result.success).toBe(true);
-    expect(result.steps.length).toBe(5);
+    expect(result.steps.length).toBe(7); // 2 upload + 5 restore steps (adapter pattern)
     expect(result.steps.every((s) => s.status === "success")).toBe(true);
   });
 
@@ -701,7 +701,7 @@ describe("handleServerBackup - backup-restore", () => {
     const result = await handleServerBackup({ action: "backup-restore", server: "coolify-test", backupId: "2026-02-20_12-00-00-000" });
     const data = JSON.parse(result.content[0].text);
     expect(data.success).toBe(true);
-    expect(data.steps.length).toBe(5);
+    expect(data.steps.length).toBe(7); // 2 upload + 5 restore steps (adapter pattern)
     expect(data.suggested_actions).toBeDefined();
   });
 

@@ -118,20 +118,34 @@ export async function restoreCommand(
     }
   }
 
+  // Determine platform (default to coolify for backward compat)
+  const platform = manifest.platform || "coolify";
+
   if (dryRun) {
     logger.title("Dry Run - Restore");
     logger.info(`Server: ${server.name} (${server.ip})`);
     logger.info(`Backup: ${selectedBackup}`);
-    logger.info(`Coolify version: ${manifest.coolifyVersion}`);
+    logger.info(`${platform === "dokploy" ? "Dokploy" : "Coolify"} version: ${manifest.coolifyVersion}`);
     console.log();
     logger.info("Steps to execute:");
     logger.step("Upload backup files to server");
-    logger.step(buildStopCoolifyCommand());
-    logger.step(buildStartDbCommand());
-    logger.step(buildRestoreDbCommand());
-    logger.step(buildRestoreConfigCommand());
-    logger.step(buildStartCoolifyCommand());
-    logger.step(buildCleanupCommand());
+    if (platform === "dokploy") {
+      logger.step("docker service scale dokploy=0");
+      logger.step("docker service scale dokploy-postgres=1 && sleep 5");
+      logger.step(
+        "gunzip -c /tmp/dokploy-backup.sql.gz | docker exec -i $(docker ps -qf name=dokploy-postgres) psql -U postgres -d dokploy",
+      );
+      logger.step("tar xzf /tmp/dokploy-config.tar.gz -C /etc/dokploy");
+      logger.step("docker service scale dokploy=1");
+      logger.step("rm -f /tmp/dokploy-backup.sql.gz /tmp/dokploy-config.tar.gz");
+    } else {
+      logger.step(buildStopCoolifyCommand());
+      logger.step(buildStartDbCommand());
+      logger.step(buildRestoreDbCommand());
+      logger.step(buildRestoreConfigCommand());
+      logger.step(buildStartCoolifyCommand());
+      logger.step(buildCleanupCommand());
+    }
     console.log();
     logger.warning("No changes applied. Remove --dry-run to execute.");
     return;
