@@ -19,6 +19,7 @@ module.exports = {
     'src/**/*.ts',
     '!src/index.ts',
   ],
+  coverageProvider: 'v8',
   coverageDirectory: 'coverage',
   coverageThreshold: {
     global: {

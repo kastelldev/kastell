@@ -8,8 +8,8 @@
 - ✅ **v1.2.1 Refactor + Security Patch** — Phases 4-6 (shipped 2026-03-02)
 - ✅ **v1.3 Kastell Rebrand + Dokploy** — Phases 7-10 (shipped 2026-03-06)
 - ✅ **v1.4 TUI + Dokploy + DX** — Phases 11-15 (shipped 2026-03-07)
-- 🚧 **v1.5 Audit + Website + Hooks** — kastell audit (viral büyüme), IP abuse kanıt, kastell.dev, Dokploy restore, API timeout, 4 hook
-- ⬜ **v1.6 Guard Core + Hooks** — guard daemon, lock --production, fleet, doctor genişletme, bildirimler, adapter contract doku, 5 hook
+- 🚧 **v1.5 Security + Dokploy + Audit** — güvenlik fixleri, Dokploy tamamlama, kastell audit (viral büyüme)
+- ⬜ **v1.6 Guard Core** — guard daemon, lock --production, fleet, doctor genişletme, bildirimler, adapter contract doku
 - ⬜ **v1.7 Risk Trend** — risk trend scoring, kastell compare
 - ⬜ **v2.0 Plugin Ekosistemi** — Claude Code marketplace, SKILL.md (cross-platform: Cursor/Gemini CLI/Kiro), slash commands, chained workflows, audit --explain, validate_plugins.py CI
 - ⬜ **v3.0 Dashboard + Managed Servis** — premium web dashboard, managed servis ($49/$99/$299+), ilk müşteri LA ROMA
@@ -77,36 +77,42 @@ MCP server with 7 tools, 12 security fixes, SSH key auto-generation, full docs u
 
 </details>
 
-### 🚧 v1.5 Audit + Website + Hooks (Next)
+### 🚧 v1.5 Security + Dokploy + Audit (Next)
 
-**Viral Büyüme:**
-- [ ] `kastell audit` — ücretsiz güvenlik taraması, viral büyüme motoru
-- [ ] IP spoofing/abuse durumlarında firewall + port snapshot → Hetzner'a kanıt
+**Phase 16: Güvenlik Fixleri** ✅ (2026-03-08)
+- [x] YAML domain validation (`isValidDomain()` Zod refine)
+- [x] Coolify/Dokploy install → download-then-execute pattern
+- [x] Provider API timeout (apiClient, 15s)
+- [x] Import IP validation (assertValidIp)
+- [x] Backup path traversal guard
+- [x] buildLogCommand integer bounds check (1-500)
+- [x] ssh-keygen IP quoting
+- [x] maintainAll tokenMap null guard
+- [x] updateCheck config dir mode 0o700
+- [x] npm audit 0 vulnerability (minimatch override)
+- [x] destroy.ts unnecessary dynamic import removed
 
-**Website:**
-- [ ] kastell.dev website
-- [ ] kastell.dev açılınca → GitHub + npm homepage'e kastell.dev koy
-- [ ] quicklify.omrfc.dev → kastell.dev redirect yap, sonra kapat
-- [ ] Logo kesinleşmeli (website öncesi)
-
-**Dokploy:**
+**Phase 17: Dokploy Tamamlama**
 - [ ] Dokploy restore desteği
 - [ ] Dokploy version detection (API üzerinden)
 - [ ] Auto-detection (sunucuda Coolify mi Dokploy mu?)
 
-**Güvenlik & Altyapı:**
-- [ ] YAML domain validation (`isValidDomain()` uygula)
-- [ ] Coolify install URL version pinning
-- [ ] Provider API timeout (axios calls)
+**Phase 18: Code Quality Refactoring**
+- [ ] Dead code temizliği: `logo.ts` + figlet kaldır, `getCoolifyCloudInit()` kaldır
+- [ ] `getLogCommand()` orphan method — interface + adapter'lardan kaldır
+- [ ] `commands/maintain.ts` → `core/maintain.ts`'e delege et (DRY)
+- [ ] `BasePlatformAdapter` — Coolify/Dokploy ortak backup/update/health akışı
+- [ ] `deployServer()` 337 satır → phase'lere böl (createServer, waitReady, postSetup)
+- [ ] `coolifyStatus` → `platformStatus` rename (consistency)
+- [ ] Provider error handling → `withProviderErrorHandling()` HOF
+- [ ] `process.exit(1)` → throw/return (core/deploy.ts testability)
 
-**Hook'lar (4):**
-- [ ] SessionStart → CHANGELOG + current focus yükle
-- [ ] Stop → TS hata/CHANGELOG/README kontrolü (prompt hook)
-- [ ] PreCompact → CHANGELOG snapshot
-- [ ] SessionEnd → uncommitted changes uyarısı
+**Phase 19: kastell audit**
+- [ ] `kastell audit` — ücretsiz güvenlik taraması, viral büyüme motoru
+- [ ] IP spoofing/abuse durumlarında firewall + port snapshot → Hetzner'a kanıt
 
 <details>
-<summary>⬜ v1.6 Guard Core + Hooks</summary>
+<summary>⬜ v1.6 Guard Core</summary>
 
 **Guard:**
 - [ ] `kastell guard` — otonom daemon (arka planda çalışan güvenlik servisi)
@@ -117,25 +123,18 @@ MCP server with 7 tools, 12 security fixes, SSH key auto-generation, full docs u
 **Bildirimler:**
 - [ ] Telegram / Discord / Slack bildirimleri
 
-**Altyapi:**
+**Altyapı:**
 - [ ] kastell backup --schedule
 - [ ] ServerRecord.mode required yapma
 - [ ] servers.json file locking (concurrent yazma race condition)
 - [ ] Provider API 429 rate limit backoff (exponential retry)
 
-**Dokploy (Ileri):**
+**Dokploy (İleri):**
 - [ ] Dokploy API integration (project/service yönetimi)
 - [ ] Swarm status monitoring
 
 **Olgunluk:**
 - [ ] Adapter contract dokümantasyonu — shared interface + test fixture (breaking change koruması)
-
-**Hook'lar (5):**
-- [ ] SessionStart → kastell audit --silent
-- [ ] Deploy sonrası Telegram bildirimi (HTTP hook + n8n)
-- [ ] Kastell MCP auto-allow
-- [ ] PostToolUse/Bash → session.log
-- [ ] UserPromptSubmit → platform/versiyon enjeksiyonu
 
 </details>
 
@@ -185,6 +184,29 @@ MCP server with 7 tools, 12 security fixes, SSH key auto-generation, full docs u
 
 </details>
 
+## Paralel Track: kastell.dev Website
+
+> v1.5 (audit) ile paralel — audit publish olduğunda website hazır olmalı.
+
+- [ ] Logo kesinleşmeli (website öncesi)
+- [ ] kastell.dev website (ayrı repo)
+- [ ] kastell.dev açılınca → GitHub + npm homepage'e kastell.dev koy
+- [ ] quicklify.omrfc.dev → kastell.dev redirect yap, sonra kapat
+
+## Backlog (Hook'lar)
+
+> Milestone'a bağlı değil, ihtiyaç oldukça ekle. Geliştirici DX'i, kullanıcıya değer katmıyor.
+
+- [ ] SessionStart → CHANGELOG + current focus yükle
+- [ ] Stop → TS hata/CHANGELOG/README kontrolü (prompt hook)
+- [ ] PreCompact → CHANGELOG snapshot
+- [ ] SessionEnd → uncommitted changes uyarısı
+- [ ] SessionStart → kastell audit --silent
+- [ ] Deploy sonrası Telegram bildirimi (HTTP hook + n8n)
+- [ ] Kastell MCP auto-allow
+- [ ] PostToolUse/Bash → session.log
+- [ ] UserPromptSubmit → platform/versiyon enjeksiyonu
+
 ## Periyodik Bakım
 
 - [ ] MEMORY.md stale bilgi kontrolü (her 2-3 major gorev)
@@ -210,7 +232,8 @@ MCP server with 7 tools, 12 security fixes, SSH key auto-generation, full docs u
 | 13. Developer Experience | v1.4 | 3/3 | Complete | 2026-03-07 |
 | 14. TUI Enhancements | v1.4 | 2/2 | Complete | 2026-03-07 |
 | 15. Documentation | v1.4 | 1/1 | Complete | 2026-03-07 |
+| 16. Güvenlik Fixleri | v1.5 | 11/11 | Complete | 2026-03-08 |
 
 ---
 *Roadmap created: 2026-02-27*
-*Last updated: 2026-03-07 — v1.4 milestone shipped*
+*Last updated: 2026-03-08 — Phase 16 (security audit) complete, Phase 18 (refactoring) added*
