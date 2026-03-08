@@ -6,6 +6,7 @@ import type {
   HealthResult,
   PlatformStatusResult,
   PlatformBackupResult,
+  PlatformRestoreResult,
   UpdateResult,
 } from "./interface.js";
 import type { BackupManifest } from "../types/index.js";
@@ -15,6 +16,7 @@ import {
   formatTimestamp,
   getBackupDir,
   scpDownload,
+  scpUpload,
 } from "../core/backup.js";
 import { getErrorMessage, mapSshError, sanitizeStderr } from "../utils/errorMapper.js";
 
@@ -214,6 +216,149 @@ echo "Then access your instance at: http://YOUR_SERVER_IP:3000"
     }
   }
 
+  async restoreBackup(
+    ip: string,
+    backupPath: string,
+    _manifest: BackupManifest,
+  ): Promise<PlatformRestoreResult> {
+    assertValidIp(ip);
+
+    const steps: Array<{
+      name: string;
+      status: "success" | "failure";
+      error?: string;
+    }> = [];
+
+    try {
+      // Upload backup files (before stopping Dokploy -- safe to fail here)
+      const dbUpload = await scpUpload(
+        ip,
+        join(backupPath, "dokploy-backup.sql.gz"),
+        "/tmp/dokploy-backup.sql.gz",
+      );
+      if (dbUpload.code !== 0) {
+        return {
+          success: false,
+          steps: [
+            {
+              name: "Upload database backup",
+              status: "failure",
+              error: sanitizeStderr(dbUpload.stderr),
+            },
+          ],
+          error: "Failed to upload database backup",
+        };
+      }
+      steps.push({ name: "Upload database backup", status: "success" });
+
+      const configUpload = await scpUpload(
+        ip,
+        join(backupPath, "dokploy-config.tar.gz"),
+        "/tmp/dokploy-config.tar.gz",
+      );
+      if (configUpload.code !== 0) {
+        return {
+          success: false,
+          steps: [
+            ...steps,
+            {
+              name: "Upload config backup",
+              status: "failure",
+              error: sanitizeStderr(configUpload.stderr),
+            },
+          ],
+          error: "Failed to upload config backup",
+        };
+      }
+      steps.push({ name: "Upload config backup", status: "success" });
+
+      // Step 1: Stop Dokploy (scale to 0)
+      const stopResult = await sshExec(ip, "docker service scale dokploy=0");
+      if (stopResult.code !== 0) {
+        steps.push({
+          name: "Stop Dokploy",
+          status: "failure",
+          error: sanitizeStderr(stopResult.stderr),
+        });
+        return { success: false, steps, error: "Failed to stop Dokploy" };
+      }
+      steps.push({ name: "Stop Dokploy", status: "success" });
+
+      // Step 2: Start postgres (ensure DB is running)
+      const dbStartResult = await sshExec(
+        ip,
+        "docker service scale dokploy-postgres=1 && sleep 5",
+      );
+      if (dbStartResult.code !== 0) {
+        steps.push({
+          name: "Start database",
+          status: "failure",
+          error: sanitizeStderr(dbStartResult.stderr),
+        });
+        await this.tryRestartDokploy(ip);
+        return { success: false, steps, error: "Failed to start database" };
+      }
+      steps.push({ name: "Start database", status: "success" });
+
+      // Step 3: Restore database
+      const restoreDbResult = await sshExec(
+        ip,
+        "gunzip -c /tmp/dokploy-backup.sql.gz | docker exec -i $(docker ps -qf name=dokploy-postgres) psql -U postgres -d dokploy",
+      );
+      if (restoreDbResult.code !== 0) {
+        steps.push({
+          name: "Restore database",
+          status: "failure",
+          error: sanitizeStderr(restoreDbResult.stderr),
+        });
+        await this.tryRestartDokploy(ip);
+        return { success: false, steps, error: "Database restore failed" };
+      }
+      steps.push({ name: "Restore database", status: "success" });
+
+      // Step 4: Restore config
+      const restoreConfigResult = await sshExec(
+        ip,
+        "tar xzf /tmp/dokploy-config.tar.gz -C /etc/dokploy",
+      );
+      if (restoreConfigResult.code !== 0) {
+        steps.push({
+          name: "Restore config",
+          status: "failure",
+          error: sanitizeStderr(restoreConfigResult.stderr),
+        });
+        await this.tryRestartDokploy(ip);
+        return { success: false, steps, error: "Config restore failed" };
+      }
+      steps.push({ name: "Restore config", status: "success" });
+
+      // Step 5: Start Dokploy
+      const startResult = await sshExec(ip, "docker service scale dokploy=1");
+      if (startResult.code !== 0) {
+        steps.push({
+          name: "Start Dokploy",
+          status: "failure",
+          error: sanitizeStderr(startResult.stderr),
+        });
+        return { success: false, steps, error: "Failed to start Dokploy" };
+      }
+      steps.push({ name: "Start Dokploy", status: "success" });
+
+      // Cleanup remote (best-effort)
+      await sshExec(ip, this.buildCleanupCommand()).catch(() => {});
+
+      return { success: true, steps };
+    } catch (error: unknown) {
+      const hint = mapSshError(error, ip);
+      return {
+        success: false,
+        steps,
+        error: getErrorMessage(error),
+        ...(hint ? { hint } : {}),
+      };
+    }
+  }
+
   async getStatus(ip: string): Promise<PlatformStatusResult> {
     assertValidIp(ip);
     const versionResult = await sshExec(ip, this.buildVersionCommand());
@@ -252,6 +397,14 @@ echo "Then access your instance at: http://YOUR_SERVER_IP:3000"
   }
 
   // --- Private Helpers -------------------------------------------------------
+
+  private async tryRestartDokploy(ip: string): Promise<void> {
+    try {
+      await sshExec(ip, "docker service scale dokploy=1");
+    } catch {
+      // Best-effort -- swallow errors
+    }
+  }
 
   private buildPgDumpCommand(): string {
     return "docker exec $(docker ps -qf name=dokploy-postgres) pg_dump -U postgres -d dokploy | gzip > /tmp/dokploy-backup.sql.gz";
