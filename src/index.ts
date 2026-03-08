@@ -31,6 +31,7 @@ import { maintainCommand } from "./commands/maintain.js";
 import { snapshotCommand } from "./commands/snapshot.js";
 import { completionsCommand } from "./commands/completions.js";
 import { registerAuthCommands } from "./commands/auth.js";
+import { auditCommand } from "./commands/audit.js";
 import { printHeader, printQuickHelp } from "./cli/header.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -252,6 +253,24 @@ program
   .command("completions [shell]")
   .description("Generate shell completion scripts (bash, zsh, fish)")
   .action(completionsCommand);
+
+program
+  .command("audit [server-name]")
+  .description("Run a security audit on a server")
+  .option("--json", "Output results as JSON")
+  .option("--badge", "Output an SVG badge with score")
+  .option("--report <format>", "Generate a report (html or md)")
+  .option("--summary", "Show compact dashboard summary")
+  .option("--score-only", "Output only the score (e.g. 72/100)")
+  .option("--fix", "Interactive fix mode")
+  .option("--dry-run", "Show fix commands without executing")
+  .option("--watch [interval]", "Watch mode with optional interval in seconds")
+  .option("--host <user@ip>", "Audit an unregistered server by IP")
+  .option("--threshold <score>", "Exit with code 1 if score is below threshold")
+  .option("--category <list>", "Comma-separated list of categories to audit")
+  .action((serverName?: string, options?: Record<string, unknown>) =>
+    auditCommand(serverName, options),
+  );
 
 registerAuthCommands(program);
 

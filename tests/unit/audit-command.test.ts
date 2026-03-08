@@ -1,14 +1,17 @@
 import * as auditCore from "../../src/core/audit/index";
 import * as serverSelect from "../../src/utils/serverSelect";
 import * as ssh from "../../src/utils/ssh";
+import * as formatters from "../../src/core/audit/formatters/index";
 
 jest.mock("../../src/core/audit/index");
 jest.mock("../../src/utils/serverSelect");
 jest.mock("../../src/utils/ssh");
+jest.mock("../../src/core/audit/formatters/index");
 
 const mockedAuditCore = auditCore as jest.Mocked<typeof auditCore>;
 const mockedServerSelect = serverSelect as jest.Mocked<typeof serverSelect>;
 const mockedSsh = ssh as jest.Mocked<typeof ssh>;
+const mockedFormatters = formatters as jest.Mocked<typeof formatters>;
 
 // Mock AuditResult for testing
 const mockAuditResult = {
@@ -96,6 +99,11 @@ describe("auditCommand", () => {
       success: true,
       data: mockAuditResult,
     });
+
+    // Default formatter mock — returns a simple string representation
+    mockedFormatters.selectFormatter.mockResolvedValue(
+      (result) => `formatted: ${result.overallScore}/100`,
+    );
   });
 
   afterEach(() => {
@@ -110,19 +118,33 @@ describe("auditCommand", () => {
     expect(mockedAuditCore.runAudit).toHaveBeenCalledWith("1.2.3.4", "test-server", "bare");
   });
 
-  it("should use --json flag to select JSON formatter", async () => {
+  it("should use --json flag and pass it to selectFormatter", async () => {
+    // When json is requested, selectFormatter gets { json: true }
+    mockedFormatters.selectFormatter.mockResolvedValue(
+      (result) => JSON.stringify(result, null, 2),
+    );
+
     const { auditCommand } = await import("../../src/commands/audit");
     await auditCommand(undefined, { json: true });
 
+    expect(mockedFormatters.selectFormatter).toHaveBeenCalledWith(
+      expect.objectContaining({ json: true }),
+    );
     const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
-    // JSON output should be parseable
     expect(() => JSON.parse(output)).not.toThrow();
   });
 
-  it("should use --badge flag to select badge formatter", async () => {
+  it("should use --badge flag and pass it to selectFormatter", async () => {
+    mockedFormatters.selectFormatter.mockResolvedValue(
+      () => '<svg xmlns="http://www.w3.org/2000/svg">72/100</svg>',
+    );
+
     const { auditCommand } = await import("../../src/commands/audit");
     await auditCommand(undefined, { badge: true });
 
+    expect(mockedFormatters.selectFormatter).toHaveBeenCalledWith(
+      expect.objectContaining({ badge: true }),
+    );
     const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("<svg");
     expect(output).toContain("xmlns");
@@ -134,6 +156,8 @@ describe("auditCommand", () => {
 
     const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("72/100");
+    // selectFormatter should NOT be called for score-only
+    expect(mockedFormatters.selectFormatter).not.toHaveBeenCalled();
   });
 
   it("should parse --host user@ip and skip resolveServer", async () => {
@@ -170,7 +194,26 @@ describe("auditCommand", () => {
     const { auditCommand } = await import("../../src/commands/audit");
     await auditCommand(undefined, {});
 
+    // Hint message goes through logger.info -> console.log
     const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
-    expect(output).toContain("Audit failed");
+    expect(output).toContain("Check SSH config");
+    // selectFormatter should not be called on failure
+    expect(mockedFormatters.selectFormatter).not.toHaveBeenCalled();
+  });
+
+  it("should handle --score-only with --threshold below score", async () => {
+    const { auditCommand } = await import("../../src/commands/audit");
+    await auditCommand(undefined, { scoreOnly: true, threshold: "60" });
+
+    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    expect(output).toContain("72/100");
+    expect(exitSpy).not.toHaveBeenCalledWith(1);
+  });
+
+  it("should handle --score-only with --threshold above score", async () => {
+    const { auditCommand } = await import("../../src/commands/audit");
+    await auditCommand(undefined, { scoreOnly: true, threshold: "80" });
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
   });
 });
