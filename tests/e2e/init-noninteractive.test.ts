@@ -244,7 +244,8 @@ describe("initCommand Non-Interactive", () => {
       name: "fail-test",
     });
 
-    expect(processExitSpy).toHaveBeenCalledWith(1);
+    // deployServer returns KastellResult instead of calling process.exit
+    expect(processExitSpy).not.toHaveBeenCalled();
   });
 
   it("should handle server boot timeout", async () => {

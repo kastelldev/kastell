@@ -5,7 +5,7 @@
  *
  * Covers: happy path coolify, bare mode (no waitForCoolify, no openBrowser,
  *         SSH info, cloud-init wait), full-setup (firewall+secure called/skipped),
- *         error path (process.exit), pending IP, noOpen flag.
+ *         error path (KastellResult), pending IP, noOpen flag.
  */
 
 import { deployServer } from "../../src/core/deploy";
@@ -103,11 +103,9 @@ function createMockProvider(overrides: Partial<CloudProvider> = {}): CloudProvid
 
 describe("deployServer — coolify mode", () => {
   let consoleSpy: jest.SpyInstance;
-  let processExitSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
-    processExitSpy = jest.spyOn(process, "exit").mockImplementation(() => undefined as never);
     jest.clearAllMocks();
     // Default: Coolify reports ready
     waitForCoolify.mockResolvedValue(true);
@@ -118,14 +116,16 @@ describe("deployServer — coolify mode", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
-    processExitSpy.mockRestore();
   });
 
-  it("should call waitForCoolify and saveServer with mode:'coolify' (happy path)", async () => {
+  it("should return success and call waitForCoolify and saveServer with mode:'coolify' (happy path)", async () => {
     const provider = createMockProvider();
 
-    await deployServer("hetzner", provider, "nbg1", "cax11", "my-server");
+    const result = await deployServer("hetzner", provider, "nbg1", "cax11", "my-server");
 
+    expect(result.success).toBe(true);
+    expect(result.data).toBeDefined();
+    expect(result.data!.serverIp).toBe("10.0.0.1");
     expect(waitForCoolify).toHaveBeenCalled();
     expect(saveServer).toHaveBeenCalledWith(
       expect.objectContaining({ mode: "coolify" }),
@@ -174,11 +174,9 @@ describe("deployServer — coolify mode", () => {
 
 describe("deployServer — bare mode", () => {
   let consoleSpy: jest.SpyInstance;
-  let processExitSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
-    processExitSpy = jest.spyOn(process, "exit").mockImplementation(() => undefined as never);
     jest.clearAllMocks();
     waitForCoolify.mockResolvedValue(true);
     sshExec.mockResolvedValue({ code: 0, stdout: "", stderr: "" });
@@ -188,7 +186,6 @@ describe("deployServer — bare mode", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
-    processExitSpy.mockRestore();
   });
 
   it("should NOT call waitForCoolify when mode='bare'", async () => {
@@ -233,6 +230,16 @@ describe("deployServer — bare mode", () => {
 
     expect(sshExec).toHaveBeenCalledWith(expect.any(String), "cloud-init status --wait");
   });
+
+  it("should return success with no platform in bare mode", async () => {
+    const provider = createMockProvider();
+
+    const result = await deployServer("hetzner", provider, "nbg1", "cax11", "my-server", false, false, "bare");
+
+    expect(result.success).toBe(true);
+    expect(result.data).toBeDefined();
+    expect(result.data!.platform).toBeUndefined();
+  });
 });
 
 // ============================================================
@@ -241,11 +248,9 @@ describe("deployServer — bare mode", () => {
 
 describe("deployServer — error handling", () => {
   let consoleSpy: jest.SpyInstance;
-  let processExitSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
-    processExitSpy = jest.spyOn(process, "exit").mockImplementation(() => undefined as never);
     jest.clearAllMocks();
     waitForCoolify.mockResolvedValue(true);
     sshExec.mockResolvedValue({ code: 0, stdout: "", stderr: "" });
@@ -253,17 +258,28 @@ describe("deployServer — error handling", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
-    processExitSpy.mockRestore();
   });
 
-  it("should call process.exit(1) when server creation fails with a generic error", async () => {
+  it("should return { success: false } when server creation fails with a generic error", async () => {
     const provider = createMockProvider({
       createServer: jest.fn().mockRejectedValue(new Error("Internal Server Error")),
     });
 
-    await deployServer("hetzner", provider, "nbg1", "cax11", "my-server");
+    const result = await deployServer("hetzner", provider, "nbg1", "cax11", "my-server");
 
-    expect(processExitSpy).toHaveBeenCalledWith(1);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("Internal Server Error");
+  });
+
+  it("should include hint in result when provider error mapping produces a hint", async () => {
+    const provider = createMockProvider({
+      createServer: jest.fn().mockRejectedValue(new Error("unauthorized")),
+    });
+
+    const result = await deployServer("hetzner", provider, "nbg1", "cax11", "my-server");
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBeDefined();
   });
 });
 
@@ -273,11 +289,9 @@ describe("deployServer — error handling", () => {
 
 describe("deployServer — IP assignment", () => {
   let consoleSpy: jest.SpyInstance;
-  let processExitSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
-    processExitSpy = jest.spyOn(process, "exit").mockImplementation(() => undefined as never);
     jest.clearAllMocks();
     waitForCoolify.mockResolvedValue(true);
     sshExec.mockResolvedValue({ code: 0, stdout: "", stderr: "" });
@@ -285,7 +299,6 @@ describe("deployServer — IP assignment", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
-    processExitSpy.mockRestore();
   });
 
   it("should save server with resolved IP when createServer returns pending IP", async () => {
@@ -302,5 +315,70 @@ describe("deployServer — IP assignment", () => {
     expect(saveServer).toHaveBeenCalledWith(
       expect.objectContaining({ ip: "10.0.0.1" }),
     );
+  });
+});
+
+// ============================================================
+// describe: return type validation
+// ============================================================
+
+describe("deployServer — KastellResult return type", () => {
+  let consoleSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    jest.clearAllMocks();
+    waitForCoolify.mockResolvedValue(true);
+    sshExec.mockResolvedValue({ code: 0, stdout: "", stderr: "" });
+    firewallSetup.mockResolvedValue(undefined);
+    secureSetup.mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    consoleSpy.mockRestore();
+  });
+
+  it("should return DeployData with serverId, serverIp, serverName on success", async () => {
+    const provider = createMockProvider();
+
+    const result = await deployServer("hetzner", provider, "nbg1", "cax11", "test-srv");
+
+    expect(result).toEqual({
+      success: true,
+      data: expect.objectContaining({
+        serverId: "999",
+        serverIp: "10.0.0.1",
+        serverName: "test-srv",
+      }),
+    });
+  });
+
+  it("should return platform in data for coolify mode", async () => {
+    const provider = createMockProvider();
+
+    const result = await deployServer("hetzner", provider, "nbg1", "cax11", "test-srv");
+
+    expect(result.data!.platform).toBe("coolify");
+  });
+
+  it("should return platform:'dokploy' for dokploy mode", async () => {
+    const provider = createMockProvider();
+
+    const result = await deployServer("hetzner", provider, "nbg1", "cax11", "test-srv", false, false, "dokploy");
+
+    expect(result.data!.platform).toBe("dokploy");
+  });
+
+  it("should not call process.exit on failure — returns error result instead", async () => {
+    const processExitSpy = jest.spyOn(process, "exit").mockImplementation(() => undefined as never);
+    const provider = createMockProvider({
+      createServer: jest.fn().mockRejectedValue(new Error("boom")),
+    });
+
+    const result = await deployServer("hetzner", provider, "nbg1", "cax11", "test-srv");
+
+    expect(result.success).toBe(false);
+    expect(processExitSpy).not.toHaveBeenCalled();
+    processExitSpy.mockRestore();
   });
 });

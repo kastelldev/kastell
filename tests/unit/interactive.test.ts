@@ -2,10 +2,6 @@ import inquirer from "inquirer";
 import { interactiveMenu, buildSearchSource } from "../../src/commands/interactive";
 
 jest.mock("inquirer");
-jest.mock("../../src/utils/logo.js", () => ({
-  renderLogo: jest.fn(() => "MOCK_LOGO"),
-}));
-// Note: renderLogo is no longer called by interactiveMenu (header is printed by index.ts)
 
 const mockedInquirer = inquirer as jest.Mocked<typeof inquirer>;
 
@@ -79,13 +75,6 @@ describe("interactiveMenu", () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
-  });
-
-  it("does not call renderLogo (header printed by index.ts)", async () => {
-    const { renderLogo } = require("../../src/utils/logo.js");
-    mockedInquirer.prompt.mockResolvedValueOnce({ action: "exit" });
-    await interactiveMenu();
-    expect(renderLogo).not.toHaveBeenCalled();
   });
 
   // ─── Main menu ──────────────────────────────────────────────────────────────

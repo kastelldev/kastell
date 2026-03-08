@@ -211,7 +211,8 @@ describe("initCommand E2E", () => {
 
       await initCommand();
 
-      expect(processExitSpy).toHaveBeenCalledWith(1);
+      // deployServer returns KastellResult instead of calling process.exit
+      expect(processExitSpy).not.toHaveBeenCalled();
     });
 
     it("should handle server boot timeout", async () => {
@@ -272,7 +273,8 @@ describe("initCommand E2E", () => {
 
       await initCommand();
 
-      expect(processExitSpy).toHaveBeenCalledWith(1);
+      // deployServer returns KastellResult instead of calling process.exit
+      expect(processExitSpy).not.toHaveBeenCalled();
     });
 
     it("should retry with different server type when unavailable", async () => {
@@ -432,7 +434,8 @@ describe("initCommand E2E", () => {
 
       await initCommand();
 
-      expect(processExitSpy).toHaveBeenCalledWith(1);
+      // deployServer returns KastellResult instead of calling process.exit
+      expect(processExitSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -522,7 +525,8 @@ describe("initCommand E2E", () => {
 
       await initCommand();
 
-      expect(processExitSpy).toHaveBeenCalledWith(1);
+      // deployServer returns KastellResult instead of calling process.exit
+      expect(processExitSpy).not.toHaveBeenCalled();
     });
   });
 
