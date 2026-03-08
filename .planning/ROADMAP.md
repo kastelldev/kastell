@@ -109,28 +109,55 @@ Plans:
 - [x] Tier 2 dokümantasyon — core dump kapatma + swap şifreleme önerisi (SECURITY.md)
 - [x] Buffer token storage + shutdown cleanup — tokenBuf.fill(0), kısmi koruma
 
-**Phase 19: Code Quality Refactoring** — **Plans:** 4 plans
-- [ ] Dead code temizliği: `logo.ts` + figlet kaldır, `getCoolifyCloudInit()` kaldır
-- [ ] `getLogCommand()` orphan method — interface + adapter'lardan kaldır
-- [ ] `coolifyStatus` → `platformStatus` rename (consistency)
-- [ ] `commands/maintain.ts` → `core/maintain.ts`'e delege et (DRY)
-- [ ] `deployServer()` 337 satır → phase'lere böl (createServer, waitReady, postSetup)
-- [ ] `process.exit(1)` → KastellResult (core/deploy.ts testability)
-- [ ] Shared adapter utilities — Coolify/Dokploy ortak healthCheck/update/getStatus
-- [ ] Provider error handling → `withProviderErrorHandling()` HOF
+**Phase 19: Code Quality Refactoring** ✅ (2026-03-08) — **Plans:** 4/4 complete
+- [x] Dead code temizliği: `logo.ts` + figlet kaldır, `getCoolifyCloudInit()` kaldır
+- [x] `getLogCommand()` orphan method — interface + adapter'lardan kaldır
+- [x] `coolifyStatus` → `platformStatus` rename (consistency)
+- [x] `commands/maintain.ts` → `core/maintain.ts`'e delege et (DRY)
+- [x] `deployServer()` 337 satır → phase'lere böl (createServer, waitReady, postSetup)
+- [x] `process.exit(1)` → KastellResult (core/deploy.ts testability)
+- [x] Shared adapter utilities — Coolify/Dokploy ortak healthCheck/update/getStatus
+- [x] Provider error handling → `withProviderErrorHandling()` HOF
 
 Plans:
-- [ ] 19-01-PLAN.md — Dead code removal + coolifyStatus → platformStatus rename
-- [ ] 19-02-PLAN.md — Maintain pipeline DRY consolidation (command → core)
-- [ ] 19-03-PLAN.md — deployServer() decomposition + process.exit removal
-- [ ] 19-04-PLAN.md — Shared adapter utilities + provider error handling HOF
+- [x] 19-01-PLAN.md — Dead code removal + coolifyStatus → platformStatus rename
+- [x] 19-02-PLAN.md — Maintain pipeline DRY consolidation (command → core)
+- [x] 19-03-PLAN.md — deployServer() decomposition + process.exit removal
+- [x] 19-04-PLAN.md — Shared adapter utilities + provider error handling HOF
 
-**Phase 20: kastell audit**
-- [ ] `kastell audit` — ücretsiz güvenlik taraması, viral büyüme motoru
-- [ ] IP spoofing/abuse durumlarında firewall + port snapshot → Hetzner'a kanıt
+**Phase 20: kastell audit** — **Plans:** 5 plans
+- [ ] 9 kategori ~46 kontrol (SSH, Firewall, System Updates, Docker, Network, Filesystem, Auth, Logging, Kernel)
+- [ ] Severity levels (Critical/Warning/Info) + emoji
+- [ ] Kategori bazlı score tablosu (SSH 6/10, Firewall 2/10...)
+- [ ] Actionable fix commands + explain (default davranış)
+- [ ] `--fix` interactive (onaylı otomatik düzeltme)
+- [ ] `--fix --dry-run` (fix preview — güven oluşturma)
+- [ ] `--json`, `--badge` (SVG shield), `--report html/md`
+- [ ] `--score-only` (CI/CD tek satır çıktı)
+- [ ] `--summary` (dashboard tarzı kısa özet)
+- [ ] `--threshold` + exit codes (CI/CD entegrasyonu)
+- [ ] `--watch` modu (daemon'suz monitoring, guard'a köprü)
+- [ ] `--host user@ip` (kayıtsız sunucu audit — "audit any server")
+- [ ] Trend detection (son score karşılaştırma, ~/.kastell/audit-history.json)
+- [ ] Platform-aware (Coolify/Dokploy/Bare)
+- [ ] Quick win özeti ("3 komutla 45→85" mesajı)
+- [ ] MCP `server_audit` tool
+- [ ] GitHub Actions örneği (README)
+
+Plans:
+- [ ] 20-01-PLAN.md — Audit types + SSH batch commands + scoring engine + runner skeleton
+- [ ] 20-02-PLAN.md — 9 category check parsers (~46 checks) + check registry
+- [ ] 20-03-PLAN.md — CLI command + all output formatters (terminal, JSON, badge, report, summary)
+- [ ] 20-04-PLAN.md — Fix engine + history/trend detection + quick win calculator
+- [ ] 20-05-PLAN.md — MCP server_audit tool + watch mode + CLI integration finalization
 
 <details>
 <summary>⬜ v1.6 Guard Core</summary>
+
+**Audit Genişletme (v1.5'ten ertelenen):**
+- [ ] `--snapshot` — firewall rules, open ports, processes → tarihli JSON kanıt
+- [ ] `--diff snapshot1 snapshot2` — iki snapshot arası fark
+- [ ] `--compare server1 server2` — multi-server audit karşılaştırması
 
 **Guard:**
 - [ ] `kastell guard` — otonom daemon (arka planda çalışan güvenlik servisi)
@@ -252,7 +279,9 @@ Plans:
 | 15. Documentation | v1.4 | 1/1 | Complete | 2026-03-07 |
 | 16. Güvenlik Fixleri | v1.5 | 11/11 | Complete | 2026-03-08 |
 | 18. Token Güvenliği | v1.5 | 2/2 | Complete | 2026-03-08 |
+| 19. Code Quality Refactoring | v1.5 | 4/4 | Complete | 2026-03-08 |
+| 20. kastell audit | v1.5 | 0/5 | In Progress | - |
 
 ---
 *Roadmap created: 2026-02-27*
-*Last updated: 2026-03-08 — Phase 19 (Code Quality Refactoring) planned*
+*Last updated: 2026-03-08 — Phase 20 (kastell audit) planned*
