@@ -97,7 +97,7 @@ export function sanitizedEnv(): NodeJS.ProcessEnv {
 export function removeStaleHostKey(ip: string): void {
   assertValidIp(ip);
   try {
-    execSync(`ssh-keygen -R ${ip}`, { stdio: "ignore", env: sanitizedEnv() });
+    execSync(`ssh-keygen -R "${ip}"`, { stdio: "ignore", env: sanitizedEnv() });
   } catch {
     // Silently ignore — ssh-keygen may not be available or no entry exists
   }

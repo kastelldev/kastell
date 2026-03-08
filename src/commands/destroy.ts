@@ -1,6 +1,6 @@
 import inquirer from "inquirer";
 import { resolveServer } from "../utils/serverSelect.js";
-import { destroyCloudServer } from "../core/manage.js";
+import { destroyCloudServer, removeServerRecord } from "../core/manage.js";
 import { logger, createSpinner } from "../utils/logger.js";
 import { listBackups, cleanupServerBackups } from "../core/backup.js";
 
@@ -111,7 +111,6 @@ export async function destroyCommand(query?: string, options?: { dryRun?: boolea
     },
   ]);
   if (removeLocal) {
-    const { removeServerRecord } = await import("../core/manage.js");
     const removeResult = removeServerRecord(server.name);
     if (removeResult.success) {
       logger.success("Removed from local config.");

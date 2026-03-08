@@ -37,15 +37,16 @@ const EMPTY_METRICS: SystemMetrics = {
 };
 
 export function buildLogCommand(service: LogService, lines: number, follow: boolean = false): string {
+  const safeLines = Math.max(1, Math.min(500, Math.floor(lines)));
   switch (service) {
     case "coolify":
-      return `docker logs coolify --tail ${lines}${follow ? " --follow" : ""}`;
+      return `docker logs coolify --tail ${safeLines}${follow ? " --follow" : ""}`;
     case "dokploy":
-      return `docker service logs dokploy_dokploy --tail ${lines}${follow ? " --follow" : ""}`;
+      return `docker service logs dokploy_dokploy --tail ${safeLines}${follow ? " --follow" : ""}`;
     case "docker":
-      return `journalctl -u docker --no-pager -n ${lines}${follow ? " -f" : ""}`;
+      return `journalctl -u docker --no-pager -n ${safeLines}${follow ? " -f" : ""}`;
     case "system":
-      return `journalctl --no-pager -n ${lines}${follow ? " -f" : ""}`;
+      return `journalctl --no-pager -n ${safeLines}${follow ? " -f" : ""}`;
   }
 }
 

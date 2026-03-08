@@ -66,7 +66,7 @@ function readCache(): UpdateCache | null {
 function writeCache(cache: UpdateCache): void {
   try {
     if (!existsSync(CONFIG_DIR)) {
-      mkdirSync(CONFIG_DIR, { recursive: true });
+      mkdirSync(CONFIG_DIR, { recursive: true, mode: 0o700 });
     }
     writeFileSync(UPDATE_CHECK_FILE, JSON.stringify(cache), { mode: 0o600 });
   } catch {

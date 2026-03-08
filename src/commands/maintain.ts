@@ -294,7 +294,12 @@ async function maintainAll(options: MaintainOptions): Promise<void> {
       continue;
     }
 
-    const token = tokenMap.get(server.provider)!;
+    const token = tokenMap.get(server.provider);
+    if (!token) {
+      logger.warning(`Skipping ${server.name}: no API token available for provider "${server.provider}".`);
+      console.log();
+      continue;
+    }
 
     if (options.dryRun) {
       showDryRun(server, !!options.skipReboot);

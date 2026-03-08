@@ -166,6 +166,7 @@ describe("updateCheck", () => {
 
       expect(mockedFs.mkdirSync).toHaveBeenCalledWith(expect.stringContaining(".kastell"), {
         recursive: true,
+        mode: 0o700,
       });
     });
 
