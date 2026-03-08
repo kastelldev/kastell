@@ -3,6 +3,7 @@ import { createProviderWithToken } from "../utils/providerFactory.js";
 import { sshExec, checkSshAvailable } from "../utils/ssh.js";
 import { getErrorMessage, mapProviderError } from "../utils/errorMapper.js";
 import { getProviderToken } from "./tokens.js";
+import { detectPlatform } from "../adapters/factory.js";
 import type { ServerRecord, ServerMode, Platform } from "../types/index.js";
 import { SUPPORTED_PROVIDERS, invalidProviderError } from "../constants.js";
 import chalk from "chalk";
@@ -139,8 +140,17 @@ export async function addServerRecord(params: AddServerParams): Promise<AddServe
     };
   }
 
-  // Resolve mode and platform
-  const modeStr = params.mode || "coolify";
+  // Resolve mode and platform — auto-detect if no explicit mode provided
+  let modeStr = params.mode;
+  if (!modeStr && !params.skipVerify && checkSshAvailable()) {
+    try {
+      const detected = await detectPlatform(params.ip);
+      modeStr = detected; // "coolify" | "dokploy" | "bare"
+    } catch {
+      modeStr = "coolify"; // fallback on detection failure
+    }
+  }
+  modeStr = modeStr || "coolify";
   const isBare = modeStr === "bare";
   const platform: Platform | undefined = isBare ? undefined
     : modeStr === "dokploy" ? "dokploy"

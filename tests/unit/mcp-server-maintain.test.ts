@@ -15,6 +15,12 @@ jest.mock("../../src/utils/config");
 jest.mock("../../src/utils/ssh");
 jest.mock("../../src/utils/providerFactory");
 jest.mock("../../src/core/status");
+jest.mock("../../src/core/tokenBuffer", () => ({
+  storeToken: jest.fn(),
+  readToken: jest.fn().mockReturnValue(undefined),
+  clearAllTokens: jest.fn(),
+  registerCleanupHandlers: jest.fn(),
+}));
 
 const mockedConfig = config as jest.Mocked<typeof config>;
 const mockedSsh = ssh as jest.Mocked<typeof ssh>;

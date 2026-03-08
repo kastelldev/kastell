@@ -8,6 +8,12 @@ import type { CloudProvider } from "../../src/providers/base";
 jest.mock("../../src/utils/config");
 jest.mock("../../src/utils/providerFactory");
 jest.mock("../../src/utils/ssh");
+jest.mock("../../src/core/tokenBuffer", () => ({
+  storeToken: jest.fn(),
+  readToken: jest.fn().mockReturnValue(undefined),
+  clearAllTokens: jest.fn(),
+  registerCleanupHandlers: jest.fn(),
+}));
 
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 const mockedConfig = config as jest.Mocked<typeof config>;

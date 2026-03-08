@@ -5,6 +5,21 @@ milestone_name: Security + Dokploy + Audit
 current_plan: 05 of 5 (05 complete)
 status: in-progress
 stopped_at: Completed 20-05-PLAN.md (MCP, watch, CI integration)
+last_updated: "2026-03-08T15:41:10.446Z"
+progress:
+  total_phases: 4
+  completed_phases: 4
+  total_plans: 14
+  completed_plans: 14
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.5
+milestone_name: Security + Dokploy + Audit
+current_plan: 05 of 5 (05 complete)
+status: in-progress
+stopped_at: Completed 20-05-PLAN.md (MCP, watch, CI integration)
 last_updated: "2026-03-08T15:35:00Z"
 progress:
   total_phases: 4

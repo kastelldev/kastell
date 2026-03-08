@@ -1,7 +1,14 @@
 import { getToken } from "../../src/core/auth";
 import { getProviderToken, collectProviderTokensFromEnv } from "../../src/core/tokens";
+import { clearAllTokens } from "../../src/core/tokenBuffer";
 
 jest.mock("../../src/core/auth");
+jest.mock("../../src/core/tokenBuffer", () => ({
+  storeToken: jest.fn(),
+  readToken: jest.fn().mockReturnValue(undefined),
+  clearAllTokens: jest.fn(),
+  registerCleanupHandlers: jest.fn(),
+}));
 const mockGetToken = getToken as jest.MockedFunction<typeof getToken>;
 
 describe("getProviderToken", () => {

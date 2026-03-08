@@ -151,6 +151,22 @@ Plans:
 - [ ] 20-04-PLAN.md — Fix engine + history/trend detection + quick win calculator
 - [ ] 20-05-PLAN.md — MCP server_audit tool + watch mode + CLI integration finalization
 
+**Phase 21: Wire tokenBuffer into Token Resolution** *(Gap Closure)*
+**Goal:** tokenBuffer.ts'i token resolution chain'ine entegre et — AUTH-04 satisfied, integration gap kapatılır
+**Requirements:** AUTH-04
+**Gap Closure:** Closes AUTH-04 (partial → satisfied) + integration gap (tokenBuffer → tokens.ts)
+- [ ] tokenBuffer'ı getProviderToken() chain'ine entegre et (buffer cache layer)
+- [ ] Shutdown cleanup handler'ları production'da aktif et
+- [ ] Mevcut testleri entegrasyon senaryolarıyla güncelle
+
+**Phase 22: Platform Auto-Detection in kastell add** *(Gap Closure)*
+**Goal:** detectPlatform()'a production consumer ekle — DOK-04 satisfied, flow gap kapatılır
+**Requirements:** DOK-04
+**Gap Closure:** Closes DOK-04 (partial → satisfied) + flow gap (Platform auto-detection)
+- [ ] `kastell add` komutuna `--auto-detect` flag ekle (veya `--mode` yoksa otomatik detect)
+- [ ] detectPlatform() → addServerRecord routing'e bağla
+- [ ] Auto-detect flow testleri
+
 <details>
 <summary>⬜ v1.6 Guard Core</summary>
 
@@ -280,8 +296,10 @@ Plans:
 | 16. Güvenlik Fixleri | v1.5 | 11/11 | Complete | 2026-03-08 |
 | 18. Token Güvenliği | v1.5 | 2/2 | Complete | 2026-03-08 |
 | 19. Code Quality Refactoring | v1.5 | 4/4 | Complete | 2026-03-08 |
-| 20. kastell audit | 5/5 | Complete   | 2026-03-08 | - |
+| 20. kastell audit | 5/5 | Complete    | 2026-03-08 | - |
+| 21. Wire tokenBuffer into Token Resolution | v1.5 | 0/0 | Pending | - |
+| 22. Platform Auto-Detection in kastell add | v1.5 | 0/0 | Pending | - |
 
 ---
 *Roadmap created: 2026-02-27*
-*Last updated: 2026-03-08 — Phase 20 (kastell audit) planned*
+*Last updated: 2026-03-08 — Phase 21-22 gap closure phases added*
