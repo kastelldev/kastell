@@ -384,10 +384,6 @@ echo "Then access your instance at: http://YOUR_SERVER_IP:8000"
     }
   }
 
-  getLogCommand(lines: number, follow: boolean): string {
-    return `docker logs coolify --tail ${lines}${follow ? " --follow" : ""}`;
-  }
-
   // ─── Private Helpers ────────────────────────────────────────────────────────
 
   private buildPgDumpCommand(): string {

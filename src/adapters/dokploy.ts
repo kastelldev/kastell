@@ -392,10 +392,6 @@ echo "Then access your instance at: http://YOUR_SERVER_IP:3000"
     }
   }
 
-  getLogCommand(lines: number, follow: boolean): string {
-    return `docker service logs dokploy_dokploy --tail ${lines}${follow ? " --follow" : ""}`;
-  }
-
   // --- Private Helpers -------------------------------------------------------
 
   private async tryRestartDokploy(ip: string): Promise<void> {

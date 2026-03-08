@@ -327,7 +327,7 @@ describe("restore", () => {
         createBackup: jest.fn(),
         getStatus: jest.fn(),
         update: jest.fn(),
-        getLogCommand: jest.fn(),
+
       };
 
       function setupActualRestore(manifest = sampleManifest, server = sampleServer) {

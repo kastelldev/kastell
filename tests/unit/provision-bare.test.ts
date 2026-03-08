@@ -62,7 +62,6 @@ beforeEach(() => {
   mockedSsh.assertValidIp.mockImplementation(() => {});
   mockedSshKey.findLocalSshKey.mockReturnValue("ssh-ed25519 AAAA test@host");
   mockedSshKey.getSshKeyName.mockReturnValue("kastell-test");
-  mockedCloudInit.getCoolifyCloudInit.mockReturnValue("#!/bin/bash\necho coolify");
   mockedCloudInit.getBareCloudInit.mockReturnValue("#!/bin/bash\necho bare");
   mockedTemplates.getTemplateDefaults.mockReturnValue({ region: "nbg1", size: "cax11" });
   mockedConfig.saveServer.mockImplementation(() => {});
@@ -71,7 +70,7 @@ beforeEach(() => {
 });
 
 describe("provisionServer — bare mode cloud-init selection", () => {
-  it("should call getBareCloudInit (not getCoolifyCloudInit) when mode='bare'", async () => {
+  it("should call getBareCloudInit when mode='bare'", async () => {
     const result = await provisionServer({
       provider: "hetzner",
       region: "nbg1",
@@ -82,7 +81,7 @@ describe("provisionServer — bare mode cloud-init selection", () => {
 
     expect(result.success).toBe(true);
     expect(mockedCloudInit.getBareCloudInit).toHaveBeenCalledWith("bare-srv");
-    expect(mockedCloudInit.getCoolifyCloudInit).not.toHaveBeenCalled();
+    // getCoolifyCloudInit removed (dead code)
   });
 
   it("should route through adapter getCloudInit (not getBareCloudInit) when mode='coolify'", async () => {

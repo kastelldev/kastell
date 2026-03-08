@@ -296,18 +296,6 @@ describe("DokployAdapter", () => {
     });
   });
 
-  describe("getLogCommand", () => {
-    it("should return docker service logs dokploy_dokploy --tail 50 without follow", () => {
-      const cmd = adapter.getLogCommand(50, false);
-      expect(cmd).toBe("docker service logs dokploy_dokploy --tail 50");
-    });
-
-    it("should return docker service logs dokploy_dokploy --tail 100 --follow with follow", () => {
-      const cmd = adapter.getLogCommand(100, true);
-      expect(cmd).toBe("docker service logs dokploy_dokploy --tail 100 --follow");
-    });
-  });
-
   describe("restoreBackup", () => {
     const sampleManifest = {
       serverName: "test-server",

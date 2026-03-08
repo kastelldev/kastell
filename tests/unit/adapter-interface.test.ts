@@ -29,9 +29,6 @@ describe("PlatformAdapter interface", () => {
     async update(_ip: string): Promise<UpdateResult> {
       return { success: true, output: "updated" };
     },
-    getLogCommand(lines: number, follow: boolean): string {
-      return `logs --tail ${lines}${follow ? " --follow" : ""}`;
-    },
   };
 
   it("should have a name property", () => {
@@ -97,14 +94,4 @@ describe("PlatformAdapter interface", () => {
     expect(result.output).toBe("updated");
   });
 
-  it("should have a getLogCommand method returning a string", () => {
-    const cmd = mockAdapter.getLogCommand(50, false);
-    expect(typeof cmd).toBe("string");
-    expect(cmd).toContain("--tail 50");
-  });
-
-  it("should have getLogCommand with follow flag", () => {
-    const cmd = mockAdapter.getLogCommand(100, true);
-    expect(cmd).toContain("--follow");
-  });
 });

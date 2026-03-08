@@ -47,5 +47,5 @@ export interface PlatformAdapter {
   ): Promise<PlatformRestoreResult>;
   getStatus(ip: string): Promise<PlatformStatusResult>;
   update(ip: string): Promise<UpdateResult>;
-  getLogCommand(lines: number, follow: boolean): string;
+
 }

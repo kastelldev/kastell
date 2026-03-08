@@ -269,7 +269,7 @@ describe("updateCommand", () => {
         createBackup: jest.fn(async () => ({ success: true })),
         getStatus: jest.fn(async () => ({ platformVersion: "1.0", status: "running" as const })),
         update: jest.fn(async () => ({ success: true })),
-        getLogCommand: jest.fn(() => ""),
+
       };
       const spy = jest.spyOn(adapterFactory, "getAdapter").mockReturnValue(mockAdapter);
 
@@ -296,7 +296,7 @@ describe("updateCommand", () => {
         createBackup: jest.fn(async () => ({ success: true })),
         getStatus: jest.fn(async () => ({ platformVersion: "1.0", status: "running" as const })),
         update: jest.fn(async () => ({ success: true })),
-        getLogCommand: jest.fn(() => ""),
+
       };
       const spy = jest.spyOn(adapterFactory, "getAdapter").mockReturnValue(mockAdapter);
 

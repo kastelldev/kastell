@@ -65,7 +65,7 @@ beforeEach(() => {
   mockedSsh.assertValidIp.mockImplementation(() => {});
   mockedSshKey.findLocalSshKey.mockReturnValue("ssh-ed25519 AAAA test@kastell");
   mockedSshKey.getSshKeyName.mockReturnValue("kastell-1234567890");
-  mockedCloudInit.getCoolifyCloudInit.mockReturnValue("#!/bin/bash\necho hello");
+
   mockedTemplates.getTemplateDefaults.mockReturnValue({ region: "nbg1", size: "cax11" });
   mockedConfig.saveServer.mockImplementation(() => {});
 });

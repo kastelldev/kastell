@@ -262,15 +262,4 @@ describe("CoolifyAdapter", () => {
     });
   });
 
-  describe("getLogCommand", () => {
-    it("should return docker logs coolify --tail 50 without follow", () => {
-      const cmd = adapter.getLogCommand(50, false);
-      expect(cmd).toBe("docker logs coolify --tail 50");
-    });
-
-    it("should return docker logs coolify --tail 100 --follow with follow", () => {
-      const cmd = adapter.getLogCommand(100, true);
-      expect(cmd).toBe("docker logs coolify --tail 100 --follow");
-    });
-  });
 });

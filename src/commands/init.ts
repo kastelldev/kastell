@@ -213,7 +213,7 @@ export async function initCommand(options: InitOptions = {}): Promise<void> {
     }
 
     // Deploy
-    return deployServer(
+    await deployServer(
       providerChoice,
       providerWithToken,
       region,
@@ -223,6 +223,7 @@ export async function initCommand(options: InitOptions = {}): Promise<void> {
       options.noOpen,
       options.mode,
     );
+    return;
   }
 
   // Non-interactive or partially interactive: size, name
@@ -246,7 +247,7 @@ export async function initCommand(options: InitOptions = {}): Promise<void> {
     serverName = n;
   }
 
-  return deployServer(
+  await deployServer(
     providerChoice,
     providerWithToken,
     region,

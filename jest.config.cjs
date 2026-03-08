@@ -9,7 +9,7 @@ module.exports = {
     '^inquirer$': '<rootDir>/tests/__mocks__/inquirer.ts',
     '^axios$': '<rootDir>/tests/__mocks__/axios.ts',
     '^@napi-rs/keyring$': '<rootDir>/tests/__mocks__/@napi-rs/keyring.ts',
-    '^figlet$': '<rootDir>/tests/__mocks__/figlet.ts',
+
   },
   transform: {
     '^.+\\.tsx?$': ['ts-jest', {
