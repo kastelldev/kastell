@@ -280,7 +280,7 @@ Plans:
 | 16. Güvenlik Fixleri | v1.5 | 11/11 | Complete | 2026-03-08 |
 | 18. Token Güvenliği | v1.5 | 2/2 | Complete | 2026-03-08 |
 | 19. Code Quality Refactoring | v1.5 | 4/4 | Complete | 2026-03-08 |
-| 20. kastell audit | 1/5 | In Progress|  | - |
+| 20. kastell audit | 2/5 | In Progress|  | - |
 
 ---
 *Roadmap created: 2026-02-27*

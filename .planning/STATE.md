@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Security + Dokploy + Audit
-current_plan: 01 of 5 (01 complete)
+current_plan: 02 of 5 (02 complete)
 status: in-progress
-stopped_at: Completed 20-01-PLAN.md (audit engine foundation)
-last_updated: "2026-03-08T14:59:24Z"
+stopped_at: Completed 20-02-PLAN.md (check parsers)
+last_updated: "2026-03-08T15:13:00Z"
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 14
-  completed_plans: 10
+  completed_plans: 11
 ---
 
 # Project State
@@ -21,14 +21,14 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Brand:** Kastell (kastell.dev | npm: kastell | GitHub: kastelldev)
 **Core value:** Autonomous server security and maintenance across multiple cloud providers
-**Current focus:** Phase 20 kastell audit (Plan 01 complete)
+**Current focus:** Phase 20 kastell audit (Plan 02 complete)
 
 ## Current Position
 
 Milestone: v1.5 Security + Dokploy + Audit (in progress)
 Phase: 20-kastell-audit (IN PROGRESS)
-Current Plan: 01 of 5 (01 complete)
-Completed: Plan 01 (audit engine foundation)
+Current Plan: 02 of 5 (02 complete)
+Completed: Plan 01 (audit engine foundation), Plan 02 (check parsers)
 
 ## Accumulated Context
 
@@ -58,6 +58,9 @@ Completed: Plan 01 (audit engine foundation)
 - [Phase 20]: Severity weights critical=3, warning=2, info=1 for proportional scoring
 - [Phase 20]: Placeholder parser registry with noopParser — Plan 02 fills in real parsers
 - [Phase 20]: Graceful partial failure: if one SSH batch fails, still process successful batches
+- [Phase 20]: Each check parser is a pure function (sectionOutput, platform) => AuditCheck[]
+- [Phase 20]: Docker checks return info severity on bare (skip), warning on platforms (Docker expected)
+- [Phase 20]: IP forwarding auto-passes on coolify/dokploy since Docker requires it
 
 ### Pending Todos
 
@@ -80,9 +83,10 @@ None.
 | 19    | 01   | 15min    | 2     | 18    |
 | 19    | 04   | 5min     | 2     | 8     |
 | 20    | 01   | 6min     | 2     | 7     |
+| 20    | 02   | 11min    | 2     | 21    |
 
 ## Session Continuity
 
-Last session: 2026-03-08T14:59:24Z
-Stopped at: Completed 20-01-PLAN.md (audit engine foundation)
-Next action: Phase 20 Plan 02 (check parsers)
+Last session: 2026-03-08T15:13:00Z
+Stopped at: Completed 20-02-PLAN.md (check parsers)
+Next action: Phase 20 Plan 03 (output formatters)
