@@ -2,14 +2,19 @@ import * as auditCore from "../../src/core/audit/index";
 import * as serverSelect from "../../src/utils/serverSelect";
 import * as ssh from "../../src/utils/ssh";
 import * as formatters from "../../src/core/audit/formatters/index";
+import * as auditHistory from "../../src/core/audit/history";
 
 jest.mock("../../src/core/audit/index");
 jest.mock("../../src/utils/serverSelect");
 jest.mock("../../src/utils/ssh");
 jest.mock("../../src/core/audit/formatters/index");
+jest.mock("../../src/core/audit/history");
+jest.mock("../../src/core/audit/fix");
+jest.mock("../../src/core/audit/watch");
 
 const mockedAuditCore = auditCore as jest.Mocked<typeof auditCore>;
 const mockedServerSelect = serverSelect as jest.Mocked<typeof serverSelect>;
+const mockedHistory = auditHistory as jest.Mocked<typeof auditHistory>;
 const mockedSsh = ssh as jest.Mocked<typeof ssh>;
 const mockedFormatters = formatters as jest.Mocked<typeof formatters>;
 
@@ -99,6 +104,11 @@ describe("auditCommand", () => {
       success: true,
       data: mockAuditResult,
     });
+
+    // Mock history to return empty/first audit (no trend output)
+    mockedHistory.loadAuditHistory.mockReturnValue([]);
+    mockedHistory.detectTrend.mockReturnValue("first audit");
+    mockedHistory.saveAuditHistory.mockImplementation(() => {});
 
     // Default formatter mock — returns a simple string representation
     mockedFormatters.selectFormatter.mockResolvedValue(

@@ -148,6 +148,22 @@ kastell secure setup my-server      # SSH hardening + fail2ban
 kastell domain add my-server --domain example.com  # Set domain + SSL
 ```
 
+### Security Audit
+```bash
+kastell audit my-server                # Full security audit (9 categories, 46+ checks)
+kastell audit my-server --json         # JSON output for automation
+kastell audit my-server --threshold 70 # Exit code 1 if score below threshold
+kastell audit my-server --fix          # Interactive fix mode (prompts per severity)
+kastell audit my-server --fix --dry-run # Preview fixes without executing
+kastell audit my-server --watch        # Re-audit every 5 min, show only changes
+kastell audit my-server --watch 60     # Custom interval (60 seconds)
+kastell audit --host root@1.2.3.4     # Audit unregistered server
+kastell audit my-server --badge        # SVG badge output
+kastell audit my-server --report html  # Full HTML report
+kastell audit my-server --score-only   # Just the score (CI-friendly)
+kastell audit my-server --summary      # Compact dashboard view
+```
+
 ### Monitor & Debug
 ```bash
 kastell monitor my-server             # CPU, RAM, disk usage
@@ -292,12 +308,38 @@ Available tools:
 | `server_secure` | secure, firewall, domain | SSH hardening, firewall rules, domain/SSL management (10 subcommands) |
 | `server_backup` | backup, snapshot | Backup/restore databases and create/manage VPS snapshots |
 | `server_provision` | create | Provision new servers on cloud providers |
+| `server_audit` | audit | Run security audit with summary/json/score output formats |
 
 > All destructive operations (destroy, restore, snapshot-delete, provision, restart, maintain, snapshot-create) require `SAFE_MODE=false` to execute.
 
+## CI/CD Integration
+
+Use `kastell audit` in your CI pipeline to enforce security baselines:
+
+```yaml
+# .github/workflows/security-audit.yml
+name: Security Audit
+on:
+  schedule:
+    - cron: '0 6 * * 1'  # Weekly Monday 6 AM
+  workflow_dispatch:
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm install -g kastell
+      - run: kastell audit --host root@${{ secrets.SERVER_IP }} --threshold 70 --json > audit-result.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: audit-report
+          path: audit-result.json
+```
+
+The `--threshold` flag causes a non-zero exit code when the score falls below the target, failing the CI job automatically.
+
 ## What's Next
 
-- Security audit & compliance reports
 - kastell.dev website
 - Guard daemon and fleet management
 - Plugin ecosystem for AI IDEs

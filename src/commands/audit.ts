@@ -1,6 +1,6 @@
 /**
  * Audit command — thin wrapper for `kastell audit [server-name]`.
- * Delegates to core/audit/runAudit + formatters.
+ * Delegates to core/audit/runAudit + formatters + fix + history + watch.
  */
 
 import { resolveServer } from "../utils/serverSelect.js";
@@ -8,6 +8,9 @@ import { assertValidIp } from "../utils/ssh.js";
 import { logger, createSpinner } from "../utils/logger.js";
 import { runAudit } from "../core/audit/index.js";
 import { selectFormatter } from "../core/audit/formatters/index.js";
+import { saveAuditHistory, loadAuditHistory, detectTrend } from "../core/audit/history.js";
+import { runFix } from "../core/audit/fix.js";
+import { watchAudit } from "../core/audit/watch.js";
 import type { AuditCliOptions } from "../core/audit/formatters/index.js";
 
 export interface AuditCommandOptions extends AuditCliOptions {
@@ -50,6 +53,18 @@ export async function auditCommand(
     platform = server.platform ?? server.mode ?? "bare";
   }
 
+  // --watch mode: delegate to watchAudit and return
+  if (options.watch !== undefined) {
+    const interval = options.watch ? parseInt(options.watch, 10) : undefined;
+    const formatter = await selectFormatter(options);
+    logger.info(`Starting watch mode for ${name} (interval: ${interval ?? 300}s)`);
+    await watchAudit(ip, name, platform, {
+      interval,
+      formatter,
+    });
+    return;
+  }
+
   const spinner = createSpinner(`Running security audit on ${name}...`);
   spinner.start();
 
@@ -66,6 +81,45 @@ export async function auditCommand(
   spinner.succeed(`Audit complete for ${name}`);
 
   const auditResult = result.data;
+
+  // Save to history
+  saveAuditHistory(auditResult);
+
+  // Detect trend from history
+  const history = loadAuditHistory(auditResult.serverIp);
+  const trend = detectTrend(auditResult.overallScore, history);
+  if (trend !== "first audit") {
+    logger.info(`Trend: ${trend}`);
+  }
+
+  // --fix mode: run fix engine
+  if (options.fix) {
+    const fixResult = await runFix(ip, auditResult, {
+      dryRun: options.dryRun ?? false,
+    });
+
+    if (fixResult.preview) {
+      // Dry run: show fix plan
+      for (const group of fixResult.preview.groups) {
+        logger.info(`[${group.severity}] ${group.checks.length} fixable issue(s) (+${group.estimatedImpact} pts)`);
+        for (const check of group.checks) {
+          logger.info(`  ${check.id}: ${check.name} — ${check.fixCommand}`);
+        }
+      }
+    } else {
+      // Applied fixes
+      if (fixResult.applied.length > 0) {
+        logger.success(`Fixed: ${fixResult.applied.join(", ")}`);
+      }
+      if (fixResult.skipped.length > 0) {
+        logger.info(`Skipped: ${fixResult.skipped.join(", ")}`);
+      }
+      if (fixResult.errors.length > 0) {
+        logger.error(`Errors: ${fixResult.errors.join(", ")}`);
+      }
+    }
+    return;
+  }
 
   // --score-only: just print score and exit
   if (options.scoreOnly) {
@@ -84,6 +138,14 @@ export async function auditCommand(
   const formatter = await selectFormatter(options);
   const output = formatter(auditResult);
   console.log(output);
+
+  // Show quick wins in terminal output
+  if (auditResult.quickWins.length > 0 && !options.json && !options.badge && !options.report) {
+    const lastWin = auditResult.quickWins[auditResult.quickWins.length - 1];
+    logger.info(
+      `Quick wins: ${auditResult.quickWins.length} fix(es) to reach ${lastWin.projectedScore}/100`,
+    );
+  }
 
   // Threshold check
   if (options.threshold) {

@@ -9,6 +9,7 @@ import { buildAuditBatchCommands } from "./commands.js";
 import { calculateOverallScore } from "./scoring.js";
 import { parseAllChecks } from "./checks/index.js";
 import { sshExec } from "../../utils/ssh.js";
+import { calculateQuickWins } from "./quickwin.js";
 
 /**
  * Run a full server security audit.
@@ -50,8 +51,11 @@ export async function runAudit(
       timestamp: new Date().toISOString(),
       categories,
       overallScore,
-      quickWins: [], // Plan 03+ will populate quick wins
+      quickWins: [],
     };
+
+    // Calculate quick wins after building the result
+    auditResult.quickWins = calculateQuickWins(auditResult);
 
     return { success: true, data: auditResult };
   } catch (err) {
