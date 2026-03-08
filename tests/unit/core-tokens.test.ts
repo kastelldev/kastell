@@ -1,10 +1,15 @@
+import { getToken } from "../../src/core/auth";
 import { getProviderToken, collectProviderTokensFromEnv } from "../../src/core/tokens";
+
+jest.mock("../../src/core/auth");
+const mockGetToken = getToken as jest.MockedFunction<typeof getToken>;
 
 describe("getProviderToken", () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
     process.env = { ...originalEnv };
+    mockGetToken.mockReturnValue(undefined);
   });
 
   afterAll(() => {
@@ -138,5 +143,41 @@ describe("collectProviderTokensFromEnv", () => {
   it("should return empty map for empty server list", () => {
     const tokenMap = collectProviderTokensFromEnv([]);
     expect(tokenMap.size).toBe(0);
+  });
+});
+
+describe("keychain resolution", () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    process.env = { ...originalEnv };
+    mockGetToken.mockReturnValue(undefined);
+  });
+
+  afterAll(() => {
+    process.env = originalEnv;
+  });
+
+  it("should return keychain token when available", () => {
+    mockGetToken.mockReturnValue("keychain-token");
+    expect(getProviderToken("hetzner")).toBe("keychain-token");
+  });
+
+  it("should fall back to env var when keychain returns undefined", () => {
+    mockGetToken.mockReturnValue(undefined);
+    process.env.HETZNER_TOKEN = "env-token";
+    expect(getProviderToken("hetzner")).toBe("env-token");
+  });
+
+  it("should prefer keychain over env var when both exist", () => {
+    mockGetToken.mockReturnValue("keychain-token");
+    process.env.HETZNER_TOKEN = "env-token";
+    expect(getProviderToken("hetzner")).toBe("keychain-token");
+  });
+
+  it("should return undefined when neither keychain nor env var has token", () => {
+    mockGetToken.mockReturnValue(undefined);
+    delete process.env.HETZNER_TOKEN;
+    expect(getProviderToken("hetzner")).toBeUndefined();
   });
 });
