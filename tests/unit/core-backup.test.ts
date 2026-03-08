@@ -8,6 +8,7 @@ import {
   buildBareCleanupCommand,
   createBareBackup,
   restoreBareBackup,
+  restoreBackup,
   formatTimestamp,
   getBackupDir,
   loadManifest,
@@ -428,6 +429,78 @@ describe("SCP binary path resolution (BUGF-01)", () => {
     await scpUpload("1.2.3.4", "/local/file.gz", "/tmp/file.gz");
     const [binary] = mockedSpawn.mock.calls[0];
     expect(binary).toBe("/custom/path/scp.exe");
+  });
+});
+
+// Mock getAdapter for restoreBackup delegation tests
+jest.mock("../../src/adapters/factory", () => ({
+  getAdapter: jest.fn(),
+}));
+
+import { getAdapter } from "../../src/adapters/factory";
+const mockGetAdapter = getAdapter as jest.MockedFunction<typeof getAdapter>;
+
+describe("restoreBackup — adapter delegation", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("should delegate to DokployAdapter when manifest.platform is 'dokploy'", async () => {
+    mockedSsh.assertValidIp.mockReturnValue(undefined);
+    mockedExistsSync.mockReturnValue(true);
+    const { readFileSync } = jest.requireMock("fs");
+    readFileSync.mockReturnValue(
+      JSON.stringify({
+        serverName: "dok-server",
+        provider: "hetzner",
+        timestamp: "2026-01-01_00-00-00",
+        coolifyVersion: "v0.26.6",
+        files: ["dokploy-backup.sql.gz", "dokploy-config.tar.gz"],
+        platform: "dokploy",
+      }),
+    );
+
+    const mockRestoreBackup = jest.fn().mockResolvedValue({
+      success: true,
+      steps: [{ name: "Restore database", status: "success" }],
+    });
+    mockGetAdapter.mockReturnValue({
+      name: "dokploy",
+      restoreBackup: mockRestoreBackup,
+    } as any);
+
+    const result = await restoreBackup("1.2.3.4", "dok-server", "2026-01-01_00-00-00");
+    expect(result.success).toBe(true);
+    expect(mockGetAdapter).toHaveBeenCalledWith("dokploy");
+    expect(mockRestoreBackup).toHaveBeenCalled();
+  });
+
+  it("should default to 'coolify' when manifest.platform is undefined", async () => {
+    mockedSsh.assertValidIp.mockReturnValue(undefined);
+    mockedExistsSync.mockReturnValue(true);
+    const { readFileSync } = jest.requireMock("fs");
+    readFileSync.mockReturnValue(
+      JSON.stringify({
+        serverName: "old-server",
+        provider: "hetzner",
+        timestamp: "2026-01-01_00-00-00",
+        coolifyVersion: "4.0.0",
+        files: ["coolify-backup.sql.gz", "coolify-config.tar.gz"],
+      }),
+    );
+
+    const mockRestoreBackup = jest.fn().mockResolvedValue({
+      success: true,
+      steps: [{ name: "Restore database", status: "success" }],
+    });
+    mockGetAdapter.mockReturnValue({
+      name: "coolify",
+      restoreBackup: mockRestoreBackup,
+    } as any);
+
+    const result = await restoreBackup("1.2.3.4", "old-server", "2026-01-01_00-00-00");
+    expect(result.success).toBe(true);
+    expect(mockGetAdapter).toHaveBeenCalledWith("coolify");
   });
 });
 

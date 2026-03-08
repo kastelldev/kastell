@@ -982,6 +982,43 @@ describe("restore", () => {
       });
     });
 
+    describe("platform-aware dry-run", () => {
+      it("should show Dokploy-specific commands in dry-run when platform is dokploy", async () => {
+        mockedSsh.checkSshAvailable.mockReturnValue(true);
+        mockedConfig.findServers.mockReturnValue([{ ...sampleServer, platform: "dokploy" }]);
+        mockedExistsSync.mockReturnValue(true);
+        mockedReadFileSync.mockReturnValue(
+          JSON.stringify({
+            ...sampleManifest,
+            platform: "dokploy",
+            files: ["dokploy-backup.sql.gz", "dokploy-config.tar.gz"],
+          }),
+        );
+
+        await restoreCommand("1.2.3.4", { backup: "my-backup", dryRun: true });
+
+        const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+        expect(output).toContain("Dry Run");
+        expect(output).toContain("docker service scale");
+        expect(output).toContain("dokploy-postgres");
+        expect(output).not.toContain("docker compose");
+      });
+
+      it("should show Coolify-specific commands in dry-run when platform is coolify (regression)", async () => {
+        mockedSsh.checkSshAvailable.mockReturnValue(true);
+        mockedConfig.findServers.mockReturnValue([sampleServer]);
+        mockedExistsSync.mockReturnValue(true);
+        mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
+
+        await restoreCommand("1.2.3.4", { backup: "my-backup", dryRun: true });
+
+        const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+        expect(output).toContain("Dry Run");
+        expect(output).toContain("docker compose");
+        expect(output).not.toContain("docker service scale");
+      });
+    });
+
     describe("path traversal protection", () => {
       it("should strip directory traversal from --backup option", async () => {
         mockedSsh.checkSshAvailable.mockReturnValue(true);
