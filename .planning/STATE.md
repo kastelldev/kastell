@@ -1,16 +1,18 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.4
-milestone_name: TUI + Dokploy + DX
-status: shipped
-stopped_at: Milestone archived
-last_updated: "2026-03-07T21:00:00.000Z"
-last_activity: 2026-03-07 — v1.4 milestone archived
+milestone: v1.5
+milestone_name: Security + Dokploy + Audit
+current_plan: 02 of 2
+status: in-progress
+stopped_at: Completed 18-01-PLAN.md
+last_updated: "2026-03-08T04:13:14.849Z"
+last_activity: 2026-03-08 — Phase 18 Plan 01 complete
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 9
-  completed_plans: 9
+  total_phases: 1
+  completed_phases: 0
+  total_plans: 2
+  completed_plans: 1
+  percent: 50
 ---
 
 # Project State
@@ -21,18 +23,23 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Brand:** Kastell (kastell.dev | npm: kastell | GitHub: kastelldev)
 **Core value:** Autonomous server security and maintenance across multiple cloud providers
-**Current focus:** Planning next milestone (v1.5)
+**Current focus:** Phase 18 Token Security (v1.5)
 
 ## Current Position
 
-Milestone: v1.4 SHIPPED (2026-03-07)
-Next: v1.5 Audit + Website + Hooks
+Milestone: v1.5 Security + Dokploy + Audit (in progress)
+Phase: 18-token-guvenlik
+Current Plan: 02 of 2
+Completed: Plan 01 (Core token security infrastructure)
 
 ## Accumulated Context
 
 ### Decisions
 
-Key decisions archived in PROJECT.md Key Decisions table.
+- Static import of @napi-rs/keyring with constructor-level try/catch (not dynamic require)
+- isKeychainAvailable() tests by attempting Entry construction
+- registerCleanupHandlers() requires explicit call to avoid test interference
+- Key decisions from v1.4 archived in PROJECT.md Key Decisions table
 
 ### Pending Todos
 
@@ -42,8 +49,14 @@ None.
 
 None.
 
+## Performance Metrics
+
+| Phase | Plan | Duration | Tasks | Files |
+|-------|------|----------|-------|-------|
+| 18    | 01   | 7min     | 3     | 9     |
+
 ## Session Continuity
 
-Last session: 2026-03-07
-Stopped at: v1.4 milestone archived
-Next action: `/gsd:new-milestone` for v1.5
+Last session: 2026-03-08T04:13:14.838Z
+Stopped at: Completed 18-01-PLAN.md
+Next action: Execute 18-02-PLAN.md (CLI auth commands)

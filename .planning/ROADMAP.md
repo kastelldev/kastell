@@ -249,7 +249,7 @@ Plans:
 | 14. TUI Enhancements | v1.4 | 2/2 | Complete | 2026-03-07 |
 | 15. Documentation | v1.4 | 1/1 | Complete | 2026-03-07 |
 | 16. Güvenlik Fixleri | v1.5 | 11/11 | Complete | 2026-03-08 |
-| 18. Token Güvenliği | v1.5 | 0/2 | Planning | — |
+| 18. Token Güvenliği | 1/2 | In Progress|  | — |
 
 ---
 *Roadmap created: 2026-02-27*
