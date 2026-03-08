@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Security + Dokploy + Audit
-current_plan: 04 of 5 (04 complete)
+current_plan: 05 of 5 (05 complete)
 status: in-progress
-stopped_at: Completed 20-04-PLAN.md (fix engine, history, quick wins)
-last_updated: "2026-03-08T15:22:00Z"
+stopped_at: Completed 20-05-PLAN.md (MCP, watch, CI integration)
+last_updated: "2026-03-08T15:35:00Z"
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 14
-  completed_plans: 13
+  completed_plans: 14
 ---
 
 # Project State
@@ -21,14 +21,14 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Brand:** Kastell (kastell.dev | npm: kastell | GitHub: kastelldev)
 **Core value:** Autonomous server security and maintenance across multiple cloud providers
-**Current focus:** Phase 20 kastell audit (Plan 04 complete)
+**Current focus:** Phase 20 kastell audit (COMPLETE)
 
 ## Current Position
 
 Milestone: v1.5 Security + Dokploy + Audit (in progress)
-Phase: 20-kastell-audit (IN PROGRESS)
-Current Plan: 04 of 5 (04 complete)
-Completed: Plan 01 (audit engine foundation), Plan 02 (check parsers), Plan 03 (output formatters), Plan 04 (fix engine, history, quick wins)
+Phase: 20-kastell-audit (COMPLETE)
+Current Plan: 05 of 5 (05 complete)
+Completed: Plan 01 (audit engine foundation), Plan 02 (check parsers), Plan 03 (output formatters), Plan 04 (fix engine, history, quick wins), Plan 05 (MCP, watch, CI integration)
 
 ## Accumulated Context
 
@@ -69,6 +69,9 @@ Completed: Plan 01 (audit engine foundation), Plan 02 (check parsers), Plan 03 (
 - [Phase 20]: Atomic write via temp+rename for audit-history.json integrity
 - [Phase 20]: Pre-condition checks prevent SSH lockout before dangerous fixes
 - [Phase 20]: Quick wins use individual check impact for granular ranking
+- [Phase 20]: MCP server_audit uses 3 formats: summary (AI), json (full), score (number)
+- [Phase 20]: Watch mode shows full output first run, delta-only on subsequent runs
+- [Phase 20]: Quick wins calculated in runAudit for consistent availability across MCP and CLI
 
 ### Pending Todos
 
@@ -94,9 +97,10 @@ None.
 | 20    | 02   | 11min    | 2     | 21    |
 | 20    | 03   | 9min     | 2     | 14    |
 | 20    | 04   | 5min     | 2     | 6     |
+| 20    | 05   | 7min     | 2     | 9     |
 
 ## Session Continuity
 
-Last session: 2026-03-08T15:22:00Z
-Stopped at: Completed 20-04-PLAN.md (fix engine, history, quick wins)
-Next action: Phase 20 Plan 05 (CLI command + MCP integration)
+Last session: 2026-03-08T15:35:00Z
+Stopped at: Completed 20-05-PLAN.md (MCP, watch, CI integration)
+Next action: /gsd:complete-milestone (Phase 20 complete, all 5 plans done)
