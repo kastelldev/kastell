@@ -1,4 +1,3 @@
-import axios from "axios";
 import { mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
 import type {
@@ -19,6 +18,7 @@ import {
   scpUpload,
 } from "../core/backup.js";
 import { getErrorMessage, mapSshError, sanitizeStderr } from "../utils/errorMapper.js";
+import { sharedHealthCheck, sharedUpdate, sharedGetStatus } from "./shared.js";
 
 export class DokployAdapter implements PlatformAdapter {
   readonly name = "dokploy";
@@ -100,28 +100,7 @@ echo "Then access your instance at: http://YOUR_SERVER_IP:3000"
   }
 
   async healthCheck(ip: string, domain?: string): Promise<HealthResult> {
-    assertValidIp(ip);
-    // Try HTTPS via domain first if available
-    if (domain) {
-      try {
-        await axios.get(`https://${domain}`, {
-          timeout: 5000,
-          validateStatus: () => true,
-        });
-        return { status: "running" };
-      } catch {
-        // HTTPS failed, fall back to HTTP
-      }
-    }
-    try {
-      await axios.get(`http://${ip}:3000`, {
-        timeout: 5000,
-        validateStatus: () => true,
-      });
-      return { status: "running" };
-    } catch {
-      return { status: "not reachable" };
-    }
+    return sharedHealthCheck(ip, 3000, domain);
   }
 
   async createBackup(
@@ -360,36 +339,11 @@ echo "Then access your instance at: http://YOUR_SERVER_IP:3000"
   }
 
   async getStatus(ip: string): Promise<PlatformStatusResult> {
-    assertValidIp(ip);
-    const versionResult = await sshExec(ip, this.buildVersionCommand());
-    const platformVersion = versionResult.code === 0 ? versionResult.stdout.trim() : "unknown";
-    const health = await this.healthCheck(ip);
-    return {
-      platformVersion,
-      status: health.status,
-    };
+    return sharedGetStatus(ip, this.buildVersionCommand(), 3000);
   }
 
   async update(ip: string): Promise<UpdateResult> {
-    assertValidIp(ip);
-    try {
-      const result = await sshExec(ip, DOKPLOY_UPDATE_CMD);
-      if (result.code === 0) {
-        return { success: true, output: result.stdout || undefined };
-      }
-      return {
-        success: false,
-        error: `Update failed (exit code ${result.code})`,
-        output: result.stderr || result.stdout || undefined,
-      };
-    } catch (error: unknown) {
-      const hint = mapSshError(error, ip);
-      return {
-        success: false,
-        error: getErrorMessage(error),
-        ...(hint ? { hint } : {}),
-      };
-    }
+    return sharedUpdate(ip, DOKPLOY_UPDATE_CMD);
   }
 
   // --- Private Helpers -------------------------------------------------------
