@@ -75,7 +75,7 @@ function formatStatusResult(result: StatusResult): object {
     size: result.server.size,
     mode: result.server.mode ?? "coolify",
     serverStatus: result.serverStatus,
-    coolifyStatus: result.coolifyStatus,
+    platformStatus: result.platformStatus,
     ...(result.error ? { error: result.error } : {}),
   };
 }
@@ -83,7 +83,7 @@ function formatStatusResult(result: StatusResult): object {
 function formatStatusResults(results: StatusResult[]): Record<string, unknown> {
   const suggestedActions: SuggestedAction[] = [];
 
-  const notReachable = results.filter((r) => r.coolifyStatus === "not reachable");
+  const notReachable = results.filter((r) => r.platformStatus === "not reachable");
   if (notReachable.length > 0) {
     for (const r of notReachable) {
       suggestedActions.push({
@@ -112,7 +112,7 @@ function formatStatusResults(results: StatusResult[]): Record<string, unknown> {
     results: results.map(formatStatusResult),
     summary: {
       total: results.length,
-      running: results.filter((r) => r.coolifyStatus === "running").length,
+      running: results.filter((r) => r.platformStatus === "running").length,
       notReachable: notReachable.length,
       errors: errors.length,
     },
@@ -252,7 +252,7 @@ export async function handleServerInfo(params: {
           return mcpSuccess({
             server: server.name,
             ip: server.ip,
-            coolifyStatus: status,
+            platformStatus: status,
             coolifyUrl: status === "running" ? `http://${server.ip}:8000` : null,
             suggested_actions: suggestedActions,
           });
@@ -274,7 +274,7 @@ export async function handleServerInfo(params: {
               name: s.name,
               ip: s.ip,
               mode: "coolify" as const,
-              coolifyStatus: await checkCoolifyHealth(s.ip),
+              platformStatus: await checkCoolifyHealth(s.ip),
             };
           }),
         );
@@ -282,7 +282,7 @@ export async function handleServerInfo(params: {
         const coolifyResults = healthResults.filter((r) => r.mode === "coolify");
         const bareResults = healthResults.filter((r) => r.mode === "bare");
         const notReachableCoolify = coolifyResults.filter(
-          (r) => "coolifyStatus" in r && r.coolifyStatus === "not reachable",
+          (r) => "platformStatus" in r && r.platformStatus === "not reachable",
         );
 
         const suggestedActions: SuggestedAction[] = notReachableCoolify.length > 0
@@ -297,7 +297,7 @@ export async function handleServerInfo(params: {
           summary: {
             total: healthResults.length,
             running: coolifyResults.filter(
-              (r) => "coolifyStatus" in r && r.coolifyStatus === "running",
+              (r) => "platformStatus" in r && r.platformStatus === "running",
             ).length,
             notReachable: notReachableCoolify.length,
             bare: bareResults.length,

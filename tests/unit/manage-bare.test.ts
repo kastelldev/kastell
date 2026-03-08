@@ -53,7 +53,7 @@ beforeEach(() => {
 });
 
 describe("addServerRecord — bare mode skips Coolify verification", () => {
-  it("should skip Coolify verification when mode='bare' (coolifyStatus='skipped')", async () => {
+  it("should skip Coolify verification when mode='bare' (platformStatus='skipped')", async () => {
     const result = await addServerRecord({
       provider: "hetzner",
       ip: "5.6.7.8",
@@ -62,7 +62,7 @@ describe("addServerRecord — bare mode skips Coolify verification", () => {
     });
 
     expect(result.success).toBe(true);
-    expect(result.coolifyStatus).toBe("skipped");
+    expect(result.platformStatus).toBe("skipped");
     // SSH should NOT be called for bare mode verification
     expect(mockedSsh.sshExec).not.toHaveBeenCalled();
   });

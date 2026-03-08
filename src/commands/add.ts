@@ -112,7 +112,7 @@ export async function addCommand(options: AddOptions = {}): Promise<void> {
   }
 
   // Handle SSH unavailable (non-fatal)
-  if (result.coolifyStatus === "ssh_unavailable") {
+  if (result.platformStatus === "ssh_unavailable") {
     spinner.warn("SSH not available. Use --skip-verify to skip Coolify verification.");
     process.exit(1);
     return;
@@ -120,11 +120,11 @@ export async function addCommand(options: AddOptions = {}): Promise<void> {
 
   const server = result.server!;
 
-  if (result.coolifyStatus === "running") {
+  if (result.platformStatus === "running") {
     spinner.succeed("Coolify is running");
-  } else if (result.coolifyStatus === "containers_detected") {
+  } else if (result.platformStatus === "containers_detected") {
     spinner.succeed("Coolify containers detected");
-  } else if (result.coolifyStatus === "skipped") {
+  } else if (result.platformStatus === "skipped") {
     spinner.succeed("Token validated");
   } else {
     spinner.warn("Could not verify Coolify. Server added anyway.");

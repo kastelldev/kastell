@@ -143,7 +143,7 @@ describe("checkServerStatus", () => {
     expect(result).toEqual({
       server: sampleServer,
       serverStatus: "running",
-      coolifyStatus: "running",
+      platformStatus: "running",
       // no error field
     });
   });
@@ -156,7 +156,7 @@ describe("checkServerStatus", () => {
     const result = await checkServerStatus(sampleServer, "test-token");
 
     expect(result.serverStatus).toBe("running");
-    expect(result.coolifyStatus).toBe("not reachable");
+    expect(result.platformStatus).toBe("not reachable");
     expect(result.error).toBeUndefined();
   });
 
@@ -167,7 +167,7 @@ describe("checkServerStatus", () => {
     const result = await checkServerStatus(sampleServer, "bad-token");
 
     expect(result.serverStatus).toBe("error");
-    expect(result.coolifyStatus).toBe("unknown");
+    expect(result.platformStatus).toBe("unknown");
     expect(result.error).toBe("API failure");
   });
 
@@ -188,7 +188,7 @@ describe("checkServerStatus", () => {
     const result = await checkServerStatus(manualServer, "");
 
     expect(result.serverStatus).toBe("unknown (manual)");
-    expect(result.coolifyStatus).toBe("running");
+    expect(result.platformStatus).toBe("running");
   });
 });
 
@@ -262,14 +262,14 @@ describe("checkAllServersStatus", () => {
 // ---- Bare mode tests ----
 
 describe("checkServerStatus - bare mode", () => {
-  it("should return coolifyStatus='n/a' for bare server without calling checkCoolifyHealth", async () => {
+  it("should return platformStatus='n/a' for bare server without calling checkCoolifyHealth", async () => {
     const bareServer = { ...sampleServer, mode: "bare" as const };
     (mockProvider.getServerStatus as jest.Mock).mockResolvedValue("running");
     mockedProviderFactory.createProviderWithToken.mockReturnValue(mockProvider);
 
     const result = await checkServerStatus(bareServer, "test-token");
 
-    expect(result.coolifyStatus).toBe("n/a");
+    expect(result.platformStatus).toBe("n/a");
     expect(result.serverStatus).toBe("running");
     expect(result.error).toBeUndefined();
     // axios.get should NOT have been called (no Coolify health check for bare servers)
@@ -284,7 +284,7 @@ describe("checkServerStatus - bare mode", () => {
 
     const result = await checkServerStatus(coolifyServer, "test-token");
 
-    expect(result.coolifyStatus).toBe("running");
+    expect(result.platformStatus).toBe("running");
     expect(mockedAxios.get).toHaveBeenCalled();
   });
 
@@ -304,8 +304,8 @@ describe("checkServerStatus - bare mode", () => {
 
     const results = await checkAllServersStatus([bareServer, coolifyServer], tokenMap);
 
-    expect(results[0].coolifyStatus).toBe("n/a"); // bare
-    expect(results[1].coolifyStatus).toBe("running"); // coolify
+    expect(results[0].platformStatus).toBe("n/a"); // bare
+    expect(results[1].platformStatus).toBe("running"); // coolify
     // axios.get called only once (for coolify server)
     expect(mockedAxios.get).toHaveBeenCalledTimes(1);
   });

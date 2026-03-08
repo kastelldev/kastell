@@ -8,7 +8,7 @@ import type { ServerRecord } from "../types/index.js";
 export interface StatusResult {
   server: ServerRecord;
   serverStatus: string;
-  coolifyStatus: string;
+  platformStatus: string;
   error?: string;
 }
 
@@ -44,15 +44,15 @@ export async function checkServerStatus(
   try {
     const serverStatus = await getCloudServerStatus(server, apiToken);
     const platform = resolvePlatform(server);
-    const coolifyStatus = platform
+    const platformStatus = platform
       ? (await getAdapter(platform).healthCheck(server.ip, server.domain)).status
       : "n/a";
-    return { server, serverStatus, coolifyStatus };
+    return { server, serverStatus, platformStatus };
   } catch (error: unknown) {
     return {
       server,
       serverStatus: "error",
-      coolifyStatus: "unknown",
+      platformStatus: "unknown",
       error: getErrorMessage(error),
     };
   }

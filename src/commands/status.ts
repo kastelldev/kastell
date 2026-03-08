@@ -25,7 +25,7 @@ function printStatusTable(results: StatusResult[]): void {
 
   for (const r of results) {
     const serverStr = r.error ? "error" : r.serverStatus;
-    const coolifyStr = r.coolifyStatus;
+    const coolifyStr = r.platformStatus;
     const modeStr = getServerMode(r.server);
     console.log(
       `${r.server.name.padEnd(20)} ${r.server.ip.padEnd(16)} ${r.server.provider.padEnd(14)} ${modeStr.padEnd(10)} ${serverStr.padEnd(12)} ${coolifyStr.padEnd(14)}`,
@@ -35,7 +35,7 @@ function printStatusTable(results: StatusResult[]): void {
 
 function printStatusSummary(results: StatusResult[]): void {
   const coolifyResults = results.filter((r) => !isBareServer(r.server));
-  const running = coolifyResults.filter((r) => r.coolifyStatus === "running").length;
+  const running = coolifyResults.filter((r) => r.platformStatus === "running").length;
   const errors = results.filter((r) => r.error).length;
   const bareCount = results.filter((r) => isBareServer(r.server)).length;
   if (errors > 0) {
@@ -137,11 +137,11 @@ export async function statusCommand(query?: string, options?: StatusOptions): Pr
       logger.info(`SSH:            ssh root@${server.ip}`);
     } else {
       // Coolify servers: check and display Coolify status
-      const coolifyStatus = await checkCoolifyHealth(server.ip);
-      logger.info(`Coolify Status: ${coolifyStatus}`);
+      const platformStatus = await checkCoolifyHealth(server.ip);
+      logger.info(`Coolify Status: ${platformStatus}`);
       console.log();
 
-      if (coolifyStatus === "running") {
+      if (platformStatus === "running") {
         logger.success(`Access Coolify: http://${server.ip}:8000`);
         logger.warning("Running on HTTP. Set up a domain + SSL for production use.");
       } else {

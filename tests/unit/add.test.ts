@@ -21,7 +21,7 @@ const baseAddResult = {
     size: "unknown",
     createdAt: "2026-01-01T00:00:00.000Z",
   },
-  coolifyStatus: "skipped" as const,
+  platformStatus: "skipped" as const,
 };
 
 describe("addCommand", () => {
@@ -112,7 +112,7 @@ describe("addCommand", () => {
     it("should show running status when Coolify running", async () => {
       mockedCoreManage.addServerRecord.mockResolvedValue({
         ...baseAddResult,
-        coolifyStatus: "running",
+        platformStatus: "running",
       });
 
       await addCommand({ provider: "hetzner", ip: "1.2.3.4", name: "test" });
@@ -123,7 +123,7 @@ describe("addCommand", () => {
     it("should show containers_detected status when docker found", async () => {
       mockedCoreManage.addServerRecord.mockResolvedValue({
         ...baseAddResult,
-        coolifyStatus: "containers_detected",
+        platformStatus: "containers_detected",
       });
 
       await addCommand({ provider: "hetzner", ip: "1.2.3.4", name: "test" });
@@ -134,7 +134,7 @@ describe("addCommand", () => {
     it("should add server even when verification fails (not_detected)", async () => {
       mockedCoreManage.addServerRecord.mockResolvedValue({
         ...baseAddResult,
-        coolifyStatus: "not_detected",
+        platformStatus: "not_detected",
       });
 
       await addCommand({ provider: "hetzner", ip: "1.2.3.4", name: "test" });
@@ -146,7 +146,7 @@ describe("addCommand", () => {
     it("should skip verification with --skip-verify", async () => {
       mockedCoreManage.addServerRecord.mockResolvedValue({
         ...baseAddResult,
-        coolifyStatus: "skipped",
+        platformStatus: "skipped",
       });
 
       await addCommand({ provider: "hetzner", ip: "1.2.3.4", name: "test", skipVerify: true });
@@ -160,7 +160,7 @@ describe("addCommand", () => {
       mockedCoreManage.addServerRecord.mockResolvedValue({
         success: true,
         server: baseAddResult.server,
-        coolifyStatus: "ssh_unavailable",
+        platformStatus: "ssh_unavailable",
       });
 
       await addCommand({ provider: "hetzner", ip: "1.2.3.4", name: "test" });

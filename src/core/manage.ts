@@ -81,7 +81,7 @@ export interface AddServerParams {
 export interface AddServerResult {
   success: boolean;
   server?: ServerRecord;
-  coolifyStatus?: string;
+  platformStatus?: string;
   error?: string;
 }
 
@@ -148,14 +148,14 @@ export async function addServerRecord(params: AddServerParams): Promise<AddServe
   const mode: ServerMode = isBare ? "bare" : "coolify";
 
   // Optional platform verification via SSH (skip entirely for bare mode)
-  let coolifyStatus = "skipped";
+  let platformStatus = "skipped";
   if (!params.skipVerify && mode !== "bare") {
     const healthPort = platform === "dokploy" ? 3000 : 8000;
     const healthPath = platform === "dokploy" ? "/" : "/api/health";
     const containerGrep = platform === "dokploy" ? "dokploy" : "coolify";
 
     if (!checkSshAvailable()) {
-      coolifyStatus = "ssh_unavailable";
+      platformStatus = "ssh_unavailable";
     } else {
       try {
         const result = await sshExec(
@@ -163,21 +163,21 @@ export async function addServerRecord(params: AddServerParams): Promise<AddServe
           `curl -s -o /dev/null -w '%{http_code}' http://localhost:${healthPort}${healthPath}`,
         );
         if (result.code === 0 && result.stdout.trim().includes("200")) {
-          coolifyStatus = "running";
+          platformStatus = "running";
         } else {
           const dockerResult = await sshExec(
             params.ip,
             `docker ps --format '{{.Names}}' 2>/dev/null | grep -q ${containerGrep} && echo OK`,
           );
           if (dockerResult.code === 0 && dockerResult.stdout.trim().includes("OK")) {
-            coolifyStatus = "containers_detected";
+            platformStatus = "containers_detected";
           } else {
-            coolifyStatus = "not_detected";
+            platformStatus = "not_detected";
           }
         }
       } catch (error: unknown) {
         process.stderr.write(`[warn] Platform verification failed: ${getErrorMessage(error)}\n`);
-        coolifyStatus = "verification_failed";
+        platformStatus = "verification_failed";
       }
     }
   }
@@ -197,7 +197,7 @@ export async function addServerRecord(params: AddServerParams): Promise<AddServe
 
   saveServer(record);
 
-  return { success: true, server: record, coolifyStatus };
+  return { success: true, server: record, platformStatus };
 }
 
 // ─── Remove Server ────────────────────────────────────────────────────────────

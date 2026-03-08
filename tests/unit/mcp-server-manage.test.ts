@@ -279,7 +279,7 @@ describe("addServerRecord", () => {
     expect(result.server!.name).toBe("test-server");
     expect(result.server!.ip).toBe("5.6.7.8");
     expect(result.server!.id).toMatch(/^manual-/);
-    expect(result.coolifyStatus).toBe("running");
+    expect(result.platformStatus).toBe("running");
     expect(mockedConfig.saveServer).toHaveBeenCalled();
   });
 
@@ -296,7 +296,7 @@ describe("addServerRecord", () => {
       skipVerify: true,
     });
     expect(result.success).toBe(true);
-    expect(result.coolifyStatus).toBe("skipped");
+    expect(result.platformStatus).toBe("skipped");
     expect(mockedSsh.sshExec).not.toHaveBeenCalled();
   });
 
@@ -315,7 +315,7 @@ describe("addServerRecord", () => {
       name: "test-server",
     });
     expect(result.success).toBe(true);
-    expect(result.coolifyStatus).toBe("containers_detected");
+    expect(result.platformStatus).toBe("containers_detected");
   });
 
   it("should warn when Coolify not detected", async () => {
@@ -331,7 +331,7 @@ describe("addServerRecord", () => {
       name: "test-server",
     });
     expect(result.success).toBe(true);
-    expect(result.coolifyStatus).toBe("not_detected");
+    expect(result.platformStatus).toBe("not_detected");
   });
 
   it("should handle SSH unavailable", async () => {
@@ -347,7 +347,7 @@ describe("addServerRecord", () => {
       name: "test-server",
     });
     expect(result.success).toBe(true);
-    expect(result.coolifyStatus).toBe("ssh_unavailable");
+    expect(result.platformStatus).toBe("ssh_unavailable");
   });
 });
 
@@ -505,7 +505,7 @@ describe("handleServerManage — add", () => {
     expect(data.success).toBe(true);
     expect(data.server.name).toBe("test-server");
     expect(data.server.ip).toBe("5.6.7.8");
-    expect(data.coolifyStatus).toBe("running");
+    expect(data.platformStatus).toBe("running");
     expect(data.suggested_actions).toBeDefined();
   });
 

@@ -25,7 +25,7 @@ const bareAddResult = {
     createdAt: "2026-01-01T00:00:00.000Z",
     mode: "bare" as const,
   },
-  coolifyStatus: "skipped" as const,
+  platformStatus: "skipped" as const,
 };
 
 describe("addCommand — bare mode", () => {
@@ -99,7 +99,7 @@ describe("addCommand — bare mode", () => {
         size: "unknown",
         createdAt: "2026-01-01T00:00:00.000Z",
       },
-      coolifyStatus: "skipped" as const,
+      platformStatus: "skipped" as const,
     });
 
     await addCommand({

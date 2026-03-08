@@ -167,7 +167,7 @@ describe("handleServerInfo — status", () => {
     expect(result.isError).toBeUndefined();
     expect(data.results).toHaveLength(1);
     expect(data.results[0].serverStatus).toBe("running");
-    expect(data.results[0].coolifyStatus).toBe("running");
+    expect(data.results[0].platformStatus).toBe("running");
     expect(data.summary.running).toBe(1);
   });
 
@@ -211,7 +211,7 @@ describe("handleServerInfo — status", () => {
 
     expect(result.isError).toBeUndefined();
     expect(data.results[0].serverStatus).toBe("unknown (manual)");
-    expect(data.results[0].coolifyStatus).toBe("running");
+    expect(data.results[0].platformStatus).toBe("running");
   });
 
   it("should suggest autostart when coolify not reachable", async () => {
@@ -225,7 +225,7 @@ describe("handleServerInfo — status", () => {
     const result = await handleServerInfo({ action: "status", server: "coolify-test" });
     const data = JSON.parse(result.content[0].text);
 
-    expect(data.results[0].coolifyStatus).toBe("not reachable");
+    expect(data.results[0].platformStatus).toBe("not reachable");
     expect(data.suggested_actions.some((a: { command: string }) => a.command.includes("--autostart"))).toBe(true);
   });
 });
@@ -260,7 +260,7 @@ describe("handleServerInfo — health", () => {
     const result = await handleServerInfo({ action: "health", server: "coolify-test" });
     const data = JSON.parse(result.content[0].text);
 
-    expect(data.coolifyStatus).toBe("running");
+    expect(data.platformStatus).toBe("running");
     expect(data.coolifyUrl).toBe("http://1.2.3.4:8000");
     expect(data.suggested_actions[0].command).toContain("8000");
   });
@@ -273,7 +273,7 @@ describe("handleServerInfo — health", () => {
     const result = await handleServerInfo({ action: "health", server: "coolify-test" });
     const data = JSON.parse(result.content[0].text);
 
-    expect(data.coolifyStatus).toBe("not reachable");
+    expect(data.platformStatus).toBe("not reachable");
     expect(data.coolifyUrl).toBeNull();
     expect(data.suggested_actions[0].command).toContain("--autostart");
   });
@@ -305,7 +305,7 @@ describe("handleServerInfo — health", () => {
 
     // Health check should work without API tokens
     expect(result.isError).toBeUndefined();
-    expect(data.coolifyStatus).toBe("running");
+    expect(data.platformStatus).toBe("running");
   });
 });
 
@@ -341,7 +341,7 @@ describe("handleServerInfo — health bare server", () => {
     expect(data.mode).toBe("bare");
     expect(data.sshReachable).toBe(true);
     expect(data.coolifyUrl).toBeUndefined();
-    expect(data.coolifyStatus).toBeUndefined();
+    expect(data.platformStatus).toBeUndefined();
   });
 
   it("should return SSH reachability for single bare server (not reachable)", async () => {
@@ -371,7 +371,7 @@ describe("handleServerInfo — health bare server", () => {
     expect(data.results).toHaveLength(2);
     const coolifyResult = data.results.find((r: { name: string }) => r.name === "coolify-test");
     const bareResult = data.results.find((r: { name: string }) => r.name === "bare-node");
-    expect(coolifyResult.coolifyStatus).toBe("running");
+    expect(coolifyResult.platformStatus).toBe("running");
     expect(bareResult.mode).toBe("bare");
     expect(bareResult.sshReachable).toBe(true);
     // bare server in summary should be counted separately
@@ -397,7 +397,7 @@ describe("handleServerInfo — status with mode field", () => {
     mockedConfig.findServer.mockReturnValue(bareServer);
     (mockProvider.getServerStatus as jest.Mock).mockResolvedValue("running");
     mockedProviderFactory.createProviderWithToken.mockReturnValue(mockProvider);
-    // bare servers: checkServerStatus returns coolifyStatus:'n/a'
+    // bare servers: checkServerStatus returns platformStatus:'n/a'
     mockedAxios.get.mockRejectedValue(new Error("n/a"));
 
     const result = await handleServerInfo({ action: "status", server: "bare-node" });

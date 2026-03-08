@@ -128,7 +128,7 @@ export async function handleServerManage(params: {
             id: result.server!.id,
             mode,
           },
-          coolifyStatus: result.coolifyStatus,
+          platformStatus: result.platformStatus,
           suggested_actions: suggestedActions,
         });
       }
