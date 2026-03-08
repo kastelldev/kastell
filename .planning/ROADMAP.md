@@ -109,15 +109,21 @@ Plans:
 - [x] Tier 2 dokümantasyon — core dump kapatma + swap şifreleme önerisi (SECURITY.md)
 - [x] Buffer token storage + shutdown cleanup — tokenBuf.fill(0), kısmi koruma
 
-**Phase 19: Code Quality Refactoring**
+**Phase 19: Code Quality Refactoring** — **Plans:** 4 plans
 - [ ] Dead code temizliği: `logo.ts` + figlet kaldır, `getCoolifyCloudInit()` kaldır
 - [ ] `getLogCommand()` orphan method — interface + adapter'lardan kaldır
-- [ ] `commands/maintain.ts` → `core/maintain.ts`'e delege et (DRY)
-- [ ] `BasePlatformAdapter` — Coolify/Dokploy ortak backup/update/health akışı
-- [ ] `deployServer()` 337 satır → phase'lere böl (createServer, waitReady, postSetup)
 - [ ] `coolifyStatus` → `platformStatus` rename (consistency)
+- [ ] `commands/maintain.ts` → `core/maintain.ts`'e delege et (DRY)
+- [ ] `deployServer()` 337 satır → phase'lere böl (createServer, waitReady, postSetup)
+- [ ] `process.exit(1)` → KastellResult (core/deploy.ts testability)
+- [ ] Shared adapter utilities — Coolify/Dokploy ortak healthCheck/update/getStatus
 - [ ] Provider error handling → `withProviderErrorHandling()` HOF
-- [ ] `process.exit(1)` → throw/return (core/deploy.ts testability)
+
+Plans:
+- [ ] 19-01-PLAN.md — Dead code removal + coolifyStatus → platformStatus rename
+- [ ] 19-02-PLAN.md — Maintain pipeline DRY consolidation (command → core)
+- [ ] 19-03-PLAN.md — deployServer() decomposition + process.exit removal
+- [ ] 19-04-PLAN.md — Shared adapter utilities + provider error handling HOF
 
 **Phase 20: kastell audit**
 - [ ] `kastell audit` — ücretsiz güvenlik taraması, viral büyüme motoru
@@ -249,4 +255,4 @@ Plans:
 
 ---
 *Roadmap created: 2026-02-27*
-*Last updated: 2026-03-08 — Phase 17 (Dokploy Tamamlama) planned*
+*Last updated: 2026-03-08 — Phase 19 (Code Quality Refactoring) planned*
