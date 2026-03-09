@@ -55,11 +55,9 @@ describe("calculateQuickWins", () => {
 
     const wins = calculateQuickWins(result);
     expect(wins.length).toBeGreaterThan(0);
-    // Should be sorted by impact descending
+    // With cumulative scoring, projected scores should be monotonically increasing
     for (let i = 1; i < wins.length; i++) {
-      const prevImpact = wins[i - 1].projectedScore - wins[i - 1].currentScore;
-      const currImpact = wins[i].projectedScore - wins[i].currentScore;
-      expect(prevImpact).toBeGreaterThanOrEqual(currImpact);
+      expect(wins[i].projectedScore).toBeGreaterThanOrEqual(wins[i - 1].projectedScore);
     }
   });
 
@@ -92,9 +90,10 @@ describe("calculateQuickWins", () => {
     expect(criticalWin).toBeDefined();
     expect(infoWin).toBeDefined();
 
-    const critImpact = criticalWin!.projectedScore - criticalWin!.currentScore;
-    const infoImpact = infoWin!.projectedScore - infoWin!.currentScore;
-    expect(critImpact).toBeGreaterThan(infoImpact);
+    // With cumulative scoring, critical fix comes first (higher individual impact)
+    // and info fix's projected score includes both fixes
+    expect(wins[0].commands).toContain("fix-critical");
+    expect(infoWin!.projectedScore).toBeGreaterThanOrEqual(criticalWin!.projectedScore);
   });
 
   it("should default to max 5 quick wins", () => {

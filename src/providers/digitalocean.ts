@@ -1,5 +1,5 @@
 import axios from "axios";
-import { apiClient, stripSensitiveData, withProviderErrorHandling, type CloudProvider } from "./base.js";
+import { apiClient, stripSensitiveData, withProviderErrorHandling, assertValidServerId, type CloudProvider } from "./base.js";
 import type { Region, ServerSize, ServerConfig, ServerResult, SnapshotInfo, ServerMode } from "../types/index.js";
 
 interface DORegion {
@@ -121,6 +121,7 @@ export class DigitalOceanProvider implements CloudProvider {
   }
 
   async getServerDetails(serverId: string): Promise<ServerResult> {
+    assertValidServerId(serverId);
     return withProviderErrorHandling("get server details", async () => {
       const response = await apiClient.get(`${this.baseUrl}/droplets/${serverId}`, {
         headers: { Authorization: `Bearer ${this.apiToken}` },
@@ -138,6 +139,7 @@ export class DigitalOceanProvider implements CloudProvider {
   }
 
   async getServerStatus(serverId: string): Promise<string> {
+    assertValidServerId(serverId);
     return withProviderErrorHandling("get server status", async () => {
       const response = await apiClient.get(`${this.baseUrl}/droplets/${serverId}`, {
         headers: { Authorization: `Bearer ${this.apiToken}` },
@@ -149,6 +151,7 @@ export class DigitalOceanProvider implements CloudProvider {
   }
 
   async destroyServer(serverId: string): Promise<void> {
+    assertValidServerId(serverId);
     try {
       await apiClient.delete(`${this.baseUrl}/droplets/${serverId}`, {
         headers: { Authorization: `Bearer ${this.apiToken}` },
@@ -169,6 +172,7 @@ export class DigitalOceanProvider implements CloudProvider {
   }
 
   async rebootServer(serverId: string): Promise<void> {
+    assertValidServerId(serverId);
     try {
       await apiClient.post(
         `${this.baseUrl}/droplets/${serverId}/actions`,
@@ -268,6 +272,7 @@ export class DigitalOceanProvider implements CloudProvider {
   }
 
   async createSnapshot(serverId: string, name: string): Promise<SnapshotInfo> {
+    assertValidServerId(serverId);
     try {
       await apiClient.post(
         `${this.baseUrl}/droplets/${serverId}/actions`,
@@ -305,6 +310,7 @@ export class DigitalOceanProvider implements CloudProvider {
   }
 
   async listSnapshots(serverId: string): Promise<SnapshotInfo[]> {
+    assertValidServerId(serverId);
     try {
       const response = await apiClient.get(
         `${this.baseUrl}/droplets/${serverId}/snapshots?per_page=100`,
@@ -337,6 +343,7 @@ export class DigitalOceanProvider implements CloudProvider {
   }
 
   async deleteSnapshot(snapshotId: string): Promise<void> {
+    assertValidServerId(snapshotId);
     try {
       await apiClient.delete(`${this.baseUrl}/snapshots/${snapshotId}`, {
         headers: { Authorization: `Bearer ${this.apiToken}` },
@@ -357,6 +364,7 @@ export class DigitalOceanProvider implements CloudProvider {
   }
 
   async getSnapshotCostEstimate(serverId: string): Promise<string> {
+    assertValidServerId(serverId);
     try {
       const response = await apiClient.get(`${this.baseUrl}/droplets/${serverId}`, {
         headers: { Authorization: `Bearer ${this.apiToken}` },

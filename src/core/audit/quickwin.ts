@@ -73,11 +73,13 @@ export function calculateQuickWins(
   // Take top N
   const topCandidates = candidates.slice(0, maxWins);
 
-  // Build QuickWin objects with projected scores
+  // Build QuickWin objects with cumulative projected scores
+  let cumulativeImpact = 0;
   return topCandidates.map((candidate) => {
+    cumulativeImpact += candidate.impact;
     const projectedScore = Math.min(
       100,
-      Math.round(result.overallScore + candidate.impact),
+      Math.round(result.overallScore + cumulativeImpact),
     );
 
     return {

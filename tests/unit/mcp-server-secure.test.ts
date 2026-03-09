@@ -380,7 +380,7 @@ describe("core/firewall — addFirewallRule", () => {
 describe("core/firewall — removeFirewallRule", () => {
   it("should remove rule successfully", async () => {
     mockedSsh.sshExec.mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" });
-    const result = await firewall.removeFirewallRule("1.2.3.4", 3000);
+    const result = await firewall.removeFirewallRule("1.2.3.4", 9000);
     expect(result.success).toBe(true);
     expect(result.warning).toBeUndefined();
   });

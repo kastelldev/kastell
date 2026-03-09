@@ -240,16 +240,15 @@ describe("checkAllServersStatus", () => {
     expect(results[1].error).toBe("API down");
   });
 
-  it("should use empty string for missing provider tokens", async () => {
-    mockedProviderFactory.createProviderWithToken.mockReturnValue(mockProvider);
-    (mockProvider.getServerStatus as jest.Mock).mockResolvedValue("running");
+  it("should return unknown (no token) for missing provider tokens", async () => {
     mockedAxios.get.mockResolvedValue({ status: 200 });
 
     const tokenMap = new Map<string, string>(); // empty map
 
-    await checkAllServersStatus([sampleServer], tokenMap);
+    const results = await checkAllServersStatus([sampleServer], tokenMap);
 
-    expect(mockedProviderFactory.createProviderWithToken).toHaveBeenCalledWith("hetzner", "");
+    expect(mockedProviderFactory.createProviderWithToken).not.toHaveBeenCalled();
+    expect(results[0].serverStatus).toBe("unknown (no token)");
   });
 
   it("should return empty array for empty server list", async () => {

@@ -168,7 +168,9 @@ export async function removeFirewallRule(
 
   const warning = COOLIFY_PORTS.includes(port)
     ? `Port ${port} is used by Coolify. Removing it may break Coolify access.`
-    : undefined;
+    : DOKPLOY_PORTS.includes(port)
+      ? `Port ${port} is used by Dokploy. Removing it may break Dokploy access.`
+      : undefined;
 
   try {
     const result = await sshExec(ip, buildUfwRuleCommand("delete allow", port, protocol));

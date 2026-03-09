@@ -136,6 +136,7 @@ export function scpDownload(
   assertValidIp(ip);
   assertSafePath(remotePath);
   return new Promise((resolve, reject) => {
+    let settled = false;
     // stdin must be "ignore" — not "inherit". MCP uses stdin for JSON-RPC transport;
     // inheriting it would corrupt the stream. BatchMode=yes prevents interactive prompts.
     const scpBin = resolveScpPath();
@@ -148,16 +149,16 @@ export function scpDownload(
     child.stderr?.on("data", (data: Buffer) => {
       stderr += data.toString();
     });
-    child.on("close", (code) => resolve({ code: code ?? 1, stderr }));
-    child.on("error", (err) => resolve({ code: 1, stderr: err.message }));
+    child.on("close", (code) => {
+      if (!settled) { settled = true; clearTimeout(timer); resolve({ code: code ?? 1, stderr }); }
+    });
+    child.on("error", (err) => {
+      if (!settled) { settled = true; clearTimeout(timer); resolve({ code: 1, stderr: err.message }); }
+    });
 
     const timer = setTimeout(() => {
-      child.kill("SIGTERM");
-      reject(new Error(`SCP download timeout after ${timeoutMs}ms`));
+      if (!settled) { settled = true; child.kill("SIGTERM"); reject(new Error(`SCP download timeout after ${timeoutMs}ms`)); }
     }, timeoutMs);
-    // Clear timer when the process exits normally
-    child.on("close", () => clearTimeout(timer));
-    child.on("error", () => clearTimeout(timer));
   });
 }
 
@@ -170,6 +171,7 @@ export function scpUpload(
   assertValidIp(ip);
   assertSafePath(remotePath);
   return new Promise((resolve, reject) => {
+    let settled = false;
     // stdin must be "ignore" — not "inherit". MCP uses stdin for JSON-RPC transport;
     // inheriting it would corrupt the stream. BatchMode=yes prevents interactive prompts.
     const scpBin = resolveScpPath();
@@ -182,16 +184,16 @@ export function scpUpload(
     child.stderr?.on("data", (data: Buffer) => {
       stderr += data.toString();
     });
-    child.on("close", (code) => resolve({ code: code ?? 1, stderr }));
-    child.on("error", (err) => resolve({ code: 1, stderr: err.message }));
+    child.on("close", (code) => {
+      if (!settled) { settled = true; clearTimeout(timer); resolve({ code: code ?? 1, stderr }); }
+    });
+    child.on("error", (err) => {
+      if (!settled) { settled = true; clearTimeout(timer); resolve({ code: 1, stderr: err.message }); }
+    });
 
     const timer = setTimeout(() => {
-      child.kill("SIGTERM");
-      reject(new Error(`SCP upload timeout after ${timeoutMs}ms`));
+      if (!settled) { settled = true; child.kill("SIGTERM"); reject(new Error(`SCP upload timeout after ${timeoutMs}ms`)); }
     }, timeoutMs);
-    // Clear timer when the process exits normally
-    child.on("close", () => clearTimeout(timer));
-    child.on("error", () => clearTimeout(timer));
   });
 }
 

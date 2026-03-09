@@ -124,6 +124,9 @@ export async function importCommand(filePath: string): Promise<void> {
       region: server.region,
       size: server.size,
       createdAt: server.createdAt,
+      ...(server.mode ? { mode: server.mode } : {}),
+      ...(server.platform ? { platform: server.platform } : {}),
+      ...(server.domain ? { domain: server.domain } : {}),
     };
     saveServer(sanitized);
     existingIds.add(server.id);

@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import axios from "axios";
-import { apiClient, stripSensitiveData, withProviderErrorHandling, type CloudProvider } from "./base.js";
+import { apiClient, stripSensitiveData, withProviderErrorHandling, assertValidServerId, type CloudProvider } from "./base.js";
 import type { Region, ServerSize, ServerConfig, ServerResult, SnapshotInfo, ServerMode } from "../types/index.js";
 
 interface LinodeType {
@@ -132,6 +132,7 @@ export class LinodeProvider implements CloudProvider {
   }
 
   async getServerDetails(serverId: string): Promise<ServerResult> {
+    assertValidServerId(serverId);
     return withProviderErrorHandling("get server details", async () => {
       const response = await apiClient.get(`${this.baseUrl}/linode/instances/${serverId}`, {
         headers: { Authorization: `Bearer ${this.apiToken}` },
@@ -146,6 +147,7 @@ export class LinodeProvider implements CloudProvider {
   }
 
   async getServerStatus(serverId: string): Promise<string> {
+    assertValidServerId(serverId);
     return withProviderErrorHandling("get server status", async () => {
       const response = await apiClient.get(`${this.baseUrl}/linode/instances/${serverId}`, {
         headers: { Authorization: `Bearer ${this.apiToken}` },
@@ -155,6 +157,7 @@ export class LinodeProvider implements CloudProvider {
   }
 
   async destroyServer(serverId: string): Promise<void> {
+    assertValidServerId(serverId);
     try {
       await apiClient.delete(`${this.baseUrl}/linode/instances/${serverId}`, {
         headers: { Authorization: `Bearer ${this.apiToken}` },
@@ -173,6 +176,7 @@ export class LinodeProvider implements CloudProvider {
   }
 
   async rebootServer(serverId: string): Promise<void> {
+    assertValidServerId(serverId);
     try {
       await apiClient.post(
         `${this.baseUrl}/linode/instances/${serverId}/reboot`,
@@ -262,6 +266,7 @@ export class LinodeProvider implements CloudProvider {
   }
 
   async createSnapshot(serverId: string, name: string): Promise<SnapshotInfo> {
+    assertValidServerId(serverId);
     try {
       // Get the first disk to create image from
       const disksResponse = await apiClient.get(
@@ -343,6 +348,7 @@ export class LinodeProvider implements CloudProvider {
   }
 
   async deleteSnapshot(snapshotId: string): Promise<void> {
+    assertValidServerId(snapshotId);
     try {
       await apiClient.delete(`${this.baseUrl}/images/${snapshotId}`, {
         headers: { Authorization: `Bearer ${this.apiToken}` },
@@ -361,6 +367,7 @@ export class LinodeProvider implements CloudProvider {
   }
 
   async getSnapshotCostEstimate(serverId: string): Promise<string> {
+    assertValidServerId(serverId);
     try {
       const response = await apiClient.get(`${this.baseUrl}/linode/instances/${serverId}`, {
         headers: { Authorization: `Bearer ${this.apiToken}` },

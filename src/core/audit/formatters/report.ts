@@ -144,9 +144,9 @@ export function formatMdReport(result: AuditResult): string {
 
     for (const check of category.checks) {
       const status = check.passed ? "Pass" : "FAIL";
-      const fix = check.fixCommand ? `\`${check.fixCommand}\`` : "-";
+      const fix = check.fixCommand ? `\`${check.fixCommand.replace(/\|/g, "\\|")}\`` : "-";
       lines.push(
-        `| ${check.name} | ${check.severity} | ${status} | ${check.currentValue} | ${check.expectedValue} | ${fix} |`,
+        `| ${check.name} | ${check.severity} | ${status} | ${check.currentValue.replace(/\|/g, "\\|")} | ${check.expectedValue.replace(/\|/g, "\\|")} | ${fix} |`,
       );
     }
     lines.push("");

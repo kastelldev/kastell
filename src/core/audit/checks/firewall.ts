@@ -58,7 +58,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
   const lines = output.split("\n");
   let hasWideOpen = false;
   for (const line of lines) {
-    const wideOpenMatch = line.match(/(\d+)\/tcp\s+ALLOW\s+IN\s+0\.0\.0\.0\/0/i);
+    const wideOpenMatch = line.match(/(\d+)\/tcp\s+ALLOW\s+IN\s+(?:0\.0\.0\.0\/0|Anywhere)/i);
     if (wideOpenMatch) {
       const port = wideOpenMatch[1];
       if (!SAFE_PUBLIC_PORTS.has(port)) {

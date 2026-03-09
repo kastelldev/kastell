@@ -33,6 +33,9 @@ export async function getCloudServerStatus(
   if (server.id.startsWith("manual-")) {
     return "unknown (manual)";
   }
+  if (!apiToken) {
+    return "unknown (no token)";
+  }
   const provider = createProviderWithToken(server.provider, apiToken);
   return provider.getServerStatus(server.id);
 }

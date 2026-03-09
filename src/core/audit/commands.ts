@@ -107,6 +107,8 @@ function networkSection(): string {
     `sysctl net.ipv4.ip_forward 2>/dev/null || echo 'N/A'`,
     // DNS resolver
     `cat /etc/resolv.conf 2>/dev/null | grep nameserver || echo 'N/A'`,
+    // NTP / time sync status
+    `timedatectl 2>/dev/null || echo 'N/A'`,
   ].join("\n");
 }
 

@@ -32,7 +32,7 @@ function makeDockerSkippedChecks(severity: "info" | "warning"): AuditCheck[] {
     passed: severity === "info", // info = skip (ok for bare), warning = fail (bad for platform)
     currentValue: message,
     expectedValue: "Docker installed and configured securely",
-    fixCommand: "curl -fsSL https://get.docker.com | sh",
+    fixCommand: "curl -fsSL https://get.docker.com -o /tmp/get-docker.sh && sh /tmp/get-docker.sh && rm -f /tmp/get-docker.sh",
     explain: severity === "info"
       ? "Docker is not installed on this server. Checks skipped."
       : "Docker is expected on this platform but was not found.",
@@ -107,7 +107,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
     passed: isCurrentVersion,
     currentValue: `Docker ${version}`,
     expectedValue: "Docker 24.0+",
-    fixCommand: "curl -fsSL https://get.docker.com | sh",
+    fixCommand: "curl -fsSL https://get.docker.com -o /tmp/get-docker.sh && sh /tmp/get-docker.sh && rm -f /tmp/get-docker.sh",
     explain: "Older Docker versions may have unpatched security vulnerabilities.",
   };
 

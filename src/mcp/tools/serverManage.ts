@@ -185,8 +185,8 @@ export async function handleServerManage(params: {
         // SAFE_MODE check
         if (isSafeMode()) {
           return mcpError(
-            "Destroy is disabled in SAFE_MODE",
-            "Set KASTELL_SAFE_MODE=false to enable destructive operations",
+            "Destroy is disabled in SAFE_MODE (enabled by default for safety)",
+            "Set KASTELL_SAFE_MODE=false to enable destructive operations. WARNING: This will permanently delete the server from the cloud provider.",
             [
               {
                 command: `server_manage { action: 'remove', server: '${params.server ?? ""}' }`,
