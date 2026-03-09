@@ -33,7 +33,7 @@ Requirements for v1.6 Audit Expand + Evidence + Infrastructure. Each maps to roa
 
 - [x] **INFRA-01**: File locking prevents concurrent writes to servers.json
 - [x] **INFRA-02**: Rate limit backoff retries 429 responses with exponential delay
-- [ ] **INFRA-03**: ServerRecord.mode field is required (auto-migrated from optional)
+- [x] **INFRA-03**: ServerRecord.mode field is required (auto-migrated from optional)
 - [x] **INFRA-04**: Rate limit retry respects Retry-After header when present
 
 ### Documentation
@@ -90,7 +90,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EVID-04 | Phase 26 | Pending |
 | INFRA-01 | Phase 23 | Complete |
 | INFRA-02 | Phase 23 | Complete |
-| INFRA-03 | Phase 23 | Pending |
+| INFRA-03 | Phase 23 | Complete |
 | INFRA-04 | Phase 23 | Complete |
 | DOCS-01 | Phase 27 | Pending |
 | DOCS-02 | Phase 27 | Pending |

@@ -61,6 +61,8 @@ Progress: [██████████] 100% (Phase 23)
 - withRetry parses Retry-After as integer first, then Date.parse, then falls back to exponential backoff
 - withProviderErrorHandling(() => withRetry(...)) composition for provider GET methods
 - getSnapshotCostEstimate treated as GET method (reads server disk info, retryable)
+- Mode migration persists atomically on first getServers read (no lazy fallback at each call site)
+- All config/audit writes wrapped with withFileLock for concurrency safety
 
 ### Pending Todos
 
@@ -73,5 +75,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-09
-Stopped at: Completed 23-03-PLAN.md (Phase 23 complete)
+Stopped at: Completed 23-02-PLAN.md (backfill - was executed after 23-03)
 Next action: Execute Phase 24 (Audit Snapshot + Diff)
