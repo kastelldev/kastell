@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.2] - 2026-03-09
+
+### Fixed
+- **Phase 2 code review**: 30 bug fixes across critical, high, medium, and low severity (3C+8H+14M+5L) — provider validation, error handling, type safety improvements
+- **Phase 1 remaining fixes**: 15 files — provider validation hardening, audit check corrections, backup safety guards
+
+### Changed
+- **CI**: Automatic GitHub Release workflow on tag push
+- **Docs (TR)**: Security audit section, MCP server_audit, CI pipeline example added to Turkish README
+
 ## [1.5.1] - 2026-03-08
 
 ### Fixed
