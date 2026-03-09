@@ -9,10 +9,10 @@
 - ✅ **v1.3 Kastell Rebrand + Dokploy** — Phases 7-10 (shipped 2026-03-06)
 - ✅ **v1.4 TUI + Dokploy + DX** — Phases 11-15 (shipped 2026-03-07)
 - ✅ **v1.5 Security + Dokploy + Audit** — Phases 16-22 (shipped 2026-03-08)
-- ⬜ **v1.6 Audit Expand + Evidence + Altyapı** — audit snapshot/diff/compare, evidence collect, file locking, rate limit, adapter contract docs
+- 🚧 **v1.6 Audit Expand + Evidence + Altyapi** — Phases 23-27 (in progress)
 - ⬜ **v1.7 Guard Core** — guard daemon, lock --production, fleet, doctor, bildirimler, backup --schedule, risk trend
 - ⬜ **v2.0 Plugin Ekosistemi** — Claude Code marketplace, SKILL.md (cross-platform: Cursor/Gemini CLI/Kiro), slash commands, chained workflows, audit --explain, validate_plugins.py CI
-- ⬜ **v3.0 Dashboard + Managed Servis** — premium web dashboard, managed servis ($49/$99/$299+), ilk müşteri LA ROMA
+- ⬜ **v3.0 Dashboard + Managed Servis** — premium web dashboard, managed servis ($49/$99/$299+), ilk musteri LA ROMA
 
 ## Phases
 
@@ -80,9 +80,9 @@ MCP server with 7 tools, 12 security fixes, SSH key auto-generation, full docs u
 <details>
 <summary>✅ v1.5 Security + Dokploy + Audit — SHIPPED 2026-03-08</summary>
 
-- [x] Phase 16: Güvenlik Fixleri (11 items, pre-GSD) — completed 2026-03-08
+- [x] Phase 16: Guvenlik Fixleri (11 items, pre-GSD) — completed 2026-03-08
 - [x] Phase 17: Dokploy Tamamlama (3/3 plans) — completed 2026-03-08
-- [x] Phase 18: Token Güvenliği (2/2 plans) — completed 2026-03-08
+- [x] Phase 18: Token Guvenligi (2/2 plans) — completed 2026-03-08
 - [x] Phase 19: Code Quality Refactoring (4/4 plans) — completed 2026-03-08
 - [x] Phase 20: kastell audit (5/5 plans) — completed 2026-03-08
 - [x] Phase 21: Wire tokenBuffer — Gap Closure (absorbed into P18) — completed 2026-03-08
@@ -92,124 +92,108 @@ MCP server with 7 tools, 12 security fixes, SSH key auto-generation, full docs u
 
 </details>
 
-<details>
-<summary>⬜ v1.6 Audit Expand + Evidence + Altyapı</summary>
+### 🚧 v1.6 Audit Expand + Evidence + Altyapi (In Progress)
 
-**Audit Genişletme (v1.5'ten ertelenen):**
-- [ ] `--snapshot` — firewall rules, open ports, processes → tarihli JSON kanıt
-- [ ] `--diff snapshot1 snapshot2` — iki snapshot arası fark
-- [ ] `--compare server1 server2` — multi-server audit karşılaştırması
+**Milestone Goal:** Extend audit with snapshot persistence and structured diffing, add forensic evidence collection, and harden infrastructure with file locking and rate limit backoff.
 
-**Evidence / Forensics (IP Abuse Kanıt Paketi):**
-- [ ] `kastell evidence collect <server>` — tek komutla kanıt paketi topla
-  - UFW kuralları, system logs, ss -tlnp, auth.log, audit raporu (HTML+JSON), metrikleri
-  - `~/.kastell/evidence/{server}/{timestamp}/` altına paketle + manifest.json
-- [ ] Opsiyonel disk snapshot entegrasyonu
-- [ ] Hetzner abuse complaint'lerine hazır kanıt formatı
+- [ ] **Phase 23: Infrastructure Foundation** - File locking, rate limit backoff, ServerRecord.mode migration
+- [ ] **Phase 24: Audit Snapshots** - Snapshot save/load/list with schema versioning
+- [ ] **Phase 25: Audit Diff and Compare** - Check-by-check diff, cross-server compare, CI integration
+- [ ] **Phase 26: Evidence Collection** - Forensic evidence package with SHA256 manifest
+- [ ] **Phase 27: Adapter Contract Documentation** - PlatformAdapter interface docs and test fixtures
 
-**Altyapı Sağlamlaştırma:**
-- [ ] ServerRecord.mode required yapma
-- [ ] servers.json file locking (concurrent yazma race condition)
-- [ ] Provider API 429 rate limit backoff (exponential retry)
+## Phase Details
 
-**Olgunluk:**
-- [ ] Adapter contract dokümantasyonu — shared interface + test fixture (breaking change koruması)
+### Phase 23: Infrastructure Foundation
+**Goal**: Infrastructure is hardened against concurrent writes and API rate limits
+**Depends on**: Phase 22 (v1.5 complete)
+**Requirements**: INFRA-01, INFRA-02, INFRA-03, INFRA-04
+**Success Criteria** (what must be TRUE):
+  1. Two simultaneous CLI/MCP writes to servers.json do not corrupt data (file locking prevents race)
+  2. Provider API calls that receive 429 responses are retried with exponential backoff and succeed on retry
+  3. Rate limit retry respects Retry-After header when the provider includes it
+  4. All existing ServerRecord entries without explicit mode field are auto-migrated to have mode set
+**Plans:** 3 plans
+Plans:
+- [ ] 23-01-PLAN.md — Create withFileLock and withRetry utility modules with TDD
+- [ ] 23-02-PLAN.md — Integrate withFileLock into config/history writes + mode migration
+- [ ] 23-03-PLAN.md — Integrate withRetry into provider GET methods
 
-</details>
+### Phase 24: Audit Snapshots
+**Goal**: Users can persist and manage audit results as versioned snapshots
+**Depends on**: Phase 23 (file locking required for snapshot writes)
+**Requirements**: SNAP-01, SNAP-02, SNAP-03, SNAP-04
+**Success Criteria** (what must be TRUE):
+  1. User can run `kastell audit --snapshot` and a dated JSON file is saved under `~/.kastell/snapshots/{server}/`
+  2. User can run `kastell audit --snapshots` and see a list of saved snapshots with dates, scores, and names
+  3. User can name a snapshot (e.g., `--snapshot pre-upgrade`) for easy reference later
+  4. Every snapshot includes a `schemaVersion` field so future audit changes do not break old snapshots
+**Plans**: TBD
 
-<details>
-<summary>⬜ v1.7 Guard Core</summary>
+### Phase 25: Audit Diff and Compare
+**Goal**: Users can track security posture changes over time and across servers
+**Depends on**: Phase 24 (snapshot format must exist for diff)
+**Requirements**: DIFF-01, DIFF-02, DIFF-03, DIFF-04, DIFF-05
+**Success Criteria** (what must be TRUE):
+  1. User can diff two snapshots and see which checks improved, regressed, or stayed the same
+  2. User can compare two different servers' audit results side-by-side
+  3. Diff output in terminal is color-coded: green for improvements, red for regressions
+  4. Diff supports `--json` output for CI pipeline consumption
+  5. `kastell audit --diff` exits with code 1 when any check regressed (CI can gate on this)
+**Plans**: TBD
 
-**Guard:**
-- [ ] `kastell guard` — otonom daemon (arka planda çalışan güvenlik servisi)
-- [ ] `kastell lock --production` — sunucuyu production moduna kilitle
-- [ ] `kastell fleet` — çoklu sunucu yönetimi
-- [ ] `kastell doctor` genişletme — mevcut doctor komutuna ek kontroller
+### Phase 26: Evidence Collection
+**Goal**: Users can collect forensic evidence packages for IP abuse complaints with a single command
+**Depends on**: Phase 23 (file locking for evidence writes)
+**Requirements**: EVID-01, EVID-02, EVID-03, EVID-04
+**Success Criteria** (what must be TRUE):
+  1. User can run `kastell evidence collect <server>` and get a directory of evidence files
+  2. Evidence directory contains firewall rules, auth.log excerpts, listening ports, and system logs
+  3. A manifest.json file lists every collected file with its SHA256 checksum for chain-of-custody integrity
+  4. Evidence collection completes over a single SSH connection (batch pattern, no repeated connects)
+**Plans**: TBD
 
-**Bildirimler:**
-- [ ] Telegram / Discord / Slack bildirimleri
-
-**Altyapı:**
-- [ ] kastell backup --schedule
-
-**Risk Trend:**
-- [ ] Risk trend scoring — zaman içinde güvenlik puanı takibi
-- [ ] kastell compare — sunucular arası güvenlik karşılaştırması
-
-**Dokploy (İleri):**
-- [ ] Dokploy API integration (project/service yönetimi)
-- [ ] Swarm status monitoring
-
-</details>
-
-<details>
-<summary>⬜ v2.0 Plugin Ekosistemi (AI IDE Entegrasyonu)</summary>
-
-**Plugin Öncesi Olmazsa Olmazlar:**
-- [ ] `kastell init` — plugin üzerinden gelen yeni kullanıcılar için interaktif onboarding wizard
-- [ ] `kastell audit --explain` — her bulgunun yanında inline "why this matters + fix" blogu
-
-**Plugin Mimarisi:**
-- [ ] `claude plugin add --marketplace kastelldev/kastell` entegrasyonu
-- [ ] marketplace.json — Claude Code'un plugin add komutunda okuduğu metadata
-- [ ] Skill description kalitesi — semantic similarity için spesifik: "Hetzner/Docker/Dokploy deployment security"
-- [ ] Platform baglami enjekte eden skill'ler (kastell-docker, kastell-security)
-- [ ] `/kastell:audit` gibi slash command'lar (Claude Code'a ozel)
-- [ ] SKILL.md universal format — Cursor, Gemini CLI, Kiro gibi araçlarda da çalışır (slash command'lar hariç)
-- [ ] scan→score→notify→snapshot chained workflow
-- [ ] Her komut bitince sonraki adımı öneren pattern
-- [ ] references/troubleshooting.md — Hetzner+Docker hata→çözüm tablosu
-
-**CI & Doğrulama:**
-- [ ] validate_plugins.py — plugin yapısını doğrulayan script
-- [ ] GitHub Actions CI entegrasyonu
-
-</details>
-
-<details>
-<summary>⬜ v3.0 Web Dashboard + Managed Servis</summary>
-
-**Dashboard:**
-- [ ] Web dashboard (premium)
-
-**Managed Servis:**
-- [ ] Sunucu yonetimini müşteri adına üstlenme — aylık abonelik modeli
-  - Starter ~$49 | Growth ~$99 | Scale $299+
-- [ ] İlk müşteri: LA ROMA (concierge MVP)
-- [ ] Sonra çevre genişletme → landing page
-
-</details>
+### Phase 27: Adapter Contract Documentation
+**Goal**: PlatformAdapter interface is documented with test fixtures that catch breaking changes
+**Depends on**: Nothing (independent, sequenced last for lowest user impact)
+**Requirements**: DOCS-01, DOCS-02
+**Success Criteria** (what must be TRUE):
+  1. A developer can read the adapter contract docs and understand every method's purpose, parameters, and expected behavior
+  2. Test fixtures validate that CoolifyAdapter and DokployAdapter conform to the PlatformAdapter contract (CI catches deviations)
+**Plans**: TBD
 
 ## Paralel Track: kastell.dev Website
 
-> v1.5 (audit) ile paralel — audit publish olduğunda website hazır olmalı.
+> v1.5 (audit) ile paralel — audit publish oldugunda website hazir olmali.
 
-- [ ] Logo kesinleşmeli (website öncesi)
-- [ ] kastell.dev website (ayrı repo)
-- [ ] kastell.dev açılınca → GitHub + npm homepage'e kastell.dev koy
-- [ ] quicklify.omrfc.dev → kastell.dev redirect yap, sonra kapat
+- [ ] Logo kesinlesmeli (website oncesi)
+- [ ] kastell.dev website (ayri repo)
+- [ ] kastell.dev acilinca -> GitHub + npm homepage'e kastell.dev koy
+- [ ] quicklify.omrfc.dev -> kastell.dev redirect yap, sonra kapat
 
 ## Backlog (Hook'lar)
 
-> Milestone'a bağlı değil, ihtiyaç oldukça ekle. Geliştirici DX'i, kullanıcıya değer katmıyor.
+> Milestone'a bagli degil, ihtiyac oldukca ekle. Gelistirici DX'i, kullaniciya deger katmiyor.
 
-- [ ] SessionStart → CHANGELOG + current focus yükle
-- [ ] Stop → TS hata/CHANGELOG/README kontrolü (prompt hook)
-- [ ] PreCompact → CHANGELOG snapshot
-- [ ] SessionEnd → uncommitted changes uyarısı
-- [ ] SessionStart → kastell audit --silent
-- [ ] Deploy sonrası Telegram bildirimi (HTTP hook + n8n)
+- [ ] SessionStart -> CHANGELOG + current focus yukle
+- [ ] Stop -> TS hata/CHANGELOG/README kontrolu (prompt hook)
+- [ ] PreCompact -> CHANGELOG snapshot
+- [ ] SessionEnd -> uncommitted changes uyarisi
+- [ ] SessionStart -> kastell audit --silent
+- [ ] Deploy sonrasi Telegram bildirimi (HTTP hook + n8n)
 - [ ] Kastell MCP auto-allow
-- [ ] PostToolUse/Bash → session.log
-- [ ] UserPromptSubmit → platform/versiyon enjeksiyonu
+- [ ] PostToolUse/Bash -> session.log
+- [ ] UserPromptSubmit -> platform/versiyon enjeksiyonu
 
-## Periyodik Bakım
+## Periyodik Bakim
 
-- [ ] MEMORY.md stale bilgi kontrolü (her 2-3 major gorev)
-- [ ] LESSONS.md yeni ders ekleme (hata çıkınca)
+- [ ] MEMORY.md stale bilgi kontrolu (her 2-3 major gorev)
+- [ ] LESSONS.md yeni ders ekleme (hata cikinca)
 - [ ] Oturum sonu: CHANGELOG, README, README.tr, SECURITY.md, llms.txt
 
 ## Progress
+
+**Execution Order:** Phases execute in numeric order: 23 -> 24 -> 25 -> 26 -> 27
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -228,14 +212,19 @@ MCP server with 7 tools, 12 security fixes, SSH key auto-generation, full docs u
 | 13. Developer Experience | v1.4 | 3/3 | Complete | 2026-03-07 |
 | 14. TUI Enhancements | v1.4 | 2/2 | Complete | 2026-03-07 |
 | 15. Documentation | v1.4 | 1/1 | Complete | 2026-03-07 |
-| 16. Güvenlik Fixleri | v1.5 | 11/11 | Complete | 2026-03-08 |
+| 16. Guvenlik Fixleri | v1.5 | 11/11 | Complete | 2026-03-08 |
 | 17. Dokploy Tamamlama | v1.5 | 3/3 | Complete | 2026-03-08 |
-| 18. Token Güvenliği | v1.5 | 2/2 | Complete | 2026-03-08 |
+| 18. Token Guvenligi | v1.5 | 2/2 | Complete | 2026-03-08 |
 | 19. Code Quality Refactoring | v1.5 | 4/4 | Complete | 2026-03-08 |
 | 20. kastell audit | v1.5 | 5/5 | Complete | 2026-03-08 |
 | 21. Wire tokenBuffer (Gap Closure) | v1.5 | — | Complete (absorbed into P18) | 2026-03-08 |
 | 22. Platform Auto-Detect (Gap Closure) | v1.5 | — | Complete (absorbed into P17) | 2026-03-08 |
+| 23. Infrastructure Foundation | v1.6 | 0/3 | Not started | - |
+| 24. Audit Snapshots | v1.6 | 0/TBD | Not started | - |
+| 25. Audit Diff and Compare | v1.6 | 0/TBD | Not started | - |
+| 26. Evidence Collection | v1.6 | 0/TBD | Not started | - |
+| 27. Adapter Contract Documentation | v1.6 | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-02-27*
-*Last updated: 2026-03-08 — v1.5 shipped (7 phases, 14 plans, 37 requirements)*
+*Last updated: 2026-03-09 — Phase 23 planned (3 plans, 2 waves)*
