@@ -68,6 +68,7 @@ const sampleServer = {
   region: "nbg1",
   size: "cax11",
   createdAt: "2026-02-20T00:00:00Z",
+  mode: "coolify" as const,
 };
 
 const manualServer = {
@@ -78,6 +79,7 @@ const manualServer = {
   region: "unknown",
   size: "unknown",
   createdAt: "2026-02-20T00:00:00Z",
+  mode: "coolify" as const,
 };
 
 const sampleManifest = {

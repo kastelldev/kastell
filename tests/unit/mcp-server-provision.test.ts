@@ -67,7 +67,7 @@ beforeEach(() => {
   mockedSshKey.getSshKeyName.mockReturnValue("kastell-1234567890");
 
   mockedTemplates.getTemplateDefaults.mockReturnValue({ region: "nbg1", size: "cax11" });
-  mockedConfig.saveServer.mockImplementation(() => {});
+  mockedConfig.saveServer.mockImplementation(() => Promise.resolve());
 });
 
 afterAll(() => {

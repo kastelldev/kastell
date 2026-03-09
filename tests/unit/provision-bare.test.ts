@@ -64,7 +64,7 @@ beforeEach(() => {
   mockedSshKey.getSshKeyName.mockReturnValue("kastell-test");
   mockedCloudInit.getBareCloudInit.mockReturnValue("#!/bin/bash\necho bare");
   mockedTemplates.getTemplateDefaults.mockReturnValue({ region: "nbg1", size: "cax11" });
-  mockedConfig.saveServer.mockImplementation(() => {});
+  mockedConfig.saveServer.mockImplementation(() => Promise.resolve());
   const mockAdapter = { name: "coolify", getCloudInit: jest.fn().mockReturnValue("#!/bin/bash\necho coolify") };
   mockedAdapterFactory.getAdapter.mockReturnValue(mockAdapter as never);
 });

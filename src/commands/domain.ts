@@ -139,7 +139,7 @@ async function domainAdd(
     }
 
     spinner.succeed(`Domain set to ${domain} on ${name}`);
-    updateServer(name, { domain });
+    await updateServer(name, { domain });
     const protocol = ssl ? "https" : "http";
     logger.success(`Coolify is now accessible at ${protocol}://${domain}`);
     logger.info("Make sure your DNS A record points to " + ip);
@@ -180,7 +180,7 @@ async function domainRemove(ip: string, name: string, dryRun: boolean): Promise<
     }
 
     spinner.succeed(`Domain removed from ${name}`);
-    updateServer(name, { domain: undefined });
+    await updateServer(name, { domain: undefined });
     logger.success(`Coolify is now accessible at http://${ip}:8000`);
   } catch (error: unknown) {
     spinner.fail("Failed to remove domain");

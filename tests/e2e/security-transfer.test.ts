@@ -22,6 +22,7 @@ const sampleServer = {
   region: "nbg1",
   size: "cax11",
   createdAt: "2026-01-01T00:00:00.000Z",
+  mode: "coolify" as const,
 };
 
 const sampleServer2 = {
@@ -32,6 +33,7 @@ const sampleServer2 = {
   region: "fra1",
   size: "s-2vcpu-4gb",
   createdAt: "2026-02-01T00:00:00.000Z",
+  mode: "coolify" as const,
 };
 
 describe("security-transfer E2E", () => {
@@ -80,9 +82,9 @@ describe("security-transfer E2E", () => {
       for (const server of exported) {
         const keys = Object.keys(server);
         expect(keys).toEqual(
-          expect.arrayContaining(["id", "name", "provider", "ip", "region", "size", "createdAt"]),
+          expect.arrayContaining(["id", "name", "provider", "ip", "region", "size", "createdAt", "mode"]),
         );
-        expect(keys.length).toBe(7);
+        expect(keys.length).toBe(8);
       }
     });
   });
@@ -157,7 +159,7 @@ describe("security-transfer E2E", () => {
       const savedServer = mockedConfig.saveServer.mock.calls[0][0];
       // The sanitized object should only have the allowed fields
       expect(Object.keys(savedServer).sort()).toEqual(
-        ["createdAt", "id", "ip", "name", "provider", "region", "size"].sort(),
+        ["createdAt", "id", "ip", "mode", "name", "provider", "region", "size"].sort(),
       );
       expect(savedServer).not.toHaveProperty("isAdmin");
     });
@@ -174,7 +176,7 @@ describe("security-transfer E2E", () => {
 
       const savedServer = mockedConfig.saveServer.mock.calls[0][0];
       expect(savedServer.constructor).toBe(Object);
-      expect(Object.keys(savedServer)).toHaveLength(7);
+      expect(Object.keys(savedServer)).toHaveLength(8);
     });
 
     it("should only keep allowed fields: id, name, provider, ip, region, size, createdAt", async () => {
@@ -186,6 +188,7 @@ describe("security-transfer E2E", () => {
         region: "fsn1",
         size: "cx21",
         createdAt: "2026-03-01T00:00:00.000Z",
+        mode: "coolify" as const,
         apiToken: "secret",
         password: "pass123",
         secretKey: "key",
@@ -200,7 +203,7 @@ describe("security-transfer E2E", () => {
 
       const savedServer = mockedConfig.saveServer.mock.calls[0][0];
       expect(Object.keys(savedServer).sort()).toEqual(
-        ["createdAt", "id", "ip", "name", "provider", "region", "size"].sort(),
+        ["createdAt", "id", "ip", "mode", "name", "provider", "region", "size"].sort(),
       );
     });
   });

@@ -21,6 +21,7 @@ const sampleServer = {
   region: "nbg1",
   size: "cax11",
   createdAt: "2026-01-01T00:00:00.000Z",
+  mode: "coolify" as const,
 };
 
 const sampleServer2 = {
@@ -31,6 +32,7 @@ const sampleServer2 = {
   region: "nyc1",
   size: "s-2vcpu-4gb",
   createdAt: "2026-01-02T00:00:00.000Z",
+  mode: "coolify" as const,
 };
 
 describe("maintainCommand", () => {
@@ -692,6 +694,7 @@ describe("maintainServer - adapter dispatch", () => {
       region: "nbg1",
       size: "cax11",
       createdAt: "2026-01-01T00:00:00.000Z",
+      mode: "coolify" as const,
       platform: "dokploy" as const,
     };
 
@@ -717,6 +720,7 @@ describe("maintainServer - adapter dispatch", () => {
       region: "nbg1",
       size: "cax11",
       createdAt: "2026-01-01T00:00:00.000Z",
+      mode: "coolify" as const,
       platform: "dokploy" as const,
     };
 
@@ -738,6 +742,7 @@ describe("maintainServer - adapter dispatch", () => {
       region: "nbg1",
       size: "cax11",
       createdAt: "2026-01-01T00:00:00.000Z",
+      mode: "coolify" as const,
       platform: "dokploy" as const,
     };
 

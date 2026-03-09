@@ -111,7 +111,7 @@ export async function destroyCommand(query?: string, options?: { dryRun?: boolea
     },
   ]);
   if (removeLocal) {
-    const removeResult = removeServerRecord(server.name);
+    const removeResult = await removeServerRecord(server.name);
     if (removeResult.success) {
       logger.success("Removed from local config.");
     }

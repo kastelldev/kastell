@@ -37,7 +37,7 @@ export async function removeCommand(query?: string, options?: { dryRun?: boolean
     return;
   }
 
-  removeServer(server.id);
+  await removeServer(server.id);
   logger.success(`"${server.name}" removed from local config.`);
   logger.info(
     "The cloud server is still running. Use 'destroy' to also delete it from the provider.",

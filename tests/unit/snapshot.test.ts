@@ -22,6 +22,7 @@ const sampleServer = {
   region: "nbg1",
   size: "cax11",
   createdAt: "2026-01-01T00:00:00.000Z",
+  mode: "coolify" as const,
 };
 
 const mockProvider = {
@@ -51,6 +52,7 @@ const sampleSnapshot = {
   status: "available",
   sizeGb: 5.2,
   createdAt: "2026-02-24T00:00:00Z",
+  mode: "coolify" as const,
   costPerMonth: "\u20ac0.03/mo",
 };
 
@@ -314,6 +316,7 @@ describe("snapshotCommand", () => {
         status: "available",
         sizeGb: 3.0,
         createdAt: "2026-02-28T00:00:00Z",
+        mode: "coolify" as const,
         costPerMonth: "€0.03/mo",
       });
       mockedInquirer.prompt.mockResolvedValue({ confirm: true });

@@ -215,6 +215,7 @@ describe("doctorCommand", () => {
           region: "nbg1",
           size: "cax11",
           createdAt: "2026-01-01",
+          mode: "coolify" as const,
         },
       ]),
     );
@@ -256,6 +257,7 @@ describe("doctorCommand", () => {
           region: "nbg1",
           size: "cax11",
           createdAt: "2026-01-01",
+          mode: "coolify" as const,
         },
       ]),
     );
@@ -305,6 +307,7 @@ describe("checkProviderTokens", () => {
           region: "nbg1",
           size: "cax11",
           createdAt: "2026-01-01",
+          mode: "coolify" as const,
         },
       ]),
     );
@@ -328,6 +331,7 @@ describe("checkProviderTokens", () => {
           region: "nbg1",
           size: "cax11",
           createdAt: "2026-01-01",
+          mode: "coolify" as const,
         },
       ]),
     );
@@ -353,6 +357,7 @@ describe("checkProviderTokens", () => {
           region: "nyc1",
           size: "s-1vcpu-1gb",
           createdAt: "2026-01-01",
+          mode: "coolify" as const,
         },
       ]),
     );
@@ -378,6 +383,7 @@ describe("checkProviderTokens", () => {
           region: "nbg1",
           size: "cax11",
           createdAt: "2026-01-01",
+          mode: "coolify" as const,
         },
         {
           id: "2",
@@ -387,6 +393,7 @@ describe("checkProviderTokens", () => {
           region: "ewr",
           size: "vc2-1c-1gb",
           createdAt: "2026-01-01",
+          mode: "coolify" as const,
         },
       ]),
     );
@@ -414,6 +421,7 @@ describe("checkProviderTokens", () => {
           region: "us-east",
           size: "g6-nanode-1",
           createdAt: "2026-01-01",
+          mode: "coolify" as const,
         },
       ]),
     );
@@ -439,6 +447,7 @@ describe("checkProviderTokens", () => {
           region: "region1",
           size: "size1",
           createdAt: "2026-01-01",
+          mode: "coolify" as const,
         },
       ]),
     );
@@ -461,6 +470,7 @@ describe("checkProviderTokens", () => {
           region: "nbg1",
           size: "cax11",
           createdAt: "2026-01-01",
+          mode: "coolify" as const,
         },
         {
           id: "2",
@@ -470,6 +480,7 @@ describe("checkProviderTokens", () => {
           region: "fsn1",
           size: "cax21",
           createdAt: "2026-01-01",
+          mode: "coolify" as const,
         },
       ]),
     );
@@ -494,6 +505,7 @@ describe("checkProviderTokens", () => {
           region: "nyc1",
           size: "s-1vcpu-1gb",
           createdAt: "2026-01-01",
+          mode: "coolify" as const,
         },
       ]),
     );
@@ -522,6 +534,7 @@ describe("checkProviderTokens", () => {
           region: "nbg1",
           size: "cax11",
           createdAt: "2026-01-01",
+          mode: "coolify" as const,
         },
       ]),
     );

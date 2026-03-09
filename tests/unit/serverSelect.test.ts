@@ -21,6 +21,7 @@ const sampleServer: ServerRecord = {
   region: "nbg1",
   size: "cax11",
   createdAt: "2026-01-01T00:00:00.000Z",
+  mode: "coolify" as const,
 };
 
 describe("serverSelect", () => {
@@ -204,6 +205,7 @@ describe("serverSelect", () => {
         region: "nyc1",
         size: "s-2vcpu-4gb",
         createdAt: "2026-02-21T00:00:00Z",
+        mode: "coolify" as const,
       };
 
       const result = await collectProviderTokens([sampleServer, doServer]);

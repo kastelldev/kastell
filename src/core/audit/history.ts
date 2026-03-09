@@ -12,6 +12,7 @@ import {
 } from "fs";
 import { join } from "path";
 import { CONFIG_DIR } from "../../utils/config.js";
+import { withFileLock } from "../../utils/fileLock.js";
 import type { AuditResult, AuditHistoryEntry } from "./types.js";
 
 const HISTORY_FILENAME = "audit-history.json";
@@ -49,63 +50,66 @@ export function loadAuditHistory(serverIp: string): AuditHistoryEntry[] {
  * Save audit result to history file.
  * Appends to existing history, caps at MAX_ENTRIES_PER_SERVER per server.
  * Uses atomic write pattern (write then rename) for safety.
+ * Wrapped in withFileLock to prevent concurrent write corruption.
  */
-export function saveAuditHistory(result: AuditResult): void {
+export async function saveAuditHistory(result: AuditResult): Promise<void> {
   const historyFile = getHistoryPath();
 
-  // Ensure config directory exists
-  if (!existsSync(CONFIG_DIR)) {
-    mkdirSync(CONFIG_DIR, { recursive: true });
-  }
-
-  // Load existing history
-  let entries: AuditHistoryEntry[] = [];
-  try {
-    if (existsSync(historyFile)) {
-      const data = readFileSync(historyFile, "utf-8");
-      const parsed = JSON.parse(data);
-      if (Array.isArray(parsed)) {
-        entries = parsed;
-      }
+  await withFileLock(historyFile, () => {
+    // Ensure config directory exists
+    if (!existsSync(CONFIG_DIR)) {
+      mkdirSync(CONFIG_DIR, { recursive: true });
     }
-  } catch {
-    // Start fresh if corrupt
-    entries = [];
-  }
 
-  // Build new entry from result
-  const categoryScores: Record<string, number> = {};
-  for (const cat of result.categories) {
-    categoryScores[cat.name] = cat.score;
-  }
+    // Load existing history
+    let entries: AuditHistoryEntry[] = [];
+    try {
+      if (existsSync(historyFile)) {
+        const data = readFileSync(historyFile, "utf-8");
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed)) {
+          entries = parsed;
+        }
+      }
+    } catch {
+      // Start fresh if corrupt
+      entries = [];
+    }
 
-  const newEntry: AuditHistoryEntry = {
-    serverIp: result.serverIp,
-    serverName: result.serverName,
-    timestamp: result.timestamp,
-    overallScore: result.overallScore,
-    categoryScores,
-  };
+    // Build new entry from result
+    const categoryScores: Record<string, number> = {};
+    for (const cat of result.categories) {
+      categoryScores[cat.name] = cat.score;
+    }
 
-  entries.push(newEntry);
+    const newEntry: AuditHistoryEntry = {
+      serverIp: result.serverIp,
+      serverName: result.serverName,
+      timestamp: result.timestamp,
+      overallScore: result.overallScore,
+      categoryScores,
+    };
 
-  // Cap per server: keep most recent MAX_ENTRIES_PER_SERVER
-  const serverEntries = entries.filter((e) => e.serverIp === result.serverIp);
-  if (serverEntries.length > MAX_ENTRIES_PER_SERVER) {
-    // Sort by timestamp ascending, remove oldest
-    serverEntries.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
-    const toRemove = new Set(
-      serverEntries.slice(0, serverEntries.length - MAX_ENTRIES_PER_SERVER),
-    );
-    entries = entries.filter(
-      (e) => e.serverIp !== result.serverIp || !toRemove.has(e),
-    );
-  }
+    entries.push(newEntry);
 
-  // Write atomically via temp file + rename
-  const tmpFile = historyFile + ".tmp";
-  writeFileSync(tmpFile, JSON.stringify(entries, null, 2), "utf-8");
-  renameSync(tmpFile, historyFile);
+    // Cap per server: keep most recent MAX_ENTRIES_PER_SERVER
+    const serverEntries = entries.filter((e) => e.serverIp === result.serverIp);
+    if (serverEntries.length > MAX_ENTRIES_PER_SERVER) {
+      // Sort by timestamp ascending, remove oldest
+      serverEntries.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+      const toRemove = new Set(
+        serverEntries.slice(0, serverEntries.length - MAX_ENTRIES_PER_SERVER),
+      );
+      entries = entries.filter(
+        (e) => e.serverIp !== result.serverIp || !toRemove.has(e),
+      );
+    }
+
+    // Write atomically via temp file + rename
+    const tmpFile = historyFile + ".tmp";
+    writeFileSync(tmpFile, JSON.stringify(entries, null, 2), "utf-8");
+    renameSync(tmpFile, historyFile);
+  });
 }
 
 /**

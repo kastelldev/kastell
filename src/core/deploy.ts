@@ -246,7 +246,7 @@ async function postSetup(
   const platformPort = platform === "dokploy" ? 3000 : 8000;
 
   // Save server record to config
-  saveServer({
+  await saveServer({
     id: serverId,
     name: serverName,
     provider: providerChoice,

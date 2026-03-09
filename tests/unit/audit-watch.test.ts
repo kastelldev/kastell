@@ -39,7 +39,7 @@ const makeAuditResult = (score: number): AuditResult => ({
 beforeEach(() => {
   jest.clearAllMocks();
   jest.useFakeTimers();
-  mockedHistory.saveAuditHistory.mockImplementation(() => {});
+  mockedHistory.saveAuditHistory.mockImplementation(() => Promise.resolve());
 });
 
 afterEach(() => {

@@ -47,7 +47,7 @@ export async function watchAudit(
     const auditResult = result.data;
 
     // Save to history
-    saveAuditHistory(auditResult);
+    await saveAuditHistory(auditResult);
 
     if (previousScore === undefined) {
       // First run: full output + populate previousFailedIds for correct delta on next run

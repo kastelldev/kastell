@@ -98,6 +98,7 @@ describe("addCommand — bare mode", () => {
         region: "unknown",
         size: "unknown",
         createdAt: "2026-01-01T00:00:00.000Z",
+        mode: "coolify" as const,
       },
       platformStatus: "skipped" as const,
     });

@@ -49,7 +49,7 @@ beforeEach(() => {
   mockedTokens.getProviderToken.mockReturnValue("test-token");
   mockedSsh.checkSshAvailable.mockReturnValue(false);
   mockedConfig.getServers.mockReturnValue([]);
-  mockedConfig.saveServer.mockImplementation(() => {});
+  mockedConfig.saveServer.mockImplementation(() => Promise.resolve());
 });
 
 describe("addServerRecord — bare mode skips Coolify verification", () => {

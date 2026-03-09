@@ -124,11 +124,11 @@ export async function importCommand(filePath: string): Promise<void> {
       region: server.region,
       size: server.size,
       createdAt: server.createdAt,
-      ...(server.mode ? { mode: server.mode } : {}),
+      mode: server.mode || "coolify",
       ...(server.platform ? { platform: server.platform } : {}),
       ...(server.domain ? { domain: server.domain } : {}),
     };
-    saveServer(sanitized);
+    await saveServer(sanitized);
     existingIds.add(server.id);
     imported++;
   }

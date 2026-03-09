@@ -19,6 +19,7 @@ const mockServer = {
   region: "nbg1",
   size: "cax11",
   createdAt: "2026-02-23T10:00:00Z",
+  mode: "coolify" as const,
 };
 
 describe("removeCommand", () => {
@@ -36,7 +37,7 @@ describe("removeCommand", () => {
   it("should remove server from config when confirmed", async () => {
     mockedServerSelect.resolveServer.mockResolvedValue(mockServer);
     mockedInquirer.prompt.mockResolvedValue({ confirm: true });
-    mockedConfig.removeServer.mockReturnValue(true);
+    mockedConfig.removeServer.mockResolvedValue(true);
 
     await removeCommand("coolify-test");
 
@@ -73,7 +74,7 @@ describe("removeCommand", () => {
   it("should work without query (interactive selection)", async () => {
     mockedServerSelect.resolveServer.mockResolvedValue(mockServer);
     mockedInquirer.prompt.mockResolvedValue({ confirm: true });
-    mockedConfig.removeServer.mockReturnValue(true);
+    mockedConfig.removeServer.mockResolvedValue(true);
 
     await removeCommand();
 

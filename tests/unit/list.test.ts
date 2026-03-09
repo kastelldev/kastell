@@ -37,6 +37,7 @@ describe("listCommand", () => {
         region: "nbg1",
         size: "cax11",
         createdAt: "2026-02-20T10:00:00Z",
+        mode: "coolify" as const,
       },
     ]);
 
@@ -62,6 +63,7 @@ describe("listCommand", () => {
         region: "nbg1",
         size: "cax11",
         createdAt: "2026-01-01T00:00:00Z",
+        mode: "coolify" as const,
       },
       {
         id: "2",
@@ -71,6 +73,7 @@ describe("listCommand", () => {
         region: "nyc1",
         size: "s-2vcpu-2gb",
         createdAt: "2026-02-01T00:00:00Z",
+        mode: "coolify" as const,
       },
     ]);
 
@@ -132,6 +135,7 @@ describe("listCommand", () => {
         region: "nbg1",
         size: "cax11",
         createdAt: "2026-02-20T10:00:00Z",
+        mode: "coolify" as const,
       },
     ]);
 
@@ -151,6 +155,7 @@ describe("listCommand", () => {
         region: "nbg1",
         size: "cax11",
         createdAt: "",
+        mode: "coolify" as const,
       },
     ]);
 

@@ -27,6 +27,7 @@ const sampleServer = {
   region: "nbg1",
   size: "cax11",
   createdAt: "2026-01-01T00:00:00.000Z",
+  mode: "coolify" as const,
 };
 
 const sampleSshdConfig = `# SSH daemon config

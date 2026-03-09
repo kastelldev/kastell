@@ -91,7 +91,7 @@ export async function auditCommand(
   const trend = detectTrend(auditResult.overallScore, history);
 
   // Save to history (after trend detection)
-  saveAuditHistory(auditResult);
+  await saveAuditHistory(auditResult);
   if (trend !== "first audit") {
     logger.info(`Trend: ${trend}`);
   }

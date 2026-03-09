@@ -215,7 +215,7 @@ export async function provisionServer(config: ProvisionConfig): Promise<Provisio
     mode: isBare ? ("bare" as const) : ("coolify" as const),
     platform,
   };
-  saveServer(record);
+  await saveServer(record);
 
   // 13. Return result
   if (isPendingIp(serverIp)) {

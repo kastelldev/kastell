@@ -41,6 +41,7 @@ const sampleServer = {
   region: "nbg1",
   size: "cax11",
   createdAt: "2026-02-20T00:00:00Z",
+  mode: "coolify" as const,
 };
 
 const manualServer = {
@@ -51,6 +52,7 @@ const manualServer = {
   region: "unknown",
   size: "unknown",
   createdAt: "2026-02-20T00:00:00Z",
+  mode: "coolify" as const,
 };
 
 const mockProvider: CloudProvider = {
@@ -365,29 +367,29 @@ describe("addServerRecord", () => {
 // ─── Core: removeServerRecord ─────────────────────────────────────────────────
 
 describe("removeServerRecord", () => {
-  it("should remove existing server", () => {
+  it("should remove existing server", async () => {
     mockedConfig.findServer.mockReturnValue(sampleServer);
-    mockedConfig.removeServer.mockReturnValue(true);
+    mockedConfig.removeServer.mockResolvedValue(true);
 
-    const result = removeServerRecord("coolify-test");
+    const result = await removeServerRecord("coolify-test");
     expect(result.success).toBe(true);
     expect(result.server!.name).toBe("coolify-test");
     expect(mockedConfig.removeServer).toHaveBeenCalledWith("123");
   });
 
-  it("should return error when server not found", () => {
+  it("should return error when server not found", async () => {
     mockedConfig.findServer.mockReturnValue(undefined);
 
-    const result = removeServerRecord("nonexistent");
+    const result = await removeServerRecord("nonexistent");
     expect(result.success).toBe(false);
     expect(result.error).toContain("Server not found");
   });
 
-  it("should return error when removeServer fails", () => {
+  it("should return error when removeServer fails", async () => {
     mockedConfig.findServer.mockReturnValue(sampleServer);
-    mockedConfig.removeServer.mockReturnValue(false);
+    mockedConfig.removeServer.mockResolvedValue(false);
 
-    const result = removeServerRecord("coolify-test");
+    const result = await removeServerRecord("coolify-test");
     expect(result.success).toBe(false);
     expect(result.error).toContain("Failed to remove");
   });
@@ -401,7 +403,7 @@ describe("destroyCloudServer", () => {
     mockedConfig.findServer.mockReturnValue(sampleServer);
     (mockProvider.destroyServer as jest.Mock).mockResolvedValue(undefined);
     mockedProviderFactory.createProviderWithToken.mockReturnValue(mockProvider);
-    mockedConfig.removeServer.mockReturnValue(true);
+    mockedConfig.removeServer.mockResolvedValue(true);
 
     const result = await destroyCloudServer("coolify-test");
     expect(result.success).toBe(true);
@@ -444,7 +446,7 @@ describe("destroyCloudServer", () => {
       new Error("Server not found"),
     );
     mockedProviderFactory.createProviderWithToken.mockReturnValue(mockProvider);
-    mockedConfig.removeServer.mockReturnValue(true);
+    mockedConfig.removeServer.mockResolvedValue(true);
 
     const result = await destroyCloudServer("coolify-test");
     expect(result.success).toBe(true);
@@ -614,7 +616,7 @@ describe("handleServerManage — remove", () => {
 
   it("should remove server successfully", async () => {
     mockedConfig.findServer.mockReturnValue(sampleServer);
-    mockedConfig.removeServer.mockReturnValue(true);
+    mockedConfig.removeServer.mockResolvedValue(true);
 
     const result = await handleServerManage({
       action: "remove",
@@ -688,7 +690,7 @@ describe("handleServerManage — destroy", () => {
     mockedConfig.findServer.mockReturnValue(sampleServer);
     (mockProvider.destroyServer as jest.Mock).mockResolvedValue(undefined);
     mockedProviderFactory.createProviderWithToken.mockReturnValue(mockProvider);
-    mockedConfig.removeServer.mockReturnValue(true);
+    mockedConfig.removeServer.mockResolvedValue(true);
 
     const result = await handleServerManage({
       action: "destroy",
@@ -710,7 +712,7 @@ describe("handleServerManage — destroy", () => {
       new Error("Server not found"),
     );
     mockedProviderFactory.createProviderWithToken.mockReturnValue(mockProvider);
-    mockedConfig.removeServer.mockReturnValue(true);
+    mockedConfig.removeServer.mockResolvedValue(true);
 
     const result = await handleServerManage({
       action: "destroy",

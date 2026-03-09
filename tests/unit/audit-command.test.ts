@@ -108,7 +108,7 @@ describe("auditCommand", () => {
     // Mock history to return empty/first audit (no trend output)
     mockedHistory.loadAuditHistory.mockReturnValue([]);
     mockedHistory.detectTrend.mockReturnValue("first audit");
-    mockedHistory.saveAuditHistory.mockImplementation(() => {});
+    mockedHistory.saveAuditHistory.mockImplementation(() => Promise.resolve());
 
     // Default formatter mock — returns a simple string representation
     mockedFormatters.selectFormatter.mockResolvedValue(

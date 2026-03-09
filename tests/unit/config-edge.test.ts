@@ -5,6 +5,9 @@ jest.mock("fs");
 jest.mock("os", () => ({
   homedir: () => "/mock-home",
 }));
+jest.mock("../../src/utils/fileLock", () => ({
+  withFileLock: jest.fn((_path: string, fn: () => any) => fn()),
+}));
 
 const mockedFs = fs as jest.Mocked<typeof fs>;
 
@@ -43,7 +46,7 @@ describe("config edge cases", () => {
   });
 
   describe("saveServer edge cases", () => {
-    it("should not create dir if it already exists", () => {
+    it("should not create dir if it already exists", async () => {
       mockedFs.existsSync
         .mockReturnValueOnce(true) // ensureConfigDir - dir exists
         .mockReturnValueOnce(false); // getServers - file doesn't exist
@@ -56,8 +59,9 @@ describe("config edge cases", () => {
         region: "nbg1",
         size: "cax11",
         createdAt: "",
+        mode: "coolify" as const,
       };
-      saveServer(record);
+      await saveServer(record);
 
       expect(mockedFs.mkdirSync).not.toHaveBeenCalled();
       expect(mockedFs.writeFileSync).toHaveBeenCalled();
@@ -65,7 +69,7 @@ describe("config edge cases", () => {
   });
 
   describe("removeServer edge cases", () => {
-    it("should handle removing from single-element array", () => {
+    it("should handle removing from single-element array", async () => {
       const servers = [
         {
           id: "1",
@@ -75,19 +79,20 @@ describe("config edge cases", () => {
           region: "nbg1",
           size: "cax11",
           createdAt: "",
+          mode: "coolify" as const,
         },
       ];
       mockedFs.existsSync.mockReturnValue(true);
       mockedFs.readFileSync.mockReturnValue(JSON.stringify(servers));
 
-      const result = removeServer("1");
+      const result = await removeServer("1");
 
       expect(result).toBe(true);
       const writtenData = JSON.parse((mockedFs.writeFileSync as jest.Mock).mock.calls[0][1]);
       expect(writtenData).toHaveLength(0);
     });
 
-    it("should not modify file when server not found", () => {
+    it("should not modify file when server not found", async () => {
       mockedFs.existsSync.mockReturnValue(true);
       mockedFs.readFileSync.mockReturnValue(
         JSON.stringify([
@@ -99,11 +104,12 @@ describe("config edge cases", () => {
             region: "",
             size: "",
             createdAt: "",
+            mode: "coolify" as const,
           },
         ]),
       );
 
-      const result = removeServer("999");
+      const result = await removeServer("999");
 
       expect(result).toBe(false);
       expect(mockedFs.writeFileSync).not.toHaveBeenCalled();
@@ -128,6 +134,7 @@ describe("config edge cases", () => {
           region: "nbg1",
           size: "cax11",
           createdAt: "",
+          mode: "coolify" as const,
         },
         {
           id: "2",
@@ -137,6 +144,7 @@ describe("config edge cases", () => {
           region: "nyc1",
           size: "s-2vcpu-2gb",
           createdAt: "",
+          mode: "coolify" as const,
         },
       ];
       mockedFs.existsSync.mockReturnValue(true);

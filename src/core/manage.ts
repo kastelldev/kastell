@@ -205,7 +205,7 @@ export async function addServerRecord(params: AddServerParams): Promise<AddServe
     ...(platform ? { platform } : {}),
   };
 
-  saveServer(record);
+  await saveServer(record);
 
   return { success: true, server: record, platformStatus };
 }
@@ -218,13 +218,13 @@ export interface RemoveServerResult {
   error?: string;
 }
 
-export function removeServerRecord(query: string): RemoveServerResult {
+export async function removeServerRecord(query: string): Promise<RemoveServerResult> {
   const server = findServer(query);
   if (!server) {
     return { success: false, error: `Server not found: ${query}` };
   }
 
-  const removed = removeServer(server.id);
+  const removed = await removeServer(server.id);
   if (!removed) {
     return { success: false, error: `Failed to remove server: ${server.name}` };
   }
@@ -280,7 +280,7 @@ export async function destroyCloudServer(query: string): Promise<DestroyServerRe
   try {
     const provider = createProviderWithToken(server.provider, token);
     await provider.destroyServer(server.id);
-    removeServer(server.id);
+    await removeServer(server.id);
     return { success: true, server, cloudDeleted: true, localRemoved: true };
   } catch (error: unknown) {
     const message = getErrorMessage(error);
@@ -288,7 +288,7 @@ export async function destroyCloudServer(query: string): Promise<DestroyServerRe
       message.toLowerCase().includes("not found") || message.toLowerCase().includes("not_found");
 
     if (isNotFound) {
-      removeServer(server.id);
+      await removeServer(server.id);
       return {
         success: true,
         server,

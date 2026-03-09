@@ -6,6 +6,9 @@ jest.mock("fs");
 jest.mock("../../src/utils/config.js", () => ({
   CONFIG_DIR: "/home/user/.kastell",
 }));
+jest.mock("../../src/utils/fileLock", () => ({
+  withFileLock: jest.fn((_path: string, fn: () => any) => fn()),
+}));
 
 const mockedFs = fs as jest.Mocked<typeof fs>;
 
@@ -77,29 +80,29 @@ describe("saveAuditHistory", () => {
     jest.clearAllMocks();
   });
 
-  it("should write to ~/.kastell/audit-history.json", () => {
+  it("should write to ~/.kastell/audit-history.json", async () => {
     mockedFs.existsSync.mockReturnValue(false);
 
-    saveAuditHistory(makeResult());
+    await saveAuditHistory(makeResult());
 
     expect(mockedFs.writeFileSync).toHaveBeenCalled();
     const writePath = (mockedFs.writeFileSync as jest.Mock).mock.calls[0][0] as string;
     expect(writePath).toContain("audit-history");
   });
 
-  it("should append to existing history", () => {
+  it("should append to existing history", async () => {
     const existing = [makeHistoryEntry({ overallScore: 50 })];
     mockedFs.existsSync.mockReturnValue(true);
     mockedFs.readFileSync.mockReturnValue(JSON.stringify(existing));
 
-    saveAuditHistory(makeResult({ overallScore: 70 }));
+    await saveAuditHistory(makeResult({ overallScore: 70 }));
 
     const writeCall = (mockedFs.writeFileSync as jest.Mock).mock.calls[0];
     const written = JSON.parse(writeCall[1] as string) as AuditHistoryEntry[];
     expect(written).toHaveLength(2);
   });
 
-  it("should cap history at 50 entries per server", () => {
+  it("should cap history at 50 entries per server", async () => {
     const existing: AuditHistoryEntry[] = Array.from({ length: 50 }, (_, i) =>
       makeHistoryEntry({
         serverIp: "1.2.3.4",
@@ -110,7 +113,7 @@ describe("saveAuditHistory", () => {
     mockedFs.existsSync.mockReturnValue(true);
     mockedFs.readFileSync.mockReturnValue(JSON.stringify(existing));
 
-    saveAuditHistory(makeResult({ serverIp: "1.2.3.4", overallScore: 99 }));
+    await saveAuditHistory(makeResult({ serverIp: "1.2.3.4", overallScore: 99 }));
 
     const writeCall = (mockedFs.writeFileSync as jest.Mock).mock.calls[0];
     const written = JSON.parse(writeCall[1] as string) as AuditHistoryEntry[];

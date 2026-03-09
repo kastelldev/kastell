@@ -17,6 +17,7 @@ const sampleServer = {
   region: "nbg1",
   size: "cax11",
   createdAt: "2026-01-01T00:00:00.000Z",
+  mode: "coolify" as const,
 };
 
 const sampleTopOutput = `top - 12:00:00 up 5 days, 3:22, 1 user, load average: 0.15, 0.10, 0.05

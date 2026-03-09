@@ -94,8 +94,8 @@ describe("collectProviderTokensFromEnv", () => {
     process.env.DIGITALOCEAN_TOKEN = "do-token";
 
     const servers = [
-      { id: "1", name: "s1", provider: "hetzner", ip: "1.1.1.1", region: "nbg1", size: "cx11", createdAt: "" },
-      { id: "2", name: "s2", provider: "digitalocean", ip: "2.2.2.2", region: "nyc1", size: "s-1", createdAt: "" },
+      { id: "1", name: "s1", provider: "hetzner", ip: "1.1.1.1", region: "nbg1", size: "cx11", createdAt: "" , mode: "coolify" as const },
+      { id: "2", name: "s2", provider: "digitalocean", ip: "2.2.2.2", region: "nyc1", size: "s-1", createdAt: "" , mode: "coolify" as const },
     ];
 
     const tokenMap = collectProviderTokensFromEnv(servers);
@@ -110,8 +110,8 @@ describe("collectProviderTokensFromEnv", () => {
     delete process.env.DIGITALOCEAN_TOKEN;
 
     const servers = [
-      { id: "1", name: "s1", provider: "hetzner", ip: "1.1.1.1", region: "nbg1", size: "cx11", createdAt: "" },
-      { id: "2", name: "s2", provider: "digitalocean", ip: "2.2.2.2", region: "nyc1", size: "s-1", createdAt: "" },
+      { id: "1", name: "s1", provider: "hetzner", ip: "1.1.1.1", region: "nbg1", size: "cx11", createdAt: "" , mode: "coolify" as const },
+      { id: "2", name: "s2", provider: "digitalocean", ip: "2.2.2.2", region: "nyc1", size: "s-1", createdAt: "" , mode: "coolify" as const },
     ];
 
     const tokenMap = collectProviderTokensFromEnv(servers);
@@ -125,7 +125,7 @@ describe("collectProviderTokensFromEnv", () => {
     process.env.HETZNER_TOKEN = "h-token";
 
     const servers = [
-      { id: "manual-abc", name: "s1", provider: "hetzner", ip: "1.1.1.1", region: "nbg1", size: "cx11", createdAt: "" },
+      { id: "manual-abc", name: "s1", provider: "hetzner", ip: "1.1.1.1", region: "nbg1", size: "cx11", createdAt: "" , mode: "coolify" as const },
     ];
 
     const tokenMap = collectProviderTokensFromEnv(servers);
@@ -137,8 +137,8 @@ describe("collectProviderTokensFromEnv", () => {
     process.env.HETZNER_TOKEN = "h-token";
 
     const servers = [
-      { id: "1", name: "s1", provider: "hetzner", ip: "1.1.1.1", region: "nbg1", size: "cx11", createdAt: "" },
-      { id: "2", name: "s2", provider: "hetzner", ip: "2.2.2.2", region: "fsn1", size: "cx21", createdAt: "" },
+      { id: "1", name: "s1", provider: "hetzner", ip: "1.1.1.1", region: "nbg1", size: "cx11", createdAt: "" , mode: "coolify" as const },
+      { id: "2", name: "s2", provider: "hetzner", ip: "2.2.2.2", region: "fsn1", size: "cx21", createdAt: "" , mode: "coolify" as const },
     ];
 
     const tokenMap = collectProviderTokensFromEnv(servers);

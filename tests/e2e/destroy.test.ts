@@ -18,6 +18,7 @@ const sampleServer = {
   region: "nbg1",
   size: "cax11",
   createdAt: "2026-02-20T00:00:00Z",
+  mode: "coolify" as const,
 };
 
 const doServer = {
@@ -28,6 +29,7 @@ const doServer = {
   region: "nyc1",
   size: "s-2vcpu-4gb",
   createdAt: "2026-02-20T00:00:00Z",
+  mode: "coolify" as const,
 };
 
 describe("destroyCommand E2E", () => {

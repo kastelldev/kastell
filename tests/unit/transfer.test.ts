@@ -22,6 +22,7 @@ const sampleServer = {
   region: "nbg1",
   size: "cax11",
   createdAt: "2026-01-01T00:00:00.000Z",
+  mode: "coolify" as const,
 };
 
 const sampleServer2 = {
@@ -32,6 +33,7 @@ const sampleServer2 = {
   region: "fra1",
   size: "s-2vcpu-4gb",
   createdAt: "2026-02-01T00:00:00.000Z",
+  mode: "coolify" as const,
 };
 
 describe("transfer", () => {
@@ -181,6 +183,7 @@ describe("transfer", () => {
         region: sampleServer.region,
         size: sampleServer.size,
         createdAt: sampleServer.createdAt,
+        mode: "coolify" as const,
       });
     });
 
@@ -200,6 +203,7 @@ describe("transfer", () => {
         region: sampleServer2.region,
         size: sampleServer2.size,
         createdAt: sampleServer2.createdAt,
+        mode: "coolify" as const,
       });
       const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Imported 1");

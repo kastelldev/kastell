@@ -153,7 +153,7 @@ export async function handleServerManage(params: {
           };
         }
 
-        const result = removeServerRecord(params.server);
+        const result = await removeServerRecord(params.server);
 
         if (!result.success) {
           const servers = getServers();

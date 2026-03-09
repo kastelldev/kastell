@@ -20,6 +20,7 @@ const makeRecord = (overrides: Partial<ServerRecord> = {}): ServerRecord => ({
   region: "nbg1",
   size: "cax11",
   createdAt: "2026-01-01T00:00:00Z",
+  mode: "coolify" as const,
   ...overrides,
 });
 

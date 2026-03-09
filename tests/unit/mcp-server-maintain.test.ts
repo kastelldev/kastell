@@ -35,6 +35,7 @@ const sampleServer = {
   region: "nbg1",
   size: "cax11",
   createdAt: "2026-02-20T00:00:00Z",
+  mode: "coolify" as const,
 };
 
 const sampleServer2 = {
@@ -45,6 +46,7 @@ const sampleServer2 = {
   region: "nyc1",
   size: "s-2vcpu-4gb",
   createdAt: "2026-02-21T00:00:00Z",
+  mode: "coolify" as const,
 };
 
 const manualServer = {
@@ -55,6 +57,7 @@ const manualServer = {
   region: "unknown",
   size: "unknown",
   createdAt: "2026-02-20T00:00:00Z",
+  mode: "coolify" as const,
 };
 
 const mockProvider: CloudProvider = {
