@@ -9,8 +9,8 @@
 - ✅ **v1.3 Kastell Rebrand + Dokploy** — Phases 7-10 (shipped 2026-03-06)
 - ✅ **v1.4 TUI + Dokploy + DX** — Phases 11-15 (shipped 2026-03-07)
 - ✅ **v1.5 Security + Dokploy + Audit** — Phases 16-22 (shipped 2026-03-08)
-- ⬜ **v1.6 Guard Core** — guard daemon, lock --production, fleet, doctor genişletme, bildirimler, adapter contract doku
-- ⬜ **v1.7 Risk Trend** — risk trend scoring, kastell compare
+- ⬜ **v1.6 Audit Expand + Evidence + Altyapı** — audit snapshot/diff/compare, evidence collect, file locking, rate limit, adapter contract docs
+- ⬜ **v1.7 Guard Core** — guard daemon, lock --production, fleet, doctor, bildirimler, backup --schedule, risk trend
 - ⬜ **v2.0 Plugin Ekosistemi** — Claude Code marketplace, SKILL.md (cross-platform: Cursor/Gemini CLI/Kiro), slash commands, chained workflows, audit --explain, validate_plugins.py CI
 - ⬜ **v3.0 Dashboard + Managed Servis** — premium web dashboard, managed servis ($49/$99/$299+), ilk müşteri LA ROMA
 
@@ -93,7 +93,7 @@ MCP server with 7 tools, 12 security fixes, SSH key auto-generation, full docs u
 </details>
 
 <details>
-<summary>⬜ v1.6 Guard Core</summary>
+<summary>⬜ v1.6 Audit Expand + Evidence + Altyapı</summary>
 
 **Audit Genişletme (v1.5'ten ertelenen):**
 - [ ] `--snapshot` — firewall rules, open ports, processes → tarihli JSON kanıt
@@ -107,6 +107,19 @@ MCP server with 7 tools, 12 security fixes, SSH key auto-generation, full docs u
 - [ ] Opsiyonel disk snapshot entegrasyonu
 - [ ] Hetzner abuse complaint'lerine hazır kanıt formatı
 
+**Altyapı Sağlamlaştırma:**
+- [ ] ServerRecord.mode required yapma
+- [ ] servers.json file locking (concurrent yazma race condition)
+- [ ] Provider API 429 rate limit backoff (exponential retry)
+
+**Olgunluk:**
+- [ ] Adapter contract dokümantasyonu — shared interface + test fixture (breaking change koruması)
+
+</details>
+
+<details>
+<summary>⬜ v1.7 Guard Core</summary>
+
 **Guard:**
 - [ ] `kastell guard` — otonom daemon (arka planda çalışan güvenlik servisi)
 - [ ] `kastell lock --production` — sunucuyu production moduna kilitle
@@ -118,24 +131,14 @@ MCP server with 7 tools, 12 security fixes, SSH key auto-generation, full docs u
 
 **Altyapı:**
 - [ ] kastell backup --schedule
-- [ ] ServerRecord.mode required yapma
-- [ ] servers.json file locking (concurrent yazma race condition)
-- [ ] Provider API 429 rate limit backoff (exponential retry)
+
+**Risk Trend:**
+- [ ] Risk trend scoring — zaman içinde güvenlik puanı takibi
+- [ ] kastell compare — sunucular arası güvenlik karşılaştırması
 
 **Dokploy (İleri):**
 - [ ] Dokploy API integration (project/service yönetimi)
 - [ ] Swarm status monitoring
-
-**Olgunluk:**
-- [ ] Adapter contract dokümantasyonu — shared interface + test fixture (breaking change koruması)
-
-</details>
-
-<details>
-<summary>⬜ v1.7 Risk Trend</summary>
-
-- [ ] Risk trend scoring — zaman içinde güvenlik puanı takibi
-- [ ] kastell compare — sunucular arası güvenlik karşılaştırması
 
 </details>
 
