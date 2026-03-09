@@ -96,7 +96,7 @@ MCP server with 7 tools, 12 security fixes, SSH key auto-generation, full docs u
 
 **Milestone Goal:** Extend audit with snapshot persistence and structured diffing, add forensic evidence collection, and harden infrastructure with file locking and rate limit backoff.
 
-- [ ] **Phase 23: Infrastructure Foundation** - File locking, rate limit backoff, ServerRecord.mode migration
+- [x] **Phase 23: Infrastructure Foundation** - File locking, rate limit backoff, ServerRecord.mode migration (completed 2026-03-09)
 - [ ] **Phase 24: Audit Snapshots** - Snapshot save/load/list with schema versioning
 - [ ] **Phase 25: Audit Diff and Compare** - Check-by-check diff, cross-server compare, CI integration
 - [ ] **Phase 26: Evidence Collection** - Forensic evidence package with SHA256 manifest
@@ -113,7 +113,7 @@ MCP server with 7 tools, 12 security fixes, SSH key auto-generation, full docs u
   2. Provider API calls that receive 429 responses are retried with exponential backoff and succeed on retry
   3. Rate limit retry respects Retry-After header when the provider includes it
   4. All existing ServerRecord entries without explicit mode field are auto-migrated to have mode set
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 Plans:
 - [ ] 23-01-PLAN.md — Create withFileLock and withRetry utility modules with TDD
 - [ ] 23-02-PLAN.md — Integrate withFileLock into config/history writes + mode migration
@@ -219,7 +219,7 @@ Plans:
 | 20. kastell audit | v1.5 | 5/5 | Complete | 2026-03-08 |
 | 21. Wire tokenBuffer (Gap Closure) | v1.5 | — | Complete (absorbed into P18) | 2026-03-08 |
 | 22. Platform Auto-Detect (Gap Closure) | v1.5 | — | Complete (absorbed into P17) | 2026-03-08 |
-| 23. Infrastructure Foundation | 2/3 | In Progress|  | - |
+| 23. Infrastructure Foundation | 2/3 | Complete    | 2026-03-09 | - |
 | 24. Audit Snapshots | v1.6 | 0/TBD | Not started | - |
 | 25. Audit Diff and Compare | v1.6 | 0/TBD | Not started | - |
 | 26. Evidence Collection | v1.6 | 0/TBD | Not started | - |
