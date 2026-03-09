@@ -1,5 +1,5 @@
 export function getBareCloudInit(serverName: string): string {
-  const safeName = serverName.replace(/[^a-z0-9-]/g, "");
+  const safeName = serverName.toLowerCase().replace(/[^a-z0-9-]/g, "");
   return `#!/bin/bash
 set +e
 touch /var/log/kastell-install.log

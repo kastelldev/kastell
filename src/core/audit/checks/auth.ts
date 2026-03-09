@@ -62,7 +62,10 @@ export const parseAuthChecks: CheckParser = (sectionOutput: string, _platform: s
     // Skip config lines, status lines, group lines
     if (line.includes("=") || line.includes(":x:") || line.includes("pam_") ||
         line.includes("PASS_") || line.includes("auth ") || line.includes("password ") ||
-        line === "N/A" || line.includes("sudo") || line.includes("requisite")) {
+        line === "N/A" || line.includes("sudo") || line.includes("requisite") ||
+        line.includes("session") || line.includes("account") || line.includes("include") ||
+        line.includes("optional") || line.includes("required") || line.includes("sufficient") ||
+        line.includes("nullok") || line.includes("common") || line.includes("substack")) {
       continue;
     }
     // Simple username pattern (alphanumeric, no spaces, short)

@@ -184,8 +184,20 @@ export async function runFix(
     // Execute fixes for this group
     for (const check of group.checks) {
       try {
-        await sshExec(ip, check.fixCommand);
-        applied.push(check.id);
+        // Check pre-condition before applying fix (prevents lockout scenarios)
+        if (check.preCondition) {
+          const preCheck = await sshExec(ip, check.preCondition);
+          if (preCheck.code !== 0) {
+            errors.push(`${check.id}: pre-condition failed — ${check.preCondition}`);
+            continue;
+          }
+        }
+        const fixResult = await sshExec(ip, check.fixCommand);
+        if (fixResult.code !== 0) {
+          errors.push(`${check.id}: command failed (exit ${fixResult.code})${fixResult.stderr ? ` — ${fixResult.stderr}` : ""}`);
+        } else {
+          applied.push(check.id);
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         errors.push(`${check.id}: ${message}`);

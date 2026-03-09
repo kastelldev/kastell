@@ -22,7 +22,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
     category: "Kernel",
     name: "ASLR Enabled (Full)",
     severity: "critical",
-    passed: aslr === "2",
+    passed: isNA ? false : aslr === "2",
     currentValue: isNA
       ? "Unable to determine"
       : aslr !== null
@@ -108,7 +108,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
     category: "Kernel",
     name: "dmesg Restricted",
     severity: "info",
-    passed: dmesgRestrict === "1",
+    passed: isNA ? false : dmesgRestrict === "1",
     currentValue: isNA
       ? "Unable to determine"
       : dmesgRestrict !== null

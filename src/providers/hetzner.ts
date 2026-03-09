@@ -1,5 +1,5 @@
 import axios from "axios";
-import { apiClient, stripSensitiveData, withProviderErrorHandling, type CloudProvider } from "./base.js";
+import { apiClient, stripSensitiveData, withProviderErrorHandling, assertValidServerId, type CloudProvider } from "./base.js";
 import type { Region, ServerSize, ServerConfig, ServerResult, SnapshotInfo, ServerMode } from "../types/index.js";
 
 interface HetznerLocation {
@@ -131,6 +131,7 @@ export class HetznerProvider implements CloudProvider {
   }
 
   async getServerDetails(serverId: string): Promise<ServerResult> {
+    assertValidServerId(serverId);
     return withProviderErrorHandling("get server details", async () => {
       const response = await apiClient.get(`${this.baseUrl}/servers/${serverId}`, {
         headers: { Authorization: `Bearer ${this.apiToken}` },
@@ -144,6 +145,7 @@ export class HetznerProvider implements CloudProvider {
   }
 
   async getServerStatus(serverId: string): Promise<string> {
+    assertValidServerId(serverId);
     return withProviderErrorHandling("get server status", async () => {
       const response = await apiClient.get(`${this.baseUrl}/servers/${serverId}`, {
         headers: { Authorization: `Bearer ${this.apiToken}` },
@@ -153,6 +155,7 @@ export class HetznerProvider implements CloudProvider {
   }
 
   async destroyServer(serverId: string): Promise<void> {
+    assertValidServerId(serverId);
     try {
       await apiClient.delete(`${this.baseUrl}/servers/${serverId}`, {
         headers: { Authorization: `Bearer ${this.apiToken}` },
@@ -173,6 +176,7 @@ export class HetznerProvider implements CloudProvider {
   }
 
   async rebootServer(serverId: string): Promise<void> {
+    assertValidServerId(serverId);
     try {
       await apiClient.post(
         `${this.baseUrl}/servers/${serverId}/actions/reboot`,
@@ -284,6 +288,7 @@ export class HetznerProvider implements CloudProvider {
   }
 
   async createSnapshot(serverId: string, name: string): Promise<SnapshotInfo> {
+    assertValidServerId(serverId);
     try {
       const response = await apiClient.post(
         `${this.baseUrl}/servers/${serverId}/actions/create_image`,
@@ -321,6 +326,7 @@ export class HetznerProvider implements CloudProvider {
   }
 
   async listSnapshots(serverId: string): Promise<SnapshotInfo[]> {
+    assertValidServerId(serverId);
     try {
       const response = await apiClient.get(
         `${this.baseUrl}/images?type=snapshot&sort=created:desc&per_page=100`,
@@ -357,6 +363,7 @@ export class HetznerProvider implements CloudProvider {
   }
 
   async deleteSnapshot(snapshotId: string): Promise<void> {
+    assertValidServerId(snapshotId);
     try {
       await apiClient.delete(`${this.baseUrl}/images/${snapshotId}`, {
         headers: { Authorization: `Bearer ${this.apiToken}` },
@@ -377,6 +384,7 @@ export class HetznerProvider implements CloudProvider {
   }
 
   async getSnapshotCostEstimate(serverId: string): Promise<string> {
+    assertValidServerId(serverId);
     try {
       const response = await apiClient.get(`${this.baseUrl}/servers/${serverId}`, {
         headers: { Authorization: `Bearer ${this.apiToken}` },

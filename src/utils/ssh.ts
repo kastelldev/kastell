@@ -76,7 +76,12 @@ export function assertValidIp(ip: string): void {
   if (!/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(ip)) {
     throw new Error(`Invalid IP address format`);
   }
-  const octets = ip.split(".").map(Number);
+  const parts = ip.split(".");
+  // Reject leading zeros to prevent octal interpretation (e.g., 010 = 8)
+  if (parts.some((p) => p.length > 1 && p.startsWith("0"))) {
+    throw new Error(`Invalid IP address: leading zeros not allowed`);
+  }
+  const octets = parts.map(Number);
   if (octets.some((o) => o < 0 || o > 255)) {
     throw new Error(`Invalid IP address: octets must be 0-255`);
   }

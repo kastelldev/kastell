@@ -158,7 +158,10 @@ export async function initCommand(options: InitOptions = {}): Promise<void> {
       switch (step) {
         case 4: {
           const r = await getLocationConfig(providerWithToken);
-          if (r === BACK_SIGNAL) break;
+          if (r === BACK_SIGNAL) {
+            step = 3; // Exit loop — go back to provider selection
+            break;
+          }
           region = r;
           step = 5;
           break;

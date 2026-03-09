@@ -6,9 +6,9 @@ import { getErrorMessage, mapProviderError, mapSshError } from "../utils/errorMa
 import {
   getCloudServerStatus,
   checkAllServersStatus,
-  checkCoolifyHealth,
 } from "../core/status.js";
 import { isBareServer, getServerMode } from "../utils/modeGuard.js";
+import { getAdapter, resolvePlatform } from "../adapters/factory.js";
 import type { ServerRecord } from "../types/index.js";
 import type { StatusResult } from "../core/status.js";
 import { COOLIFY_RESTART_CMD } from "../constants.js";
@@ -84,8 +84,9 @@ async function autostartCoolify(server: ServerRecord): Promise<void> {
 
       // Wait and check again
       await new Promise((resolve) => setTimeout(resolve, 5000));
-      const healthStatus = await checkCoolifyHealth(server.ip);
-      if (healthStatus === "running") {
+      const resolvedPlatform = resolvePlatform(server) ?? "coolify";
+      const healthResult2 = await getAdapter(resolvedPlatform).healthCheck(server.ip, server.domain);
+      if (healthResult2.status === "running") {
         logger.success("Coolify is now running!");
       } else {
         logger.warning("Coolify may still be starting. Check again in a moment.");
@@ -136,16 +137,21 @@ export async function statusCommand(query?: string, options?: StatusOptions): Pr
       console.log();
       logger.info(`SSH:            ssh root@${server.ip}`);
     } else {
-      // Coolify servers: check and display Coolify status
-      const platformStatus = await checkCoolifyHealth(server.ip);
-      logger.info(`Coolify Status: ${platformStatus}`);
+      // Platform servers: check and display platform status
+      const platform = resolvePlatform(server) ?? "coolify";
+      const platformLabel = platform === "dokploy" ? "Dokploy" : "Coolify";
+      const platformPort = platform === "dokploy" ? 3000 : 8000;
+      const adapter = getAdapter(platform);
+      const healthResult = await adapter.healthCheck(server.ip, server.domain);
+      const platformStatus = healthResult.status;
+      logger.info(`${platformLabel} Status: ${platformStatus}`);
       console.log();
 
       if (platformStatus === "running") {
-        logger.success(`Access Coolify: http://${server.ip}:8000`);
+        logger.success(`Access ${platformLabel}: http://${server.ip}:${platformPort}`);
         logger.warning("Running on HTTP. Set up a domain + SSL for production use.");
       } else {
-        logger.warning("Coolify is not reachable. It may still be installing.");
+        logger.warning(`${platformLabel} is not reachable. It may still be installing.`);
 
         // Autostart: restart Coolify if server is running but Coolify is down
         if (options?.autostart && serverStatus === "running") {

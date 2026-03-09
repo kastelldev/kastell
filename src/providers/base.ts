@@ -101,6 +101,13 @@ export async function withProviderErrorHandling<T>(
   }
 }
 
+/** Assert serverId is safe for API URLs (alphanumeric, hyphens, slashes for Linode image IDs) */
+export function assertValidServerId(serverId: string): void {
+  if (!/^[a-zA-Z0-9-]+(\/[a-zA-Z0-9.-]+)?$/.test(serverId)) {
+    throw new Error(`Invalid server ID format: ${serverId}`);
+  }
+}
+
 export function stripSensitiveData(error: unknown): void {
   if (axios.isAxiosError(error)) {
     if (error.config) {

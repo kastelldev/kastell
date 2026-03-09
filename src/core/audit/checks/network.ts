@@ -67,8 +67,7 @@ export const parseNetworkChecks: CheckParser = (sectionOutput: string, platform:
 
   // NET-03: NTP sync (check timedatectl output)
   const hasNTP = /NTP\s*synchronized:\s*yes/i.test(output) ||
-    /System clock synchronized:\s*yes/i.test(output) ||
-    /timedatectl/i.test(output);
+    /System clock synchronized:\s*yes/i.test(output);
   const net03: AuditCheck = {
     id: "NET-03",
     category: "Network",
@@ -114,7 +113,7 @@ export const parseNetworkChecks: CheckParser = (sectionOutput: string, platform:
     category: "Network",
     name: "TCP SYN Cookies Enabled",
     severity: "warning",
-    passed: syncookies === "1",
+    passed: isNA ? false : syncookies === "1",
     currentValue: isNA
       ? "Unable to determine"
       : syncookies !== null

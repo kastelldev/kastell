@@ -282,7 +282,7 @@ echo "Then access your instance at: http://YOUR_SERVER_IP:3000"
       // Step 3: Restore database
       const restoreDbResult = await sshExec(
         ip,
-        "gunzip -c /tmp/dokploy-backup.sql.gz | docker exec -i $(docker ps -qf name=dokploy-postgres) psql -U postgres -d dokploy",
+        "gunzip -c /tmp/dokploy-backup.sql.gz | docker exec -i $(docker ps -qf name=dokploy-postgres --no-trunc | head -1) psql -U postgres -d dokploy",
       );
       if (restoreDbResult.code !== 0) {
         steps.push({
@@ -357,7 +357,7 @@ echo "Then access your instance at: http://YOUR_SERVER_IP:3000"
   }
 
   private buildPgDumpCommand(): string {
-    return "docker exec $(docker ps -qf name=dokploy-postgres) pg_dump -U postgres -d dokploy | gzip > /tmp/dokploy-backup.sql.gz";
+    return "set -o pipefail && docker exec $(docker ps -qf name=dokploy-postgres --no-trunc | head -1) pg_dump -U postgres -d dokploy | gzip > /tmp/dokploy-backup.sql.gz";
   }
 
   private buildConfigTarCommand(): string {

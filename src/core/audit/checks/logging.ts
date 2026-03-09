@@ -18,12 +18,11 @@ export const parseLoggingChecks: CheckParser = (sectionOutput: string, _platform
   const lines = output.split("\n").map((l) => l.trim());
 
   // LOG-01: Syslog or journald running
-  // Lines from loggingSection: rsyslog status, journald status, logrotate config, auth log
+  // First 2 lines from loggingSection: rsyslog status, journald status
   // "active" means running, "inactive" means stopped, "N/A" means not installed
-  const hasActiveService = lines.some((l) => l === "active");
-  const allInactiveOrNA = lines.filter((l) => l === "active" || l === "inactive" || l === "N/A")
-    .every((l) => l === "inactive" || l === "N/A");
-  const anyLogActive = hasActiveService && !allInactiveOrNA;
+  const rsyslogActive = lines[0] === "active";
+  const journaldActive = lines[1] === "active";
+  const anyLogActive = rsyslogActive || journaldActive;
   const log01: AuditCheck = {
     id: "LOG-01",
     category: "Logging",
@@ -100,7 +99,7 @@ export const parseLoggingChecks: CheckParser = (sectionOutput: string, _platform
   };
 
   // LOG-05: Auditd status
-  const hasAuditd = /auditd/i.test(output) && output.includes("active");
+  const hasAuditd = /auditd.*active|active.*auditd/i.test(output);
   const log05: AuditCheck = {
     id: "LOG-05",
     category: "Logging",

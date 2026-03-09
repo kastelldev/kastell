@@ -341,7 +341,7 @@ echo "Then access your instance at: http://YOUR_SERVER_IP:8000"
   // ─── Private Helpers ────────────────────────────────────────────────────────
 
   private buildPgDumpCommand(): string {
-    return "docker exec coolify-db pg_dump -U coolify -d coolify | gzip > /tmp/coolify-backup.sql.gz";
+    return "set -o pipefail && docker exec coolify-db pg_dump -U coolify -d coolify | gzip > /tmp/coolify-backup.sql.gz";
   }
 
   private buildConfigTarCommand(): string {

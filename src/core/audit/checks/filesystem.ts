@@ -16,7 +16,8 @@ export const parseFilesystemChecks: CheckParser = (sectionOutput: string, _platf
   // - Disk usage (df output)
 
   // FS-01: /tmp permissions (sticky bit 1777)
-  const tmpMatch = output.match(/(\d{3,4})\s+\w+\s+\w+/);
+  // Match stat output: "1777 root root" — 3-4 digit perms + owner + group
+  const tmpMatch = output.match(/^([01]?\d{3})\s+([a-z_]\w*)\s+([a-z_]\w*)$/m);
   const tmpPerms = tmpMatch ? tmpMatch[1] : null;
   const hasStickyBit = tmpPerms !== null && tmpPerms.startsWith("1");
   const fs01: AuditCheck = {
@@ -94,7 +95,7 @@ export const parseFilesystemChecks: CheckParser = (sectionOutput: string, _platf
     category: "Filesystem",
     name: "Home Directory Permissions",
     severity: "info",
-    passed: isNA ? false : true, // Default pass unless evidence of issue
+    passed: false, // Stub — no command in filesystemSection() to verify this
     currentValue: isNA ? "Unable to determine" : "Check not available in current output",
     expectedValue: "Home directories not world-readable",
     fixCommand: "chmod 750 /home/*",
@@ -109,7 +110,7 @@ export const parseFilesystemChecks: CheckParser = (sectionOutput: string, _platf
     category: "Filesystem",
     name: "Disk Usage Under Threshold",
     severity: "warning",
-    passed: isNA ? false : diskUsage !== null ? diskUsage < 90 : true,
+    passed: isNA ? false : diskUsage !== null ? diskUsage < 90 : false,
     currentValue: isNA
       ? "Unable to determine"
       : diskUsage !== null

@@ -114,7 +114,12 @@ async function snapshotListAll(): Promise<void> {
   const tokenMap = await collectProviderTokens(servers);
 
   for (const server of servers) {
-    const token = tokenMap.get(server.provider)!;
+    const token = tokenMap.get(server.provider);
+    if (!token) {
+      logger.warning(`${server.name}: No API token for ${server.provider}, skipped`);
+      console.log();
+      continue;
+    }
 
     const spinner = createSpinner(`Fetching snapshots for ${server.name}...`);
     spinner.start();

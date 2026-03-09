@@ -348,8 +348,8 @@ export async function handleServerSecure(params: {
           success: true,
           server: server.name,
           ip: server.ip,
-          message: "Domain removed. Coolify reset to default.",
-          url: `http://${server.ip}:8000`,
+          message: "Domain removed. Platform reset to default.",
+          url: `http://${server.ip}:${resolvePlatform(server) === "dokploy" ? 3000 : 8000}`,
           suggested_actions: [
             { command: `server_info { action: 'health', server: '${server.name}' }`, reason: "Verify Coolify is accessible" },
           ],
@@ -425,7 +425,7 @@ export async function handleServerSecure(params: {
           server: server.name,
           ip: server.ip,
           fqdn: result.fqdn,
-          message: result.fqdn ? `Current domain: ${result.fqdn}` : `No custom domain set. Default: http://${server.ip}:8000`,
+          message: result.fqdn ? `Current domain: ${result.fqdn}` : `No custom domain set. Default: http://${server.ip}:${resolvePlatform(server) === "dokploy" ? 3000 : 8000}`,
           suggested_actions: domainSuggestedActions,
         });
       }

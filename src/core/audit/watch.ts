@@ -50,8 +50,15 @@ export async function watchAudit(
     saveAuditHistory(auditResult);
 
     if (previousScore === undefined) {
-      // First run: full output
+      // First run: full output + populate previousFailedIds for correct delta on next run
       log(options.formatter(auditResult));
+      for (const cat of auditResult.categories) {
+        for (const check of cat.checks) {
+          if (!check.passed) {
+            previousFailedIds.add(check.id);
+          }
+        }
+      }
     } else {
       // Subsequent runs: delta only
       const diff = auditResult.overallScore - previousScore;
@@ -120,8 +127,13 @@ export async function watchAudit(
     // Run immediately
     runOnce().then(() => {
       timer = setInterval(() => {
-        runOnce().catch(() => {});
+        runOnce().catch((err: unknown) => {
+          log(`[Error] Watch audit failed: ${err instanceof Error ? err.message : String(err)}`);
+        });
       }, interval);
-    }).catch(() => {});
+    }).catch((err: unknown) => {
+      log(`[Error] Initial audit failed: ${err instanceof Error ? err.message : String(err)}`);
+      cleanup();
+    });
   });
 }

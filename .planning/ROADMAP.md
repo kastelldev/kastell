@@ -100,6 +100,13 @@ MCP server with 7 tools, 12 security fixes, SSH key auto-generation, full docs u
 - [ ] `--diff snapshot1 snapshot2` — iki snapshot arası fark
 - [ ] `--compare server1 server2` — multi-server audit karşılaştırması
 
+**Evidence / Forensics (IP Abuse Kanıt Paketi):**
+- [ ] `kastell evidence collect <server>` — tek komutla kanıt paketi topla
+  - UFW kuralları, system logs, ss -tlnp, auth.log, audit raporu (HTML+JSON), metrikleri
+  - `~/.kastell/evidence/{server}/{timestamp}/` altına paketle + manifest.json
+- [ ] Opsiyonel disk snapshot entegrasyonu
+- [ ] Hetzner abuse complaint'lerine hazır kanıt formatı
+
 **Guard:**
 - [ ] `kastell guard` — otonom daemon (arka planda çalışan güvenlik servisi)
 - [ ] `kastell lock --production` — sunucuyu production moduna kilitle

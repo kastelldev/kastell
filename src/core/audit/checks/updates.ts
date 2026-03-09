@@ -15,10 +15,13 @@ export const parseUpdatesChecks: CheckParser = (sectionOutput: string, _platform
   // Line 2: apt lists timestamp or N/A
   // Line 3: NO_REBOOT or REBOOT_REQUIRED
 
-  const securityCountStr = lines[0] ?? "N/A";
-  const unattendedLine = lines[1] ?? "N/A";
-  const aptTimestampStr = lines[2] ?? "N/A";
-  const rebootLine = lines[3] ?? "N/A";
+  // Find each value by pattern rather than positional index
+  // Security count: 0-9999 (small number, not a 10+ digit timestamp)
+  const securityCountStr = lines.find((l) => /^\d{1,4}$/.test(l)) ?? "N/A";
+  const unattendedLine = lines.find((l) => l.includes("unattended-upgrades")) ?? "N/A";
+  // Apt timestamp: Unix epoch (10+ digits, e.g. 1709913600)
+  const aptTimestampStr = lines.find((l) => /^\d{10,}$/.test(l)) ?? "N/A";
+  const rebootLine = lines.find((l) => l === "REBOOT_REQUIRED" || l === "NO_REBOOT") ?? "N/A";
 
   // UPD-01: Security updates pending
   const securityCount = parseInt(securityCountStr, 10);

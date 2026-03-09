@@ -56,6 +56,10 @@ export async function auditCommand(
   // --watch mode: delegate to watchAudit and return
   if (options.watch !== undefined) {
     const interval = options.watch ? parseInt(options.watch, 10) : undefined;
+    if (interval !== undefined && (isNaN(interval) || interval < 1)) {
+      logger.error("Watch interval must be a positive number (seconds)");
+      return;
+    }
     const formatter = await selectFormatter(options);
     logger.info(`Starting watch mode for ${name} (interval: ${interval ?? 300}s)`);
     await watchAudit(ip, name, platform, {
@@ -82,12 +86,12 @@ export async function auditCommand(
 
   const auditResult = result.data;
 
-  // Save to history
-  saveAuditHistory(auditResult);
-
-  // Detect trend from history
+  // Detect trend from history (load BEFORE save so we compare against previous)
   const history = loadAuditHistory(auditResult.serverIp);
   const trend = detectTrend(auditResult.overallScore, history);
+
+  // Save to history (after trend detection)
+  saveAuditHistory(auditResult);
   if (trend !== "first audit") {
     logger.info(`Trend: ${trend}`);
   }

@@ -5,6 +5,7 @@ import { getErrorMessage, mapSshError } from "../utils/errorMapper.js";
 import { COOLIFY_DB_CONTAINER } from "../constants.js";
 import { requireManagedMode } from "../utils/modeGuard.js";
 import { updateServer } from "../utils/config.js";
+import { resolvePlatform } from "../adapters/factory.js";
 import {
   isValidDomain,
   sanitizeDomain,
@@ -52,6 +53,12 @@ export async function domainCommand(
   const modeError = requireManagedMode(server, "domain");
   if (modeError) {
     logger.error(modeError);
+    return;
+  }
+
+  const platform = resolvePlatform(server) ?? "coolify";
+  if (platform === "dokploy") {
+    logger.error("Domain management is not supported for Dokploy servers. Use the Dokploy dashboard instead.");
     return;
   }
 

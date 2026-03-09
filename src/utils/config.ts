@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from "fs";
 import { homedir } from "os";
 import { join } from "path";
 import type { ServerRecord } from "../types/index.js";
@@ -13,6 +13,13 @@ function ensureConfigDir(): void {
   }
 }
 
+/** Atomic write: write to tmp file, then rename to prevent corruption on crash */
+function atomicWriteServers(servers: ServerRecord[]): void {
+  const tmpFile = SERVERS_FILE + ".tmp";
+  writeFileSync(tmpFile, JSON.stringify(servers, null, 2), { mode: 0o600 });
+  renameSync(tmpFile, SERVERS_FILE);
+}
+
 export function getServers(): ServerRecord[] {
   try {
     if (!existsSync(SERVERS_FILE)) {
@@ -25,6 +32,7 @@ export function getServers(): ServerRecord[] {
     }
     return parsed.map((s: ServerRecord) => ({ ...s, mode: s.mode || "coolify" }));
   } catch {
+    console.error("[kastell] Warning: servers.json is corrupted or unreadable, returning empty list");
     return [];
   }
 }
@@ -32,8 +40,14 @@ export function getServers(): ServerRecord[] {
 export function saveServer(record: ServerRecord): void {
   ensureConfigDir();
   const servers = getServers();
+  const duplicate = servers.find((s) => s.name === record.name || s.ip === record.ip);
+  if (duplicate) {
+    throw new Error(
+      `Server already exists: ${duplicate.name === record.name ? `name "${record.name}"` : `IP ${record.ip}`}`,
+    );
+  }
   servers.push(record);
-  writeFileSync(SERVERS_FILE, JSON.stringify(servers, null, 2), { mode: 0o600 });
+  atomicWriteServers(servers);
 }
 
 export function updateServer(name: string, updates: Partial<ServerRecord>): boolean {
@@ -42,7 +56,7 @@ export function updateServer(name: string, updates: Partial<ServerRecord>): bool
   if (index === -1) return false;
   servers[index] = { ...servers[index], ...updates };
   ensureConfigDir();
-  writeFileSync(SERVERS_FILE, JSON.stringify(servers, null, 2), { mode: 0o600 });
+  atomicWriteServers(servers);
   return true;
 }
 
