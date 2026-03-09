@@ -1,5 +1,6 @@
 import axios from "axios";
 import { apiClient, stripSensitiveData, withProviderErrorHandling, assertValidServerId, type CloudProvider } from "./base.js";
+import { withRetry } from "../utils/retry.js";
 import type { Region, ServerSize, ServerConfig, ServerResult, SnapshotInfo, ServerMode } from "../types/index.js";
 
 interface VultrPlan {
@@ -35,8 +36,10 @@ export class VultrProvider implements CloudProvider {
 
   async validateToken(token: string): Promise<boolean> {
     try {
-      await apiClient.get(`${this.baseUrl}/account`, {
-        headers: { Authorization: `Bearer ${token}` },
+      await withRetry(async () => {
+        await apiClient.get(`${this.baseUrl}/account`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
       });
       return true;
     } catch {
@@ -118,33 +121,37 @@ export class VultrProvider implements CloudProvider {
 
   async getServerDetails(serverId: string): Promise<ServerResult> {
     assertValidServerId(serverId);
-    return withProviderErrorHandling("get server details", async () => {
-      const response = await apiClient.get(`${this.baseUrl}/instances/${serverId}`, {
-        headers: { Authorization: `Bearer ${this.apiToken}` },
-      });
-      const instance = response.data.instance;
-      return {
-        id: instance.id,
-        ip: instance.main_ip,
-        status: instance.power_status === "running" ? "running" : instance.power_status,
-      };
-    });
+    return withProviderErrorHandling("get server details", () =>
+      withRetry(async () => {
+        const response = await apiClient.get(`${this.baseUrl}/instances/${serverId}`, {
+          headers: { Authorization: `Bearer ${this.apiToken}` },
+        });
+        const instance = response.data.instance;
+        return {
+          id: instance.id,
+          ip: instance.main_ip,
+          status: instance.power_status === "running" ? "running" : instance.power_status,
+        };
+      }),
+    );
   }
 
   async getServerStatus(serverId: string): Promise<string> {
     assertValidServerId(serverId);
-    return withProviderErrorHandling("get server status", async () => {
-      const response = await apiClient.get(`${this.baseUrl}/instances/${serverId}`, {
-        headers: { Authorization: `Bearer ${this.apiToken}` },
-      });
-      const inst = response.data.instance;
-      // Vultr reports power_status=running before server is fully provisioned.
-      // server_status progresses: none → locked → installingbooting → ok
-      if (inst.power_status === "running" && inst.server_status != null && inst.server_status !== "ok") {
-        return "provisioning";
-      }
-      return inst.power_status;
-    });
+    return withProviderErrorHandling("get server status", () =>
+      withRetry(async () => {
+        const response = await apiClient.get(`${this.baseUrl}/instances/${serverId}`, {
+          headers: { Authorization: `Bearer ${this.apiToken}` },
+        });
+        const inst = response.data.instance;
+        // Vultr reports power_status=running before server is fully provisioned.
+        // server_status progresses: none → locked → installingbooting → ok
+        if (inst.power_status === "running" && inst.server_status != null && inst.server_status !== "ok") {
+          return "provisioning";
+        }
+        return inst.power_status;
+      }),
+    );
   }
 
   async destroyServer(serverId: string): Promise<void> {
@@ -215,16 +222,18 @@ export class VultrProvider implements CloudProvider {
 
   async getAvailableLocations(): Promise<Region[]> {
     try {
-      const response = await apiClient.get(`${this.baseUrl}/regions`, {
-        headers: { Authorization: `Bearer ${this.apiToken}` },
+      return await withRetry(async () => {
+        const response = await apiClient.get(`${this.baseUrl}/regions`, {
+          headers: { Authorization: `Bearer ${this.apiToken}` },
+        });
+        return response.data.regions
+          .filter((r: VultrRegion) => r.options && r.options.length > 0)
+          .map((r: VultrRegion) => ({
+            id: r.id,
+            name: r.city,
+            location: r.country,
+          }));
       });
-      return response.data.regions
-        .filter((r: VultrRegion) => r.options && r.options.length > 0)
-        .map((r: VultrRegion) => ({
-          id: r.id,
-          name: r.city,
-          location: r.country,
-        }));
     } catch (error: unknown) {
       stripSensitiveData(error);
       return this.getRegions();
@@ -233,27 +242,29 @@ export class VultrProvider implements CloudProvider {
 
   async getAvailableServerTypes(location: string, mode?: ServerMode): Promise<ServerSize[]> {
     try {
-      const response = await apiClient.get(`${this.baseUrl}/plans`, {
-        headers: { Authorization: `Bearer ${this.apiToken}` },
+      return await withRetry(async () => {
+        const response = await apiClient.get(`${this.baseUrl}/plans`, {
+          headers: { Authorization: `Bearer ${this.apiToken}` },
+        });
+
+        const MIN_RAM_MB = mode === "bare" ? 0 : 2048; // Coolify requires at least 2GB RAM, bare has no minimum
+        const plans = response.data.plans.filter(
+          (p: VultrPlan) => p.type === "vc2" && p.ram >= MIN_RAM_MB && p.locations.includes(location),
+        );
+
+        if (plans.length === 0) {
+          return this.getServerSizes();
+        }
+
+        return plans.map((p: VultrPlan) => ({
+          id: p.id,
+          name: p.id.toUpperCase(),
+          vcpu: p.vcpu_count,
+          ram: p.ram / 1024,
+          disk: p.disk,
+          price: `$${p.monthly_cost.toFixed(2)}/mo`,
+        }));
       });
-
-      const MIN_RAM_MB = mode === "bare" ? 0 : 2048; // Coolify requires at least 2GB RAM, bare has no minimum
-      const plans = response.data.plans.filter(
-        (p: VultrPlan) => p.type === "vc2" && p.ram >= MIN_RAM_MB && p.locations.includes(location),
-      );
-
-      if (plans.length === 0) {
-        return this.getServerSizes();
-      }
-
-      return plans.map((p: VultrPlan) => ({
-        id: p.id,
-        name: p.id.toUpperCase(),
-        vcpu: p.vcpu_count,
-        ram: p.ram / 1024,
-        disk: p.disk,
-        price: `$${p.monthly_cost.toFixed(2)}/mo`,
-      }));
     } catch (error: unknown) {
       stripSensitiveData(error);
       return this.getServerSizes();
@@ -301,23 +312,25 @@ export class VultrProvider implements CloudProvider {
   async listSnapshots(serverId: string): Promise<SnapshotInfo[]> {
     assertValidServerId(serverId);
     try {
-      // Vultr API does not return instance_id in snapshot list,
-      // so we return all account snapshots (they are account-wide, not per-instance).
-      const response = await apiClient.get(`${this.baseUrl}/snapshots`, {
-        headers: { Authorization: `Bearer ${this.apiToken}` },
+      return await withRetry(async () => {
+        // Vultr API does not return instance_id in snapshot list,
+        // so we return all account snapshots (they are account-wide, not per-instance).
+        const response = await apiClient.get(`${this.baseUrl}/snapshots`, {
+          headers: { Authorization: `Bearer ${this.apiToken}` },
+        });
+        const snapshots = response.data.snapshots || [];
+        return snapshots.map(
+          (s: { id: string; description: string; status: string; size: number; date_created: string }) => ({
+            id: s.id,
+            serverId,
+            name: s.description || "",
+            status: s.status,
+            sizeGb: s.size ? s.size / (1024 * 1024 * 1024) : 0,
+            createdAt: s.date_created,
+            costPerMonth: `$${(s.size ? (s.size / (1024 * 1024 * 1024)) * 0.05 : 0).toFixed(2)}/mo`,
+          }),
+        );
       });
-      const snapshots = response.data.snapshots || [];
-      return snapshots.map(
-        (s: { id: string; description: string; status: string; size: number; date_created: string }) => ({
-          id: s.id,
-          serverId,
-          name: s.description || "",
-          status: s.status,
-          sizeGb: s.size ? s.size / (1024 * 1024 * 1024) : 0,
-          createdAt: s.date_created,
-          costPerMonth: `$${(s.size ? (s.size / (1024 * 1024 * 1024)) * 0.05 : 0).toFixed(2)}/mo`,
-        }),
-      );
     } catch (error: unknown) {
       stripSensitiveData(error);
       if (axios.isAxiosError<VultrErrorResponse>(error)) {
@@ -357,11 +370,13 @@ export class VultrProvider implements CloudProvider {
   async getSnapshotCostEstimate(serverId: string): Promise<string> {
     assertValidServerId(serverId);
     try {
-      const response = await apiClient.get(`${this.baseUrl}/instances/${serverId}`, {
-        headers: { Authorization: `Bearer ${this.apiToken}` },
+      return await withRetry(async () => {
+        const response = await apiClient.get(`${this.baseUrl}/instances/${serverId}`, {
+          headers: { Authorization: `Bearer ${this.apiToken}` },
+        });
+        const diskGb = response.data.instance?.disk || 0;
+        return `$${(diskGb * 0.05).toFixed(2)}/mo`;
       });
-      const diskGb = response.data.instance?.disk || 0;
-      return `$${(diskGb * 0.05).toFixed(2)}/mo`;
     } catch (error: unknown) {
       stripSensitiveData(error);
       if (axios.isAxiosError<VultrErrorResponse>(error)) {

@@ -1,5 +1,6 @@
 import axios from "axios";
 import { apiClient, stripSensitiveData, withProviderErrorHandling, assertValidServerId, type CloudProvider } from "./base.js";
+import { withRetry } from "../utils/retry.js";
 import type { Region, ServerSize, ServerConfig, ServerResult, SnapshotInfo, ServerMode } from "../types/index.js";
 
 interface HetznerLocation {
@@ -50,8 +51,10 @@ export class HetznerProvider implements CloudProvider {
 
   async validateToken(token: string): Promise<boolean> {
     try {
-      await apiClient.get(`${this.baseUrl}/servers`, {
-        headers: { Authorization: `Bearer ${token}` },
+      await withRetry(async () => {
+        await apiClient.get(`${this.baseUrl}/servers`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
       });
       return true;
     } catch {
@@ -132,26 +135,30 @@ export class HetznerProvider implements CloudProvider {
 
   async getServerDetails(serverId: string): Promise<ServerResult> {
     assertValidServerId(serverId);
-    return withProviderErrorHandling("get server details", async () => {
-      const response = await apiClient.get(`${this.baseUrl}/servers/${serverId}`, {
-        headers: { Authorization: `Bearer ${this.apiToken}` },
-      });
-      return {
-        id: response.data.server.id.toString(),
-        ip: response.data.server?.public_net?.ipv4?.ip || "pending",
-        status: response.data.server.status,
-      };
-    });
+    return withProviderErrorHandling("get server details", () =>
+      withRetry(async () => {
+        const response = await apiClient.get(`${this.baseUrl}/servers/${serverId}`, {
+          headers: { Authorization: `Bearer ${this.apiToken}` },
+        });
+        return {
+          id: response.data.server.id.toString(),
+          ip: response.data.server?.public_net?.ipv4?.ip || "pending",
+          status: response.data.server.status,
+        };
+      }),
+    );
   }
 
   async getServerStatus(serverId: string): Promise<string> {
     assertValidServerId(serverId);
-    return withProviderErrorHandling("get server status", async () => {
-      const response = await apiClient.get(`${this.baseUrl}/servers/${serverId}`, {
-        headers: { Authorization: `Bearer ${this.apiToken}` },
-      });
-      return response.data.server.status;
-    });
+    return withProviderErrorHandling("get server status", () =>
+      withRetry(async () => {
+        const response = await apiClient.get(`${this.baseUrl}/servers/${serverId}`, {
+          headers: { Authorization: `Bearer ${this.apiToken}` },
+        });
+        return response.data.server.status;
+      }),
+    );
   }
 
   async destroyServer(serverId: string): Promise<void> {
@@ -223,14 +230,16 @@ export class HetznerProvider implements CloudProvider {
 
   async getAvailableLocations(): Promise<Region[]> {
     try {
-      const response = await apiClient.get(`${this.baseUrl}/locations`, {
-        headers: { Authorization: `Bearer ${this.apiToken}` },
+      return await withRetry(async () => {
+        const response = await apiClient.get(`${this.baseUrl}/locations`, {
+          headers: { Authorization: `Bearer ${this.apiToken}` },
+        });
+        return response.data.locations.map((loc: HetznerLocation) => ({
+          id: loc.name,
+          name: loc.city,
+          location: loc.country,
+        }));
       });
-      return response.data.locations.map((loc: HetznerLocation) => ({
-        id: loc.name,
-        name: loc.city,
-        location: loc.country,
-      }));
     } catch (error: unknown) {
       stripSensitiveData(error);
       return this.getRegions();
@@ -239,47 +248,49 @@ export class HetznerProvider implements CloudProvider {
 
   async getAvailableServerTypes(location: string, mode?: ServerMode): Promise<ServerSize[]> {
     try {
-      // Get actually available server type IDs from datacenter
-      const dcResponse = await apiClient.get(`${this.baseUrl}/datacenters`, {
-        headers: { Authorization: `Bearer ${this.apiToken}` },
-      });
-      // Merge available IDs from ALL datacenters in same location (e.g. nbg1-dc3, nbg1-dc4)
-      // A single location can have multiple DCs with different server types (ARM vs x86)
-      const availableIds: number[] = dcResponse.data.datacenters
-        .filter((dc: HetznerDatacenter) => dc.location.name === location)
-        .flatMap((dc: HetznerDatacenter) => dc.server_types?.available || []);
+      return await withRetry(async () => {
+        // Get actually available server type IDs from datacenter
+        const dcResponse = await apiClient.get(`${this.baseUrl}/datacenters`, {
+          headers: { Authorization: `Bearer ${this.apiToken}` },
+        });
+        // Merge available IDs from ALL datacenters in same location (e.g. nbg1-dc3, nbg1-dc4)
+        // A single location can have multiple DCs with different server types (ARM vs x86)
+        const availableIds: number[] = dcResponse.data.datacenters
+          .filter((dc: HetznerDatacenter) => dc.location.name === location)
+          .flatMap((dc: HetznerDatacenter) => dc.server_types?.available || []);
 
-      // Get server type details
-      const response = await apiClient.get(`${this.baseUrl}/server_types`, {
-        headers: { Authorization: `Bearer ${this.apiToken}` },
-      });
+        // Get server type details
+        const response = await apiClient.get(`${this.baseUrl}/server_types`, {
+          headers: { Authorization: `Bearer ${this.apiToken}` },
+        });
 
-      const MIN_RAM_GB = mode === "bare" ? 0 : 2; // Coolify requires at least 2GB RAM, bare has no minimum
-      const types = response.data.server_types.filter(
-        (type: HetznerServerType) =>
-          !type.deprecation &&
-          type.memory >= MIN_RAM_GB &&
-          availableIds.includes(type.id) &&
-          type.prices.some((p: HetznerPrice) => p.location === location),
-      );
+        const MIN_RAM_GB = mode === "bare" ? 0 : 2; // Coolify requires at least 2GB RAM, bare has no minimum
+        const types = response.data.server_types.filter(
+          (type: HetznerServerType) =>
+            !type.deprecation &&
+            type.memory >= MIN_RAM_GB &&
+            availableIds.includes(type.id) &&
+            type.prices.some((p: HetznerPrice) => p.location === location),
+        );
 
-      if (types.length === 0) {
-        return this.getServerSizes();
-      }
+        if (types.length === 0) {
+          return this.getServerSizes();
+        }
 
-      return types.map((type: HetznerServerType) => {
-        const price = type.prices.find((p: HetznerPrice) => p.location === location);
-        const rawPrice = price?.price_monthly?.net;
-        const priceMonthly = rawPrice ? parseFloat(rawPrice).toFixed(2) : "N/A";
+        return types.map((type: HetznerServerType) => {
+          const price = type.prices.find((p: HetznerPrice) => p.location === location);
+          const rawPrice = price?.price_monthly?.net;
+          const priceMonthly = rawPrice ? parseFloat(rawPrice).toFixed(2) : "N/A";
 
-        return {
-          id: type.name,
-          name: type.name.toUpperCase(),
-          vcpu: type.cores,
-          ram: type.memory,
-          disk: type.disk,
-          price: `€${priceMonthly}/mo`,
-        };
+          return {
+            id: type.name,
+            name: type.name.toUpperCase(),
+            vcpu: type.cores,
+            ram: type.memory,
+            disk: type.disk,
+            price: `€${priceMonthly}/mo`,
+          };
+        });
       });
     } catch (error: unknown) {
       stripSensitiveData(error);
@@ -328,25 +339,27 @@ export class HetznerProvider implements CloudProvider {
   async listSnapshots(serverId: string): Promise<SnapshotInfo[]> {
     assertValidServerId(serverId);
     try {
-      const response = await apiClient.get(
-        `${this.baseUrl}/images?type=snapshot&sort=created:desc&per_page=100`,
-        { headers: { Authorization: `Bearer ${this.apiToken}` } },
-      );
-      const images = response.data.images.filter(
-        (img: { created_from: { id: number } }) =>
-          img.created_from && img.created_from.id === Number(serverId),
-      );
-      return images.map(
-        (img: { id: number; description: string; status: string; image_size: number; created: string }) => ({
-          id: img.id.toString(),
-          serverId,
-          name: img.description || "",
-          status: img.status,
-          sizeGb: img.image_size || 0,
-          createdAt: img.created,
-          costPerMonth: `€${((img.image_size || 0) * 0.006).toFixed(2)}/mo`,
-        }),
-      );
+      return await withRetry(async () => {
+        const response = await apiClient.get(
+          `${this.baseUrl}/images?type=snapshot&sort=created:desc&per_page=100`,
+          { headers: { Authorization: `Bearer ${this.apiToken}` } },
+        );
+        const images = response.data.images.filter(
+          (img: { created_from: { id: number } }) =>
+            img.created_from && img.created_from.id === Number(serverId),
+        );
+        return images.map(
+          (img: { id: number; description: string; status: string; image_size: number; created: string }) => ({
+            id: img.id.toString(),
+            serverId,
+            name: img.description || "",
+            status: img.status,
+            sizeGb: img.image_size || 0,
+            createdAt: img.created,
+            costPerMonth: `€${((img.image_size || 0) * 0.006).toFixed(2)}/mo`,
+          }),
+        );
+      });
     } catch (error: unknown) {
       stripSensitiveData(error);
       if (axios.isAxiosError<HetznerErrorResponse>(error)) {
@@ -386,11 +399,13 @@ export class HetznerProvider implements CloudProvider {
   async getSnapshotCostEstimate(serverId: string): Promise<string> {
     assertValidServerId(serverId);
     try {
-      const response = await apiClient.get(`${this.baseUrl}/servers/${serverId}`, {
-        headers: { Authorization: `Bearer ${this.apiToken}` },
+      return await withRetry(async () => {
+        const response = await apiClient.get(`${this.baseUrl}/servers/${serverId}`, {
+          headers: { Authorization: `Bearer ${this.apiToken}` },
+        });
+        const diskGb = response.data.server.server_type.disk;
+        return `€${(diskGb * 0.006).toFixed(2)}/mo`;
       });
-      const diskGb = response.data.server.server_type.disk;
-      return `€${(diskGb * 0.006).toFixed(2)}/mo`;
     } catch (error: unknown) {
       stripSensitiveData(error);
       if (axios.isAxiosError<HetznerErrorResponse>(error)) {

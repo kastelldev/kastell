@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import axios from "axios";
 import { apiClient, stripSensitiveData, withProviderErrorHandling, assertValidServerId, type CloudProvider } from "./base.js";
+import { withRetry } from "../utils/retry.js";
 import type { Region, ServerSize, ServerConfig, ServerResult, SnapshotInfo, ServerMode } from "../types/index.js";
 
 interface LinodeType {
@@ -36,8 +37,10 @@ export class LinodeProvider implements CloudProvider {
 
   async validateToken(token: string): Promise<boolean> {
     try {
-      await apiClient.get(`${this.baseUrl}/profile`, {
-        headers: { Authorization: `Bearer ${token}` },
+      await withRetry(async () => {
+        await apiClient.get(`${this.baseUrl}/profile`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
       });
       return true;
     } catch {
@@ -133,27 +136,31 @@ export class LinodeProvider implements CloudProvider {
 
   async getServerDetails(serverId: string): Promise<ServerResult> {
     assertValidServerId(serverId);
-    return withProviderErrorHandling("get server details", async () => {
-      const response = await apiClient.get(`${this.baseUrl}/linode/instances/${serverId}`, {
-        headers: { Authorization: `Bearer ${this.apiToken}` },
-      });
-      const instance = response.data;
-      return {
-        id: instance.id.toString(),
-        ip: instance.ipv4?.[0] || "pending",
-        status: instance.status === "running" ? "running" : instance.status,
-      };
-    });
+    return withProviderErrorHandling("get server details", () =>
+      withRetry(async () => {
+        const response = await apiClient.get(`${this.baseUrl}/linode/instances/${serverId}`, {
+          headers: { Authorization: `Bearer ${this.apiToken}` },
+        });
+        const instance = response.data;
+        return {
+          id: instance.id.toString(),
+          ip: instance.ipv4?.[0] || "pending",
+          status: instance.status === "running" ? "running" : instance.status,
+        };
+      }),
+    );
   }
 
   async getServerStatus(serverId: string): Promise<string> {
     assertValidServerId(serverId);
-    return withProviderErrorHandling("get server status", async () => {
-      const response = await apiClient.get(`${this.baseUrl}/linode/instances/${serverId}`, {
-        headers: { Authorization: `Bearer ${this.apiToken}` },
-      });
-      return response.data.status;
-    });
+    return withProviderErrorHandling("get server status", () =>
+      withRetry(async () => {
+        const response = await apiClient.get(`${this.baseUrl}/linode/instances/${serverId}`, {
+          headers: { Authorization: `Bearer ${this.apiToken}` },
+        });
+        return response.data.status;
+      }),
+    );
   }
 
   async destroyServer(serverId: string): Promise<void> {
@@ -220,16 +227,18 @@ export class LinodeProvider implements CloudProvider {
 
   async getAvailableLocations(): Promise<Region[]> {
     try {
-      const response = await apiClient.get(`${this.baseUrl}/regions`, {
-        headers: { Authorization: `Bearer ${this.apiToken}` },
+      return await withRetry(async () => {
+        const response = await apiClient.get(`${this.baseUrl}/regions`, {
+          headers: { Authorization: `Bearer ${this.apiToken}` },
+        });
+        return response.data.data
+          .filter((r: LinodeRegion) => r.status === "ok" && r.capabilities.includes("Linodes"))
+          .map((r: LinodeRegion) => ({
+            id: r.id,
+            name: r.label,
+            location: r.country,
+          }));
       });
-      return response.data.data
-        .filter((r: LinodeRegion) => r.status === "ok" && r.capabilities.includes("Linodes"))
-        .map((r: LinodeRegion) => ({
-          id: r.id,
-          name: r.label,
-          location: r.country,
-        }));
     } catch (error: unknown) {
       stripSensitiveData(error);
       return this.getRegions();
@@ -238,27 +247,29 @@ export class LinodeProvider implements CloudProvider {
 
   async getAvailableServerTypes(_location: string, mode?: ServerMode): Promise<ServerSize[]> {
     try {
-      const response = await apiClient.get(`${this.baseUrl}/linode/types`, {
-        headers: { Authorization: `Bearer ${this.apiToken}` },
+      return await withRetry(async () => {
+        const response = await apiClient.get(`${this.baseUrl}/linode/types`, {
+          headers: { Authorization: `Bearer ${this.apiToken}` },
+        });
+
+        const MIN_RAM_MB = mode === "bare" ? 0 : 4096; // Coolify requires at least 2GB, recommend 4GB. Bare has no minimum
+        const types = response.data.data.filter(
+          (t: LinodeType) => t.memory >= MIN_RAM_MB && t.id.startsWith("g6-standard"),
+        );
+
+        if (types.length === 0) {
+          return this.getServerSizes();
+        }
+
+        return types.map((t: LinodeType) => ({
+          id: t.id,
+          name: t.label,
+          vcpu: t.vcpus,
+          ram: Math.round(t.memory / 1024),
+          disk: Math.round(t.disk / 1024),
+          price: `$${t.price.monthly.toFixed(2)}/mo`,
+        }));
       });
-
-      const MIN_RAM_MB = mode === "bare" ? 0 : 4096; // Coolify requires at least 2GB, recommend 4GB. Bare has no minimum
-      const types = response.data.data.filter(
-        (t: LinodeType) => t.memory >= MIN_RAM_MB && t.id.startsWith("g6-standard"),
-      );
-
-      if (types.length === 0) {
-        return this.getServerSizes();
-      }
-
-      return types.map((t: LinodeType) => ({
-        id: t.id,
-        name: t.label,
-        vcpu: t.vcpus,
-        ram: Math.round(t.memory / 1024),
-        disk: Math.round(t.disk / 1024),
-        price: `$${t.price.monthly.toFixed(2)}/mo`,
-      }));
     } catch (error: unknown) {
       stripSensitiveData(error);
       return this.getServerSizes();
@@ -315,25 +326,27 @@ export class LinodeProvider implements CloudProvider {
 
   async listSnapshots(serverId: string): Promise<SnapshotInfo[]> {
     try {
-      const response = await apiClient.get(
-        `${this.baseUrl}/images?page=1&page_size=100`,
-        { headers: { Authorization: `Bearer ${this.apiToken}` } },
-      );
-      const images = response.data.data.filter(
-        (img: { type: string; label: string }) =>
-          img.type === "manual" && img.label && (img.label.startsWith("kastell-") || img.label.startsWith("quicklify-")),
-      );
-      return images.map(
-        (img: { id: string; label: string; status: string; size: number; created: string }) => ({
-          id: img.id,
-          serverId,
-          name: img.label || "",
-          status: img.status,
-          sizeGb: img.size ? img.size / 1024 : 0,
-          createdAt: img.created,
-          costPerMonth: `$${(img.size ? (img.size / 1024) * 0.004 : 0).toFixed(2)}/mo`,
-        }),
-      );
+      return await withRetry(async () => {
+        const response = await apiClient.get(
+          `${this.baseUrl}/images?page=1&page_size=100`,
+          { headers: { Authorization: `Bearer ${this.apiToken}` } },
+        );
+        const images = response.data.data.filter(
+          (img: { type: string; label: string }) =>
+            img.type === "manual" && img.label && (img.label.startsWith("kastell-") || img.label.startsWith("quicklify-")),
+        );
+        return images.map(
+          (img: { id: string; label: string; status: string; size: number; created: string }) => ({
+            id: img.id,
+            serverId,
+            name: img.label || "",
+            status: img.status,
+            sizeGb: img.size ? img.size / 1024 : 0,
+            createdAt: img.created,
+            costPerMonth: `$${(img.size ? (img.size / 1024) * 0.004 : 0).toFixed(2)}/mo`,
+          }),
+        );
+      });
     } catch (error: unknown) {
       stripSensitiveData(error);
       if (axios.isAxiosError<LinodeErrorResponse>(error)) {
@@ -369,12 +382,14 @@ export class LinodeProvider implements CloudProvider {
   async getSnapshotCostEstimate(serverId: string): Promise<string> {
     assertValidServerId(serverId);
     try {
-      const response = await apiClient.get(`${this.baseUrl}/linode/instances/${serverId}`, {
-        headers: { Authorization: `Bearer ${this.apiToken}` },
+      return await withRetry(async () => {
+        const response = await apiClient.get(`${this.baseUrl}/linode/instances/${serverId}`, {
+          headers: { Authorization: `Bearer ${this.apiToken}` },
+        });
+        const diskMb = response.data.specs?.disk || response.data.disk || 0;
+        const diskGb = diskMb / 1024;
+        return `$${(diskGb * 0.004).toFixed(2)}/mo`;
       });
-      const diskMb = response.data.specs?.disk || response.data.disk || 0;
-      const diskGb = diskMb / 1024;
-      return `$${(diskGb * 0.004).toFixed(2)}/mo`;
     } catch (error: unknown) {
       stripSensitiveData(error);
       if (axios.isAxiosError<LinodeErrorResponse>(error)) {

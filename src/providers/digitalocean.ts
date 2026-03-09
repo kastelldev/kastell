@@ -1,5 +1,6 @@
 import axios from "axios";
 import { apiClient, stripSensitiveData, withProviderErrorHandling, assertValidServerId, type CloudProvider } from "./base.js";
+import { withRetry } from "../utils/retry.js";
 import type { Region, ServerSize, ServerConfig, ServerResult, SnapshotInfo, ServerMode } from "../types/index.js";
 
 interface DORegion {
@@ -35,8 +36,10 @@ export class DigitalOceanProvider implements CloudProvider {
 
   async validateToken(token: string): Promise<boolean> {
     try {
-      await apiClient.get(`${this.baseUrl}/account`, {
-        headers: { Authorization: `Bearer ${token}` },
+      await withRetry(async () => {
+        await apiClient.get(`${this.baseUrl}/account`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
       });
       return true;
     } catch {
@@ -122,32 +125,36 @@ export class DigitalOceanProvider implements CloudProvider {
 
   async getServerDetails(serverId: string): Promise<ServerResult> {
     assertValidServerId(serverId);
-    return withProviderErrorHandling("get server details", async () => {
-      const response = await apiClient.get(`${this.baseUrl}/droplets/${serverId}`, {
-        headers: { Authorization: `Bearer ${this.apiToken}` },
-      });
-      const droplet = response.data.droplet;
-      const ip =
-        droplet.networks?.v4?.find((n: { type: string }) => n.type === "public")?.ip_address ||
-        "pending";
-      return {
-        id: droplet.id.toString(),
-        ip,
-        status: droplet.status === "active" ? "running" : droplet.status,
-      };
-    });
+    return withProviderErrorHandling("get server details", () =>
+      withRetry(async () => {
+        const response = await apiClient.get(`${this.baseUrl}/droplets/${serverId}`, {
+          headers: { Authorization: `Bearer ${this.apiToken}` },
+        });
+        const droplet = response.data.droplet;
+        const ip =
+          droplet.networks?.v4?.find((n: { type: string }) => n.type === "public")?.ip_address ||
+          "pending";
+        return {
+          id: droplet.id.toString(),
+          ip,
+          status: droplet.status === "active" ? "running" : droplet.status,
+        };
+      }),
+    );
   }
 
   async getServerStatus(serverId: string): Promise<string> {
     assertValidServerId(serverId);
-    return withProviderErrorHandling("get server status", async () => {
-      const response = await apiClient.get(`${this.baseUrl}/droplets/${serverId}`, {
-        headers: { Authorization: `Bearer ${this.apiToken}` },
-      });
-      // Normalize DO status: "active" → "running" (init.ts checks for "running")
-      const doStatus: string = response.data.droplet.status;
-      return doStatus === "active" ? "running" : doStatus;
-    });
+    return withProviderErrorHandling("get server status", () =>
+      withRetry(async () => {
+        const response = await apiClient.get(`${this.baseUrl}/droplets/${serverId}`, {
+          headers: { Authorization: `Bearer ${this.apiToken}` },
+        });
+        // Normalize DO status: "active" → "running" (init.ts checks for "running")
+        const doStatus: string = response.data.droplet.status;
+        return doStatus === "active" ? "running" : doStatus;
+      }),
+    );
   }
 
   async destroyServer(serverId: string): Promise<void> {
@@ -221,16 +228,18 @@ export class DigitalOceanProvider implements CloudProvider {
 
   async getAvailableLocations(): Promise<Region[]> {
     try {
-      const response = await apiClient.get(`${this.baseUrl}/regions`, {
-        headers: { Authorization: `Bearer ${this.apiToken}` },
+      return await withRetry(async () => {
+        const response = await apiClient.get(`${this.baseUrl}/regions`, {
+          headers: { Authorization: `Bearer ${this.apiToken}` },
+        });
+        return response.data.regions
+          .filter((r: DORegion) => r.available)
+          .map((r: DORegion) => ({
+            id: r.slug,
+            name: r.name,
+            location: r.slug,
+          }));
       });
-      return response.data.regions
-        .filter((r: DORegion) => r.available)
-        .map((r: DORegion) => ({
-          id: r.slug,
-          name: r.name,
-          location: r.slug,
-        }));
     } catch (error: unknown) {
       stripSensitiveData(error);
       return this.getRegions();
@@ -239,32 +248,34 @@ export class DigitalOceanProvider implements CloudProvider {
 
   async getAvailableServerTypes(location: string, mode?: ServerMode): Promise<ServerSize[]> {
     try {
-      const response = await apiClient.get(`${this.baseUrl}/sizes`, {
-        headers: { Authorization: `Bearer ${this.apiToken}` },
+      return await withRetry(async () => {
+        const response = await apiClient.get(`${this.baseUrl}/sizes`, {
+          headers: { Authorization: `Bearer ${this.apiToken}` },
+        });
+
+        const MIN_RAM_MB = mode === "bare" ? 0 : 2048; // Coolify requires at least 2GB RAM, bare has no minimum
+        const MIN_VCPUS = mode === "bare" ? 0 : 2; // Coolify requires at least 2 CPUs
+        const sizes = response.data.sizes.filter(
+          (s: DOSize) =>
+            s.available &&
+            s.regions.includes(location) &&
+            s.memory >= MIN_RAM_MB &&
+            s.vcpus >= MIN_VCPUS,
+        );
+
+        if (sizes.length === 0) {
+          return this.getServerSizes();
+        }
+
+        return sizes.map((s: DOSize) => ({
+          id: s.slug,
+          name: s.slug.toUpperCase(),
+          vcpu: s.vcpus,
+          ram: s.memory / 1024,
+          disk: s.disk,
+          price: `$${s.price_monthly.toFixed(2)}/mo`,
+        }));
       });
-
-      const MIN_RAM_MB = mode === "bare" ? 0 : 2048; // Coolify requires at least 2GB RAM, bare has no minimum
-      const MIN_VCPUS = mode === "bare" ? 0 : 2; // Coolify requires at least 2 CPUs
-      const sizes = response.data.sizes.filter(
-        (s: DOSize) =>
-          s.available &&
-          s.regions.includes(location) &&
-          s.memory >= MIN_RAM_MB &&
-          s.vcpus >= MIN_VCPUS,
-      );
-
-      if (sizes.length === 0) {
-        return this.getServerSizes();
-      }
-
-      return sizes.map((s: DOSize) => ({
-        id: s.slug,
-        name: s.slug.toUpperCase(),
-        vcpu: s.vcpus,
-        ram: s.memory / 1024,
-        disk: s.disk,
-        price: `$${s.price_monthly.toFixed(2)}/mo`,
-      }));
     } catch (error: unknown) {
       stripSensitiveData(error);
       return this.getServerSizes();
@@ -312,21 +323,23 @@ export class DigitalOceanProvider implements CloudProvider {
   async listSnapshots(serverId: string): Promise<SnapshotInfo[]> {
     assertValidServerId(serverId);
     try {
-      const response = await apiClient.get(
-        `${this.baseUrl}/droplets/${serverId}/snapshots?per_page=100`,
-        { headers: { Authorization: `Bearer ${this.apiToken}` } },
-      );
-      return response.data.snapshots.map(
-        (snap: { id: number; name: string; size_gigabytes: number; created_at: string }) => ({
-          id: snap.id.toString(),
-          serverId,
-          name: snap.name,
-          status: "available",
-          sizeGb: snap.size_gigabytes,
-          createdAt: snap.created_at,
-          costPerMonth: `$${(snap.size_gigabytes * 0.06).toFixed(2)}/mo`,
-        }),
-      );
+      return await withRetry(async () => {
+        const response = await apiClient.get(
+          `${this.baseUrl}/droplets/${serverId}/snapshots?per_page=100`,
+          { headers: { Authorization: `Bearer ${this.apiToken}` } },
+        );
+        return response.data.snapshots.map(
+          (snap: { id: number; name: string; size_gigabytes: number; created_at: string }) => ({
+            id: snap.id.toString(),
+            serverId,
+            name: snap.name,
+            status: "available",
+            sizeGb: snap.size_gigabytes,
+            createdAt: snap.created_at,
+            costPerMonth: `$${(snap.size_gigabytes * 0.06).toFixed(2)}/mo`,
+          }),
+        );
+      });
     } catch (error: unknown) {
       stripSensitiveData(error);
       if (axios.isAxiosError<DOErrorResponse>(error)) {
@@ -366,11 +379,13 @@ export class DigitalOceanProvider implements CloudProvider {
   async getSnapshotCostEstimate(serverId: string): Promise<string> {
     assertValidServerId(serverId);
     try {
-      const response = await apiClient.get(`${this.baseUrl}/droplets/${serverId}`, {
-        headers: { Authorization: `Bearer ${this.apiToken}` },
+      return await withRetry(async () => {
+        const response = await apiClient.get(`${this.baseUrl}/droplets/${serverId}`, {
+          headers: { Authorization: `Bearer ${this.apiToken}` },
+        });
+        const diskGb = response.data.droplet.disk;
+        return `$${(diskGb * 0.06).toFixed(2)}/mo`;
       });
-      const diskGb = response.data.droplet.disk;
-      return `$${(diskGb * 0.06).toFixed(2)}/mo`;
     } catch (error: unknown) {
       stripSensitiveData(error);
       if (axios.isAxiosError<DOErrorResponse>(error)) {
