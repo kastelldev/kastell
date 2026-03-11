@@ -16,6 +16,14 @@ import { watchAudit } from "../core/audit/watch.js";
 import { diffAudits, resolveSnapshotRef, formatDiffTerminal, formatDiffJson } from "../core/audit/diff.js";
 import { getServers } from "../utils/config.js";
 import type { AuditCliOptions } from "../core/audit/formatters/index.js";
+import type { AuditDiffResult } from "../core/audit/types.js";
+
+function printDiff(diff: AuditDiffResult, json?: boolean): void {
+  console.log(json ? formatDiffJson(diff) : formatDiffTerminal(diff));
+  if (diff.regressions.length > 0) {
+    process.exitCode = 1;
+  }
+}
 
 export interface AuditCommandOptions extends AuditCliOptions {
   host?: string;
@@ -86,7 +94,7 @@ export async function auditCommand(
 
   // --diff mode: compare two snapshots for this server
   if (options.diff) {
-    const parts = (options.diff as string).split(":");
+    const parts = options.diff.split(":");
     if (parts.length !== 2) {
       logger.error("--diff requires format: before:after (e.g. pre-upgrade:latest)");
       return;
@@ -100,20 +108,13 @@ export async function auditCommand(
       before: beforeSnap.name ?? beforeRef,
       after: afterSnap.name ?? afterRef,
     });
-    if (options.json) {
-      console.log(formatDiffJson(diff));
-    } else {
-      console.log(formatDiffTerminal(diff));
-    }
-    if (diff.regressions.length > 0) {
-      process.exitCode = 1;
-    }
+    printDiff(diff, options.json);
     return;
   }
 
   // --compare mode: compare latest snapshots from two servers
   if (options.compare) {
-    const parts = (options.compare as string).split(":");
+    const parts = options.compare.split(":");
     if (parts.length !== 2) {
       logger.error("--compare requires format: server1:server2");
       return;
@@ -132,14 +133,7 @@ export async function auditCommand(
       before: serverA.name,
       after: serverB.name,
     });
-    if (options.json) {
-      console.log(formatDiffJson(diff));
-    } else {
-      console.log(formatDiffTerminal(diff));
-    }
-    if (diff.regressions.length > 0) {
-      process.exitCode = 1;
-    }
+    printDiff(diff, options.json);
     return;
   }
 

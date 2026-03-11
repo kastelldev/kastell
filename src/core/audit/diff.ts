@@ -150,7 +150,7 @@ export function formatDiffTerminal(diff: AuditDiffResult): string {
   const iCount = diff.improvements.length;
   lines.push(
     `  ${chalk.red(`${rCount} regression${rCount !== 1 ? "s" : ""}`)}` +
-      `  ${chalk.green(`${iCount} improvement${iCount !== 1 ? "s" : ""}`)}`  +
+      `  ${chalk.green(`${iCount} improvement${iCount !== 1 ? "s" : ""}`)}` +
       `  ${diff.unchanged.length} unchanged`,
   );
 
