@@ -3,11 +3,27 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Audit Expand + Evidence + Altyapi
 status: in_progress
+stopped_at: Completed 25-02-PLAN.md (audit diff CLI wiring)
+last_updated: "2026-03-11T06:47:58.392Z"
+last_activity: 2026-03-11 — Completed 25-01 (audit diff engine)
+progress:
+  total_phases: 5
+  completed_phases: 3
+  total_plans: 7
+  completed_plans: 7
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.6
+milestone_name: Audit Expand + Evidence + Altyapi
+status: in_progress
 stopped_at: Completed 25-01-PLAN.md (audit diff engine)
 last_updated: "2026-03-11T06:41:43.887Z"
 last_activity: 2026-03-09 — Completed 23-03 (provider retry integration)
 progress:
-  total_phases: 5
+  [██████████] 100%
   completed_phases: 2
   total_plans: 7
   completed_plans: 6
@@ -88,6 +104,8 @@ Progress: [████████--] 80% (Phase 25 plan 1/2)
 - [Phase 24-audit-snapshots]: Audit command snapshot tests placed at tests/unit/ (not src/commands/__tests__/) per Jest roots config
 - [Phase 25]: diffAudits keys on check.id for canonical cross-audit check matching
 - [Phase 25]: resolveSnapshotRef: filename-first then name-scan for unambiguous ref resolution
+- [Phase 25]: --compare flag resolves servers via getServers() (non-interactive) not resolveServer() — compare takes both servers in flag value, no positional arg needed
+- [Phase 25]: process.exitCode = 1 used instead of process.exit(1) for regression signaling in --diff and --compare — allows graceful async return
 
 ### Pending Todos
 
@@ -99,6 +117,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-11T06:41:43.880Z
-Stopped at: Completed 25-01-PLAN.md (audit diff engine)
+Last session: 2026-03-11T06:47:47.089Z
+Stopped at: Completed 25-02-PLAN.md (audit diff CLI wiring)
 Next action: Execute Phase 25 Plan 02 (CLI wiring — --diff and --compare flags)

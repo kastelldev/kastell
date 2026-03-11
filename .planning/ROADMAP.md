@@ -98,7 +98,7 @@ MCP server with 7 tools, 12 security fixes, SSH key auto-generation, full docs u
 
 - [x] **Phase 23: Infrastructure Foundation** - File locking, rate limit backoff, ServerRecord.mode migration (completed 2026-03-09)
 - [x] **Phase 24: Audit Snapshots** - Snapshot save/load/list with schema versioning (completed 2026-03-11)
-- [ ] **Phase 25: Audit Diff and Compare** - Check-by-check diff, cross-server compare, CI integration
+- [x] **Phase 25: Audit Diff and Compare** - Check-by-check diff, cross-server compare, CI integration (completed 2026-03-11)
 - [ ] **Phase 26: Evidence Collection** - Forensic evidence package with SHA256 manifest
 - [ ] **Phase 27: Adapter Contract Documentation** - PlatformAdapter interface docs and test fixtures
 
@@ -143,7 +143,7 @@ Plans:
   3. Diff output in terminal is color-coded: green for improvements, red for regressions
   4. Diff supports `--json` output for CI pipeline consumption
   5. `kastell audit --diff` exits with code 1 when any check regressed (CI can gate on this)
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [ ] 25-01-PLAN.md — Diff engine core with TDD (diffAudits, resolveSnapshotRef, formatters)
 - [ ] 25-02-PLAN.md — Wire --diff and --compare into audit CLI command
@@ -227,7 +227,7 @@ Plans:
 | 22. Platform Auto-Detect (Gap Closure) | v1.5 | — | Complete (absorbed into P17) | 2026-03-08 |
 | 23. Infrastructure Foundation | v1.6 | 3/3 | Complete | 2026-03-09 |
 | 24. Audit Snapshots | v1.6 | 2/2 | Complete | 2026-03-11 |
-| 25. Audit Diff and Compare | 1/2 | In Progress|  | - |
+| 25. Audit Diff and Compare | 2/2 | Complete   | 2026-03-11 | - |
 | 26. Evidence Collection | v1.6 | 0/TBD | Not started | - |
 | 27. Adapter Contract Documentation | v1.6 | 0/TBD | Not started | - |
 
