@@ -3,12 +3,14 @@
  * Delegates to core/audit/runAudit + formatters + fix + history + watch.
  */
 
+import chalk from "chalk";
 import { resolveServer } from "../utils/serverSelect.js";
 import { assertValidIp } from "../utils/ssh.js";
 import { logger, createSpinner } from "../utils/logger.js";
 import { runAudit } from "../core/audit/index.js";
 import { selectFormatter } from "../core/audit/formatters/index.js";
 import { saveAuditHistory, loadAuditHistory, detectTrend } from "../core/audit/history.js";
+import { saveSnapshot, listSnapshots } from "../core/audit/snapshot.js";
 import { runFix } from "../core/audit/fix.js";
 import { watchAudit } from "../core/audit/watch.js";
 import type { AuditCliOptions } from "../core/audit/formatters/index.js";
@@ -20,6 +22,8 @@ export interface AuditCommandOptions extends AuditCliOptions {
   dryRun?: boolean;
   watch?: string;
   category?: string;
+  snapshot?: boolean | string;
+  snapshots?: boolean;
 }
 
 /**
@@ -51,6 +55,29 @@ export async function auditCommand(
     ip = server.ip;
     name = server.name;
     platform = server.platform ?? server.mode ?? "bare";
+  }
+
+  // --snapshots mode: list saved snapshots without running audit
+  if (options.snapshots) {
+    const entries = await listSnapshots(ip);
+    if (entries.length === 0) {
+      logger.info(`No snapshots found for ${name} (${ip})`);
+      return;
+    }
+    logger.info(`Snapshots for ${name} (${ip}):\n`);
+    for (const entry of entries) {
+      const nameStr = entry.name ? ` [${entry.name}]` : "";
+      const scoreColor =
+        entry.overallScore >= 80
+          ? chalk.green
+          : entry.overallScore >= 50
+            ? chalk.yellow
+            : chalk.red;
+      console.log(
+        `  ${entry.savedAt}  ${scoreColor(entry.overallScore + "/100")}${nameStr}  ${chalk.dim(entry.filename)}`,
+      );
+    }
+    return;
   }
 
   // --watch mode: delegate to watchAudit and return
@@ -94,6 +121,13 @@ export async function auditCommand(
   await saveAuditHistory(auditResult);
   if (trend !== "first audit") {
     logger.info(`Trend: ${trend}`);
+  }
+
+  // --snapshot: save point-in-time snapshot
+  if (options.snapshot !== undefined) {
+    const snapshotName = typeof options.snapshot === "string" ? options.snapshot : undefined;
+    await saveSnapshot(auditResult, snapshotName);
+    logger.success(`Snapshot saved for ${name}`);
   }
 
   // --fix mode: run fix engine

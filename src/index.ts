@@ -268,6 +268,8 @@ program
   .option("--host <user@ip>", "Audit an unregistered server by IP")
   .option("--threshold <score>", "Exit with code 1 if score is below threshold")
   .option("--category <list>", "Comma-separated list of categories to audit")
+  .option("--snapshot [name]", "Save audit result as snapshot (optionally named)")
+  .option("--snapshots", "List saved snapshots for the server")
   .action((serverName?: string, options?: Record<string, unknown>) =>
     auditCommand(serverName, options),
   );
