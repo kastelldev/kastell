@@ -24,10 +24,10 @@ Requirements for v1.6 Audit Expand + Evidence + Infrastructure. Each maps to roa
 
 ### Evidence Collection
 
-- [ ] **EVID-01**: User can collect forensic evidence package with single command
-- [ ] **EVID-02**: Evidence includes firewall rules, auth.log, listening ports, system logs
-- [ ] **EVID-03**: Evidence manifest includes SHA256 checksums per file
-- [ ] **EVID-04**: Evidence collection uses single SSH connection (batch pattern)
+- [x] **EVID-01**: User can collect forensic evidence package with single command
+- [x] **EVID-02**: Evidence includes firewall rules, auth.log, listening ports, system logs
+- [x] **EVID-03**: Evidence manifest includes SHA256 checksums per file
+- [x] **EVID-04**: Evidence collection uses single SSH connection (batch pattern)
 
 ### Infrastructure
 
@@ -84,10 +84,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DIFF-03 | Phase 25 | Complete |
 | DIFF-04 | Phase 25 | Complete |
 | DIFF-05 | Phase 25 | Complete |
-| EVID-01 | Phase 26 | Pending |
-| EVID-02 | Phase 26 | Pending |
-| EVID-03 | Phase 26 | Pending |
-| EVID-04 | Phase 26 | Pending |
+| EVID-01 | Phase 26 | Complete |
+| EVID-02 | Phase 26 | Complete |
+| EVID-03 | Phase 26 | Complete |
+| EVID-04 | Phase 26 | Complete |
 | INFRA-01 | Phase 23 | Complete |
 | INFRA-02 | Phase 23 | Complete |
 | INFRA-03 | Phase 23 | Complete |

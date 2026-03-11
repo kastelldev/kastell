@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Audit Expand + Evidence + Altyapi
 status: in_progress
-stopped_at: Completed 25-02-PLAN.md (audit diff CLI wiring)
-last_updated: "2026-03-11T06:53:43.928Z"
+stopped_at: "Completed 26-01-PLAN.md (evidence core: buildEvidenceBatchCommand + collectEvidence)"
+last_updated: "2026-03-11T08:44:14.662Z"
 last_activity: 2026-03-11 — Completed 25-01 (audit diff engine)
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 9
+  completed_plans: 8
   percent: 100
 ---
 
@@ -79,6 +79,7 @@ Progress: [████████--] 80% (Phase 25 plan 1/2)
 | Phase 24 P01 | 4 | 1 tasks | 3 files |
 | Phase 24-audit-snapshots P02 | 12 | 2 tasks | 3 files |
 | Phase 25 P01 | 15min | 2 tasks | 3 files |
+| Phase 26-evidence-collection P01 | 20 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -106,6 +107,8 @@ Progress: [████████--] 80% (Phase 25 plan 1/2)
 - [Phase 25]: resolveSnapshotRef: filename-first then name-scan for unambiguous ref resolution
 - [Phase 25]: --compare flag resolves servers via getServers() (non-interactive) not resolveServer() — compare takes both servers in flag value, no positional arg needed
 - [Phase 25]: process.exitCode = 1 used instead of process.exit(1) for regression signaling in --diff and --compare — allows graceful async return
+- [Phase 26-evidence-collection]: Section content trimmed after SSH split for deterministic SHA256 computation
+- [Phase 26-evidence-collection]: SECTION_FILENAMES uses EVIDENCE_SECTION_INDICES computed keys for index-to-filename sync
 
 ### Pending Todos
 
@@ -117,6 +120,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-11T06:47:47.089Z
-Stopped at: Completed 25-02-PLAN.md (audit diff CLI wiring)
+Last session: 2026-03-11T08:44:14.654Z
+Stopped at: Completed 26-01-PLAN.md (evidence core: buildEvidenceBatchCommand + collectEvidence)
 Next action: Execute Phase 25 Plan 02 (CLI wiring — --diff and --compare flags)

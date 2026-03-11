@@ -157,7 +157,7 @@ Plans:
   2. Evidence directory contains firewall rules, auth.log excerpts, listening ports, and system logs
   3. A manifest.json file lists every collected file with its SHA256 checksum for chain-of-custody integrity
   4. Evidence collection completes over a single SSH connection (batch pattern, no repeated connects)
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 Plans:
 - [ ] 26-01-PLAN.md — Evidence core module (SSH batch builder, collectEvidence, SHA256 manifest, tests)
 - [ ] 26-02-PLAN.md — Wire CLI command + MCP tool (evidence command, server_evidence tool, registration)
@@ -231,7 +231,7 @@ Plans:
 | 23. Infrastructure Foundation | v1.6 | 3/3 | Complete | 2026-03-09 |
 | 24. Audit Snapshots | v1.6 | 2/2 | Complete | 2026-03-11 |
 | 25. Audit Diff and Compare | v1.6 | 2/2 | Complete | 2026-03-11 |
-| 26. Evidence Collection | v1.6 | 0/2 | Planned | - |
+| 26. Evidence Collection | 1/2 | In Progress|  | - |
 | 27. Adapter Contract Documentation | v1.6 | 0/TBD | Not started | - |
 
 ---
