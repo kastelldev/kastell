@@ -92,7 +92,7 @@ MCP server with 7 tools, 12 security fixes, SSH key auto-generation, full docs u
 
 </details>
 
-### 🚧 v1.6 Audit Expand + Evidence + Altyapi (In Progress)
+### v1.6 Audit Expand + Evidence + Altyapi (In Progress)
 
 **Milestone Goal:** Extend audit with snapshot persistence and structured diffing, add forensic evidence collection, and harden infrastructure with file locking and rate limit backoff.
 
@@ -143,7 +143,10 @@ Plans:
   3. Diff output in terminal is color-coded: green for improvements, red for regressions
   4. Diff supports `--json` output for CI pipeline consumption
   5. `kastell audit --diff` exits with code 1 when any check regressed (CI can gate on this)
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 25-01-PLAN.md — Diff engine core with TDD (diffAudits, resolveSnapshotRef, formatters)
+- [ ] 25-02-PLAN.md — Wire --diff and --compare into audit CLI command
 
 ### Phase 26: Evidence Collection
 **Goal**: Users can collect forensic evidence packages for IP abuse complaints with a single command
@@ -223,11 +226,11 @@ Plans:
 | 21. Wire tokenBuffer (Gap Closure) | v1.5 | — | Complete (absorbed into P18) | 2026-03-08 |
 | 22. Platform Auto-Detect (Gap Closure) | v1.5 | — | Complete (absorbed into P17) | 2026-03-08 |
 | 23. Infrastructure Foundation | v1.6 | 3/3 | Complete | 2026-03-09 |
-| 24. Audit Snapshots | 2/2 | Complete    | 2026-03-11 | - |
-| 25. Audit Diff and Compare | v1.6 | 0/TBD | Not started | - |
+| 24. Audit Snapshots | v1.6 | 2/2 | Complete | 2026-03-11 |
+| 25. Audit Diff and Compare | v1.6 | 0/2 | Not started | - |
 | 26. Evidence Collection | v1.6 | 0/TBD | Not started | - |
 | 27. Adapter Contract Documentation | v1.6 | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-02-27*
-*Last updated: 2026-03-09 — Phase 24 planned (2 plans, 2 waves)*
+*Last updated: 2026-03-11 — Phase 25 planned (2 plans, 2 waves)*

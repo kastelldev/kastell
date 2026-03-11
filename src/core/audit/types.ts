@@ -68,3 +68,31 @@ export interface SnapshotListEntry {
   overallScore: number;
   corrupt?: boolean;
 }
+
+// ─── Diff types ───────────────────────────────────────────────────────────────
+
+export type CheckDiffStatus = "improved" | "regressed" | "unchanged" | "added" | "removed";
+
+export interface CheckDiffEntry {
+  id: string;
+  name: string;
+  category: string;
+  severity: Severity;
+  status: CheckDiffStatus;
+  /** null when check did not exist in this snapshot */
+  before: boolean | null;
+  after: boolean | null;
+}
+
+export interface AuditDiffResult {
+  beforeLabel: string;
+  afterLabel: string;
+  scoreBefore: number;
+  scoreAfter: number;
+  scoreDelta: number;
+  improvements: CheckDiffEntry[];
+  regressions: CheckDiffEntry[];
+  unchanged: CheckDiffEntry[];
+  added: CheckDiffEntry[];
+  removed: CheckDiffEntry[];
+}
