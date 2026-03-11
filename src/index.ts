@@ -270,6 +270,8 @@ program
   .option("--category <list>", "Comma-separated list of categories to audit")
   .option("--snapshot [name]", "Save audit result as snapshot (optionally named)")
   .option("--snapshots", "List saved snapshots for the server")
+  .option("--diff <before:after>", "Compare two snapshots (e.g. pre-upgrade:latest)")
+  .option("--compare <server1:server2>", "Compare latest snapshots from two servers")
   .action((serverName?: string, options?: Record<string, unknown>) =>
     auditCommand(serverName, options),
   );

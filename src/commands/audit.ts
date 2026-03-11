@@ -13,6 +13,8 @@ import { saveAuditHistory, loadAuditHistory, detectTrend } from "../core/audit/h
 import { saveSnapshot, listSnapshots } from "../core/audit/snapshot.js";
 import { runFix } from "../core/audit/fix.js";
 import { watchAudit } from "../core/audit/watch.js";
+import { diffAudits, resolveSnapshotRef, formatDiffTerminal, formatDiffJson } from "../core/audit/diff.js";
+import { getServers } from "../utils/config.js";
 import type { AuditCliOptions } from "../core/audit/formatters/index.js";
 
 export interface AuditCommandOptions extends AuditCliOptions {
@@ -24,6 +26,8 @@ export interface AuditCommandOptions extends AuditCliOptions {
   category?: string;
   snapshot?: boolean | string;
   snapshots?: boolean;
+  diff?: string;
+  compare?: string;
 }
 
 /**
@@ -76,6 +80,65 @@ export async function auditCommand(
       console.log(
         `  ${entry.savedAt}  ${scoreColor(entry.overallScore + "/100")}${nameStr}  ${chalk.dim(entry.filename)}`,
       );
+    }
+    return;
+  }
+
+  // --diff mode: compare two snapshots for this server
+  if (options.diff) {
+    const parts = (options.diff as string).split(":");
+    if (parts.length !== 2) {
+      logger.error("--diff requires format: before:after (e.g. pre-upgrade:latest)");
+      return;
+    }
+    const [beforeRef, afterRef] = parts;
+    const beforeSnap = await resolveSnapshotRef(ip, beforeRef);
+    const afterSnap = await resolveSnapshotRef(ip, afterRef);
+    if (!beforeSnap) { logger.error(`Snapshot not found: ${beforeRef}`); return; }
+    if (!afterSnap) { logger.error(`Snapshot not found: ${afterRef}`); return; }
+    const diff = diffAudits(beforeSnap.audit, afterSnap.audit, {
+      before: beforeSnap.name ?? beforeRef,
+      after: afterSnap.name ?? afterRef,
+    });
+    if (options.json) {
+      console.log(formatDiffJson(diff));
+    } else {
+      console.log(formatDiffTerminal(diff));
+    }
+    if (diff.regressions.length > 0) {
+      process.exitCode = 1;
+    }
+    return;
+  }
+
+  // --compare mode: compare latest snapshots from two servers
+  if (options.compare) {
+    const parts = (options.compare as string).split(":");
+    if (parts.length !== 2) {
+      logger.error("--compare requires format: server1:server2");
+      return;
+    }
+    const [serverARef, serverBRef] = parts;
+    const servers = getServers();
+    const serverA = servers.find((s) => s.name === serverARef || s.ip === serverARef);
+    const serverB = servers.find((s) => s.name === serverBRef || s.ip === serverBRef);
+    if (!serverA) { logger.error(`Server not found: ${serverARef}`); return; }
+    if (!serverB) { logger.error(`Server not found: ${serverBRef}`); return; }
+    const snapA = await resolveSnapshotRef(serverA.ip, "latest");
+    const snapB = await resolveSnapshotRef(serverB.ip, "latest");
+    if (!snapA) { logger.error(`No snapshots for ${serverA.name}`); return; }
+    if (!snapB) { logger.error(`No snapshots for ${serverB.name}`); return; }
+    const diff = diffAudits(snapA.audit, snapB.audit, {
+      before: serverA.name,
+      after: serverB.name,
+    });
+    if (options.json) {
+      console.log(formatDiffJson(diff));
+    } else {
+      console.log(formatDiffTerminal(diff));
+    }
+    if (diff.regressions.length > 0) {
+      process.exitCode = 1;
     }
     return;
   }
