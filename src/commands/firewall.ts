@@ -8,6 +8,7 @@ import { resolvePlatform } from "../adapters/factory.js";
 import {
   PROTECTED_PORTS,
   COOLIFY_PORTS,
+  DOKPLOY_PORTS,
   BARE_PORTS,
   isValidPort,
   isProtectedPort,
@@ -20,6 +21,7 @@ import {
 export {
   PROTECTED_PORTS,
   COOLIFY_PORTS,
+  DOKPLOY_PORTS,
   BARE_PORTS,
   isValidPort,
   isProtectedPort,
@@ -64,9 +66,11 @@ export async function firewallCommand(
     case "add":
       await firewallAdd(server.ip, server.name, options, dryRun);
       break;
-    case "remove":
-      await firewallRemove(server.ip, server.name, options, dryRun);
+    case "remove": {
+      const removePlatform = resolvePlatform(server);
+      await firewallRemove(server.ip, server.name, options, dryRun, removePlatform);
       break;
+    }
     case "list":
       await firewallList(server.ip, server.name);
       break;
@@ -174,6 +178,7 @@ async function firewallRemove(
   name: string,
   options?: { port?: string; protocol?: string },
   dryRun?: boolean,
+  platform?: import("../types/index.js").Platform,
 ): Promise<void> {
   const port = parseInt(options?.port || "", 10);
   if (!options?.port || !isValidPort(port)) {
@@ -192,12 +197,17 @@ async function firewallRemove(
     return;
   }
 
-  if (COOLIFY_PORTS.includes(port)) {
+  const isPlatformPort =
+    (platform === "coolify" && COOLIFY_PORTS.includes(port)) ||
+    (platform === "dokploy" && DOKPLOY_PORTS.includes(port));
+
+  if (isPlatformPort) {
+    const platformName = platform === "coolify" ? "Coolify" : "Dokploy";
     const { confirm } = await inquirer.prompt([
       {
         type: "confirm",
         name: "confirm",
-        message: `Port ${port} is used by Coolify. Are you sure you want to remove it?`,
+        message: `Port ${port} is used by ${platformName}. Are you sure you want to remove it?`,
         default: false,
       },
     ]);

@@ -30,7 +30,7 @@ _kastell() {
       return 0
       ;;
     secure)
-      COMPREPLY=( $(compgen -W "setup status audit --port --dry-run" -- "\${cur}") )
+      COMPREPLY=( $(compgen -W "setup status audit --port --dry-run --force" -- "\${cur}") )
       return 0
       ;;
     snapshot)
@@ -63,7 +63,7 @@ _kastell() {
         return 0
         ;;
       update)
-        COMPREPLY=( $(compgen -W "--all --dry-run" -- "\${cur}") )
+        COMPREPLY=( $(compgen -W "--all --dry-run --force" -- "\${cur}") )
         return 0
         ;;
       restart)
@@ -91,7 +91,7 @@ _kastell() {
         return 0
         ;;
       secure)
-        COMPREPLY=( $(compgen -W "--port --dry-run" -- "\${cur}") )
+        COMPREPLY=( $(compgen -W "--port --dry-run --force" -- "\${cur}") )
         return 0
         ;;
       backup)
@@ -211,7 +211,8 @@ _kastell() {
         update)
           _arguments \\
             '--all[Update all servers]' \\
-            '--dry-run[Show commands without executing]'
+            '--dry-run[Show commands without executing]' \\
+            '--force[Skip confirmation prompts]'
           ;;
         restart)
           _arguments \\
@@ -255,7 +256,8 @@ _kastell() {
           _describe 'subcommand' subcommands
           _arguments \\
             '--port[SSH port]:port:' \\
-            '--dry-run[Show commands without executing]'
+            '--dry-run[Show commands without executing]' \\
+            '--force[Skip confirmation prompts]'
           ;;
         backup)
           _arguments \\
@@ -380,6 +382,7 @@ complete -c kastell -n '__kastell_using_subcommand ssh' -s c -l command -d 'Exec
 # update options
 complete -c kastell -n '__kastell_using_subcommand update' -l all -d 'Update all servers'
 complete -c kastell -n '__kastell_using_subcommand update' -l dry-run -d 'Show commands without executing'
+complete -c kastell -n '__kastell_using_subcommand update' -l force -d 'Skip confirmation prompts'
 
 # restart options
 complete -c kastell -n '__kastell_using_subcommand restart' -l dry-run -d 'Show commands without executing'
@@ -411,6 +414,7 @@ complete -c kastell -n '__kastell_using_subcommand domain' -l dry-run -d 'Show c
 complete -c kastell -n '__kastell_using_subcommand secure' -a 'setup status audit'
 complete -c kastell -n '__kastell_using_subcommand secure' -l port -d 'SSH port'
 complete -c kastell -n '__kastell_using_subcommand secure' -l dry-run -d 'Show commands without executing'
+complete -c kastell -n '__kastell_using_subcommand secure' -l force -d 'Skip confirmation prompts'
 
 # backup options
 complete -c kastell -n '__kastell_using_subcommand backup' -l dry-run -d 'Show commands without executing'

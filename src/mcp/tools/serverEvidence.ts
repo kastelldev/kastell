@@ -35,6 +35,10 @@ export const serverEvidenceSchema = {
     .boolean()
     .default(false)
     .describe("Skip system information collection."),
+  force: z
+    .boolean()
+    .default(false)
+    .describe("Overwrite existing evidence directory."),
 };
 
 export async function handleServerEvidence(params: {
@@ -43,6 +47,7 @@ export async function handleServerEvidence(params: {
   lines?: number;
   no_docker?: boolean;
   no_sysinfo?: boolean;
+  force?: boolean;
 }): Promise<McpResponse> {
   try {
     const servers = getServers();
@@ -71,7 +76,7 @@ export async function handleServerEvidence(params: {
       lines: params.lines ?? 500,
       noDocker: params.no_docker ?? false,
       noSysinfo: params.no_sysinfo ?? false,
-      force: false,
+      force: params.force ?? false,
       json: false,
       quiet: true,
     });

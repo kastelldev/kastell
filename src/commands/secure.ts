@@ -22,7 +22,7 @@ export {
 export async function secureCommand(
   subcommand?: string,
   query?: string,
-  options?: { port?: string; dryRun?: boolean },
+  options?: { port?: string; dryRun?: boolean; force?: boolean },
 ): Promise<void> {
   if (!checkSshAvailable()) {
     logger.error("SSH client not found. Please install OpenSSH.");
@@ -44,7 +44,7 @@ export async function secureCommand(
 
   switch (sub) {
     case "setup":
-      await secureSetup(server.ip, server.name, options, dryRun, false);
+      await secureSetup(server.ip, server.name, options, dryRun, options?.force || false);
       break;
     case "status":
       await secureStatus(server.ip, server.name);

@@ -155,6 +155,7 @@ export async function removeFirewallRule(
   ip: string,
   port: number,
   protocol: FirewallProtocol = "tcp",
+  platform?: Platform,
 ): Promise<FirewallResult> {
   assertValidIp(ip);
 
@@ -166,11 +167,14 @@ export async function removeFirewallRule(
     return { success: false, error: `Port ${port} is protected (SSH access). Cannot remove.` };
   }
 
-  const warning = COOLIFY_PORTS.includes(port)
-    ? `Port ${port} is used by Coolify. Removing it may break Coolify access.`
-    : DOKPLOY_PORTS.includes(port)
-      ? `Port ${port} is used by Dokploy. Removing it may break Dokploy access.`
-      : undefined;
+  const warning =
+    platform === "coolify" && COOLIFY_PORTS.includes(port)
+      ? `Port ${port} is used by Coolify. Removing it may break Coolify access.`
+      : platform === "dokploy" && DOKPLOY_PORTS.includes(port)
+        ? `Port ${port} is used by Dokploy. Removing it may break Dokploy access.`
+        : !platform && (COOLIFY_PORTS.includes(port) || DOKPLOY_PORTS.includes(port))
+          ? `Port ${port} is commonly used by platform services. Removing it may break access.`
+          : undefined;
 
   try {
     const result = await sshExec(ip, buildUfwRuleCommand("delete allow", port, protocol));

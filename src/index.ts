@@ -102,7 +102,8 @@ program
   .description("Update Coolify on a registered server")
   .option("--all", "Update Coolify on all servers")
   .option("--dry-run", "Show what would happen without executing")
-  .action((query?: string, options?: { all?: boolean; dryRun?: boolean }) =>
+  .option("--force", "Skip confirmation prompts")
+  .action((query?: string, options?: { all?: boolean; dryRun?: boolean; force?: boolean }) =>
     updateCommand(query, options),
   );
 
@@ -174,7 +175,8 @@ program
   .description("Manage server security (SSH hardening, fail2ban)")
   .option("--port <port>", "Change SSH port")
   .option("--dry-run", "Show commands without executing")
-  .action((subcommand?: string, query?: string, options?: { port?: string; dryRun?: boolean }) =>
+  .option("--force", "Skip confirmation prompts")
+  .action((subcommand?: string, query?: string, options?: { port?: string; dryRun?: boolean; force?: boolean }) =>
     secureCommand(subcommand, query, options),
   );
 

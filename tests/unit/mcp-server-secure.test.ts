@@ -395,9 +395,30 @@ describe("core/firewall — removeFirewallRule", () => {
 
   it("should warn for Coolify port but still remove", async () => {
     mockedSsh.sshExec.mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" });
-    const result = await firewall.removeFirewallRule("1.2.3.4", 8000);
+    const result = await firewall.removeFirewallRule("1.2.3.4", 8000, "tcp", "coolify");
     expect(result.success).toBe(true);
     expect(result.warning).toContain("Coolify");
+  });
+
+  it("should warn for Dokploy port when platform is dokploy", async () => {
+    mockedSsh.sshExec.mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" });
+    const result = await firewall.removeFirewallRule("1.2.3.4", 3000, "tcp", "dokploy");
+    expect(result.success).toBe(true);
+    expect(result.warning).toContain("Dokploy");
+  });
+
+  it("should not warn for non-platform port on coolify", async () => {
+    mockedSsh.sshExec.mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" });
+    const result = await firewall.removeFirewallRule("1.2.3.4", 3000, "tcp", "coolify");
+    expect(result.success).toBe(true);
+    expect(result.warning).toBeUndefined();
+  });
+
+  it("should give generic warning when no platform specified", async () => {
+    mockedSsh.sshExec.mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" });
+    const result = await firewall.removeFirewallRule("1.2.3.4", 8000);
+    expect(result.success).toBe(true);
+    expect(result.warning).toContain("platform services");
   });
 });
 

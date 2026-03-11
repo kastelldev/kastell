@@ -237,7 +237,8 @@ export async function handleServerSecure(params: {
           );
         }
 
-        const result = await removeFirewallRule(server.ip, params.port, params.protocol || "tcp");
+        const platform = resolvePlatform(server);
+        const result = await removeFirewallRule(server.ip, params.port, params.protocol || "tcp", platform);
 
         if (!result.success) {
           return {

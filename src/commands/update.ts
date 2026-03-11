@@ -12,6 +12,7 @@ import type { Platform } from "../types/index.js";
 interface UpdateOptions {
   all?: boolean;
   dryRun?: boolean;
+  force?: boolean;
 }
 
 function showDryRun(server: { name: string; ip: string }, platformDisplayName: string): void {
@@ -110,18 +111,20 @@ async function updateAll(options?: UpdateOptions): Promise<void> {
     return;
   }
 
-  const { confirm } = await inquirer.prompt([
-    {
-      type: "confirm",
-      name: "confirm",
-      message: `Update platform on all ${servers.length} server(s)? This may cause brief downtime.`,
-      default: false,
-    },
-  ]);
+  if (!options?.force) {
+    const { confirm } = await inquirer.prompt([
+      {
+        type: "confirm",
+        name: "confirm",
+        message: `Update platform on all ${servers.length} server(s)? This may cause brief downtime.`,
+        default: false,
+      },
+    ]);
 
-  if (!confirm) {
-    logger.info("Update cancelled.");
-    return;
+    if (!confirm) {
+      logger.info("Update cancelled.");
+      return;
+    }
   }
 
   const tokenMap = await collectProviderTokens(servers);
@@ -192,18 +195,20 @@ export async function updateCommand(query?: string, options?: UpdateOptions): Pr
     return;
   }
 
-  const { confirm } = await inquirer.prompt([
-    {
-      type: "confirm",
-      name: "confirm",
-      message: `Update ${adapterDisplayName} on "${server.name}" (${server.ip})? This may cause brief downtime.`,
-      default: false,
-    },
-  ]);
+  if (!options?.force) {
+    const { confirm } = await inquirer.prompt([
+      {
+        type: "confirm",
+        name: "confirm",
+        message: `Update ${adapterDisplayName} on "${server.name}" (${server.ip})? This may cause brief downtime.`,
+        default: false,
+      },
+    ]);
 
-  if (!confirm) {
-    logger.info("Update cancelled.");
-    return;
+    if (!confirm) {
+      logger.info("Update cancelled.");
+      return;
+    }
   }
 
   const apiToken = server.id.startsWith("manual-") ? "" : await promptApiToken(server.provider);
