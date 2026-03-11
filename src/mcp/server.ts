@@ -10,6 +10,7 @@ import { serverSecureSchema, handleServerSecure } from "./tools/serverSecure.js"
 import { serverBackupSchema, handleServerBackup } from "./tools/serverBackup.js";
 import { serverProvisionSchema, handleServerProvision } from "./tools/serverProvision.js";
 import { serverAuditSchema, handleServerAudit } from "./tools/serverAudit.js";
+import { serverEvidenceSchema, handleServerEvidence } from "./tools/serverEvidence.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -140,6 +141,21 @@ export function createMcpServer(): McpServer {
     },
   }, async (params) => {
     return handleServerAudit(params);
+  });
+
+  server.registerTool("server_evidence", {
+    description:
+      "Collect forensic evidence package from a server. Gathers firewall rules, auth.log, listening ports, system logs, and optionally Docker info. Writes to ~/.kastell/evidence/{server}/{date}/. Returns manifest with SHA256 checksums per file.",
+    inputSchema: serverEvidenceSchema,
+    annotations: {
+      title: "Evidence Collection",
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
+  }, async (params) => {
+    return handleServerEvidence(params);
   });
 
   return server;
