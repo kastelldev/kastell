@@ -8,6 +8,7 @@ import { CONFIG_DIR } from "../utils/config.js";
 import { PROVIDER_REGISTRY } from "../constants.js";
 import { resolveServer } from "../utils/serverSelect.js";
 import { runServerDoctor } from "../core/doctor.js";
+import { runDoctorFix } from "../core/doctor-fix.js";
 import type { DoctorFinding, DoctorResult } from "../core/doctor.js";
 
 // Validation endpoints differ from base API URLs (provider-specific paths)
@@ -198,18 +199,37 @@ function displayFindings(result: DoctorResult): void {
 
 export async function doctorCommand(
   server?: string,
-  options?: { checkTokens?: boolean; fresh?: boolean; json?: boolean },
+  options?: {
+    checkTokens?: boolean;
+    fresh?: boolean;
+    json?: boolean;
+    fix?: boolean;
+    force?: boolean;
+    dryRun?: boolean;
+  },
   version?: string,
 ): Promise<void> {
+  // ── Guard: --fix requires a server argument ───────────────────────────────
+  if (options?.fix && !server) {
+    logger.error("--fix requires a server argument");
+    return;
+  }
+
   // ── Server mode ──────────────────────────────────────────────────────────────
   if (server) {
     const resolved = await resolveServer(server, "Select a server for doctor analysis:");
     if (!resolved) return;
 
+    // --fix forces --fresh to get current server state before fixing
+    const useFresh = options?.fix ? true : options?.fresh;
+    if (options?.fix) {
+      logger.info("Running with --fresh to get current server state before fixing.");
+    }
+
     const spinner = createSpinner(`Running doctor analysis on ${resolved.name}...`);
     spinner.start();
 
-    const result = await runServerDoctor(resolved.ip, resolved.name, { fresh: options?.fresh });
+    const result = await runServerDoctor(resolved.ip, resolved.name, { fresh: useFresh });
 
     spinner.stop();
 
@@ -228,6 +248,46 @@ export async function doctorCommand(
     }
 
     displayFindings(result.data!);
+
+    if (!options?.fix) {
+      return;
+    }
+
+    // ── Fix mode ──────────────────────────────────────────────────────────────
+    const findings = result.data!.findings;
+
+    if (options.dryRun) {
+      console.log();
+      logger.title("Fix Preview (--dry-run — no SSH will be executed)");
+      for (const finding of findings) {
+        if (finding.fixCommand) {
+          logger.step(`[${finding.severity.toUpperCase()}] ${finding.description}`);
+          logger.info(`  Command: ${finding.fixCommand}`);
+        } else {
+          logger.step(`[${finding.severity.toUpperCase()}] ${finding.description} -- manual fix required: ${finding.command}`);
+        }
+      }
+      return;
+    }
+
+    const fixResult = await runDoctorFix(resolved.ip, findings, {
+      dryRun: false,
+      force: options.force ?? false,
+    });
+
+    console.log();
+    if (fixResult.applied.length > 0) {
+      logger.success(`Fixed: ${fixResult.applied.length} finding(s) applied`);
+    }
+    if (fixResult.skipped.length > 0) {
+      logger.info(`Skipped: ${fixResult.skipped.length} finding(s)`);
+    }
+    if (fixResult.failed.length > 0) {
+      logger.error(`Failed: ${fixResult.failed.length} finding(s)`);
+      for (const entry of fixResult.failed) {
+        logger.error(`  ${entry}`);
+      }
+    }
     return;
   }
 

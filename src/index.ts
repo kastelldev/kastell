@@ -145,10 +145,20 @@ program
   .option("--check-tokens", "Validate provider API tokens (local mode only)")
   .option("--fresh", "Fetch live data from server via SSH before analysis")
   .option("--json", "Output findings as JSON")
+  .option("--fix", "Interactively fix doctor findings via SSH")
+  .option("--force", "Skip confirmation prompts (use with --fix)")
+  .option("--dry-run", "Show fix commands without executing (use with --fix)")
   .action(
     (
       server?: string,
-      options?: { checkTokens?: boolean; fresh?: boolean; json?: boolean },
+      options?: {
+        checkTokens?: boolean;
+        fresh?: boolean;
+        json?: boolean;
+        fix?: boolean;
+        force?: boolean;
+        dryRun?: boolean;
+      },
     ) => doctorCommand(server, options, pkg.version),
   );
 

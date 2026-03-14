@@ -34,6 +34,10 @@ jest.mock("../../src/core/doctor", () => ({
   runServerDoctor: jest.fn(),
 }));
 
+jest.mock("../../src/core/doctor-fix", () => ({
+  runDoctorFix: jest.fn(),
+}));
+
 // Mock ora so spinner.start/stop don't throw in tests
 jest.mock("ora", () => {
   const spinner = { start: jest.fn().mockReturnThis(), stop: jest.fn().mockReturnThis() };
@@ -43,6 +47,7 @@ jest.mock("ora", () => {
 import { checkSshAvailable } from "../../src/utils/ssh";
 import { resolveServer } from "../../src/utils/serverSelect";
 import { runServerDoctor } from "../../src/core/doctor";
+import { runDoctorFix } from "../../src/core/doctor-fix";
 import { runDoctorChecks, doctorCommand, checkProviderTokens } from "../../src/commands/doctor";
 
 const mockedAxios = axios as jest.Mocked<typeof axios>;
@@ -52,6 +57,7 @@ const mockedAccessSync = accessSync as jest.MockedFunction<typeof accessSync>;
 const mockedCheckSsh = checkSshAvailable as jest.MockedFunction<typeof checkSshAvailable>;
 const mockedResolveServer = resolveServer as jest.MockedFunction<typeof resolveServer>;
 const mockedRunServerDoctor = runServerDoctor as jest.MockedFunction<typeof runServerDoctor>;
+const mockedRunDoctorFix = runDoctorFix as jest.MockedFunction<typeof runDoctorFix>;
 
 describe("doctorCommand — local mode (no server arg)", () => {
   let consoleSpy: jest.SpyInstance;
@@ -440,6 +446,127 @@ describe("doctorCommand — server mode", () => {
     const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
     // Summary should mention finding count
     expect(output).toMatch(/\d+\s+finding/i);
+  });
+});
+
+describe("doctorCommand — --fix mode", () => {
+  let consoleSpy: jest.SpyInstance;
+
+  const fakeServer = {
+    id: "srv-1",
+    name: "my-server",
+    ip: "1.2.3.4",
+    provider: "hetzner",
+    region: "nbg1",
+    size: "cax11",
+    createdAt: "2026-01-01",
+    mode: "coolify" as const,
+  };
+
+  const fakeResultWithFixable = {
+    serverName: "my-server",
+    serverIp: "1.2.3.4",
+    findings: [
+      {
+        id: "STALE_PACKAGES",
+        severity: "warning" as const,
+        description: "15 packages to upgrade",
+        command: "sudo apt update",
+        fixCommand: "sudo apt update && sudo apt upgrade -y",
+      },
+      {
+        id: "DISK_TREND",
+        severity: "warning" as const,
+        description: "Disk full in 5 days",
+        command: "df -h",
+      },
+    ],
+    ranAt: new Date().toISOString(),
+    usedFreshData: true,
+  };
+
+  beforeEach(() => {
+    consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    consoleSpy.mockRestore();
+  });
+
+  it("shows error and returns when --fix is used without a server argument", async () => {
+    await doctorCommand(undefined, { fix: true }, "1.0.0");
+
+    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    expect(output).toContain("--fix requires a server argument");
+    expect(mockedResolveServer).not.toHaveBeenCalled();
+    expect(mockedRunDoctorFix).not.toHaveBeenCalled();
+  });
+
+  it("calls runServerDoctor with fresh=true when --fix is set", async () => {
+    mockedResolveServer.mockResolvedValue(fakeServer);
+    mockedRunServerDoctor.mockResolvedValue({ success: true, data: fakeResultWithFixable });
+    mockedRunDoctorFix.mockResolvedValue({ applied: ["STALE_PACKAGES"], skipped: ["DISK_TREND"], failed: [] });
+
+    await doctorCommand("my-server", { fix: true }, "1.0.0");
+
+    expect(mockedRunServerDoctor).toHaveBeenCalledWith("1.2.3.4", "my-server", { fresh: true });
+  });
+
+  it("calls runDoctorFix with force=false in interactive mode", async () => {
+    mockedResolveServer.mockResolvedValue(fakeServer);
+    mockedRunServerDoctor.mockResolvedValue({ success: true, data: fakeResultWithFixable });
+    mockedRunDoctorFix.mockResolvedValue({ applied: [], skipped: [], failed: [] });
+
+    await doctorCommand("my-server", { fix: true }, "1.0.0");
+
+    expect(mockedRunDoctorFix).toHaveBeenCalledWith(
+      "1.2.3.4",
+      fakeResultWithFixable.findings,
+      { dryRun: false, force: false },
+    );
+  });
+
+  it("passes force=true to runDoctorFix when --fix --force", async () => {
+    mockedResolveServer.mockResolvedValue(fakeServer);
+    mockedRunServerDoctor.mockResolvedValue({ success: true, data: fakeResultWithFixable });
+    mockedRunDoctorFix.mockResolvedValue({ applied: ["STALE_PACKAGES"], skipped: [], failed: [] });
+
+    await doctorCommand("my-server", { fix: true, force: true }, "1.0.0");
+
+    expect(mockedRunDoctorFix).toHaveBeenCalledWith(
+      "1.2.3.4",
+      fakeResultWithFixable.findings,
+      { dryRun: false, force: true },
+    );
+  });
+
+  it("prints fix commands without calling runDoctorFix when --fix --dry-run", async () => {
+    mockedResolveServer.mockResolvedValue(fakeServer);
+    mockedRunServerDoctor.mockResolvedValue({ success: true, data: fakeResultWithFixable });
+
+    await doctorCommand("my-server", { fix: true, dryRun: true }, "1.0.0");
+
+    expect(mockedRunDoctorFix).not.toHaveBeenCalled();
+    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    expect(output).toMatch(/dry-run/i);
+  });
+
+  it("displays applied/skipped/failed counts after fix", async () => {
+    mockedResolveServer.mockResolvedValue(fakeServer);
+    mockedRunServerDoctor.mockResolvedValue({ success: true, data: fakeResultWithFixable });
+    mockedRunDoctorFix.mockResolvedValue({
+      applied: ["STALE_PACKAGES"],
+      skipped: ["DISK_TREND"],
+      failed: ["DOCKER_DISK: exit 1 — docker not found"],
+    });
+
+    await doctorCommand("my-server", { fix: true }, "1.0.0");
+
+    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    expect(output).toMatch(/fixed.*1/i);
+    expect(output).toMatch(/skipped.*1/i);
+    expect(output).toMatch(/failed.*1/i);
   });
 });
 
