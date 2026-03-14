@@ -147,7 +147,9 @@ Plans:
   1. `adapters/shared.ts` contains the common backup/restore template helpers used by both adapters
   2. `adapters/coolify.ts` and `adapters/dokploy.ts` call shared helpers — no ~80% duplicate code blocks remain
   3. All adapter conformance tests pass with no behavior change
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 35-01-PLAN.md — Extract shared backup/restore helpers and refactor both adapters
 
 ### Phase 36: Notification Module
 **Goal**: Users can configure and test multi-channel notifications before guard wires them in
