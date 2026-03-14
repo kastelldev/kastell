@@ -34,6 +34,12 @@ jest.mock("../../src/core/doctor", () => ({
   runServerDoctor: jest.fn(),
 }));
 
+// Mock ora so spinner.start/stop don't throw in tests
+jest.mock("ora", () => {
+  const spinner = { start: jest.fn().mockReturnThis(), stop: jest.fn().mockReturnThis() };
+  return jest.fn(() => spinner);
+});
+
 import { checkSshAvailable } from "../../src/utils/ssh";
 import { resolveServer } from "../../src/utils/serverSelect";
 import { runServerDoctor } from "../../src/core/doctor";
@@ -52,7 +58,7 @@ describe("doctorCommand — local mode (no server arg)", () => {
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
-    jest.resetAllMocks();
+    jest.clearAllMocks();
   });
 
   afterEach(() => {
@@ -298,7 +304,7 @@ describe("doctorCommand — server mode", () => {
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
-    jest.resetAllMocks();
+    jest.clearAllMocks();
   });
 
   afterEach(() => {
@@ -443,7 +449,7 @@ describe("checkProviderTokens", () => {
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
-    jest.resetAllMocks();
+    jest.clearAllMocks();
     process.env = { ...originalEnv };
   });
 

@@ -139,10 +139,17 @@ program
   .action((query?: string) => healthCommand(query));
 
 program
-  .command("doctor")
-  .description("Check your local environment and configuration")
-  .option("--check-tokens", "Validate provider API tokens")
-  .action((options?: { checkTokens?: boolean }) => doctorCommand(options, pkg.version));
+  .command("doctor [server]")
+  .description("Check local environment, or run proactive health analysis on a server")
+  .option("--check-tokens", "Validate provider API tokens (local mode only)")
+  .option("--fresh", "Fetch live data from server via SSH before analysis")
+  .option("--json", "Output findings as JSON")
+  .action(
+    (
+      server?: string,
+      options?: { checkTokens?: boolean; fresh?: boolean; json?: boolean },
+    ) => doctorCommand(server, options, pkg.version),
+  );
 
 program
   .command("firewall [subcommand] [query]")
