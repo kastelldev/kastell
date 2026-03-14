@@ -11,6 +11,9 @@ import { serverBackupSchema, handleServerBackup } from "./tools/serverBackup.js"
 import { serverProvisionSchema, handleServerProvision } from "./tools/serverProvision.js";
 import { serverAuditSchema, handleServerAudit } from "./tools/serverAudit.js";
 import { serverEvidenceSchema, handleServerEvidence } from "./tools/serverEvidence.js";
+import { serverGuardSchema, handleServerGuard } from "./tools/serverGuard.js";
+import { serverDoctorSchema, handleServerDoctor } from "./tools/serverDoctor.js";
+import { serverLockSchema, handleServerLock } from "./tools/serverLock.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -156,6 +159,51 @@ export function createMcpServer(): McpServer {
     },
   }, async (params) => {
     return handleServerEvidence(params);
+  });
+
+  server.registerTool("server_guard", {
+    description:
+      "Manage autonomous security monitoring daemon on a server. Actions: 'start' installs guard as remote cron (checks disk/RAM/CPU/audit every 5 min), 'stop' removes guard cron entry, 'status' shows whether guard is active with last check time and any threshold breaches. Requires SSH access to target server.",
+    inputSchema: serverGuardSchema,
+    annotations: {
+      title: "Guard Daemon",
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+  }, async (params) => {
+    return handleServerGuard(params);
+  });
+
+  server.registerTool("server_doctor", {
+    description:
+      "Run proactive health analysis on a server. Detects disk trending full, high swap, stale packages, elevated fail2ban bans, audit regression streaks, old backups, and reclaimable Docker space. Uses cached metrics by default — pass fresh=true to fetch live data via SSH. Returns findings grouped by severity (critical/warning/info) with remediation commands.",
+    inputSchema: serverDoctorSchema,
+    annotations: {
+      title: "Server Doctor",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+  }, async (params) => {
+    return handleServerDoctor(params);
+  });
+
+  server.registerTool("server_lock", {
+    description:
+      "Harden a server to production standard. Applies SSH key-only auth, fail2ban, UFW firewall, sysctl hardening, and unattended-upgrades in a single SSH session. Requires production=true to confirm intent (safety gate). Pass dryRun=true to preview changes without applying. Platform-aware: preserves Coolify port 8000 or Dokploy port 3000 in UFW rules. Shows audit score before and after hardening. Requires SSH access to target server.",
+    inputSchema: serverLockSchema,
+    annotations: {
+      title: "Server Lock",
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+  }, async (params) => {
+    return handleServerLock(params);
   });
 
   return server;
