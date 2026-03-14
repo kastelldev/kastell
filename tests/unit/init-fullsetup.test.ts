@@ -1,7 +1,7 @@
 import axios from "axios";
 import { initCommand } from "../../src/commands/init";
-import * as firewallModule from "../../src/commands/firewall";
-import * as secureModule from "../../src/commands/secure";
+import * as firewallModule from "../../src/core/firewall";
+import * as secureModule from "../../src/core/secure";
 
 jest.mock("../../src/utils/healthCheck", () => ({
   waitForCoolify: jest.fn(),
@@ -20,13 +20,13 @@ jest.mock("../../src/utils/sshKey", () => ({
   getSshKeyName: jest.fn().mockReturnValue("kastell-test"),
 }));
 
-jest.mock("../../src/commands/firewall", () => ({
-  ...jest.requireActual("../../src/commands/firewall"),
+jest.mock("../../src/core/firewall", () => ({
+  ...jest.requireActual("../../src/core/firewall"),
   firewallSetup: jest.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock("../../src/commands/secure", () => ({
-  ...jest.requireActual("../../src/commands/secure"),
+jest.mock("../../src/core/secure", () => ({
+  ...jest.requireActual("../../src/core/secure"),
   secureSetup: jest.fn().mockResolvedValue(undefined),
 }));
 

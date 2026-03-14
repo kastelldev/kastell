@@ -41,7 +41,7 @@ jest.mock("../../src/utils/ssh", () => ({
   checkSshAvailable: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock("../../src/commands/firewall", () => ({
+jest.mock("../../src/core/firewall", () => ({
   firewallSetup: jest.fn().mockResolvedValue(undefined),
   COOLIFY_PORTS: [80, 443, 8000, 6001, 6002],
   BARE_PORTS: [80, 443],
@@ -55,7 +55,7 @@ jest.mock("../../src/commands/firewall", () => ({
   parseUfwStatus: jest.fn(),
 }));
 
-jest.mock("../../src/commands/secure", () => ({
+jest.mock("../../src/core/secure", () => ({
   secureSetup: jest.fn().mockResolvedValue(undefined),
 }));
 
@@ -73,10 +73,10 @@ const { saveServer } = jest.requireMock("../../src/utils/config") as {
 const { sshExec } = jest.requireMock("../../src/utils/ssh") as {
   sshExec: jest.Mock;
 };
-const { firewallSetup } = jest.requireMock("../../src/commands/firewall") as {
+const { firewallSetup } = jest.requireMock("../../src/core/firewall") as {
   firewallSetup: jest.Mock;
 };
-const { secureSetup } = jest.requireMock("../../src/commands/secure") as {
+const { secureSetup } = jest.requireMock("../../src/core/secure") as {
   secureSetup: jest.Mock;
 };
 

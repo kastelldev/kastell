@@ -2,8 +2,8 @@ import axios from "axios";
 import inquirer from "inquirer";
 import * as fs from "fs";
 import { initCommand } from "../../src/commands/init";
-import { firewallSetup } from "../../src/commands/firewall";
-import { secureSetup } from "../../src/commands/secure";
+import { firewallSetup } from "../../src/core/firewall";
+import { secureSetup } from "../../src/core/secure";
 
 jest.mock("../../src/utils/healthCheck", () => ({
   waitForCoolify: jest.fn().mockResolvedValue(true),
@@ -33,12 +33,12 @@ jest.mock("../../src/utils/openBrowser", () => ({
   openBrowser: jest.fn(),
 }));
 
-jest.mock("../../src/commands/firewall", () => ({
+jest.mock("../../src/core/firewall", () => ({
   firewallSetup: jest.fn().mockResolvedValue(undefined),
   firewallCommand: jest.fn(),
 }));
 
-jest.mock("../../src/commands/secure", () => ({
+jest.mock("../../src/core/secure", () => ({
   secureSetup: jest.fn().mockResolvedValue(undefined),
   secureCommand: jest.fn(),
 }));
