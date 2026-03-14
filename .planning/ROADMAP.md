@@ -105,7 +105,7 @@ MCP server with 7 tools, 12 security fixes, SSH key auto-generation, full docs u
 
 </details>
 
-### 🚧 v1.7 Guard Core (In Progress)
+### v1.7 Guard Core (In Progress)
 
 **Milestone Goal:** Autonomous security monitoring daemon, one-command server hardening, scheduled backups, risk trend with cause analysis, and proactive operations intelligence — establishing guard as the core Kastell value driver.
 
@@ -193,7 +193,11 @@ Plans:
   3. Doctor detects and reports high swap usage, stale packages, elevated fail2ban ban rate, audit score regression streaks, old backups, and reclaimable Docker disk space when present
   4. Each finding includes a description of the problem and a specific `kastell` or shell command the user can run to address it
   5. Doctor completes using cached snapshots without making a live SSH connection unless `--fresh` is passed
-**Plans**: TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 32-01-PLAN.md — Core doctor module (types, 7 pure check functions, metrics cache, orchestrator)
+- [ ] 32-02-PLAN.md — CLI command update (Commander registration, dispatch, --fresh/--json)
 
 ### Phase 33: MCP + Completions
 **Goal**: All new v1.7 commands are accessible via Claude AI through MCP tools, and shell completions are updated to include guard, doctor, and lock subcommands
@@ -238,14 +242,14 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 1-27. Prior milestones | v1.2.0–v1.6 | All | Complete | 2026-03-11 |
+| 1-27. Prior milestones | v1.2.0-v1.6 | All | Complete | 2026-03-11 |
 | 28. Lock | 2/2 | Complete    | 2026-03-14 | - |
 | 29. Backup Schedule | 2/2 | Complete    | 2026-03-14 | - |
 | 30. Guard Daemon | 2/2 | Complete    | 2026-03-14 | - |
 | 31. Risk Trend | 2/2 | Complete    | 2026-03-14 | - |
-| 32. Doctor | v1.7 | 0/TBD | Not started | - |
+| 32. Doctor | v1.7 | 0/2 | Planned | - |
 | 33. MCP + Completions | v1.7 | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-02-27*
-*Last updated: 2026-03-14 — v1.7 Guard Core roadmap added (phases 28-33)*
+*Last updated: 2026-03-14 — Phase 32 Doctor planned (2 plans, 2 waves)*
