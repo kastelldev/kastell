@@ -26,6 +26,7 @@ describe("MCP server_guard tool", () => {
   describe("start action", () => {
     it("calls startGuard with server ip and name, returns mcpSuccess", async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer] as never);
+      mockedConfig.findServer.mockReturnValue(sampleServer as never);
       mockedGuard.startGuard.mockResolvedValue({ success: true });
 
       const result = await handleServerGuard({ server: "my-server", action: "start" });
@@ -38,6 +39,7 @@ describe("MCP server_guard tool", () => {
 
     it("returns mcpError when startGuard fails", async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer] as never);
+      mockedConfig.findServer.mockReturnValue(sampleServer as never);
       mockedGuard.startGuard.mockResolvedValue({
         success: false,
         error: "Failed to deploy guard script",
@@ -55,6 +57,7 @@ describe("MCP server_guard tool", () => {
   describe("stop action", () => {
     it("calls stopGuard with server ip and name, returns mcpSuccess", async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer] as never);
+      mockedConfig.findServer.mockReturnValue(sampleServer as never);
       mockedGuard.stopGuard.mockResolvedValue({ success: true });
 
       const result = await handleServerGuard({ server: "my-server", action: "stop" });
@@ -67,6 +70,7 @@ describe("MCP server_guard tool", () => {
 
     it("returns mcpError when stopGuard fails", async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer] as never);
+      mockedConfig.findServer.mockReturnValue(sampleServer as never);
       mockedGuard.stopGuard.mockResolvedValue({
         success: false,
         error: "Failed to remove guard cron entry",
@@ -81,6 +85,7 @@ describe("MCP server_guard tool", () => {
   describe("status action", () => {
     it("calls guardStatus with server ip and name, returns mcpSuccess with status data", async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer] as never);
+      mockedConfig.findServer.mockReturnValue(sampleServer as never);
       mockedGuard.guardStatus.mockResolvedValue({
         success: true,
         isActive: true,
@@ -102,6 +107,7 @@ describe("MCP server_guard tool", () => {
 
     it("returns mcpError when guardStatus fails", async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer] as never);
+      mockedConfig.findServer.mockReturnValue(sampleServer as never);
       mockedGuard.guardStatus.mockResolvedValue({
         success: false,
         isActive: false,
@@ -170,6 +176,7 @@ describe("MCP server_guard tool", () => {
   describe("error handling", () => {
     it("returns mcpError when core function throws", async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer] as never);
+      mockedConfig.findServer.mockReturnValue(sampleServer as never);
       mockedGuard.startGuard.mockRejectedValue(new Error("SSH connection refused"));
 
       const result = await handleServerGuard({ server: "my-server", action: "start" });

@@ -39,6 +39,7 @@ describe("MCP server_lock tool", () => {
   describe("safety gate", () => {
     it("returns mcpError when production=false and dryRun=false (default)", async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer] as never);
+      mockedConfig.findServer.mockReturnValue(sampleServer as never);
 
       const result = await handleServerLock({ server: "my-server" });
 
@@ -49,6 +50,7 @@ describe("MCP server_lock tool", () => {
 
     it("returns mcpError when production=false explicitly and dryRun=false", async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer] as never);
+      mockedConfig.findServer.mockReturnValue(sampleServer as never);
 
       const result = await handleServerLock({ server: "my-server", production: false });
 
@@ -59,6 +61,7 @@ describe("MCP server_lock tool", () => {
 
     it("does NOT call applyLock when safety gate blocks", async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer] as never);
+      mockedConfig.findServer.mockReturnValue(sampleServer as never);
 
       await handleServerLock({ server: "my-server" });
 
@@ -69,6 +72,7 @@ describe("MCP server_lock tool", () => {
   describe("production mode", () => {
     it("calls applyLock with production=true and returns mcpSuccess", async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer] as never);
+      mockedConfig.findServer.mockReturnValue(sampleServer as never);
       mockedLock.applyLock.mockResolvedValue(sampleLockResult);
 
       const result = await handleServerLock({ server: "my-server", production: true });
@@ -88,6 +92,7 @@ describe("MCP server_lock tool", () => {
 
     it("returns mcpError when applyLock returns success=false", async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer] as never);
+      mockedConfig.findServer.mockReturnValue(sampleServer as never);
       mockedLock.applyLock.mockResolvedValue({
         success: false,
         steps: {
@@ -112,6 +117,7 @@ describe("MCP server_lock tool", () => {
   describe("dry run mode", () => {
     it("calls applyLock with dryRun=true even without production=true", async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer] as never);
+      mockedConfig.findServer.mockReturnValue(sampleServer as never);
       mockedLock.applyLock.mockResolvedValue({
         success: true,
         steps: {
@@ -139,6 +145,7 @@ describe("MCP server_lock tool", () => {
     it("resolves platform from server.platform", async () => {
       const serverWithPlatform = { ...sampleServer, platform: "coolify" };
       mockedConfig.getServers.mockReturnValue([serverWithPlatform] as never);
+      mockedConfig.findServer.mockReturnValue(serverWithPlatform as never);
       mockedLock.applyLock.mockResolvedValue(sampleLockResult);
 
       await handleServerLock({ server: "my-server", production: true });
@@ -154,6 +161,7 @@ describe("MCP server_lock tool", () => {
     it("falls back to server.mode when platform is not set", async () => {
       const serverWithMode = { ...sampleServer, mode: "dokploy" };
       mockedConfig.getServers.mockReturnValue([serverWithMode] as never);
+      mockedConfig.findServer.mockReturnValue(serverWithMode as never);
       mockedLock.applyLock.mockResolvedValue(sampleLockResult);
 
       await handleServerLock({ server: "my-server", production: true });
@@ -168,6 +176,7 @@ describe("MCP server_lock tool", () => {
 
     it('falls back to "bare" when neither platform nor mode is set', async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer] as never);
+      mockedConfig.findServer.mockReturnValue(sampleServer as never);
       mockedLock.applyLock.mockResolvedValue(sampleLockResult);
 
       await handleServerLock({ server: "my-server", production: true });
@@ -235,6 +244,7 @@ describe("MCP server_lock tool", () => {
   describe("error handling", () => {
     it("returns mcpError when core function throws", async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer] as never);
+      mockedConfig.findServer.mockReturnValue(sampleServer as never);
       mockedLock.applyLock.mockRejectedValue(new Error("SSH connection refused"));
 
       const result = await handleServerLock({ server: "my-server", production: true });

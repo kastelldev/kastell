@@ -54,6 +54,7 @@ describe("MCP server_doctor tool", () => {
   describe("summary format (default)", () => {
     it("calls runServerDoctor with fresh=false by default, returns mcpSuccess with findings", async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer] as never);
+      mockedConfig.findServer.mockReturnValue(sampleServer as never);
       mockedDoctor.runServerDoctor.mockResolvedValue({
         success: true,
         data: sampleDoctorResult,
@@ -73,6 +74,7 @@ describe("MCP server_doctor tool", () => {
 
     it("calls runServerDoctor with fresh=true when fresh param is true", async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer] as never);
+      mockedConfig.findServer.mockReturnValue(sampleServer as never);
       mockedDoctor.runServerDoctor.mockResolvedValue({
         success: true,
         data: { ...sampleDoctorResult, usedFreshData: true },
@@ -88,6 +90,7 @@ describe("MCP server_doctor tool", () => {
 
     it("returns mcpSuccess with findings grouped by severity in summary", async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer] as never);
+      mockedConfig.findServer.mockReturnValue(sampleServer as never);
       mockedDoctor.runServerDoctor.mockResolvedValue({
         success: true,
         data: sampleDoctorResult,
@@ -107,6 +110,7 @@ describe("MCP server_doctor tool", () => {
   describe("json format", () => {
     it("returns raw JSON DoctorResult when format=json", async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer] as never);
+      mockedConfig.findServer.mockReturnValue(sampleServer as never);
       mockedDoctor.runServerDoctor.mockResolvedValue({
         success: true,
         data: sampleDoctorResult,
@@ -125,6 +129,7 @@ describe("MCP server_doctor tool", () => {
   describe("error cases", () => {
     it("returns mcpError when runServerDoctor returns success=false", async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer] as never);
+      mockedConfig.findServer.mockReturnValue(sampleServer as never);
       mockedDoctor.runServerDoctor.mockResolvedValue({
         success: false,
         error: "Invalid IP address",
@@ -139,6 +144,7 @@ describe("MCP server_doctor tool", () => {
 
     it("returns mcpError when core function throws", async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer] as never);
+      mockedConfig.findServer.mockReturnValue(sampleServer as never);
       mockedDoctor.runServerDoctor.mockRejectedValue(new Error("Unexpected error"));
 
       const result = await handleServerDoctor({ server: "my-server" });
