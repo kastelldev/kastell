@@ -232,11 +232,11 @@ describe("DokployAdapter", () => {
       expect(pgDumpCall[1]).toContain("docker ps -qf name=dokploy-postgres");
     });
 
-    it("should use -U postgres -d dokploy for pg_dump (not -U coolify -d coolify)", async () => {
+    it("should use -U dokploy -d dokploy for pg_dump (not -U coolify -d coolify)", async () => {
       setupSuccessfulBackup();
       await adapter.createBackup("1.2.3.4", "test-server", "hetzner");
       const pgDumpCall = mockSshExec.mock.calls[1];
-      expect(pgDumpCall[1]).toContain("-U postgres -d dokploy");
+      expect(pgDumpCall[1]).toContain("-U dokploy -d dokploy");
       expect(pgDumpCall[1]).not.toContain("-U coolify");
       expect(pgDumpCall[1]).not.toContain("-d coolify");
     });

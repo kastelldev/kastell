@@ -24,6 +24,7 @@ const MENU: MenuCategory[] = [
       { name: "Add an existing server", value: "add", description: "Register an existing server in your Kastell config" },
       { name: "List all servers", value: "list", description: "Show all managed servers with status overview" },
       { name: "Check server status", value: "status", description: "Check uptime, resources, and platform health" },
+      { name: "Fleet overview", value: "fleet", description: "Health and security posture of all servers at once" },
       { name: "SSH into a server", value: "ssh", description: "Open an SSH session or run a remote command" },
       { name: "Restart a server", value: "restart", description: "Reboot a managed server via provider API" },
       { name: "Remove from config", value: "remove", description: "Remove a server from local config without destroying it" },
@@ -34,9 +35,12 @@ const MENU: MenuCategory[] = [
     label: "Security",
     emoji: "\uD83D\uDD12",
     actions: [
+      { name: "Run security audit", value: "audit", description: "Score server security across 9 categories with quick wins" },
       { name: "Harden SSH & fail2ban", value: "secure", description: "Configure SSH security and brute-force protection" },
+      { name: "Lock server (production hardening)", value: "lock", description: "Apply SSH + fail2ban + UFW + sysctl hardening in one step" },
       { name: "Manage firewall (UFW)", value: "firewall", description: "View, add, or remove UFW firewall port rules" },
       { name: "Manage domain & SSL", value: "domain", description: "Set custom domains and configure SSL certificates" },
+      { name: "Collect forensic evidence", value: "evidence", description: "Gather logs, ports, firewall rules with SHA256 checksums" },
       { name: "Manage auth tokens", value: "auth", description: "Store, remove, or list provider API tokens in OS keychain" },
     ],
   },
@@ -47,6 +51,8 @@ const MENU: MenuCategory[] = [
       { name: "View server logs", value: "logs", description: "View Coolify, Dokploy, Docker, or system logs" },
       { name: "Monitor resources (CPU/RAM/Disk)", value: "monitor", description: "Live resource usage with optional Docker container list" },
       { name: "Health check", value: "health", description: "Verify platform and server connectivity" },
+      { name: "Guard daemon", value: "guard", description: "Start, stop, or check autonomous security monitoring" },
+      { name: "Doctor (diagnostics)", value: "doctor", description: "Proactive health analysis with remediation commands" },
     ],
   },
   {
@@ -54,6 +60,7 @@ const MENU: MenuCategory[] = [
     emoji: "\uD83D\uDCBE",
     actions: [
       { name: "Create a backup", value: "backup", description: "Download server configuration backup via SCP" },
+      { name: "List local backups", value: "backup-list", description: "Show all locally stored backups" },
       { name: "Restore from backup", value: "restore", description: "Restore a previously downloaded backup to a server" },
       { name: "Manage snapshots", value: "snapshot", description: "List, create, or delete provider-level snapshots" },
     ],
@@ -64,7 +71,13 @@ const MENU: MenuCategory[] = [
     actions: [
       { name: "Update platform (Coolify/Dokploy)", value: "update", description: "Update Coolify or Dokploy to the latest version" },
       { name: "Full maintenance cycle", value: "maintain", description: "Update + security patches + disk cleanup + Docker prune" },
-      { name: "Check local environment", value: "doctor", description: "Verify local tools, config, and optional API tokens" },
+    ],
+  },
+  {
+    label: "Notifications",
+    emoji: "\uD83D\uDD14",
+    actions: [
+      { name: "Manage notifications", value: "notify", description: "Add Telegram or Discord/Slack webhook for alerts" },
     ],
   },
   {
@@ -74,6 +87,7 @@ const MENU: MenuCategory[] = [
       { name: "Manage defaults", value: "config", description: "Set default provider, region, and server template" },
       { name: "Export server list", value: "export", description: "Export server configuration to a JSON file" },
       { name: "Import server list", value: "import", description: "Import servers from a previously exported JSON file" },
+      { name: "Shell completions", value: "completions", description: "Generate bash, zsh, or fish completion scripts" },
     ],
   },
 ];
@@ -122,7 +136,7 @@ export function buildSearchSource(term: string | undefined): Choice[] {
 }
 
 function backChoice(): { name: string; value: string } {
-  return { name: chalk.dim("← Back"), value: BACK };
+  return { name: chalk.dim("\u2190 Back"), value: BACK };
 }
 
 // ─── Sub-option prompts ─────────────────────────────────────────────────────
@@ -245,6 +259,7 @@ async function promptSecure(): Promise<string[] | null> {
 async function promptDomain(): Promise<string[] | null> {
   const sub = await promptList("Domain action:", [
     { name: "Show current domain info", value: "info" },
+    { name: "List domains", value: "list" },
     { name: "Set a custom domain", value: "add" },
     { name: "Check DNS for a domain", value: "check" },
     { name: "Remove domain", value: "remove" },
@@ -330,11 +345,11 @@ async function promptUpdate(): Promise<string[] | null> {
 }
 
 async function promptDoctor(): Promise<string[] | null> {
-  const { checkTokens } = await inquirer.prompt([
-    { type: "confirm", name: "checkTokens", message: "Validate provider API tokens?", default: false },
+  const { fresh } = await inquirer.prompt([
+    { type: "confirm", name: "fresh", message: "Fetch fresh data via SSH? (slower but accurate)", default: true },
   ]);
   const args = ["doctor"];
-  if (checkTokens) args.push("--check-tokens");
+  if (fresh) args.push("--fresh");
   return args;
 }
 
@@ -377,11 +392,14 @@ async function promptSsh(): Promise<string[] | null> {
 }
 
 async function promptBackup(): Promise<string[] | null> {
-  const { all } = await inquirer.prompt([
-    { type: "confirm", name: "all", message: "Backup all servers?", default: false },
+  const sub = await promptList("Backup action:", [
+    { name: "Create a new backup", value: "create" },
+    { name: "Backup all servers", value: "all" },
   ]);
+  if (!sub) return null;
+
   const args = ["backup"];
-  if (all) args.push("--all");
+  if (sub === "all") args.push("--all");
   return args;
 }
 
@@ -395,6 +413,79 @@ async function promptImport(): Promise<string[] | null> {
     },
   ]);
   return ["import", path];
+}
+
+async function promptAudit(): Promise<string[] | null> {
+  const format = await promptList("Output format:", [
+    { name: "Dashboard summary", value: "summary" },
+    { name: "JSON output", value: "json" },
+    { name: "Score only", value: "score-only" },
+    { name: "SVG badge", value: "badge" },
+    { name: "Show score trend", value: "trend" },
+  ]);
+  if (!format) return null;
+
+  const args = ["audit"];
+  if (format === "summary") args.push("--summary");
+  else if (format === "json") args.push("--json");
+  else if (format === "score-only") args.push("--score-only");
+  else if (format === "badge") args.push("--badge");
+  else if (format === "trend") args.push("--trend");
+  return args;
+}
+
+async function promptLock(): Promise<string[] | null> {
+  const mode = await promptList("Lock mode:", [
+    { name: "Dry run (preview changes)", value: "dry-run" },
+    { name: "Apply production hardening", value: "production" },
+  ]);
+  if (!mode) return null;
+
+  const args = ["lock"];
+  if (mode === "dry-run") args.push("--dry-run");
+  else args.push("--production");
+  return args;
+}
+
+async function promptEvidence(): Promise<string[] | null> {
+  const { name } = await inquirer.prompt([
+    {
+      type: "input",
+      name: "name",
+      message: "Evidence label (e.g. pre-incident, weekly-check):",
+      default: "manual",
+    },
+  ]);
+  return ["evidence", "--name", name];
+}
+
+async function promptGuard(): Promise<string[] | null> {
+  const sub = await promptList("Guard action:", [
+    { name: "Check guard status", value: "status" },
+    { name: "Start guard daemon", value: "start" },
+    { name: "Stop guard daemon", value: "stop" },
+  ]);
+  if (!sub) return null;
+  return ["guard", sub];
+}
+
+async function promptNotify(): Promise<string[] | null> {
+  const sub = await promptList("Notification action:", [
+    { name: "Add a notification channel", value: "add" },
+    { name: "Send a test notification", value: "test" },
+  ]);
+  if (!sub) return null;
+  return ["notify", sub];
+}
+
+async function promptCompletions(): Promise<string[] | null> {
+  const shell = await promptList("Shell:", [
+    { name: "Bash", value: "bash" },
+    { name: "Zsh", value: "zsh" },
+    { name: "Fish", value: "fish" },
+  ]);
+  if (!shell) return null;
+  return ["completions", shell];
 }
 
 // ─── Command → args mapping ─────────────────────────────────────────────────
@@ -415,10 +506,17 @@ const SUB_PROMPTS: Record<string, () => Promise<string[] | null>> = {
   ssh: promptSsh,
   backup: promptBackup,
   import: promptImport,
+  audit: promptAudit,
+  lock: promptLock,
+  evidence: promptEvidence,
+  guard: promptGuard,
+  notify: promptNotify,
+  completions: promptCompletions,
 };
 
 const DIRECT_COMMANDS = new Set([
   "list", "add", "destroy", "restart", "remove", "restore", "export", "config",
+  "health", "fleet", "backup-list",
 ]);
 
 export async function interactiveMenu(): Promise<string[] | null> {
@@ -432,11 +530,14 @@ export async function interactiveMenu(): Promise<string[] | null> {
         name: "action",
         message: "What would you like to do?",
         source: buildSearchSource,
-        pageSize: 22,
+        pageSize: 25,
       },
     ]);
 
     if (action === "exit") return null;
+
+    // Special compound commands
+    if (action === "backup-list") return ["backup", "list"];
 
     if (DIRECT_COMMANDS.has(action)) {
       return [action];

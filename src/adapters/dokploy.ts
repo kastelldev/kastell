@@ -128,7 +128,7 @@ echo "Then access your instance at: http://YOUR_SERVER_IP:3000"
   private backupConfig(): AdapterBackupConfig {
     return {
       platform: "dokploy",
-      pgDumpCmd: "set -o pipefail && docker exec $(docker ps -qf name=dokploy-postgres --no-trunc | head -1) pg_dump -U postgres -d dokploy | gzip > /tmp/dokploy-backup.sql.gz",
+      pgDumpCmd: "set -o pipefail && docker exec $(docker ps -qf name=dokploy-postgres --no-trunc | head -1) pg_dump -U dokploy -d dokploy | gzip > /tmp/dokploy-backup.sql.gz",
       configTarCmd: "tar czf /tmp/dokploy-config.tar.gz -C /etc/dokploy .",
       versionCmd: this.versionCmd(),
       cleanupCmd: "rm -f /tmp/dokploy-backup.sql.gz /tmp/dokploy-config.tar.gz",
@@ -142,7 +142,7 @@ echo "Then access your instance at: http://YOUR_SERVER_IP:3000"
       platform: "dokploy",
       stopCmd: "docker service scale dokploy=0",
       startDbCmd: "docker service scale dokploy-postgres=1 && sleep 5",
-      restoreDbCmd: "gunzip -c /tmp/dokploy-backup.sql.gz | docker exec -i $(docker ps -qf name=dokploy-postgres --no-trunc | head -1) psql -U postgres -d dokploy",
+      restoreDbCmd: "gunzip -c /tmp/dokploy-backup.sql.gz | docker exec -i $(docker ps -qf name=dokploy-postgres --no-trunc | head -1) psql -U dokploy -d dokploy",
       restoreConfigCmd: "tar xzf /tmp/dokploy-config.tar.gz -C /etc/dokploy",
       startCmd: "docker service scale dokploy=1",
       cleanupCmd: "rm -f /tmp/dokploy-backup.sql.gz /tmp/dokploy-config.tar.gz",

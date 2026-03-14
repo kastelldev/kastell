@@ -412,18 +412,18 @@ describe("interactiveMenu", () => {
 
   // ─── Doctor sub-prompt ──────────────────────────────────────────────────────
 
-  it("doctor: returns with --check-tokens", async () => {
+  it("doctor: returns with --fresh", async () => {
     mockedInquirer.prompt
       .mockResolvedValueOnce({ action: "doctor" })
-      .mockResolvedValueOnce({ checkTokens: true });
+      .mockResolvedValueOnce({ fresh: true });
 
-    expect(await interactiveMenu()).toEqual(["doctor", "--check-tokens"]);
+    expect(await interactiveMenu()).toEqual(["doctor", "--fresh"]);
   });
 
-  it("doctor: returns without --check-tokens", async () => {
+  it("doctor: returns without --fresh", async () => {
     mockedInquirer.prompt
       .mockResolvedValueOnce({ action: "doctor" })
-      .mockResolvedValueOnce({ checkTokens: false });
+      .mockResolvedValueOnce({ fresh: false });
 
     expect(await interactiveMenu()).toEqual(["doctor"]);
   });
@@ -458,18 +458,18 @@ describe("interactiveMenu", () => {
 
   // ─── Backup sub-prompt ──────────────────────────────────────────────────────
 
-  it("backup: returns with --all", async () => {
+  it("backup: returns with --all via sub-menu", async () => {
     mockedInquirer.prompt
       .mockResolvedValueOnce({ action: "backup" })
-      .mockResolvedValueOnce({ all: true });
+      .mockResolvedValueOnce({ answer: "all" });
 
     expect(await interactiveMenu()).toEqual(["backup", "--all"]);
   });
 
-  it("backup: returns without --all", async () => {
+  it("backup: returns create via sub-menu", async () => {
     mockedInquirer.prompt
       .mockResolvedValueOnce({ action: "backup" })
-      .mockResolvedValueOnce({ all: false });
+      .mockResolvedValueOnce({ answer: "create" });
 
     expect(await interactiveMenu()).toEqual(["backup"]);
   });
