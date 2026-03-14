@@ -25,9 +25,9 @@
 
 ### Doctor Fix
 
-- [ ] **DFIX-01**: User can run `kastell doctor --fix` with per-finding interactive confirmation
-- [ ] **DFIX-02**: `--fix --force` skips confirmation prompts for CI/scripting
-- [ ] **DFIX-03**: `--fix --dry-run` shows fix commands without executing
+- [x] **DFIX-01**: User can run `kastell doctor --fix` with per-finding interactive confirmation
+- [x] **DFIX-02**: `--fix --force` skips confirmation prompts for CI/scripting
+- [x] **DFIX-03**: `--fix --dry-run` shows fix commands without executing
 
 ### Tech Debt
 
@@ -75,9 +75,9 @@
 | NOTF-05 | Phase 36 | Complete |
 | NOTF-06 | Phase 36 | Complete |
 | NOTF-07 | Phase 39 | Pending |
-| DFIX-01 | Phase 37 | Pending |
-| DFIX-02 | Phase 37 | Pending |
-| DFIX-03 | Phase 37 | Pending |
+| DFIX-01 | Phase 37 | Complete |
+| DFIX-02 | Phase 37 | Complete |
+| DFIX-03 | Phase 37 | Complete |
 | DEBT-01 | Phase 35 | Complete |
 | DEBT-02 | Phase 34 | Complete |
 | DEBT-03 | Phase 40 | Pending |

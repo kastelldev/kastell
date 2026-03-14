@@ -177,3 +177,19 @@ export interface KastellResult<T = void> {
   error?: string;
   hint?: string;
 }
+
+// Fleet
+export interface FleetRow {
+  name: string;
+  ip: string;
+  provider: string;
+  status: "ONLINE" | "DEGRADED" | "OFFLINE";
+  auditScore: number | null;
+  responseTime: number | null;
+  errorReason: string | null;
+}
+
+export interface FleetOptions {
+  json?: boolean;
+  sort?: string;
+}

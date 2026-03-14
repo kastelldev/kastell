@@ -188,7 +188,10 @@ Plans:
   3. `kastell fleet --json` outputs machine-readable JSON with the same data as the table
   4. `kastell fleet --sort score` (and name, provider) reorders the table rows accordingly
   5. Claude can retrieve fleet data via the `server_fleet` MCP tool
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 38-01-PLAN.md — Core fleet module (health extraction, p-limit concurrency, table/JSON output, sort)
+- [ ] 38-02-PLAN.md — MCP server_fleet tool
 
 ### Phase 39: Guard Notification Integration
 **Goal**: Guard breach detections trigger real notifications through all configured channels
@@ -246,11 +249,11 @@ Plans:
 | 34. Layer Violation Fix | 1/1 | Complete   | 2026-03-14 | - |
 | 35. Adapter Deduplication | 1/1 | Complete    | 2026-03-14 | - |
 | 36. Notification Module | 2/2 | Complete    | 2026-03-14 | - |
-| 37. Doctor Fix | 1/1 | Complete   | 2026-03-14 | - |
-| 38. Fleet Visibility | v1.8 | 0/TBD | Not started | - |
+| 37. Doctor Fix | 1/1 | Complete    | 2026-03-14 | - |
+| 38. Fleet Visibility | v1.8 | 0/2 | Planned | - |
 | 39. Guard Notification Integration | v1.8 | 0/TBD | Not started | - |
 | 40. Shell Completions + Polish | v1.8 | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-02-27*
-*Last updated: 2026-03-14 — Phase 37 Doctor Fix planned (1 plan)*
+*Last updated: 2026-03-14 — Phase 38 Fleet Visibility planned (2 plans)*
