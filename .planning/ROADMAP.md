@@ -252,7 +252,7 @@ Plans:
 | 30. Guard Daemon | 2/2 | Complete    | 2026-03-14 | - |
 | 31. Risk Trend | 2/2 | Complete    | 2026-03-14 | - |
 | 32. Doctor | 2/2 | Complete    | 2026-03-14 | - |
-| 33. MCP + Completions | v1.7 | 0/2 | Planned | - |
+| 33. MCP + Completions | 1/2 | In Progress|  | - |
 
 ---
 *Roadmap created: 2026-02-27*

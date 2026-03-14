@@ -56,7 +56,7 @@
 
 - [ ] **MCP-01**: MCP tools added for guard (start/stop/status)
 - [ ] **MCP-02**: MCP tools added for doctor, lock
-- [ ] **MCP-03**: Shell completions updated for new commands
+- [x] **MCP-03**: Shell completions updated for new commands
 
 ## v1.8 Requirements (Deferred)
 
@@ -129,7 +129,7 @@
 | DOC-06 | Phase 32 | Complete |
 | MCP-01 | Phase 33 | Pending |
 | MCP-02 | Phase 33 | Pending |
-| MCP-03 | Phase 33 | Pending |
+| MCP-03 | Phase 33 | Complete |
 
 **Coverage:**
 - v1.7 requirements: 35 total
