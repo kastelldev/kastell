@@ -111,7 +111,7 @@ MCP server with 7 tools, 12 security fixes, SSH key auto-generation, full docs u
 
 - [x] **Phase 28: Lock** - One-command server hardening with idempotency, platform awareness, and audit score delta (completed 2026-03-14)
 - [x] **Phase 29: Backup Schedule** - Scheduled backup via remote cron with overlap protection and idempotent install (completed 2026-03-14)
-- [ ] **Phase 30: Guard Daemon** - Autonomous security monitoring daemon running as remote cron on VPS with metric collection
+- [x] **Phase 30: Guard Daemon** - Autonomous security monitoring daemon running as remote cron on VPS with metric collection (completed 2026-03-14)
 - [ ] **Phase 31: Risk Trend** - Audit score trend with per-check cause attribution and time-bounded queries
 - [ ] **Phase 32: Doctor** - Proactive operations analysis from cached snapshots and metric history
 - [ ] **Phase 33: MCP + Completions** - MCP tools for guard/doctor/lock and shell completion updates
@@ -237,7 +237,7 @@ Plans:
 | 1-27. Prior milestones | v1.2.0–v1.6 | All | Complete | 2026-03-11 |
 | 28. Lock | 2/2 | Complete    | 2026-03-14 | - |
 | 29. Backup Schedule | 2/2 | Complete    | 2026-03-14 | - |
-| 30. Guard Daemon | 1/2 | In Progress|  | - |
+| 30. Guard Daemon | 2/2 | Complete   | 2026-03-14 | - |
 | 31. Risk Trend | v1.7 | 0/TBD | Not started | - |
 | 32. Doctor | v1.7 | 0/TBD | Not started | - |
 | 33. MCP + Completions | v1.7 | 0/TBD | Not started | - |
