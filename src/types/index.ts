@@ -160,6 +160,16 @@ export interface BackupManifest {
   platform?: Platform;
 }
 
+// Guard
+export interface MetricSnapshot {
+  timestamp: string; // ISO 8601 UTC
+  diskPct: number; // root filesystem usage percent (integer, 0-100)
+  ramPct: number; // RAM used percent (integer, 0-100)
+  cpuLoad1: number; // 1-minute load average, truncated to integer
+  ncpu: number; // number of CPU cores (nproc)
+  auditScore: number; // last known audit score, 0 if unavailable
+}
+
 // Result pattern for core/ functions (no exceptions thrown)
 export interface KastellResult<T = void> {
   success: boolean;

@@ -161,7 +161,11 @@ Plans:
   4. Running `kastell guard start <server>` twice results in exactly one cron entry — no duplicate guard entries accumulate
   5. Guard writes all check outcomes and threshold breaches to `/var/log/kastell-guard.log` on the VPS; the log is readable via SSH
   6. Guard writes a MetricSnapshot (disk, RAM, CPU, timestamp) on each run to a file on the VPS that doctor can read later
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 30-01-PLAN.md — Core guard module (types, command builders, orchestrators, shell script, state management)
+- [ ] 30-02-PLAN.md — CLI command wrapper + Commander subcommand registration
 
 ### Phase 31: Risk Trend
 **Goal**: Users can see how their server's audit score has changed over time with a cause list explaining which checks drove each score change
@@ -233,7 +237,7 @@ Plans:
 | 1-27. Prior milestones | v1.2.0–v1.6 | All | Complete | 2026-03-11 |
 | 28. Lock | 2/2 | Complete    | 2026-03-14 | - |
 | 29. Backup Schedule | 2/2 | Complete    | 2026-03-14 | - |
-| 30. Guard Daemon | v1.7 | 0/TBD | Not started | - |
+| 30. Guard Daemon | v1.7 | 0/2 | Planned | - |
 | 31. Risk Trend | v1.7 | 0/TBD | Not started | - |
 | 32. Doctor | v1.7 | 0/TBD | Not started | - |
 | 33. MCP + Completions | v1.7 | 0/TBD | Not started | - |
