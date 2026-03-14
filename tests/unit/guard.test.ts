@@ -1,9 +1,11 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import * as sshUtils from "../../src/utils/ssh";
+import * as notifyModule from "../../src/core/notify";
 import {
   startGuard,
   stopGuard,
   guardStatus,
+  dispatchGuardBreaches,
   buildDeployGuardScriptCommand,
   buildInstallGuardCronCommand,
   buildRemoveGuardCronCommand,
@@ -25,6 +27,10 @@ jest.mock("fs", () => ({
   mkdirSync: jest.fn(),
 }));
 jest.mock("../../src/utils/ssh");
+jest.mock("../../src/core/notify");
+
+const mockedNotify = notifyModule as jest.Mocked<typeof notifyModule>;
+let mockedDispatchWithCooldown: jest.Mock;
 
 const mockedSsh = sshUtils as jest.Mocked<typeof sshUtils>;
 const mockedExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;
@@ -33,6 +39,11 @@ const mockedWriteFileSync = writeFileSync as jest.MockedFunction<typeof writeFil
 
 const VALID_IP = "1.2.3.4";
 const SERVER_NAME = "my-server";
+
+beforeEach(() => {
+  mockedDispatchWithCooldown = mockedNotify.dispatchWithCooldown as jest.Mock;
+  mockedDispatchWithCooldown.mockResolvedValue({ skipped: false, results: [] });
+});
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
@@ -597,5 +608,86 @@ describe("guardStatus", () => {
     const result = await guardStatus(VALID_IP, SERVER_NAME);
 
     expect(result.logTail).toContain(logLine);
+  });
+});
+
+// ─── dispatchGuardBreaches (tests categorizeBreach indirectly) ────────────────
+
+describe("dispatchGuardBreaches", () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+    mockedDispatchWithCooldown = mockedNotify.dispatchWithCooldown as jest.Mock;
+    mockedDispatchWithCooldown.mockResolvedValue({ skipped: false, results: [] });
+  });
+
+  it("calls dispatchWithCooldown zero times when breaches is empty", async () => {
+    await dispatchGuardBreaches("prod-1", []);
+    expect(mockedDispatchWithCooldown).not.toHaveBeenCalled();
+  });
+
+  it("categorizes disk breach and calls dispatchWithCooldown with findingType disk", async () => {
+    await dispatchGuardBreaches("prod-1", ["Disk usage 85% exceeds 80% threshold"]);
+    expect(mockedDispatchWithCooldown).toHaveBeenCalledTimes(1);
+    expect(mockedDispatchWithCooldown).toHaveBeenCalledWith(
+      "prod-1",
+      "disk",
+      expect.stringContaining("prod-1"),
+    );
+  });
+
+  it("categorizes RAM breach and calls dispatchWithCooldown with findingType ram", async () => {
+    await dispatchGuardBreaches("prod-1", ["RAM usage 92% exceeds 90% threshold"]);
+    expect(mockedDispatchWithCooldown).toHaveBeenCalledWith(
+      "prod-1",
+      "ram",
+      expect.stringContaining("prod-1"),
+    );
+  });
+
+  it("categorizes CPU breach and calls dispatchWithCooldown with findingType cpu", async () => {
+    await dispatchGuardBreaches("prod-1", ["CPU load avg 4 >= 2 (nproc)"]);
+    expect(mockedDispatchWithCooldown).toHaveBeenCalledWith(
+      "prod-1",
+      "cpu",
+      expect.stringContaining("prod-1"),
+    );
+  });
+
+  it("categorizes audit regression breach and calls dispatchWithCooldown with findingType regression", async () => {
+    await dispatchGuardBreaches("prod-1", [
+      "Audit score regression detected (passwordauth may have changed)",
+    ]);
+    expect(mockedDispatchWithCooldown).toHaveBeenCalledWith(
+      "prod-1",
+      "regression",
+      expect.stringContaining("prod-1"),
+    );
+  });
+
+  it("categorizes unknown breach as 'unknown'", async () => {
+    await dispatchGuardBreaches("prod-1", ["some unknown breach message"]);
+    expect(mockedDispatchWithCooldown).toHaveBeenCalledWith(
+      "prod-1",
+      "unknown",
+      expect.stringContaining("prod-1"),
+    );
+  });
+
+  it("calls dispatchWithCooldown once per breach with correct serverName and message", async () => {
+    const breaches = ["Disk usage 85% exceeds 80% threshold", "RAM usage 92% exceeds 90% threshold"];
+    await dispatchGuardBreaches("prod-1", breaches);
+    expect(mockedDispatchWithCooldown).toHaveBeenCalledTimes(2);
+    expect(mockedDispatchWithCooldown.mock.calls[0][0]).toBe("prod-1");
+    expect(mockedDispatchWithCooldown.mock.calls[0][2]).toContain("Disk usage 85%");
+    expect(mockedDispatchWithCooldown.mock.calls[1][0]).toBe("prod-1");
+    expect(mockedDispatchWithCooldown.mock.calls[1][2]).toContain("RAM usage 92%");
+  });
+
+  it("message contains serverName and breach text", async () => {
+    const breach = "Disk usage 85% exceeds 80% threshold";
+    await dispatchGuardBreaches("my-server", [breach]);
+    const message: string = mockedDispatchWithCooldown.mock.calls[0][2];
+    expect(message).toContain("my-server");
+    expect(message).toContain(breach);
   });
 });
