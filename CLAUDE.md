@@ -13,7 +13,7 @@ TypeScript (ES2022, strict), Commander.js, Inquirer.js, Axios, Zod, Chalk, Ora, 
 | Yeni CLI komutu | `.claude/skills/cli-command.md` |
 | MCP tool ekleme | `.claude/skills/mcp-tool.md` |
 | Yeni provider | `.claude/skills/provider.md` |
-| npm publish | `.claude/skills/publish.md` |
+| Release / npm publish | `.claude/skills/release.md` (`/release patch\|minor\|major`) |
 | Test yazma | `.claude/skills/testing.md` |
 
 ## Commands
@@ -33,7 +33,7 @@ src/
   core/        # Business logic
   providers/   # hetzner, digitalocean, vultr, linode
   adapters/    # coolify, dokploy [v1.3+]
-  mcp/         # MCP server + 7 tools
+  mcp/         # MCP server + 12 tools
   utils/       # ssh, config, cloudInit, modeGuard, migration
   types/       # ServerMode, ServerRecord
   constants.ts # PROVIDER_REGISTRY
