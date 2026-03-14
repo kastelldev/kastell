@@ -35,6 +35,7 @@ import { auditCommand } from "./commands/audit.js";
 import { evidenceCommand } from "./commands/evidence.js";
 import { lockCommand } from "./commands/lock.js";
 import { guardCommand } from "./commands/guard.js";
+import { notifyCommand } from "./commands/notify.js";
 import { printHeader, printQuickHelp } from "./cli/header.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -334,6 +335,8 @@ program
   .action((server?: string, options?: Record<string, unknown>) =>
     evidenceCommand(server, options ?? {}),
   );
+
+notifyCommand(program);
 
 registerAuthCommands(program);
 
