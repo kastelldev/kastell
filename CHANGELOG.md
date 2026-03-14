@@ -2,6 +2,56 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.0] - 2026-03-14
+
+### Added
+- **Server Lock** (`kastell lock`) — One-command production hardening: SSH key-only auth, fail2ban, UFW firewall, sysctl hardening, unattended-upgrades. Shows audit score before/after. `--dry-run` preview, `--force` for already-hardened servers
+- **Backup Schedule** (`kastell backup --schedule`) — Cron-based automatic backups via SSH crontab. Supports `--schedule hourly|daily|weekly|custom` with custom cron expressions
+- **Guard Daemon** (`kastell guard start|stop|status`) — Autonomous security monitoring via remote cron. Checks disk/RAM/CPU/audit every 5 minutes with threshold breach detection
+- **Risk Trend** (`kastell audit --trend`) — Audit score trend analysis over time. `--days N` to control window. Terminal and JSON output formats
+- **Doctor (Server Mode)** (`kastell doctor <server>`) — Per-server proactive health analysis: disk trending, high swap, stale packages, fail2ban bans, audit regression, old backups, reclaimable Docker space. `--fresh` for live SSH data, `--json` for structured output
+- **3 new MCP tools**: `server_guard` (start/stop/status), `server_doctor` (summary/json), `server_lock` (dry-run/production/force)
+- **Shell completions**: guard, lock, doctor flags added for bash/zsh/fish
+
+### Security
+- **OWASP review**: 10 security and quality fixes — sanitized error paths, hardened input validation, tightened type guards
+- **Dependency fix**: flatted 3.3.3 → 3.4.1 (unbounded recursion DoS)
+
+### Fixed
+- CLI `list`/`status` now shows actual platform label (dokploy/coolify/bare) instead of generic "mode"
+- `--force` flag added to secure/update CLI commands
+- MCP evidence `force` parameter passthrough
+
+### Changed
+- Test count: 2,467 → 3,038 (+571 new tests)
+- MCP tools: 9 → 12 (server_guard, server_doctor, server_lock added)
+
+## [1.6.0] - 2026-03-11
+
+### Added
+- **Audit Snapshots** (`kastell audit --snapshot`) — Persist audit results as timestamped JSON snapshots. `--snapshots` to list saved snapshots
+- **Audit Diff** (`kastell audit --diff <id>`, `--compare <id1> <id2>`) — Compare audit results between snapshots. Shows category-level score changes and new/fixed findings
+- **Evidence Collection** (`kastell evidence <server>`) — Forensic evidence package: firewall rules, auth.log, listening ports, system logs, Docker info. SHA256 checksums per file. Written to `~/.kastell/evidence/{server}/{date}/`
+- **MCP server_evidence tool** — Evidence collection exposed via MCP
+- **Adapter contract conformance tests** — Verify PlatformAdapter interface compliance
+- **Infrastructure utilities**: `withRetry` (exponential backoff for provider API calls), `withFileLock` (file-based mutex for config writes)
+- **Provider retry integration** — All provider GET methods wrapped with `withRetry`
+- **Config lock integration** — All config writes protected with `withFileLock`
+- **Mode migration** — Automatic `ServerMode` field addition to legacy server records
+
+### Security
+- Consolidated IP validation, removed dead code, hardened security paths
+- Auth keyring: replaced top-level await with lazy require (fixes non-interactive environments)
+
+### Fixed
+- Evidence dynamic section-to-filename mapping prevents index mismatch bug
+- Linode test mocks updated to use Error instances for `withProviderErrorHandling`
+
+### Changed
+- Deduplicated provider error handling into `withProviderErrorHandling` + `extractApiMessage`
+- Test count: 2,266 → 2,467 (+201 new tests)
+- MCP tools: 8 → 9 (server_evidence added)
+
 ## [1.5.2] - 2026-03-09
 
 ### Fixed
