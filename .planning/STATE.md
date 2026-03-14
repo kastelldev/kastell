@@ -4,7 +4,7 @@ milestone: v1.8
 milestone_name: Fleet + Notifications
 status: ready_to_plan
 stopped_at: Completed 35-01-PLAN.md (Adapter Deduplication)
-last_updated: "2026-03-14T17:24:01.619Z"
+last_updated: "2026-03-14T17:27:12.489Z"
 last_activity: 2026-03-14 — Roadmap created, 7 phases defined (34-40)
 progress:
   total_phases: 7
