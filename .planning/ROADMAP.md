@@ -232,7 +232,7 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 1-27. Prior milestones | v1.2.0–v1.6 | All | Complete | 2026-03-11 |
 | 28. Lock | 2/2 | Complete    | 2026-03-14 | - |
-| 29. Backup Schedule | 2/2 | Complete   | 2026-03-14 | - |
+| 29. Backup Schedule | 2/2 | Complete    | 2026-03-14 | - |
 | 30. Guard Daemon | v1.7 | 0/TBD | Not started | - |
 | 31. Risk Trend | v1.7 | 0/TBD | Not started | - |
 | 32. Doctor | v1.7 | 0/TBD | Not started | - |
