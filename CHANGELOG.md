@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.8.1] - 2026-03-15
+
+### Added
+- **Interactive menu complete** — All missing commands added to interactive menu: fleet, audit, lock, evidence, guard, doctor, backup-list, notify, completions with sub-prompts and emoji categories
+- **`--force` flag** — Added to 7 CLI commands (backup, secure, lock, domain, update, maintain, evidence) for non-interactive/CI usage
+- **`backup list` CLI command** — List all local backups (previously MCP-only)
+- **Dokploy domain support** — CLI domain commands (add, remove, list, info) now work with Dokploy servers
+- **`platformDefaults()` helper** — Eliminates repeated platform ternaries in domain/restart commands
+- **Domain completions** — Added `list` and `info` to domain subcommands in bash/zsh/fish
+
+### Fixed
+- **Dokploy backup/restore** — Fixed `-U postgres` → `-U dokploy` (role "postgres" does not exist)
+- **Restart message** — Now shows correct platform name and port (Dokploy:3000 vs Coolify:8000)
+- **MCP mode detection** — `resolvePlatform()` used in MCP serverInfo (mode now correctly shows "dokploy")
+- **MCP serverManage** — Added "dokploy" to mode enum
+
+### Changed
+- Interactive doctor prompt: `--check-tokens` → `--fresh`
+- Interactive backup prompt: confirm dialog → sub-menu (create/all)
+- MCP version metadata added to all tool responses
+
 ## [1.8.0] - 2026-03-15
 
 ### Added
