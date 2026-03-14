@@ -12,7 +12,7 @@
 - ✅ **v1.6 Audit Expand + Evidence + Altyapi** — Phases 23-27 (shipped 2026-03-11)
 - ✅ **v1.7 Guard Core** — Phases 28-33 (shipped 2026-03-14)
 - 🚧 **v1.8 Fleet + Notifications** — Phases 34-40 (in progress)
-- ⬜ **v1.9 Audit Genisleme + Cleanup** — 45→400+ check, 9→20+ kategori, Lynis'i gecmek, compliance mapping (PCI DSS/HIPAA/ISO27001), MCP SDK lazy-load (dynamic import — 179 transitive dep CLI startup'tan düşer), Socket.dev alert cleanup (evidence.ts opts.name path traversal guard, execSync alternatifleri), v2.0 öncesi temiz geçiş
+- ⬜ **v1.9 Audit Genisleme + Cleanup** — 45→400+ check, 9→20+ kategori, Lynis'i gecmek, compliance mapping (PCI DSS/HIPAA/ISO27001), MCP SDK lazy-load (dynamic import — 179 transitive dep CLI startup'tan düşer), Socket.dev alert cleanup (execSync alternatifleri), v2.0 öncesi temiz geçiş. **OWASP deferred items:** notify token plaintext→keychain (M-02), token plaintext fallback keychain entegrasyonu (L-02), SSH command builder pattern (L-05), büyük fonksiyon decompose (doctorCommand, guardCommand, createServerWithRetry)
 - ⬜ **v2.0 Plugin Ekosistemi** — Claude Code marketplace, SKILL.md (cross-platform: Cursor/Gemini CLI/Kiro), slash commands, chained workflows, audit --explain, validate_plugins.py CI
 - ⬜ **v3.0 Dashboard + Managed Servis** — premium web dashboard, managed servis ($49/$99/$299+), ilk musteri LA ROMA
 
@@ -257,7 +257,7 @@ Plans:
 | 37. Doctor Fix | 1/1 | Complete    | 2026-03-14 | - |
 | 38. Fleet Visibility | 2/2 | Complete    | 2026-03-14 | - |
 | 39. Guard Notification Integration | 1/1 | Complete    | 2026-03-14 | - |
-| 40. Shell Completions + Polish | 2/2 | Complete   | 2026-03-14 | - |
+| 40. Shell Completions + Polish | 2/2 | Complete    | 2026-03-14 | - |
 
 ---
 *Roadmap created: 2026-02-27*

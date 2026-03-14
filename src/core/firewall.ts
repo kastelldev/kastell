@@ -258,7 +258,9 @@ export async function firewallSetup(
     if (isBare) {
       logger.success(`UFW enabled with web ports (${BARE_PORTS.join(", ")}) + SSH (22)`);
     } else {
-      logger.success(`UFW enabled with Coolify ports (${COOLIFY_PORTS.join(", ")}) + SSH (22)`);
+      const platformLabel = platform === "dokploy" ? "Dokploy" : "Coolify";
+      const platformPorts = platform === "dokploy" ? DOKPLOY_PORTS : COOLIFY_PORTS;
+      logger.success(`UFW enabled with ${platformLabel} ports (${platformPorts.join(", ")}) + SSH (22)`);
     }
   } catch (error: unknown) {
     spinner.fail("Failed to setup firewall");

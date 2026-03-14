@@ -225,7 +225,7 @@ describe("runDoctorFix — interactive mode", () => {
 
     const extraFinding = makeFinding({
       id: "HIGH_SWAP",
-      fixCommand: "echo noop",
+      fixCommand: "sudo apt update && sudo apt upgrade -y",
     });
 
     const result = await runDoctorFix(

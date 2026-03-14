@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: Fleet + Notifications
 status: ready_to_plan
-stopped_at: Completed 40-02-PLAN.md (postSetup decomposition)
-last_updated: "2026-03-14T21:00:01.426Z"
+stopped_at: Completed 40-01-PLAN.md (Shell Completions Update)
+last_updated: "2026-03-14T21:00:01.996Z"
 last_activity: 2026-03-14 — Roadmap created, 7 phases defined (34-40)
 progress:
   total_phases: 7
@@ -71,6 +71,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 38-fleet-visibility P02 | 3min | 1 tasks | 3 files |
 | Phase 39-guard-notification-integration P01 | 20min | 2 tasks | 4 files |
 | Phase 40-shell-completions-polish P02 | 3min | 2 tasks | 1 files |
+| Phase 40-shell-completions-polish P01 | 15min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -103,6 +104,7 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 39-guard-notification-integration]: categorizeBreach is private — tested indirectly via dispatchGuardBreaches by asserting findingType arg to mocked dispatchWithCooldown
 - [Phase 40-shell-completions-polish]: postSetup sub-functions use minimal signatures (only needed params) — providerChoice/region/serverSize consumed by saveServer in dispatcher only
 - [Phase 40-shell-completions-polish]: saveServer stays in dispatcher (shared by both paths) — not duplicated into barePostSetup or platformPostSetup
+- [Phase 40-shell-completions-polish]: Static string edit pattern for completions — no Commander introspection, hardcoded strings per project convention
 
 ### Pending Todos
 
@@ -115,6 +117,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-14T20:59:41.963Z
-Stopped at: Completed 40-02-PLAN.md (postSetup decomposition)
+Last session: 2026-03-14T21:00:01.988Z
+Stopped at: Completed 40-01-PLAN.md (Shell Completions Update)
 Next action: `/gsd:plan-phase 34`

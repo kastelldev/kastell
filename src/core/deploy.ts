@@ -21,6 +21,11 @@ import { firewallSetup } from "./firewall.js";
 import { secureSetup } from "./secure.js";
 import { IP_WAIT, COOLIFY_MIN_WAIT } from "../constants.js";
 
+/** Check if an IP address has been assigned (not placeholder) */
+function isValidAssignedIp(ip: string): boolean {
+  return ip !== "0.0.0.0" && ip !== "pending" && ip !== "";
+}
+
 /** Data returned on successful deployment */
 interface DeployData {
   serverId: string;
@@ -190,14 +195,14 @@ async function waitForReady(
   let currentIp = server.ip;
 
   // Refresh server details to get final IP (DO/Vultr/Linode assign IP after boot)
-  if (currentIp === "pending" || currentIp === "0.0.0.0" || currentIp === "") {
+  if (!isValidAssignedIp(currentIp)) {
     const ipConfig = IP_WAIT[providerChoice] || { attempts: 10, interval: 3000 };
     const ipSpinner = createSpinner("Waiting for IP address assignment...");
     ipSpinner.start();
     let refreshAttempts = 0;
     while (refreshAttempts < ipConfig.attempts) {
       const details = await providerWithToken.getServerDetails(server.id);
-      if (details.ip && details.ip !== "0.0.0.0" && details.ip !== "pending" && details.ip !== "") {
+      if (details.ip && isValidAssignedIp(details.ip)) {
         try {
           assertValidIp(details.ip);
           currentIp = details.ip;
@@ -209,7 +214,7 @@ async function waitForReady(
       refreshAttempts++;
       await new Promise((resolve) => setTimeout(resolve, ipConfig.interval));
     }
-    if (currentIp === "pending" || currentIp === "0.0.0.0" || currentIp === "") {
+    if (!isValidAssignedIp(currentIp)) {
       ipSpinner.fail("Could not obtain server IP address");
       logger.warning("The server was created but IP assignment timed out.");
       logger.info(`Check IP later with: kastell status ${server.id}`);
@@ -236,7 +241,7 @@ async function barePostSetup(
   serverIp: string,
   fullSetup?: boolean,
 ): Promise<KastellResult<DeployData>> {
-  const hasValidIp = serverIp !== "0.0.0.0" && serverIp !== "pending" && serverIp !== "";
+  const hasValidIp = isValidAssignedIp(serverIp);
 
   // Wait for SSH + cloud-init to finish (BUG-5)
   if (hasValidIp) {
@@ -325,7 +330,7 @@ async function platformPostSetup(
   fullSetup?: boolean,
   noOpen?: boolean,
 ): Promise<KastellResult<DeployData>> {
-  const hasValidIp = serverIp !== "0.0.0.0" && serverIp !== "pending" && serverIp !== "";
+  const hasValidIp = isValidAssignedIp(serverIp);
   const platformPort = platform === "dokploy" ? 3000 : 8000;
   const platformName = platform === "dokploy" ? "Dokploy" : "Coolify";
 

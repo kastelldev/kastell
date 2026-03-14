@@ -10,6 +10,7 @@ import {
   buildAuditCommand,
   buildKeyCheckCommand,
   secureSetup,
+  calculateSecurityScore,
 } from "../core/secure.js";
 export {
   parseSshdConfig,
@@ -109,12 +110,8 @@ async function secureAudit(ip: string, name: string): Promise<void> {
     spinner.succeed(`Security audit for ${name} (${ip})`);
 
     // Score calculation
-    let score = 0;
-    const maxScore = 4;
-    if (audit.passwordAuth.status === "secure") score++;
-    if (audit.rootLogin.status === "secure") score++;
-    if (audit.fail2ban.active) score++;
-    if (audit.sshPort !== 22) score++;
+    const score = calculateSecurityScore(audit);
+    const maxScore = 100;
 
     console.log();
     logger.title(`Security Score: ${score}/${maxScore}`);

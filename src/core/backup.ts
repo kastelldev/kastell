@@ -385,6 +385,12 @@ export async function restoreBackup(
   serverName: string,
   backupId: string,
 ): Promise<RestoreResult> {
+  // Safe mode guard: prevent accidental restores in production
+  const { isSafeMode } = await import("./manage.js");
+  if (isSafeMode()) {
+    return { success: false, steps: [], error: "Restore is blocked while KASTELL_SAFE_MODE is enabled" };
+  }
+
   assertValidIp(ip);
 
   const baseDir = getBackupDir(serverName);

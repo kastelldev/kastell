@@ -33,7 +33,7 @@
 
 - [x] **DEBT-01**: Adapter backup/restore duplication eliminated (shared utilities)
 - [x] **DEBT-02**: Layer violation fixed (core/deploy.ts no longer imports from commands/)
-- [ ] **DEBT-03**: Shell completions updated (audit, evidence + missing flags)
+- [x] **DEBT-03**: Shell completions updated (audit, evidence + missing flags)
 - [x] **DEBT-04**: postSetup decomposed into bare/platform functions
 
 ## Future Requirements
@@ -80,7 +80,7 @@
 | DFIX-03 | Phase 37 | Complete |
 | DEBT-01 | Phase 35 | Complete |
 | DEBT-02 | Phase 34 | Complete |
-| DEBT-03 | Phase 40 | Pending |
+| DEBT-03 | Phase 40 | Complete |
 | DEBT-04 | Phase 40 | Complete |
 
 **Coverage:**

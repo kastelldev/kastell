@@ -121,7 +121,13 @@ function buildSha256Sums(entries: EvidenceFileEntry[]): string {
 
 function buildDirName(opts: EvidenceOptions): string {
   const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-  return opts.name ? `${date}_${opts.name}` : date;
+  if (opts.name) {
+    if (/[/\\]|\.\./.test(opts.name)) {
+      throw new Error("Invalid evidence name: contains path separator or traversal");
+    }
+    return `${date}_${opts.name}`;
+  }
+  return date;
 }
 
 // ─── Public API ────────────────────────────────────────────────────────────────

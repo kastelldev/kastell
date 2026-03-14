@@ -211,6 +211,13 @@ export function calculateSecurityScore(audit: SecureAuditResult): number {
   return score;
 }
 
+const EMPTY_AUDIT: SecureAuditResult = {
+  passwordAuth: { key: "PasswordAuthentication", value: "", status: "missing" },
+  rootLogin: { key: "PermitRootLogin", value: "", status: "missing" },
+  fail2ban: { installed: false, active: false },
+  sshPort: 22,
+};
+
 export async function runSecureAudit(ip: string): Promise<SecureAuditFullResult> {
   assertValidIp(ip);
 
@@ -218,12 +225,7 @@ export async function runSecureAudit(ip: string): Promise<SecureAuditFullResult>
     const result = await sshExec(ip, buildAuditCommand());
     if (result.code !== 0 && !result.stdout) {
       return {
-        audit: {
-          passwordAuth: { key: "PasswordAuthentication", value: "", status: "missing" },
-          rootLogin: { key: "PermitRootLogin", value: "", status: "missing" },
-          fail2ban: { installed: false, active: false },
-          sshPort: 22,
-        },
+        audit: { ...EMPTY_AUDIT },
         score: 0,
         error: `Audit command failed (exit code ${result.code})`,
       };
@@ -235,12 +237,7 @@ export async function runSecureAudit(ip: string): Promise<SecureAuditFullResult>
   } catch (error: unknown) {
     const hint = mapSshError(error, ip);
     return {
-      audit: {
-        passwordAuth: { key: "PasswordAuthentication", value: "", status: "missing" },
-        rootLogin: { key: "PermitRootLogin", value: "", status: "missing" },
-        fail2ban: { installed: false, active: false },
-        sshPort: 22,
-      },
+      audit: { ...EMPTY_AUDIT },
       score: 0,
       error: getErrorMessage(error),
       ...(hint ? { hint } : {}),

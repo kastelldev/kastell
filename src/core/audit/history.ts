@@ -113,7 +113,7 @@ export async function saveAuditHistory(result: AuditResult): Promise<void> {
 
     // Write atomically via temp file + rename
     const tmpFile = historyFile + ".tmp";
-    writeFileSync(tmpFile, JSON.stringify(entries, null, 2), "utf-8");
+    writeFileSync(tmpFile, JSON.stringify(entries, null, 2), { encoding: "utf-8", mode: 0o600 });
     renameSync(tmpFile, historyFile);
   });
 }

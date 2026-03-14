@@ -13,6 +13,12 @@ import inquirer from "inquirer";
 import { assertValidIp, sshExec } from "../utils/ssh.js";
 import type { DoctorFinding } from "./doctor.js";
 
+/** Whitelist of known safe fix commands produced by doctor checks */
+const KNOWN_FIX_COMMANDS = new Set([
+  "sudo apt update && sudo apt upgrade -y",
+  "docker system prune -a --force",
+]);
+
 // ─── Public types ─────────────────────────────────────────────────────────────
 
 export interface DoctorFixOptions {
@@ -59,6 +65,11 @@ export async function runDoctorFix(
   for (const finding of findings) {
     if (!finding.fixCommand) {
       skipped.push(finding.id);
+      continue;
+    }
+
+    if (!KNOWN_FIX_COMMANDS.has(finding.fixCommand)) {
+      failed.push(`${finding.id}: unrecognized fix command`);
       continue;
     }
 

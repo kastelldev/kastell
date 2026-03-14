@@ -62,7 +62,7 @@ export function saveMetricsHistory(serverIp: string, snapshots: MetricSnapshot[]
     mkdirSync(dir, { recursive: true });
   }
   const tmpFile = filePath + ".tmp";
-  writeFileSync(tmpFile, JSON.stringify(snapshots, null, 2), "utf-8");
+  writeFileSync(tmpFile, JSON.stringify(snapshots, null, 2), { encoding: "utf-8", mode: 0o600 });
   renameSync(tmpFile, filePath);
 }
 

@@ -12,6 +12,29 @@ import { createSpinner } from "../utils/logger.js";
 const NOTIFY_FILE = join(CONFIG_DIR, "notify.json");
 const COOLDOWN_FILE = join(CONFIG_DIR, "notify-cooldown.json");
 const COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
+const NOTIFY_TIMEOUT_MS = 10_000;
+
+// ─── SSRF Protection ─────────────────────────────────────────────────────────
+
+const PRIVATE_IP_PATTERNS = [
+  /^127\./,
+  /^10\./,
+  /^192\.168\./,
+  /^172\.(1[6-9]|2\d|3[01])\./,
+  /^169\.254\./,
+  /^0\./,
+  /^localhost$/i,
+];
+
+function assertSafeWebhookUrl(url: string): void {
+  const parsed = new URL(url);
+  if (PRIVATE_IP_PATTERNS.some((p) => p.test(parsed.hostname))) {
+    throw new Error("Webhook URL points to a private/reserved address");
+  }
+  if (parsed.protocol !== "https:") {
+    throw new Error("Webhook URL must use HTTPS");
+  }
+}
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 
@@ -62,45 +85,40 @@ export function saveNotifyConfig(config: NotifyConfig): void {
 
 // ─── Channel Dispatchers ──────────────────────────────────────────────────────
 
+async function sendHttp(
+  url: string,
+  body: Record<string, unknown>,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await axios.post(url, body, { timeout: NOTIFY_TIMEOUT_MS });
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 export async function sendTelegram(
   botToken: string,
   chatId: string,
   text: string,
 ): Promise<{ success: boolean; error?: string }> {
-  try {
-    await axios.post(
-      `https://api.telegram.org/bot${botToken}/sendMessage`,
-      { chat_id: chatId, text },
-      { timeout: 10_000 },
-    );
-    return { success: true };
-  } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : String(err) };
-  }
+  return sendHttp(`https://api.telegram.org/bot${botToken}/sendMessage`, { chat_id: chatId, text });
 }
 
 export async function sendDiscord(
   webhookUrl: string,
   content: string,
 ): Promise<{ success: boolean; error?: string }> {
-  try {
-    await axios.post(webhookUrl, { content }, { timeout: 10_000 });
-    return { success: true };
-  } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : String(err) };
-  }
+  assertSafeWebhookUrl(webhookUrl);
+  return sendHttp(webhookUrl, { content });
 }
 
 export async function sendSlack(
   webhookUrl: string,
   text: string,
 ): Promise<{ success: boolean; error?: string }> {
-  try {
-    await axios.post(webhookUrl, { text }, { timeout: 10_000 });
-    return { success: true };
-  } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : String(err) };
-  }
+  assertSafeWebhookUrl(webhookUrl);
+  return sendHttp(webhookUrl, { text });
 }
 
 // ─── Fan-out ──────────────────────────────────────────────────────────────────
@@ -134,12 +152,7 @@ export async function dispatchNotification(
     );
   }
 
-  const settled = await Promise.allSettled(tasks);
-  return settled.map((r) =>
-    r.status === "fulfilled"
-      ? r.value
-      : { channel: "unknown" as never, success: false, error: String(r.reason) },
-  );
+  return Promise.all(tasks);
 }
 
 // ─── Cooldown State ───────────────────────────────────────────────────────────
@@ -186,6 +199,18 @@ export async function dispatchWithCooldown(
 const VALID_CHANNELS = ["telegram", "discord", "slack"] as const;
 type ValidChannel = (typeof VALID_CHANNELS)[number];
 
+function validateChannel(channelName: string): channelName is ValidChannel {
+  if (!VALID_CHANNELS.includes(channelName as ValidChannel)) {
+    console.error(
+      chalk.red(
+        `Invalid channel: "${channelName}". Valid options: ${VALID_CHANNELS.join(", ")}`,
+      ),
+    );
+    return false;
+  }
+  return true;
+}
+
 export interface AddChannelOptions {
   force?: boolean;
   botToken?: string;
@@ -197,16 +222,9 @@ export async function addChannel(
   channelName: string,
   options: AddChannelOptions,
 ): Promise<void> {
-  if (!VALID_CHANNELS.includes(channelName as ValidChannel)) {
-    console.error(
-      chalk.red(
-        `Invalid channel: "${channelName}". Valid options: ${VALID_CHANNELS.join(", ")}`,
-      ),
-    );
-    return;
-  }
+  if (!validateChannel(channelName)) return;
 
-  const channel = channelName as ValidChannel;
+  const channel = channelName;
   let channelConfig: NotifyConfig[ValidChannel];
 
   if (options.force) {
@@ -253,16 +271,9 @@ export async function addChannel(
 }
 
 export async function testChannel(channelName: string): Promise<void> {
-  if (!VALID_CHANNELS.includes(channelName as ValidChannel)) {
-    console.error(
-      chalk.red(
-        `Invalid channel: "${channelName}". Valid options: ${VALID_CHANNELS.join(", ")}`,
-      ),
-    );
-    return;
-  }
+  if (!validateChannel(channelName)) return;
 
-  const channel = channelName as ValidChannel;
+  const channel = channelName;
   const config = loadNotifyConfig();
 
   if (!config[channel]) {

@@ -17,6 +17,13 @@ export const EVIDENCE_SECTION_INDICES = {
 
 const SEPARATOR = "echo '---SEPARATOR---'";
 
+/** Sanitize lines parameter to prevent injection via NaN/Infinity/negative values */
+function sanitizeLines(lines: number): number {
+  const n = Math.floor(lines);
+  if (!Number.isFinite(n) || n < 1) return 500;
+  return Math.min(n, 10000);
+}
+
 function firewallSection(): string {
   return [
     `command -v ufw >/dev/null 2>&1 && ufw status verbose 2>/dev/null || echo 'N/A'`,
@@ -133,11 +140,13 @@ export function buildEvidenceBatchCommand(
   const noSysinfo = options?.noSysinfo ?? false;
   const includeDocker = !noDocker && (platform === "coolify" || platform === "dokploy");
 
+  const safeLines = sanitizeLines(lines);
+
   const sections: string[] = [
     firewallSection(),
-    authLogSection(lines),
+    authLogSection(safeLines),
     portsSection(),
-    syslogSection(lines),
+    syslogSection(safeLines),
   ];
 
   if (!noSysinfo) {
@@ -146,7 +155,7 @@ export function buildEvidenceBatchCommand(
 
   if (includeDocker) {
     sections.push(dockerPsSection());
-    sections.push(dockerLogsSection(platform, lines));
+    sections.push(dockerLogsSection(platform, safeLines));
   }
 
   return sections.join(`\n${SEPARATOR}\n`);
