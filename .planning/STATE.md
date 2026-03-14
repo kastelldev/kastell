@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: Fleet + Notifications
 status: ready_to_plan
-stopped_at: Completed 38-02-PLAN.md (Fleet MCP Tool)
-last_updated: "2026-03-14T20:09:49.280Z"
+stopped_at: Completed 39-01-PLAN.md (Guard Notification Integration)
+last_updated: "2026-03-14T20:35:07.143Z"
 last_activity: 2026-03-14 — Roadmap created, 7 phases defined (34-40)
 progress:
   total_phases: 7
-  completed_phases: 5
-  total_plans: 7
-  completed_plans: 7
+  completed_phases: 6
+  total_plans: 8
+  completed_plans: 8
   percent: 100
 ---
 
@@ -69,6 +69,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 37-doctor-fix P01 | 35min | 2 tasks | 6 files |
 | Phase 38-fleet-visibility P01 | 30min | 2 tasks | 11 files |
 | Phase 38-fleet-visibility P02 | 3min | 1 tasks | 3 files |
+| Phase 39-guard-notification-integration P01 | 20min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -97,6 +98,8 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 38-fleet-visibility]: FleetRow status mapping: healthy=ONLINE, unhealthy=DEGRADED, unreachable/host-key-mismatch=OFFLINE
 - [Phase 38-fleet-visibility]: getErrorMessage mock re-setup in beforeEach after jest.resetAllMocks() — factory mock implementations are cleared by resetAllMocks, must restore in beforeEach
 - [Phase 38-fleet-visibility]: server_fleet uses readOnlyHint:true — fleet probing reads state but never modifies servers
+- [Phase 39-guard-notification-integration]: Sequential for...of in dispatchGuardBreaches (not Promise.all) — avoids concurrent cooldown JSON write races
+- [Phase 39-guard-notification-integration]: categorizeBreach is private — tested indirectly via dispatchGuardBreaches by asserting findingType arg to mocked dispatchWithCooldown
 
 ### Pending Todos
 
@@ -109,6 +112,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-14T20:06:33.612Z
-Stopped at: Completed 38-02-PLAN.md (Fleet MCP Tool)
+Last session: 2026-03-14T20:35:07.134Z
+Stopped at: Completed 39-01-PLAN.md (Guard Notification Integration)
 Next action: `/gsd:plan-phase 34`

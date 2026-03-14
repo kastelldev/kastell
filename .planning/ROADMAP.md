@@ -201,7 +201,9 @@ Plans:
   1. When guard detects a breach (disk/RAM/CPU threshold exceeded or audit score regression), a notification is dispatched to all configured channels from the user's machine
   2. Guard credentials are never written into the VPS guard script — dispatch happens client-side after `kastell guard status` reads the remote breach log
   3. Repeated breaches of the same type on the same server within the cooldown window produce only one notification, not one per guard cron run
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 39-01-PLAN.md — Wire dispatchGuardBreaches into guard status flow with tests
 
 ### Phase 40: Shell Completions + Polish
 **Goal**: All v1.8 commands and flags are discoverable via tab completion and codebase is structurally clean
@@ -251,9 +253,9 @@ Plans:
 | 36. Notification Module | 2/2 | Complete    | 2026-03-14 | - |
 | 37. Doctor Fix | 1/1 | Complete    | 2026-03-14 | - |
 | 38. Fleet Visibility | 2/2 | Complete    | 2026-03-14 | - |
-| 39. Guard Notification Integration | v1.8 | 0/TBD | Not started | - |
+| 39. Guard Notification Integration | 1/1 | Complete   | 2026-03-14 | - |
 | 40. Shell Completions + Polish | v1.8 | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-02-27*
-*Last updated: 2026-03-14 — Phase 38 Fleet Visibility planned (2 plans)*
+*Last updated: 2026-03-14 — Phase 39 Guard Notification Integration planned (1 plan)*

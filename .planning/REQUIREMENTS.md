@@ -21,7 +21,7 @@
 - [x] **NOTF-04**: User can test notification config with `kastell notify test <channel>`
 - [x] **NOTF-05**: Notifications fan-out to all configured channels simultaneously
 - [x] **NOTF-06**: Alert cooldown prevents duplicate alerts (30min per server per finding type)
-- [ ] **NOTF-07**: Guard daemon sends breach alerts via configured notification channels
+- [x] **NOTF-07**: Guard daemon sends breach alerts via configured notification channels
 
 ### Doctor Fix
 
@@ -74,7 +74,7 @@
 | NOTF-04 | Phase 36 | Complete |
 | NOTF-05 | Phase 36 | Complete |
 | NOTF-06 | Phase 36 | Complete |
-| NOTF-07 | Phase 39 | Pending |
+| NOTF-07 | Phase 39 | Complete |
 | DFIX-01 | Phase 37 | Complete |
 | DFIX-02 | Phase 37 | Complete |
 | DFIX-03 | Phase 37 | Complete |
