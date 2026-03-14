@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: Fleet + Notifications
 status: ready_to_plan
-stopped_at: Completed 38-01-PLAN.md (Fleet Core + CLI)
-last_updated: "2026-03-14T19:59:19.907Z"
+stopped_at: Completed 38-02-PLAN.md (Fleet MCP Tool)
+last_updated: "2026-03-14T20:06:33.619Z"
 last_activity: 2026-03-14 — Roadmap created, 7 phases defined (34-40)
 progress:
   total_phases: 7
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 7
-  completed_plans: 6
+  completed_plans: 7
   percent: 100
 ---
 
@@ -68,6 +68,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 36-notification-module P02 | 7min | 2 tasks | 4 files |
 | Phase 37-doctor-fix P01 | 35min | 2 tasks | 6 files |
 | Phase 38-fleet-visibility P01 | 30min | 2 tasks | 11 files |
+| Phase 38-fleet-visibility P02 | 3min | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -94,6 +95,8 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 38-fleet-visibility]: checkServerHealth moved to core/health.ts, commands/health.ts re-exports for backward compat (re-export bridge pattern)
 - [Phase 38-fleet-visibility]: p-limit pure ESM requires .cjs mock in tests/__mocks__ mapped via moduleNameMapper
 - [Phase 38-fleet-visibility]: FleetRow status mapping: healthy=ONLINE, unhealthy=DEGRADED, unreachable/host-key-mismatch=OFFLINE
+- [Phase 38-fleet-visibility]: getErrorMessage mock re-setup in beforeEach after jest.resetAllMocks() — factory mock implementations are cleared by resetAllMocks, must restore in beforeEach
+- [Phase 38-fleet-visibility]: server_fleet uses readOnlyHint:true — fleet probing reads state but never modifies servers
 
 ### Pending Todos
 
@@ -106,6 +109,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-14T19:59:19.899Z
-Stopped at: Completed 38-01-PLAN.md (Fleet Core + CLI)
+Last session: 2026-03-14T20:06:33.612Z
+Stopped at: Completed 38-02-PLAN.md (Fleet MCP Tool)
 Next action: `/gsd:plan-phase 34`

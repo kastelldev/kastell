@@ -11,7 +11,7 @@
 - [x] **FLEET-02**: User can get fleet data as JSON output (--json)
 - [x] **FLEET-03**: User can sort fleet table by score/name/provider (--sort)
 - [x] **FLEET-04**: Fleet handles unreachable servers gracefully (OFFLINE row, no crash)
-- [ ] **FLEET-05**: MCP server_fleet tool provides fleet data to Claude
+- [x] **FLEET-05**: MCP server_fleet tool provides fleet data to Claude
 
 ### Notifications
 
@@ -67,7 +67,7 @@
 | FLEET-02 | Phase 38 | Complete |
 | FLEET-03 | Phase 38 | Complete |
 | FLEET-04 | Phase 38 | Complete |
-| FLEET-05 | Phase 38 | Pending |
+| FLEET-05 | Phase 38 | Complete |
 | NOTF-01 | Phase 36 | Complete |
 | NOTF-02 | Phase 36 | Complete |
 | NOTF-03 | Phase 36 | Complete |
