@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.8.0] - 2026-03-15
+
+### Added
+- **Fleet Visibility** (`kastell fleet`) — Parallel health check across all servers with status table (online/degraded/offline), audit scores, response times. `--json` for structured output
+- **Notification Module** (`kastell notify`) — Multi-channel alert dispatch: webhook, Slack, Discord, email (SMTP). `kastell notify add-channel` + `kastell notify test`
+- **Guard Notification Integration** — Guard breach alerts automatically dispatched via configured notification channels with severity categorization
+- **Doctor --fix** (`kastell doctor --fix`) — Interactive auto-remediation for doctor findings. Per-finding confirm gate, `--force` to skip prompts, `--dry-run` to preview. Whitelisted fix commands only
+- **MCP server_fleet tool** — Fleet visibility exposed via MCP (list all servers with health/audit status)
+- **Shell completions updated** — fleet, notify, audit, evidence commands and all v1.8 flags added to bash/zsh/fish generators
+
+### Security
+- **OWASP review** — 8 security fixes: evidence path traversal (H-01), evidence lines sanitize (H-02), webhook SSRF protection (M-01), guard stale comment fix (M-03), doctor fix whitelist (M-04), metrics file permission (L-03), audit history file permission (L-04), backup restore safe mode guard (I-01)
+- 8 code quality improvements: notify DRY (sendHttp), Promise.all optimization, channel validation, guard version tracking, firewall platform messages, secure score DRY, default audit constants, IP validation consolidation
+
+### Changed
+- **Architecture**: Layer violation fix — `firewallSetup` and `secureSetup` moved from `commands/` to `core/`
+- **Architecture**: Adapter deduplication — `sharedCreateBackup` and `sharedRestoreBackup` extracted to `src/adapters/shared.ts`
+- **Architecture**: PostSetup decomposed into `barePostSetup` + `platformPostSetup`
+- Platform name capitalized in restore backup step labels (e.g., "coolify" → "Coolify")
+- Removed `.planning/` from git tracking (was leaking internal planning files)
+- Test count: 3,038 → 3,175 (+137 new tests)
+- MCP tools: 12 → 13 (server_fleet added)
+
 ## [1.7.0] - 2026-03-14
 
 ### Added
