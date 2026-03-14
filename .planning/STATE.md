@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Guard Core
 status: ready_to_plan
-stopped_at: Completed 33-mcp-completions-02-PLAN.md
-last_updated: "2026-03-14T11:16:58.389Z"
+stopped_at: Completed 33-mcp-completions-01-PLAN.md
+last_updated: "2026-03-14T11:22:56.486Z"
 last_activity: 2026-03-14 — Roadmap created, phases 28-33 defined
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 12
-  completed_plans: 11
+  completed_plans: 12
   percent: 100
 ---
 
@@ -73,6 +73,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 32-doctor P01 | 900 | 1 tasks | 2 files |
 | Phase 32-doctor P02 | 353 | 1 tasks | 3 files |
 | Phase 33-mcp-completions P02 | 2 | 1 tasks | 2 files |
+| Phase 33-mcp-completions P01 | 483 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -106,6 +107,8 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 32-doctor]: ora mocked in tests via jest.mock to prevent spinner.start TypeError in non-TTY environment
 - [Phase 33-mcp-completions]: guard subcommand completions in bash use prev-based case block (consistent with firewall/config pattern)
 - [Phase 33-mcp-completions]: ALL_COMMANDS updated from 24 to 26 entries to include guard and lock
+- [Phase 33-mcp-completions]: serverLock safety gate at MCP layer (not in applyLock) — gate visible before SSH call
+- [Phase 33-mcp-completions]: serverDoctor json format returns raw DoctorResult (not wrapped in mcpSuccess)
 
 ### Pending Todos
 
@@ -118,6 +121,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-14T11:16:58.381Z
-Stopped at: Completed 33-mcp-completions-02-PLAN.md
+Last session: 2026-03-14T11:22:56.478Z
+Stopped at: Completed 33-mcp-completions-01-PLAN.md
 Next action: `/gsd:plan-phase 28`

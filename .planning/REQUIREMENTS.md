@@ -54,8 +54,8 @@
 
 ### MCP Integration
 
-- [ ] **MCP-01**: MCP tools added for guard (start/stop/status)
-- [ ] **MCP-02**: MCP tools added for doctor, lock
+- [x] **MCP-01**: MCP tools added for guard (start/stop/status)
+- [x] **MCP-02**: MCP tools added for doctor, lock
 - [x] **MCP-03**: Shell completions updated for new commands
 
 ## v1.8 Requirements (Deferred)
@@ -127,8 +127,8 @@
 | DOC-04 | Phase 32 | Complete |
 | DOC-05 | Phase 32 | Complete |
 | DOC-06 | Phase 32 | Complete |
-| MCP-01 | Phase 33 | Pending |
-| MCP-02 | Phase 33 | Pending |
+| MCP-01 | Phase 33 | Complete |
+| MCP-02 | Phase 33 | Complete |
 | MCP-03 | Phase 33 | Complete |
 
 **Coverage:**
