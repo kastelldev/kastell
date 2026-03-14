@@ -33,6 +33,7 @@ import { completionsCommand } from "./commands/completions.js";
 import { registerAuthCommands } from "./commands/auth.js";
 import { auditCommand } from "./commands/audit.js";
 import { evidenceCommand } from "./commands/evidence.js";
+import { lockCommand } from "./commands/lock.js";
 import { printHeader, printQuickHelp } from "./cli/header.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -169,6 +170,14 @@ program
       options?: { domain?: string; ssl?: boolean; dryRun?: boolean },
     ) => domainCommand(subcommand, query, options),
   );
+
+program
+  .command("lock [query]")
+  .description("Harden a server to production security standard")
+  .option("--production", "Apply all hardening measures (SSH, fail2ban, UFW, sysctl, auto-updates)")
+  .option("--dry-run", "Preview changes without applying")
+  .option("--force", "Skip confirmation prompt")
+  .action((query, options) => lockCommand(query, options));
 
 program
   .command("secure [subcommand] [query]")
