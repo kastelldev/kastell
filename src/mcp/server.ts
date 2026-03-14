@@ -14,6 +14,7 @@ import { serverEvidenceSchema, handleServerEvidence } from "./tools/serverEviden
 import { serverGuardSchema, handleServerGuard } from "./tools/serverGuard.js";
 import { serverDoctorSchema, handleServerDoctor } from "./tools/serverDoctor.js";
 import { serverLockSchema, handleServerLock } from "./tools/serverLock.js";
+import { serverFleetSchema, handleServerFleet } from "./tools/serverFleet.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -204,6 +205,21 @@ export function createMcpServer(): McpServer {
     },
   }, async (params) => {
     return handleServerLock(params);
+  });
+
+  server.registerTool("server_fleet", {
+    description:
+      "Get fleet-wide health and security posture for all registered servers. Returns server name, IP, provider, health status (ONLINE/DEGRADED/OFFLINE), cached audit score, and SSH response time. Use sort parameter to order results.",
+    inputSchema: serverFleetSchema,
+    annotations: {
+      title: "Fleet Visibility",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+  }, async (params) => {
+    return handleServerFleet(params);
   });
 
   return server;

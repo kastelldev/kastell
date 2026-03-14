@@ -1,18 +1,16 @@
 import * as config from "../../src/utils/config";
 import * as fleetCore from "../../src/core/fleet";
+import * as errorMapper from "../../src/utils/errorMapper";
 import { handleServerFleet } from "../../src/mcp/tools/serverFleet";
 import type { FleetRow } from "../../src/core/fleet";
 
 jest.mock("../../src/utils/config");
 jest.mock("../../src/core/fleet");
-jest.mock("../../src/utils/errorMapper", () => ({
-  getErrorMessage: jest.fn((err: unknown) =>
-    err instanceof Error ? err.message : String(err),
-  ),
-}));
+jest.mock("../../src/utils/errorMapper");
 
 const mockedConfig = config as jest.Mocked<typeof config>;
 const mockedFleet = fleetCore as jest.Mocked<typeof fleetCore>;
+const mockedErrorMapper = errorMapper as jest.Mocked<typeof errorMapper>;
 
 const sampleServer = {
   id: "abc",
@@ -47,6 +45,10 @@ const sampleRows: FleetRow[] = [
 
 beforeEach(() => {
   jest.resetAllMocks();
+  // Re-setup errorMapper after reset (resetAllMocks clears implementations)
+  mockedErrorMapper.getErrorMessage.mockImplementation((err: unknown) =>
+    err instanceof Error ? err.message : String(err),
+  );
 });
 
 describe("MCP server_fleet tool", () => {
