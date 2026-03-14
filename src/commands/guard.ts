@@ -3,7 +3,7 @@ import inquirer from "inquirer";
 import { resolveServer } from "../utils/serverSelect.js";
 import { checkSshAvailable } from "../utils/ssh.js";
 import { logger, createSpinner } from "../utils/logger.js";
-import { startGuard, stopGuard, guardStatus } from "../core/guard.js";
+import { startGuard, stopGuard, guardStatus, dispatchGuardBreaches } from "../core/guard.js";
 
 export async function guardCommand(
   action: "start" | "status" | "stop",
@@ -124,6 +124,7 @@ export async function guardCommand(
       for (const breach of result.breaches) {
         logger.info(`  ${breach}`);
       }
+      await dispatchGuardBreaches(server.name, result.breaches);
     }
 
     if (result.logTail) {

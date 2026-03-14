@@ -4,11 +4,13 @@ import * as guardModule from "../../src/core/guard";
 import * as loggerModule from "../../src/utils/logger";
 import { guardCommand } from "../../src/commands/guard";
 import type { GuardStartResult, GuardStopResult, GuardStatusResult } from "../../src/core/guard";
+import { dispatchGuardBreaches } from "../../src/core/guard";
 import type { ServerRecord } from "../../src/types/index";
 
 jest.mock("../../src/utils/ssh");
 jest.mock("../../src/utils/serverSelect");
 jest.mock("../../src/core/guard");
+jest.mock("../../src/core/notify");
 jest.mock("../../src/utils/logger");
 jest.mock("inquirer");
 
@@ -85,6 +87,7 @@ beforeEach(() => {
   mockedGuard.startGuard.mockResolvedValue(startSuccess);
   mockedGuard.stopGuard.mockResolvedValue(stopSuccess);
   mockedGuard.guardStatus.mockResolvedValue(statusActive);
+  (dispatchGuardBreaches as jest.Mock).mockResolvedValue(undefined);
 
   (mockedLogger.logger as jest.Mocked<typeof mockedLogger.logger>) = {
     info: jest.fn(),
@@ -270,5 +273,40 @@ describe("guardCommand status", () => {
     expect(mockedLogger.logger.error).toHaveBeenCalledWith(
       expect.stringContaining("SSH connection refused"),
     );
+  });
+
+  it("calls dispatchGuardBreaches with server name and breaches when status has breaches", async () => {
+    mockedGuard.guardStatus.mockResolvedValue(statusActive);
+    await guardCommand("status", "prod-server", {});
+    expect(dispatchGuardBreaches as jest.Mock).toHaveBeenCalledWith(
+      sampleServer.name,
+      statusActive.breaches,
+    );
+  });
+
+  it("does not call dispatchGuardBreaches when no breaches", async () => {
+    mockedGuard.guardStatus.mockResolvedValue(statusActiveNoBreach);
+    await guardCommand("status", "prod-server", {});
+    expect(dispatchGuardBreaches as jest.Mock).not.toHaveBeenCalled();
+  });
+
+  it("does not call dispatchGuardBreaches when status failed", async () => {
+    mockedGuard.guardStatus.mockResolvedValue(statusFailure);
+    await guardCommand("status", "prod-server", {});
+    expect(dispatchGuardBreaches as jest.Mock).not.toHaveBeenCalled();
+  });
+});
+
+// ─── guard dispatch not called for start/stop ─────────────────────────────────
+
+describe("guardCommand dispatch isolation", () => {
+  it("does not call dispatchGuardBreaches on start action", async () => {
+    await guardCommand("start", "prod-server", { force: true });
+    expect(dispatchGuardBreaches as jest.Mock).not.toHaveBeenCalled();
+  });
+
+  it("does not call dispatchGuardBreaches on stop action", async () => {
+    await guardCommand("stop", "prod-server", { force: true });
+    expect(dispatchGuardBreaches as jest.Mock).not.toHaveBeenCalled();
   });
 });
