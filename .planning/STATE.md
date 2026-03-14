@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: Fleet + Notifications
 status: ready_to_plan
-stopped_at: Completed 36-02-PLAN.md (Notify CLI Commands)
-last_updated: "2026-03-14T18:22:58.991Z"
+stopped_at: Completed 37-01-PLAN.md (Doctor Fix)
+last_updated: "2026-03-14T19:19:41.770Z"
 last_activity: 2026-03-14 — Roadmap created, 7 phases defined (34-40)
 progress:
   total_phases: 7
-  completed_phases: 3
-  total_plans: 4
-  completed_plans: 4
+  completed_phases: 4
+  total_plans: 5
+  completed_plans: 5
   percent: 100
 ---
 
@@ -66,6 +66,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 35-adapter-deduplication P01 | 20min | 2 tasks | 3 files |
 | Phase 36-notification-module P01 | 4min | 2 tasks | 2 files |
 | Phase 36-notification-module P02 | 7min | 2 tasks | 4 files |
+| Phase 37-doctor-fix P01 | 35min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -86,6 +87,9 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 36-notification-module]: dispatchWithCooldown uses composite key serverName:findingType — prevents cross-server cooldown collision
 - [Phase 36-notification-module]: Cooldown timestamp only written on at least one channel success — all-fail allows retry
 - [Phase 36-notification-module]: createSpinner from utils/logger used in notify.ts (not direct ora import) — enables clean Jest mocking
+- [Phase 37-doctor-fix]: dryRun wins over force in runDoctorFix — safety rule enforced at core level
+- [Phase 37-doctor-fix]: --fix auto-forces fresh=true to ensure current server state before SSH remediation
+- [Phase 37-doctor-fix]: assertValidIp inline mock (not jest.requireActual) prevents Node v24 jest worker crash
 
 ### Pending Todos
 
@@ -98,6 +102,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-14T18:22:58.984Z
-Stopped at: Completed 36-02-PLAN.md (Notify CLI Commands)
+Last session: 2026-03-14T19:19:41.763Z
+Stopped at: Completed 37-01-PLAN.md (Doctor Fix)
 Next action: `/gsd:plan-phase 34`
