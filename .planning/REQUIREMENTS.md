@@ -16,16 +16,16 @@
 
 ### Guard
 
-- [ ] **GUARD-01**: User can start guard daemon on a server (`kastell guard start <server>`)
-- [ ] **GUARD-02**: Guard installs as remote cron on VPS (shell script + crontab entry), not local daemon
-- [ ] **GUARD-03**: Guard checks disk, RAM, CPU thresholds and logs breaches
-- [ ] **GUARD-04**: Guard runs scheduled re-audit and logs score regressions
-- [ ] **GUARD-05**: User can stop guard daemon (`kastell guard stop <server>`)
-- [ ] **GUARD-06**: User can check guard status (`kastell guard status <server>`)
-- [ ] **GUARD-07**: Guard is idempotent — `start` twice replaces crontab entry, no duplicates
-- [ ] **GUARD-08**: Guard logs to `/var/log/kastell-guard.log` on the VPS
-- [ ] **GUARD-09**: Guard writes MetricSnapshot on each run (feeds doctor)
-- [ ] **GUARD-10**: Guard has notification hook point — ready to wire when v1.8 notification module lands
+- [x] **GUARD-01**: User can start guard daemon on a server (`kastell guard start <server>`)
+- [x] **GUARD-02**: Guard installs as remote cron on VPS (shell script + crontab entry), not local daemon
+- [x] **GUARD-03**: Guard checks disk, RAM, CPU thresholds and logs breaches
+- [x] **GUARD-04**: Guard runs scheduled re-audit and logs score regressions
+- [x] **GUARD-05**: User can stop guard daemon (`kastell guard stop <server>`)
+- [x] **GUARD-06**: User can check guard status (`kastell guard status <server>`)
+- [x] **GUARD-07**: Guard is idempotent — `start` twice replaces crontab entry, no duplicates
+- [x] **GUARD-08**: Guard logs to `/var/log/kastell-guard.log` on the VPS
+- [x] **GUARD-09**: Guard writes MetricSnapshot on each run (feeds doctor)
+- [x] **GUARD-10**: Guard has notification hook point — ready to wire when v1.8 notification module lands
 
 ### Backup Schedule
 
@@ -106,16 +106,16 @@
 | BKUP-03 | Phase 29 | Complete |
 | BKUP-04 | Phase 29 | Complete |
 | BKUP-05 | Phase 29 | Complete |
-| GUARD-01 | Phase 30 | Pending |
-| GUARD-02 | Phase 30 | Pending |
-| GUARD-03 | Phase 30 | Pending |
-| GUARD-04 | Phase 30 | Pending |
-| GUARD-05 | Phase 30 | Pending |
-| GUARD-06 | Phase 30 | Pending |
-| GUARD-07 | Phase 30 | Pending |
-| GUARD-08 | Phase 30 | Pending |
-| GUARD-09 | Phase 30 | Pending |
-| GUARD-10 | Phase 30 | Pending |
+| GUARD-01 | Phase 30 | Complete |
+| GUARD-02 | Phase 30 | Complete |
+| GUARD-03 | Phase 30 | Complete |
+| GUARD-04 | Phase 30 | Complete |
+| GUARD-05 | Phase 30 | Complete |
+| GUARD-06 | Phase 30 | Complete |
+| GUARD-07 | Phase 30 | Complete |
+| GUARD-08 | Phase 30 | Complete |
+| GUARD-09 | Phase 30 | Complete |
+| GUARD-10 | Phase 30 | Complete |
 | TREND-01 | Phase 31 | Pending |
 | TREND-02 | Phase 31 | Pending |
 | TREND-03 | Phase 31 | Pending |
