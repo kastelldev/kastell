@@ -110,7 +110,7 @@ MCP server with 7 tools, 12 security fixes, SSH key auto-generation, full docs u
 **Milestone Goal:** Autonomous security monitoring daemon, one-command server hardening, scheduled backups, risk trend with cause analysis, and proactive operations intelligence — establishing guard as the core Kastell value driver.
 
 - [x] **Phase 28: Lock** - One-command server hardening with idempotency, platform awareness, and audit score delta (completed 2026-03-14)
-- [ ] **Phase 29: Backup Schedule** - Scheduled backup via remote cron with overlap protection and idempotent install
+- [x] **Phase 29: Backup Schedule** - Scheduled backup via remote cron with overlap protection and idempotent install (completed 2026-03-14)
 - [ ] **Phase 30: Guard Daemon** - Autonomous security monitoring daemon running as remote cron on VPS with metric collection
 - [ ] **Phase 31: Risk Trend** - Audit score trend with per-check cause attribution and time-bounded queries
 - [ ] **Phase 32: Doctor** - Proactive operations analysis from cached snapshots and metric history
@@ -144,7 +144,7 @@ Plans:
   3. User runs `kastell backup <server> --schedule remove` and the cron entry is removed from the VPS
   4. Running `kastell backup <server> --schedule "0 3 * * *"` a second time replaces the existing entry — there is exactly one kastell backup cron line after any number of installs
   5. If two backup runs overlap, the second exits immediately without corrupting the backup, because a lock file on the VPS prevents concurrent execution
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 29-01-PLAN.md — Core backupSchedule module (types, command builders, orchestrators, schedules.json)
@@ -232,7 +232,7 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 1-27. Prior milestones | v1.2.0–v1.6 | All | Complete | 2026-03-11 |
 | 28. Lock | 2/2 | Complete    | 2026-03-14 | - |
-| 29. Backup Schedule | 1/2 | In Progress|  | - |
+| 29. Backup Schedule | 2/2 | Complete   | 2026-03-14 | - |
 | 30. Guard Daemon | v1.7 | 0/TBD | Not started | - |
 | 31. Risk Trend | v1.7 | 0/TBD | Not started | - |
 | 32. Doctor | v1.7 | 0/TBD | Not started | - |

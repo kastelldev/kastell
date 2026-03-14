@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Guard Core
 status: ready_to_plan
-stopped_at: Completed 29-backup-schedule-01-PLAN.md
-last_updated: "2026-03-14T07:42:10.666Z"
+stopped_at: Completed 29-backup-schedule-02-PLAN.md
+last_updated: "2026-03-14T07:50:18.404Z"
 last_activity: 2026-03-14 — Roadmap created, phases 28-33 defined
 progress:
   total_phases: 6
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 4
-  completed_plans: 3
+  completed_plans: 4
   percent: 100
 ---
 
@@ -65,6 +65,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 28-lock P01 | 164s | 1 tasks | 2 files |
 | Phase 28-lock P02 | 210 | 2 tasks | 3 files |
 | Phase 29-backup-schedule P01 | 266 | 1 tasks | 2 files |
+| Phase 29-backup-schedule P02 | 262 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,7 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 29-backup-schedule]: schedules.json separate from servers.json — avoids schema mutation and migration risk
 - [Phase 29-backup-schedule]: Runtime bare/Coolify detection in backup script via docker ps | grep coolify — handles server type changes after scheduling
 - [Phase 29-backup-schedule]: validateCronExpr does 5-field minimal check only — VPS crontab binary is authoritative validator
+- [Phase 29-backup-schedule]: handleScheduleOption() as private helper keeps backupCommand thin — schedule branch before other logic
 
 ### Pending Todos
 
@@ -95,6 +97,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-14T07:42:10.659Z
-Stopped at: Completed 29-backup-schedule-01-PLAN.md
+Last session: 2026-03-14T07:50:18.397Z
+Stopped at: Completed 29-backup-schedule-02-PLAN.md
 Next action: `/gsd:plan-phase 28`
