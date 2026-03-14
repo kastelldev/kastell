@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: Fleet + Notifications
 status: ready_to_plan
-stopped_at: Completed 34-01-PLAN.md (Layer Violation Fix)
-last_updated: "2026-03-14T16:18:23.372Z"
+stopped_at: Completed 35-01-PLAN.md (Adapter Deduplication)
+last_updated: "2026-03-14T17:24:01.619Z"
 last_activity: 2026-03-14 — Roadmap created, 7 phases defined (34-40)
 progress:
   total_phases: 7
-  completed_phases: 1
-  total_plans: 1
-  completed_plans: 1
+  completed_phases: 2
+  total_plans: 2
+  completed_plans: 2
   percent: 100
 ---
 
@@ -63,6 +63,7 @@ Progress: [░░░░░░░░░░] 0%
 
 *Updated after each plan completion*
 | Phase 34-layer-violation-fix P01 | 25min | 2 tasks | 9 files |
+| Phase 35-adapter-deduplication P01 | 20min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,8 @@ Progress: [░░░░░░░░░░] 0%
 - Architecture: Per-finding confirmation gate in doctor --fix — even with --force, no silent destructive execution
 - [Phase 34-layer-violation-fix]: Re-export bridge pattern in commands/ files preserves backward compat when moving functions to core/
 - [Phase 34-layer-violation-fix]: inquirer moved to core/secure.ts — core can hold interactive UI for orchestration-level functions called from deploy
+- [Phase 35-adapter-deduplication]: Config-object composition over inheritance for adapter backup/restore — simpler with two adapters, no fragile hierarchy
+- [Phase 35-adapter-deduplication]: AdapterRestoreConfig.tryRestartCmd string field replaces private tryRestartDokploy() and tryRestartCoolify import — uniform pattern across adapters
 
 ### Pending Todos
 
@@ -89,6 +92,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-14T16:18:23.365Z
-Stopped at: Completed 34-01-PLAN.md (Layer Violation Fix)
+Last session: 2026-03-14T17:24:01.612Z
+Stopped at: Completed 35-01-PLAN.md (Adapter Deduplication)
 Next action: `/gsd:plan-phase 34`

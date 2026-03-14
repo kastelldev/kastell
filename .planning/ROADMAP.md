@@ -239,7 +239,7 @@ Plans:
 | 1-27. Prior milestones | v1.2.0-v1.6 | All | Complete | 2026-03-11 |
 | 28-33. Guard Core | v1.7 | 12/12 | Complete | 2026-03-14 |
 | 34. Layer Violation Fix | 1/1 | Complete   | 2026-03-14 | - |
-| 35. Adapter Deduplication | v1.8 | 0/TBD | Not started | - |
+| 35. Adapter Deduplication | 1/1 | Complete   | 2026-03-14 | - |
 | 36. Notification Module | v1.8 | 0/TBD | Not started | - |
 | 37. Doctor Fix | v1.8 | 0/TBD | Not started | - |
 | 38. Fleet Visibility | v1.8 | 0/TBD | Not started | - |
