@@ -2,7 +2,10 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { join } from "path";
 import { z } from "zod";
 import axios from "axios";
+import chalk from "chalk";
+import inquirer from "inquirer";
 import { CONFIG_DIR } from "../utils/config.js";
+import { createSpinner } from "../utils/logger.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -176,4 +179,121 @@ export async function dispatchWithCooldown(
     saveCooldownState(state);
   }
   return { skipped: false, results };
+}
+
+// ─── Channel Management ───────────────────────────────────────────────────────
+
+const VALID_CHANNELS = ["telegram", "discord", "slack"] as const;
+type ValidChannel = (typeof VALID_CHANNELS)[number];
+
+export interface AddChannelOptions {
+  force?: boolean;
+  botToken?: string;
+  chatId?: string;
+  webhookUrl?: string;
+}
+
+export async function addChannel(
+  channelName: string,
+  options: AddChannelOptions,
+): Promise<void> {
+  if (!VALID_CHANNELS.includes(channelName as ValidChannel)) {
+    console.error(
+      chalk.red(
+        `Invalid channel: "${channelName}". Valid options: ${VALID_CHANNELS.join(", ")}`,
+      ),
+    );
+    return;
+  }
+
+  const channel = channelName as ValidChannel;
+  let channelConfig: NotifyConfig[ValidChannel];
+
+  if (options.force) {
+    if (channel === "telegram") {
+      if (!options.botToken || !options.chatId) {
+        console.error(
+          chalk.red("Telegram requires --bot-token and --chat-id when using --force"),
+        );
+        return;
+      }
+      channelConfig = { botToken: options.botToken, chatId: options.chatId };
+    } else {
+      if (!options.webhookUrl) {
+        console.error(
+          chalk.red(`${channel} requires --webhook-url when using --force`),
+        );
+        return;
+      }
+      channelConfig = { webhookUrl: options.webhookUrl };
+    }
+  } else {
+    if (channel === "telegram") {
+      const answers = await inquirer.prompt([
+        { type: "input", name: "botToken", message: "Telegram bot token:" },
+        { type: "input", name: "chatId", message: "Telegram chat ID:" },
+      ]);
+      channelConfig = { botToken: answers.botToken as string, chatId: answers.chatId as string };
+    } else {
+      const answers = await inquirer.prompt([
+        {
+          type: "input",
+          name: "webhookUrl",
+          message: `${channel.charAt(0).toUpperCase() + channel.slice(1)} webhook URL:`,
+        },
+      ]);
+      channelConfig = { webhookUrl: answers.webhookUrl as string };
+    }
+  }
+
+  const existing = loadNotifyConfig();
+  const merged: NotifyConfig = { ...existing, [channel]: channelConfig };
+  saveNotifyConfig(merged);
+  console.log(chalk.green(`${channel} notification channel configured successfully.`));
+}
+
+export async function testChannel(channelName: string): Promise<void> {
+  if (!VALID_CHANNELS.includes(channelName as ValidChannel)) {
+    console.error(
+      chalk.red(
+        `Invalid channel: "${channelName}". Valid options: ${VALID_CHANNELS.join(", ")}`,
+      ),
+    );
+    return;
+  }
+
+  const channel = channelName as ValidChannel;
+  const config = loadNotifyConfig();
+
+  if (!config[channel]) {
+    console.error(
+      chalk.red(
+        `${channel} is not configured. Run: kastell notify add ${channel}`,
+      ),
+    );
+    return;
+  }
+
+  const spinner = createSpinner(`Sending test notification to ${channel}...`);
+  spinner.start();
+  const testMessage = `[Kastell] Test notification - your ${channel} integration is working!`;
+
+  let result: { success: boolean; error?: string };
+
+  if (channel === "telegram") {
+    const { botToken, chatId } = config.telegram!;
+    result = await sendTelegram(botToken, chatId, testMessage);
+  } else if (channel === "discord") {
+    result = await sendDiscord(config.discord!.webhookUrl, testMessage);
+  } else {
+    result = await sendSlack(config.slack!.webhookUrl, testMessage);
+  }
+
+  spinner.stop();
+
+  if (result.success) {
+    console.log(chalk.green(`Test notification sent to ${channel} successfully.`));
+  } else {
+    console.error(chalk.red(`Failed to send test notification to ${channel}: ${result.error}`));
+  }
 }

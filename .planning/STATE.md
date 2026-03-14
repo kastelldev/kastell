@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: Fleet + Notifications
 status: ready_to_plan
-stopped_at: Completed 35-01-PLAN.md (Adapter Deduplication)
-last_updated: "2026-03-14T17:27:12.489Z"
+stopped_at: Completed 36-01-PLAN.md (Core Notification Module)
+last_updated: "2026-03-14T18:11:56.558Z"
 last_activity: 2026-03-14 — Roadmap created, 7 phases defined (34-40)
 progress:
   total_phases: 7
   completed_phases: 2
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 4
+  completed_plans: 3
   percent: 100
 ---
 
@@ -64,6 +64,7 @@ Progress: [░░░░░░░░░░] 0%
 *Updated after each plan completion*
 | Phase 34-layer-violation-fix P01 | 25min | 2 tasks | 9 files |
 | Phase 35-adapter-deduplication P01 | 20min | 2 tasks | 3 files |
+| Phase 36-notification-module P01 | 4min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,9 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 34-layer-violation-fix]: inquirer moved to core/secure.ts — core can hold interactive UI for orchestration-level functions called from deploy
 - [Phase 35-adapter-deduplication]: Config-object composition over inheritance for adapter backup/restore — simpler with two adapters, no fragile hierarchy
 - [Phase 35-adapter-deduplication]: AdapterRestoreConfig.tryRestartCmd string field replaces private tryRestartDokploy() and tryRestartCoolify import — uniform pattern across adapters
+- [Phase 36-notification-module]: Cooldown state is client-side at ~/.kastell/notify-cooldown.json — credentials never go to VPS guard script
+- [Phase 36-notification-module]: dispatchWithCooldown uses composite key serverName:findingType — prevents cross-server cooldown collision
+- [Phase 36-notification-module]: Cooldown timestamp only written on at least one channel success — all-fail allows retry
 
 ### Pending Todos
 
@@ -92,6 +96,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-14T17:24:01.612Z
-Stopped at: Completed 35-01-PLAN.md (Adapter Deduplication)
+Last session: 2026-03-14T18:11:56.551Z
+Stopped at: Completed 36-01-PLAN.md (Core Notification Module)
 Next action: `/gsd:plan-phase 34`

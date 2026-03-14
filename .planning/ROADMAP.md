@@ -12,7 +12,7 @@
 - ✅ **v1.6 Audit Expand + Evidence + Altyapi** — Phases 23-27 (shipped 2026-03-11)
 - ✅ **v1.7 Guard Core** — Phases 28-33 (shipped 2026-03-14)
 - 🚧 **v1.8 Fleet + Notifications** — Phases 34-40 (in progress)
-- ⬜ **v1.9 Audit Genisleme** — 45→400+ check, 9→20+ kategori, Lynis'i gecmek, compliance mapping (PCI DSS/HIPAA/ISO27001)
+- ⬜ **v1.9 Audit Genisleme + Cleanup** — 45→400+ check, 9→20+ kategori, Lynis'i gecmek, compliance mapping (PCI DSS/HIPAA/ISO27001), MCP SDK lazy-load (dynamic import — 179 transitive dep CLI startup'tan düşer), Socket.dev alert cleanup (evidence.ts opts.name path traversal guard, execSync alternatifleri), v2.0 öncesi temiz geçiş
 - ⬜ **v2.0 Plugin Ekosistemi** — Claude Code marketplace, SKILL.md (cross-platform: Cursor/Gemini CLI/Kiro), slash commands, chained workflows, audit --explain, validate_plugins.py CI
 - ⬜ **v3.0 Dashboard + Managed Servis** — premium web dashboard, managed servis ($49/$99/$299+), ilk musteri LA ROMA
 
@@ -160,7 +160,10 @@ Plans:
   2. `kastell notify test telegram` (and discord, slack) sends a real message to the configured channel and reports success or failure
   3. A single `dispatchNotification()` call fans out to all configured channels simultaneously; one channel failure does not block others
   4. Sending the same alert twice within 30 minutes for the same server and finding type produces only one outbound notification
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 36-01-PLAN.md — Core notification module (config, dispatchers, fan-out, cooldown)
+- [ ] 36-02-PLAN.md — CLI notify test command and index.ts registration
 
 ### Phase 37: Doctor Fix
 **Goal**: Users can remediate doctor findings interactively with full control over what executes
@@ -240,7 +243,7 @@ Plans:
 | 28-33. Guard Core | v1.7 | 12/12 | Complete | 2026-03-14 |
 | 34. Layer Violation Fix | 1/1 | Complete   | 2026-03-14 | - |
 | 35. Adapter Deduplication | 1/1 | Complete    | 2026-03-14 | - |
-| 36. Notification Module | v1.8 | 0/TBD | Not started | - |
+| 36. Notification Module | 1/2 | In Progress|  | - |
 | 37. Doctor Fix | v1.8 | 0/TBD | Not started | - |
 | 38. Fleet Visibility | v1.8 | 0/TBD | Not started | - |
 | 39. Guard Notification Integration | v1.8 | 0/TBD | Not started | - |
