@@ -126,7 +126,7 @@ describe("lockCommand", () => {
       expect(mockedLock.applyLock).toHaveBeenCalledWith(
         sampleServer.ip,
         sampleServer.name,
-        sampleServer.mode,
+        sampleServer.platform,
         expect.objectContaining({ dryRun: true }),
       );
     });
@@ -143,7 +143,7 @@ describe("lockCommand", () => {
       expect(mockedLock.applyLock).toHaveBeenCalledWith(
         sampleServer.ip,
         sampleServer.name,
-        sampleServer.mode,
+        sampleServer.platform,
         expect.objectContaining({ production: true, force: true }),
       );
     });
