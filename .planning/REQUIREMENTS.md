@@ -45,12 +45,12 @@
 
 ### Doctor
 
-- [ ] **DOC-01**: User can run proactive analysis (`kastell doctor <server>`)
-- [ ] **DOC-02**: Doctor detects disk trending full (linear extrapolation from 2+ data points)
-- [ ] **DOC-03**: Doctor detects high swap usage, stale packages, high fail2ban ban rate
-- [ ] **DOC-04**: Doctor detects audit regression streaks and old backups
-- [ ] **DOC-05**: Doctor detects reclaimable Docker disk space
-- [ ] **DOC-06**: Each finding has severity (critical/warning/info), description, and recommended command
+- [x] **DOC-01**: User can run proactive analysis (`kastell doctor <server>`)
+- [x] **DOC-02**: Doctor detects disk trending full (linear extrapolation from 2+ data points)
+- [x] **DOC-03**: Doctor detects high swap usage, stale packages, high fail2ban ban rate
+- [x] **DOC-04**: Doctor detects audit regression streaks and old backups
+- [x] **DOC-05**: Doctor detects reclaimable Docker disk space
+- [x] **DOC-06**: Each finding has severity (critical/warning/info), description, and recommended command
 
 ### MCP Integration
 
@@ -121,12 +121,12 @@
 | TREND-03 | Phase 31 | Complete |
 | TREND-04 | Phase 31 | Complete |
 | TREND-05 | Phase 31 | Complete |
-| DOC-01 | Phase 32 | Pending |
-| DOC-02 | Phase 32 | Pending |
-| DOC-03 | Phase 32 | Pending |
-| DOC-04 | Phase 32 | Pending |
-| DOC-05 | Phase 32 | Pending |
-| DOC-06 | Phase 32 | Pending |
+| DOC-01 | Phase 32 | Complete |
+| DOC-02 | Phase 32 | Complete |
+| DOC-03 | Phase 32 | Complete |
+| DOC-04 | Phase 32 | Complete |
+| DOC-05 | Phase 32 | Complete |
+| DOC-06 | Phase 32 | Complete |
 | MCP-01 | Phase 33 | Pending |
 | MCP-02 | Phase 33 | Pending |
 | MCP-03 | Phase 33 | Pending |

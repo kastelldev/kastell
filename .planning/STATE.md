@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Guard Core
 status: ready_to_plan
-stopped_at: Completed 31-risk-trend-02-PLAN.md
-last_updated: "2026-03-14T10:18:54.573Z"
+stopped_at: Completed 32-doctor-01-PLAN.md
+last_updated: "2026-03-14T10:43:36.467Z"
 last_activity: 2026-03-14 — Roadmap created, phases 28-33 defined
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 8
-  completed_plans: 8
+  total_plans: 10
+  completed_plans: 9
   percent: 100
 ---
 
@@ -70,6 +70,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 30-guard-daemon P02 | 173 | 1 tasks | 3 files |
 | Phase 31-risk-trend P01 | 234 | 2 tasks | 4 files |
 | Phase 31-risk-trend P02 | 480 | 1 tasks | 3 files |
+| Phase 32-doctor P01 | 900 | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -97,6 +98,8 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 31-risk-trend]: formatters/trend.ts not exported through formatters/index.ts — audit command in Plan 02 imports directly
 - [Phase 31-risk-trend]: --trend branch placed after server resolution so ip is available for loadAuditHistory
 - [Phase 31-risk-trend]: days option parsed with parseInt in command layer keeping computeTrend signature clean
+- [Phase 32-doctor]: Swap/packages/fail2ban/backup/docker checks skip gracefully (null) when SSH data unavailable — no --fresh run yet
+- [Phase 32-doctor]: checkAuditRegressionStreak requires 2+ consecutive score-decrease transitions (maxStreak >= 2) per DOC-04 streak semantics
 
 ### Pending Todos
 
@@ -109,6 +112,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-14T10:16:00.616Z
-Stopped at: Completed 31-risk-trend-02-PLAN.md
+Last session: 2026-03-14T10:43:36.459Z
+Stopped at: Completed 32-doctor-01-PLAN.md
 Next action: `/gsd:plan-phase 28`

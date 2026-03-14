@@ -193,7 +193,7 @@ Plans:
   3. Doctor detects and reports high swap usage, stale packages, elevated fail2ban ban rate, audit score regression streaks, old backups, and reclaimable Docker disk space when present
   4. Each finding includes a description of the problem and a specific `kastell` or shell command the user can run to address it
   5. Doctor completes using cached snapshots without making a live SSH connection unless `--fresh` is passed
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
 - [ ] 32-01-PLAN.md — Core doctor module (types, 7 pure check functions, metrics cache, orchestrator)
@@ -247,7 +247,7 @@ Plans:
 | 29. Backup Schedule | 2/2 | Complete    | 2026-03-14 | - |
 | 30. Guard Daemon | 2/2 | Complete    | 2026-03-14 | - |
 | 31. Risk Trend | 2/2 | Complete    | 2026-03-14 | - |
-| 32. Doctor | v1.7 | 0/2 | Planned | - |
+| 32. Doctor | 1/2 | In Progress|  | - |
 | 33. MCP + Completions | v1.7 | 0/TBD | Not started | - |
 
 ---

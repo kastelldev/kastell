@@ -25,22 +25,34 @@ jest.mock("../../src/utils/ssh", () => ({
 
 jest.mock("axios");
 
+jest.mock("../../src/utils/serverSelect", () => ({
+  resolveServer: jest.fn(),
+}));
+
+jest.mock("../../src/core/doctor", () => ({
+  ...jest.requireActual("../../src/core/doctor"),
+  runServerDoctor: jest.fn(),
+}));
+
 import { checkSshAvailable } from "../../src/utils/ssh";
+import { resolveServer } from "../../src/utils/serverSelect";
+import { runServerDoctor } from "../../src/core/doctor";
 import { runDoctorChecks, doctorCommand, checkProviderTokens } from "../../src/commands/doctor";
 
 const mockedAxios = axios as jest.Mocked<typeof axios>;
-
 const mockedExecSync = execSync as jest.MockedFunction<typeof execSync>;
 const mockedExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;
 const mockedAccessSync = accessSync as jest.MockedFunction<typeof accessSync>;
 const mockedCheckSsh = checkSshAvailable as jest.MockedFunction<typeof checkSshAvailable>;
+const mockedResolveServer = resolveServer as jest.MockedFunction<typeof resolveServer>;
+const mockedRunServerDoctor = runServerDoctor as jest.MockedFunction<typeof runServerDoctor>;
 
-describe("doctorCommand", () => {
+describe("doctorCommand — local mode (no server arg)", () => {
   let consoleSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
-    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
   afterEach(() => {
@@ -155,13 +167,13 @@ describe("doctorCommand", () => {
     expect(configCheck?.status).toBe("fail");
   });
 
-  it("should display all checks and summary", async () => {
+  it("should display all checks and summary — new signature (undefined, options, version)", async () => {
     mockedExecSync.mockReturnValue(Buffer.from("10.0.0"));
     mockedCheckSsh.mockReturnValue(true);
     mockedExistsSync.mockReturnValue(true);
     mockedAccessSync.mockImplementation(() => {});
 
-    await doctorCommand(undefined, "0.6.0");
+    await doctorCommand(undefined, {}, "0.6.0");
 
     const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Kastell Doctor");
@@ -169,13 +181,13 @@ describe("doctorCommand", () => {
     expect(output).toContain("npm");
   });
 
-  it("should show info message with --check-tokens when no servers", async () => {
+  it("should show info message with --check-tokens when no servers — new signature", async () => {
     mockedExecSync.mockReturnValue(Buffer.from("10.0.0"));
     mockedCheckSsh.mockReturnValue(true);
     mockedExistsSync.mockReturnValue(true);
     mockedAccessSync.mockImplementation(() => {});
 
-    await doctorCommand({ checkTokens: true }, "0.6.0");
+    await doctorCommand(undefined, { checkTokens: true }, "0.6.0");
 
     const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("No servers registered");
@@ -234,7 +246,7 @@ describe("doctorCommand", () => {
       throw new Error("EACCES");
     });
 
-    await doctorCommand(undefined, "0.6.0");
+    await doctorCommand(undefined, {}, "0.6.0");
 
     const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("check(s) failed");
@@ -262,10 +274,166 @@ describe("doctorCommand", () => {
       ]),
     );
 
-    await doctorCommand(undefined, "0.6.0");
+    await doctorCommand(undefined, {}, "0.6.0");
 
     const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("All checks passed!");
+  });
+
+  it("does not call resolveServer when no server argument given", async () => {
+    mockedExecSync.mockReturnValue(Buffer.from("10.0.0"));
+    mockedCheckSsh.mockReturnValue(true);
+    mockedExistsSync.mockReturnValue(true);
+    mockedAccessSync.mockImplementation(() => {});
+
+    await doctorCommand(undefined, {}, "0.6.0");
+
+    expect(mockedResolveServer).not.toHaveBeenCalled();
+    expect(mockedRunServerDoctor).not.toHaveBeenCalled();
+  });
+});
+
+describe("doctorCommand — server mode", () => {
+  let consoleSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    jest.resetAllMocks();
+  });
+
+  afterEach(() => {
+    consoleSpy.mockRestore();
+  });
+
+  const fakeServer = {
+    id: "srv-1",
+    name: "my-server",
+    ip: "1.2.3.4",
+    provider: "hetzner",
+    region: "nbg1",
+    size: "cax11",
+    createdAt: "2026-01-01",
+    mode: "coolify" as const,
+  };
+
+  const fakeResult = {
+    serverName: "my-server",
+    serverIp: "1.2.3.4",
+    findings: [
+      {
+        id: "DISK_TREND",
+        severity: "critical" as const,
+        description: "Disk projected full in 1 day",
+        command: "df -h /",
+      },
+      {
+        id: "STALE_PACKAGES",
+        severity: "warning" as const,
+        description: "20 packages available for upgrade",
+        command: "sudo apt update",
+      },
+    ],
+    ranAt: new Date().toISOString(),
+    usedFreshData: false,
+  };
+
+  it("calls resolveServer with server arg and dispatches to runServerDoctor", async () => {
+    mockedResolveServer.mockResolvedValue(fakeServer);
+    mockedRunServerDoctor.mockResolvedValue({ success: true, data: fakeResult });
+
+    await doctorCommand("my-server", {}, "1.0.0");
+
+    expect(mockedResolveServer).toHaveBeenCalledWith("my-server", expect.any(String));
+    expect(mockedRunServerDoctor).toHaveBeenCalledWith("1.2.3.4", "my-server", { fresh: undefined });
+  });
+
+  it("returns without calling runServerDoctor when resolveServer returns undefined", async () => {
+    mockedResolveServer.mockResolvedValue(undefined);
+
+    await doctorCommand("nonexistent", {}, "1.0.0");
+
+    expect(mockedResolveServer).toHaveBeenCalled();
+    expect(mockedRunServerDoctor).not.toHaveBeenCalled();
+  });
+
+  it("passes fresh=true to runServerDoctor when --fresh flag set", async () => {
+    mockedResolveServer.mockResolvedValue(fakeServer);
+    mockedRunServerDoctor.mockResolvedValue({ success: true, data: { ...fakeResult, usedFreshData: true } });
+
+    await doctorCommand("my-server", { fresh: true }, "1.0.0");
+
+    expect(mockedRunServerDoctor).toHaveBeenCalledWith("1.2.3.4", "my-server", { fresh: true });
+  });
+
+  it("outputs JSON via console.log when --json flag set", async () => {
+    mockedResolveServer.mockResolvedValue(fakeServer);
+    mockedRunServerDoctor.mockResolvedValue({ success: true, data: fakeResult });
+
+    await doctorCommand("my-server", { json: true }, "1.0.0");
+
+    const allOutput = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    expect(allOutput).toContain('"serverName"');
+    expect(allOutput).toContain('"findings"');
+  });
+
+  it("logs error when runServerDoctor returns success=false", async () => {
+    mockedResolveServer.mockResolvedValue(fakeServer);
+    mockedRunServerDoctor.mockResolvedValue({ success: false, error: "SSH connection failed" });
+
+    await doctorCommand("my-server", {}, "1.0.0");
+
+    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    expect(output).toContain("SSH connection failed");
+  });
+
+  it("displays findings grouped by severity with descriptions", async () => {
+    mockedResolveServer.mockResolvedValue(fakeServer);
+    mockedRunServerDoctor.mockResolvedValue({ success: true, data: fakeResult });
+
+    await doctorCommand("my-server", {}, "1.0.0");
+
+    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    expect(output).toContain("my-server");
+    expect(output).toContain("1.2.3.4");
+    expect(output).toContain("Disk projected full in 1 day");
+    expect(output).toContain("20 packages available for upgrade");
+  });
+
+  it("shows 'No issues detected' when findings array is empty", async () => {
+    mockedResolveServer.mockResolvedValue(fakeServer);
+    mockedRunServerDoctor.mockResolvedValue({
+      success: true,
+      data: { ...fakeResult, findings: [] },
+    });
+
+    await doctorCommand("my-server", {}, "1.0.0");
+
+    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    expect(output).toContain("No issues detected");
+  });
+
+  it("shows cached data note when usedFreshData is false", async () => {
+    mockedResolveServer.mockResolvedValue(fakeServer);
+    mockedRunServerDoctor.mockResolvedValue({
+      success: true,
+      data: { ...fakeResult, findings: [], usedFreshData: false },
+    });
+
+    await doctorCommand("my-server", {}, "1.0.0");
+
+    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    expect(output).toContain("--fresh");
+  });
+
+  it("shows summary line with finding counts", async () => {
+    mockedResolveServer.mockResolvedValue(fakeServer);
+    mockedRunServerDoctor.mockResolvedValue({ success: true, data: fakeResult });
+
+    await doctorCommand("my-server", {}, "1.0.0");
+
+    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    // Summary should mention finding count
+    expect(output).toMatch(/\d+\s+finding/i);
   });
 });
 
@@ -275,7 +443,7 @@ describe("checkProviderTokens", () => {
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
-    jest.clearAllMocks();
+    jest.resetAllMocks();
     process.env = { ...originalEnv };
   });
 
