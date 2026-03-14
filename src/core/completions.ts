@@ -1,7 +1,7 @@
 /**
  * Static shell completion script generators for kastell CLI.
  * Scripts are hardcoded strings (not runtime-derived from Commander)
- * covering all 24 commands with per-command options.
+ * covering all 26 commands with per-command options.
  */
 
 export function generateBashCompletions(): string {
@@ -13,7 +13,7 @@ _kastell() {
   COMPREPLY=()
   cur="\${COMP_WORDS[COMP_CWORD]}"
   prev="\${COMP_WORDS[COMP_CWORD-1]}"
-  commands="init list status destroy config ssh update restart logs monitor health doctor firewall domain secure backup restore export import add remove maintain snapshot completions"
+  commands="init list status destroy config ssh update restart logs monitor health doctor firewall domain secure backup restore export import add remove maintain snapshot completions guard lock"
 
   # Subcommand completions
   case "\${prev}" in
@@ -39,6 +39,10 @@ _kastell() {
       ;;
     completions)
       COMPREPLY=( $(compgen -W "bash zsh fish" -- "\${cur}") )
+      return 0
+      ;;
+    guard)
+      COMPREPLY=( $(compgen -W "start stop status" -- "\${cur}") )
       return 0
       ;;
   esac
@@ -79,7 +83,7 @@ _kastell() {
         return 0
         ;;
       doctor)
-        COMPREPLY=( $(compgen -W "--check-tokens" -- "\${cur}") )
+        COMPREPLY=( $(compgen -W "--check-tokens --fresh --json" -- "\${cur}") )
         return 0
         ;;
       firewall)
@@ -116,6 +120,14 @@ _kastell() {
         ;;
       snapshot)
         COMPREPLY=( $(compgen -W "--all --dry-run --force" -- "\${cur}") )
+        return 0
+        ;;
+      guard)
+        COMPREPLY=( $(compgen -W "--force" -- "\${cur}") )
+        return 0
+        ;;
+      lock)
+        COMPREPLY=( $(compgen -W "--production --dry-run --force" -- "\${cur}") )
         return 0
         ;;
     esac
@@ -163,6 +175,8 @@ _kastell() {
     'maintain:Run full maintenance cycle'
     'snapshot:Manage server snapshots'
     'completions:Generate shell completion scripts'
+    'guard:Manage autonomous security monitoring daemon'
+    'lock:Harden server to production standard'
   )
 
   _arguments -C \\
@@ -230,7 +244,9 @@ _kastell() {
           ;;
         doctor)
           _arguments \\
-            '--check-tokens[Validate provider API tokens]'
+            '--check-tokens[Validate provider API tokens]' \\
+            '--fresh[Force fresh SSH probe, skip cache]' \\
+            '--json[Output result as JSON]'
           ;;
         firewall)
           local -a subcommands
@@ -299,6 +315,19 @@ _kastell() {
         completions)
           _arguments '1:shell:(bash zsh fish)'
           ;;
+        guard)
+          local -a subcommands
+          subcommands=('start' 'stop' 'status')
+          _describe 'subcommand' subcommands
+          _arguments \\
+            '--force[Skip confirmation prompts]'
+          ;;
+        lock)
+          _arguments \\
+            '--production[Apply full production hardening profile]' \\
+            '--dry-run[Show commands without executing]' \\
+            '--force[Skip confirmation prompts]'
+          ;;
       esac
       ;;
   esac
@@ -351,6 +380,8 @@ complete -c kastell -n '__kastell_no_subcommand' -a 'remove' -d 'Remove a server
 complete -c kastell -n '__kastell_no_subcommand' -a 'maintain' -d 'Run full maintenance cycle'
 complete -c kastell -n '__kastell_no_subcommand' -a 'snapshot' -d 'Manage server snapshots'
 complete -c kastell -n '__kastell_no_subcommand' -a 'completions' -d 'Generate shell completions'
+complete -c kastell -n '__kastell_no_subcommand' -a 'guard' -d 'Manage guard daemon'
+complete -c kastell -n '__kastell_no_subcommand' -a 'lock' -d 'Harden server to production standard'
 
 # init options
 complete -c kastell -n '__kastell_using_subcommand init' -l provider -d 'Cloud provider'
@@ -397,6 +428,8 @@ complete -c kastell -n '__kastell_using_subcommand monitor' -l containers -d 'Sh
 
 # doctor options
 complete -c kastell -n '__kastell_using_subcommand doctor' -l check-tokens -d 'Validate API tokens'
+complete -c kastell -n '__kastell_using_subcommand doctor' -l fresh -d 'Force fresh SSH probe, skip cache'
+complete -c kastell -n '__kastell_using_subcommand doctor' -l json -d 'Output result as JSON'
 
 # firewall subcommands and options
 complete -c kastell -n '__kastell_using_subcommand firewall' -a 'setup add remove status'
@@ -446,5 +479,14 @@ complete -c kastell -n '__kastell_using_subcommand snapshot' -l dry-run -d 'Show
 complete -c kastell -n '__kastell_using_subcommand snapshot' -l force -d 'Skip confirmation'
 
 # completions subarguments
-complete -c kastell -n '__kastell_using_subcommand completions' -a 'bash zsh fish'`;
+complete -c kastell -n '__kastell_using_subcommand completions' -a 'bash zsh fish'
+
+# guard subcommands and options
+complete -c kastell -n '__kastell_using_subcommand guard' -a 'start stop status'
+complete -c kastell -n '__kastell_using_subcommand guard' -l force -d 'Skip confirmation prompts'
+
+# lock options
+complete -c kastell -n '__kastell_using_subcommand lock' -l production -d 'Apply full production hardening profile'
+complete -c kastell -n '__kastell_using_subcommand lock' -l dry-run -d 'Show commands without executing'
+complete -c kastell -n '__kastell_using_subcommand lock' -l force -d 'Skip confirmation prompts'`;
 }
