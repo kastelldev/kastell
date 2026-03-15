@@ -2,8 +2,8 @@ import { parseAllChecks, CHECK_REGISTRY } from "../../src/core/audit/checks/inde
 import type { CategoryEntry } from "../../src/core/audit/checks/index.js";
 
 describe("CHECK_REGISTRY", () => {
-  it("should have entries for all 20 categories", () => {
-    expect(CHECK_REGISTRY).toHaveLength(20);
+  it("should have entries for all 27 categories", () => {
+    expect(CHECK_REGISTRY).toHaveLength(27);
     const names = CHECK_REGISTRY.map((e: CategoryEntry) => e.name);
     expect(names).toContain("SSH");
     expect(names).toContain("Firewall");
@@ -27,6 +27,14 @@ describe("CHECK_REGISTRY", () => {
     // Phase 47 Wave 2 additions
     expect(names).toContain("MAC");
     expect(names).toContain("Memory");
+    // Phase 48 Kastell-only additions
+    expect(names).toContain("Secrets");
+    expect(names).toContain("Cloud Metadata");
+    expect(names).toContain("Supply Chain");
+    expect(names).toContain("Backup Hygiene");
+    expect(names).toContain("Resource Limits");
+    expect(names).toContain("Incident Readiness");
+    expect(names).toContain("DNS Security");
   });
 
   it("should map section names to correct parsers", () => {
@@ -87,9 +95,9 @@ describe("parseAllChecks", () => {
     expect(pwdCheck!.passed).toBe(true);
   });
 
-  it("should correctly route all 20 categories to their parsers", () => {
+  it("should correctly route all 27 categories to their parsers", () => {
     const categories = parseAllChecks([minimalBatch1, minimalBatch2, minimalBatch3], "bare");
-    expect(categories).toHaveLength(20);
+    expect(categories).toHaveLength(27);
     const names = categories.map((c) => c.name);
     expect(names).toContain("SSH");
     expect(names).toContain("Firewall");
@@ -111,6 +119,13 @@ describe("parseAllChecks", () => {
     expect(names).toContain("Malware");
     expect(names).toContain("MAC");
     expect(names).toContain("Memory");
+    expect(names).toContain("Secrets");
+    expect(names).toContain("Cloud Metadata");
+    expect(names).toContain("Supply Chain");
+    expect(names).toContain("Backup Hygiene");
+    expect(names).toContain("Resource Limits");
+    expect(names).toContain("Incident Readiness");
+    expect(names).toContain("DNS Security");
   });
 
   it("should not shift FIREWALL parser when a new category is inserted between SSH and FIREWALL", () => {
@@ -149,9 +164,9 @@ describe("parseAllChecks", () => {
     expect(docker!.checks.length).toBeGreaterThan(0);
   });
 
-  it("should return 20 AuditCategory objects from batch outputs", () => {
+  it("should return 27 AuditCategory objects from batch outputs", () => {
     const categories = parseAllChecks([minimalBatch1, minimalBatch2, minimalBatch3], "bare");
-    expect(categories).toHaveLength(20);
+    expect(categories).toHaveLength(27);
     categories.forEach((cat) => {
       expect(cat.name).toBeDefined();
       expect(cat.checks).toBeDefined();
@@ -163,8 +178,12 @@ describe("parseAllChecks", () => {
 
   it("should handle empty batch outputs gracefully", () => {
     const categories = parseAllChecks(["", "", ""], "bare");
-    expect(categories).toHaveLength(20);
+    expect(categories).toHaveLength(27);
+    // Cloud Metadata intentionally returns [] on bare metal/empty input (Phase 48-01 decision)
+    // maxScore=0 means it is excluded from weighted score on non-VPS hosts
+    const BARE_METAL_CATEGORIES = new Set(["Cloud Metadata"]);
     categories.forEach((cat) => {
+      if (BARE_METAL_CATEGORIES.has(cat.name)) return;
       expect(cat.checks.length).toBeGreaterThan(0);
     });
   });

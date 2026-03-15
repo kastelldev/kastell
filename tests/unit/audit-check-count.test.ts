@@ -1,20 +1,26 @@
 /**
  * CI gate: enforces minimum total check count across all categories.
- * Phase 47 Wave 2 target: >= 140 checks (132 existing + 14 new from MAC and Memory categories).
+ * Phase 48 target: >= 185 checks (146 Phase 47 baseline + 43 new from 7 Kastell-only categories).
+ * Note: Cloud Metadata returns [] on bare-metal/empty input (intentional — Phase 48-01 decision).
+ * VPS environments will yield additional Cloud Metadata checks at runtime.
  */
 
 import { CHECK_REGISTRY } from "../../src/core/audit/checks/index.js";
 
 describe("Total check count CI gate", () => {
-  it("should have at least 140 checks across all categories", () => {
+  it("should have at least 185 checks across all categories", () => {
     const allChecks = CHECK_REGISTRY.flatMap((entry) =>
       entry.parser("", "bare"),
     );
-    expect(allChecks.length).toBeGreaterThanOrEqual(140);
+    expect(allChecks.length).toBeGreaterThanOrEqual(185);
   });
 
   it("each category should produce at least 1 check", () => {
+    // Cloud Metadata intentionally returns [] on bare metal / empty input
+    // (maxScore=0 excludes it from weighted score on non-VPS hosts — Phase 48-01 decision)
+    const BARE_METAL_CATEGORIES = new Set(["Cloud Metadata"]);
     for (const entry of CHECK_REGISTRY) {
+      if (BARE_METAL_CATEGORIES.has(entry.name)) continue;
       const checks = entry.parser("", "bare");
       expect(checks.length).toBeGreaterThan(0);
     }
