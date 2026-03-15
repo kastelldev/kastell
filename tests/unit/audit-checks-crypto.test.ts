@@ -21,6 +21,12 @@ describe("parseCryptoChecks", () => {
     "LISTEN 0 511 0.0.0.0:443 0.0.0.0:* users:((\"nginx\",pid=1234,fd=6))",
     // Certificate enddate (future date)
     "notAfter=Dec 31 23:59:59 2030 GMT",
+    // SSH host key permissions (stat -c '%a %n' /etc/ssh/ssh_host_*_key)
+    "600 /etc/ssh/ssh_host_rsa_key",
+    "600 /etc/ssh/ssh_host_ecdsa_key",
+    "600 /etc/ssh/ssh_host_ed25519_key",
+    // Weak OpenSSL cipher count (openssl ciphers | grep -ci 'NULL|RC4|DES|MD5') — low count
+    "2",
   ].join("\n");
 
   const insecureOutput = [
@@ -42,9 +48,9 @@ describe("parseCryptoChecks", () => {
     "N/A",
   ].join("\n");
 
-  it("should return 10+ checks for the Crypto category", () => {
+  it("should return 15 checks for the Crypto category", () => {
     const checks = parseCryptoChecks(validOutput, "bare");
-    expect(checks.length).toBeGreaterThanOrEqual(10);
+    expect(checks).toHaveLength(15);
     checks.forEach((c) => expect(c.category).toBe("Crypto"));
   });
 
@@ -62,15 +68,15 @@ describe("parseCryptoChecks", () => {
     });
   });
 
-  it("severity budget: 0% critical (all warning or info)", () => {
+  it("severity budget: <= 1 critical check (CRYPTO-HOST-KEY-PERMS)", () => {
     const checks = parseCryptoChecks("", "bare");
     const criticalCount = checks.filter((c) => c.severity === "critical").length;
-    expect(criticalCount).toBe(0);
+    expect(criticalCount).toBe(1);
   });
 
   it("should handle N/A output gracefully", () => {
     const checks = parseCryptoChecks("N/A", "bare");
-    expect(checks.length).toBeGreaterThanOrEqual(10);
+    expect(checks).toHaveLength(15);
     checks.forEach((c) => {
       expect(c.passed).toBe(false);
       expect(c.currentValue).toBe("Unable to determine");
@@ -79,7 +85,7 @@ describe("parseCryptoChecks", () => {
 
   it("should handle empty string output gracefully", () => {
     const checks = parseCryptoChecks("", "bare");
-    expect(checks.length).toBeGreaterThanOrEqual(10);
+    expect(checks).toHaveLength(15);
     checks.forEach((c) => expect(c.passed).toBe(false));
   });
 
@@ -191,5 +197,33 @@ describe("parseCryptoChecks", () => {
     const checks = parseCryptoChecks(insecureOutput, "bare");
     const check = checks.find((c) => c.id === "CRYPTO-OPENSSL-MODERN");
     expect(check!.passed).toBe(false);
+  });
+
+  it("CRYPTO-HOST-KEY-PERMS passes when all host keys have mode 600", () => {
+    const checks = parseCryptoChecks(validOutput, "bare");
+    const check = checks.find((c) => c.id === "CRYPTO-HOST-KEY-PERMS");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+  });
+
+  it("CRYPTO-WEAK-SSH-KEYS passes when no DSA host key present", () => {
+    const checks = parseCryptoChecks(validOutput, "bare");
+    const check = checks.find((c) => c.id === "CRYPTO-WEAK-SSH-KEYS");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+  });
+
+  it("CRYPTO-WEAK-SSH-KEYS fails when DSA host key is present", () => {
+    const output = validOutput + "\n/etc/ssh/ssh_host_dsa_key";
+    const checks = parseCryptoChecks(output, "bare");
+    const check = checks.find((c) => c.id === "CRYPTO-WEAK-SSH-KEYS");
+    expect(check!.passed).toBe(false);
+  });
+
+  it("CRYPTO-NO-WEAK-OPENSSL-CIPHERS passes when weak count < 5", () => {
+    const checks = parseCryptoChecks(validOutput, "bare");
+    const check = checks.find((c) => c.id === "CRYPTO-NO-WEAK-OPENSSL-CIPHERS");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
   });
 });

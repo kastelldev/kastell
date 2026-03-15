@@ -30,6 +30,12 @@ describe("parseLoggingChecks", () => {
     "Storage=persistent",
     // centralized logging tool installed
     "/usr/bin/vector",
+    // world-readable log file count (LOG-NO-WORLD-READABLE-LOGS) — a small number 0-4
+    "1",
+    // remote syslog forwarding (LOG-SYSLOG-REMOTE) — line must start with @@ to match regex
+    "@@logserver.example.com:514",
+    // logrotate cron job active (LOG-LOGROTATE-ACTIVE)
+    "/etc/cron.daily/logrotate",
   ].join("\n");
 
   const insecureOutput = [
@@ -53,9 +59,9 @@ describe("parseLoggingChecks", () => {
     "NONE",
   ].join("\n");
 
-  it("should return 12 checks", () => {
+  it("should return 15 checks", () => {
     const checks = parseLoggingChecks(secureOutput, "bare");
-    expect(checks).toHaveLength(12);
+    expect(checks).toHaveLength(15);
     checks.forEach((check) => {
       expect(check.category).toBe("Logging");
       expect(check.id).toMatch(/^LOG-[A-Z][A-Z0-9]*(-[A-Z][A-Z0-9]*)+$/);
@@ -122,8 +128,29 @@ describe("parseLoggingChecks", () => {
     expect(check!.passed).toBe(false);
   });
 
+  it("LOG-SYSLOG-REMOTE passes when @@ forwarding found", () => {
+    const checks = parseLoggingChecks(secureOutput, "bare");
+    const check = checks.find((c: { id: string }) => c.id === "LOG-SYSLOG-REMOTE");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+  });
+
+  it("LOG-LOGROTATE-ACTIVE passes when /etc/cron.daily/logrotate present", () => {
+    const checks = parseLoggingChecks(secureOutput, "bare");
+    const check = checks.find((c: { id: string }) => c.id === "LOG-LOGROTATE-ACTIVE");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+  });
+
+  it("LOG-NO-WORLD-READABLE-LOGS passes when count < 5", () => {
+    const checks = parseLoggingChecks(secureOutput, "bare");
+    const check = checks.find((c: { id: string }) => c.id === "LOG-NO-WORLD-READABLE-LOGS");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+  });
+
   it("should handle N/A output gracefully", () => {
     const checks = parseLoggingChecks("N/A", "bare");
-    expect(checks).toHaveLength(12);
+    expect(checks).toHaveLength(15);
   });
 });

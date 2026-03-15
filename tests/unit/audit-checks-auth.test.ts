@@ -36,6 +36,10 @@ describe("parseAuthChecks", () => {
     "ii  libpam-google-authenticator 20191231-2 amd64 Two-step verification",
     // INACTIVE configured
     "INACTIVE=30",
+    // pam_wheel (AUTH-SU-RESTRICTED)
+    "auth required pam_wheel.so use_uid",
+    // /etc/gshadow permissions (second standalone perm after shadow 640) — AUTH-GSHADOW-PERMISSIONS
+    "640",
   ].join("\n");
 
   const insecureOutput = [
@@ -63,9 +67,9 @@ describe("parseAuthChecks", () => {
     "N/A",
   ].join("\n");
 
-  it("should return 15 checks", () => {
+  it("should return 18 checks", () => {
     const checks = parseAuthChecks(secureOutput, "bare");
-    expect(checks).toHaveLength(15);
+    expect(checks).toHaveLength(18);
     checks.forEach((check) => {
       expect(check.category).toBe("Auth");
       expect(check.id).toMatch(/^AUTH-[A-Z][A-Z0-9]*(-[A-Z][A-Z0-9]*)+$/);
@@ -142,8 +146,29 @@ describe("parseAuthChecks", () => {
     expect(check!.passed).toBe(false);
   });
 
+  it("AUTH-SU-RESTRICTED passes when pam_wheel configured in /etc/pam.d/su", () => {
+    const checks = parseAuthChecks(secureOutput, "bare");
+    const check = checks.find((c: { id: string }) => c.id === "AUTH-SU-RESTRICTED");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+  });
+
+  it("AUTH-PASS-MAX-DAYS-SET passes when PASS_MAX_DAYS is 90", () => {
+    const checks = parseAuthChecks(secureOutput, "bare");
+    const check = checks.find((c: { id: string }) => c.id === "AUTH-PASS-MAX-DAYS-SET");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+  });
+
+  it("AUTH-GSHADOW-PERMISSIONS passes when second perm value is 640", () => {
+    const checks = parseAuthChecks(secureOutput, "bare");
+    const check = checks.find((c: { id: string }) => c.id === "AUTH-GSHADOW-PERMISSIONS");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+  });
+
   it("should handle N/A output gracefully", () => {
     const checks = parseAuthChecks("N/A", "bare");
-    expect(checks).toHaveLength(15);
+    expect(checks).toHaveLength(18);
   });
 });

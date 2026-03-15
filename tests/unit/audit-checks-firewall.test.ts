@@ -32,13 +32,17 @@ describe("parseFirewallChecks", () => {
     "|- Number of peers: 0",
     // rate limiting
     "ACCEPT     tcp  --  0.0.0.0/0  0.0.0.0/0  limit: avg 3/min burst 3",
+    // FORWARD chain policy (FW-FORWARD-CHAIN-DENY)
+    "Chain FORWARD (policy DROP 0 packets, 0 bytes)",
+    // ip6tables INPUT line count (FW-IPV6-DISABLED-OR-FILTERED) — number > 3
+    "5",
   ].join("\n");
 
   const inactiveOutput = "Status: inactive";
 
-  it("should return 12 checks for active firewall with deny default", () => {
+  it("should return 15 checks for active firewall with deny default", () => {
     const checks = parseFirewallChecks(activeSecureOutput, "bare");
-    expect(checks).toHaveLength(12);
+    expect(checks).toHaveLength(15);
     checks.forEach((check) => {
       expect(check.category).toBe("Firewall");
       expect(check.id).toMatch(/^FW-[A-Z][A-Z0-9]*(-[A-Z][A-Z0-9]*)+$/);
@@ -115,9 +119,23 @@ describe("parseFirewallChecks", () => {
     expect(fw12!.passed).toBe(true);
   });
 
+  it("FW-FORWARD-CHAIN-DENY passes when FORWARD chain policy is DROP", () => {
+    const checks = parseFirewallChecks(activeSecureOutput, "bare");
+    const check = checks.find((c) => c.id === "FW-FORWARD-CHAIN-DENY");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+  });
+
+  it("FW-NO-WILDCARD-ACCEPT passes when no ACCEPT all wildcard rule", () => {
+    const checks = parseFirewallChecks(activeSecureOutput, "bare");
+    const check = checks.find((c) => c.id === "FW-NO-WILDCARD-ACCEPT");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+  });
+
   it("should handle N/A output gracefully", () => {
     const checks = parseFirewallChecks("N/A", "bare");
-    expect(checks).toHaveLength(12);
+    expect(checks).toHaveLength(15);
     const fw01 = checks.find((c) => c.id === "FW-UFW-ACTIVE");
     expect(fw01!.passed).toBe(false);
   });

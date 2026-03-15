@@ -31,6 +31,10 @@ describe("parseNetworkChecks", () => {
     "net.ipv4.conf.all.log_martians = 1",
     // No exposed mgmt ports
     "NONE",
+    // No mail ports open (NET-NO-MAIL-PORTS) — NONE means no mail ports
+    "NONE",
+    // No promiscuous interfaces (NET-NO-PROMISCUOUS-INTERFACES) — empty output
+    "NONE",
   ].join("\n");
 
   const insecureOutput = [
@@ -51,9 +55,9 @@ describe("parseNetworkChecks", () => {
     "net.ipv4.conf.all.secure_redirects = 1",
   ].join("\n");
 
-  it("should return 15 checks", () => {
+  it("should return 18 checks", () => {
     const checks = parseNetworkChecks(secureOutput, "bare");
-    expect(checks).toHaveLength(15);
+    expect(checks).toHaveLength(18);
     checks.forEach((check) => {
       expect(check.category).toBe("Network");
       expect(check.id).toMatch(/^NET-[A-Z][A-Z0-9]*(-[A-Z][A-Z0-9]*)+$/);
@@ -118,8 +122,22 @@ describe("parseNetworkChecks", () => {
     expect(fail).toBeDefined();
   });
 
+  it("NET-NO-MAIL-PORTS passes when NONE (no mail ports open)", () => {
+    const checks = parseNetworkChecks(secureOutput, "bare");
+    const check = checks.find((c) => c.id === "NET-NO-MAIL-PORTS");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+  });
+
+  it("NET-NO-PROMISCUOUS-INTERFACES passes when no PROMISC interfaces", () => {
+    const checks = parseNetworkChecks(secureOutput, "bare");
+    const check = checks.find((c) => c.id === "NET-NO-PROMISCUOUS-INTERFACES");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+  });
+
   it("should handle N/A output gracefully", () => {
     const checks = parseNetworkChecks("N/A", "bare");
-    expect(checks).toHaveLength(15);
+    expect(checks).toHaveLength(18);
   });
 });

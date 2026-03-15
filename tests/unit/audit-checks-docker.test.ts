@@ -18,6 +18,10 @@ describe("parseDockerChecks", () => {
     "DOCKER_CONTENT_TRUST=1",
     // docker.sock stat (660 root docker)
     "660 root docker",
+    // docker network ls (custom network present — not just defaults)
+    "app-network bridge",
+    // docker volume ls (named volume)
+    "myapp_data local",
   ].join("\n");
 
   const insecureDockerOutput = [
@@ -30,9 +34,9 @@ describe("parseDockerChecks", () => {
     "660 root root",
   ].join("\n");
 
-  it("should return 20 checks for secure Docker setup", () => {
+  it("should return 25 checks for secure Docker setup", () => {
     const checks = parseDockerChecks(secureDockerOutput, "bare");
-    expect(checks).toHaveLength(20);
+    expect(checks).toHaveLength(25);
     checks.forEach((check) => {
       expect(check.category).toBe("Docker");
       expect(check.id).toMatch(/^DCK-[A-Z][A-Z0-9]*(-[A-Z][A-Z0-9]*)+$/);
@@ -52,18 +56,18 @@ describe("parseDockerChecks", () => {
     expect(dck01!.severity).toBe("critical");
   });
 
-  it("should return 20 checks as info/skipped when Docker not installed (N/A)", () => {
+  it("should return 25 checks as info/skipped when Docker not installed (N/A)", () => {
     const checks = parseDockerChecks("N/A", "bare");
-    expect(checks).toHaveLength(20);
+    expect(checks).toHaveLength(25);
     checks.forEach((check) => {
       expect(check.severity).toBe("info");
       expect(check.currentValue).toContain("Docker not installed");
     });
   });
 
-  it("should return 20 checks as info/skipped for empty output on bare platform", () => {
+  it("should return 25 checks as info/skipped for empty output on bare platform", () => {
     const checks = parseDockerChecks("", "bare");
-    expect(checks).toHaveLength(20);
+    expect(checks).toHaveLength(25);
     checks.forEach((check) => {
       expect(check.severity).toBe("info");
     });
@@ -71,7 +75,7 @@ describe("parseDockerChecks", () => {
 
   it("should handle coolify platform (Docker expected)", () => {
     const checks = parseDockerChecks("N/A", "coolify");
-    expect(checks).toHaveLength(20);
+    expect(checks).toHaveLength(25);
     // On coolify, Docker missing is a warning not info
     const dck01 = checks.find((c) => c.id === "DCK-NO-TCP-SOCKET");
     expect(dck01!.severity).toBe("warning");
@@ -79,7 +83,7 @@ describe("parseDockerChecks", () => {
 
   it("should handle dokploy platform (Docker expected)", () => {
     const checks = parseDockerChecks("N/A", "dokploy");
-    expect(checks).toHaveLength(20);
+    expect(checks).toHaveLength(25);
     const dck01 = checks.find((c) => c.id === "DCK-NO-TCP-SOCKET");
     expect(dck01!.severity).toBe("warning");
   });
@@ -127,5 +131,26 @@ describe("parseDockerChecks", () => {
     const checks = parseDockerChecks(insecureDockerOutput, "bare");
     const dck17 = checks.find((c) => c.id === "DCK-CONTENT-TRUST");
     expect(dck17!.passed).toBe(false);
+  });
+
+  it("DCK-LOG-DRIVER-CONFIGURED passes when LoggingDriver is json-file", () => {
+    const checks = parseDockerChecks(secureDockerOutput, "bare");
+    const check = checks.find((c) => c.id === "DCK-LOG-DRIVER-CONFIGURED");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+  });
+
+  it("DCK-LOG-DRIVER-CONFIGURED fails when LoggingDriver is none", () => {
+    const checks = parseDockerChecks(insecureDockerOutput, "bare");
+    const check = checks.find((c) => c.id === "DCK-LOG-DRIVER-CONFIGURED");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(false);
+  });
+
+  it("DCK-NETWORK-DISABLED passes when Docker not installed", () => {
+    const checks = parseDockerChecks("N/A", "bare");
+    const check = checks.find((c) => c.id === "DCK-NETWORK-DISABLED");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
   });
 });

@@ -26,6 +26,8 @@ describe("parseServicesChecks", () => {
     "NONE",
     // No xinetd
     "NONE",
+    // Running service count (standalone number 1-200)
+    "18",
   ].join("\n");
 
   const insecureOutput = [
@@ -56,15 +58,15 @@ describe("parseServicesChecks", () => {
     "echo stream tcp nowait root internal",
   ].join("\n");
 
-  it("should return 21+ checks for the Services category", () => {
+  it("should return 25 checks for the Services category", () => {
     const checks = parseServicesChecks(secureOutput, "bare");
-    expect(checks.length).toBeGreaterThanOrEqual(21);
+    expect(checks).toHaveLength(25);
     checks.forEach((c) => expect(c.category).toBe("Services"));
   });
 
-  it("all check IDs should start with SVC-", () => {
+  it("all check IDs should start with SVC- or SRV-", () => {
     const checks = parseServicesChecks(secureOutput, "bare");
-    checks.forEach((c) => expect(c.id).toMatch(/^SVC-/));
+    checks.forEach((c) => expect(c.id).toMatch(/^S[RV][CV]-/));
   });
 
   it("all checks should have explain > 20 chars and fixCommand defined", () => {
@@ -121,7 +123,7 @@ describe("parseServicesChecks", () => {
 
   it("should handle N/A output gracefully", () => {
     const checks = parseServicesChecks("N/A", "bare");
-    expect(checks.length).toBeGreaterThanOrEqual(21);
+    expect(checks).toHaveLength(25);
     checks.forEach((c) => {
       expect(c.passed).toBe(false);
       expect(c.currentValue).toBe("Unable to determine");
@@ -130,8 +132,22 @@ describe("parseServicesChecks", () => {
 
   it("should handle empty string output gracefully", () => {
     const checks = parseServicesChecks("", "bare");
-    expect(checks.length).toBeGreaterThanOrEqual(21);
+    expect(checks).toHaveLength(25);
     checks.forEach((c) => expect(c.passed).toBe(false));
+  });
+
+  it("SRV-RUNNING-COUNT-REASONABLE passes when running count is 18", () => {
+    const checks = parseServicesChecks(secureOutput, "bare");
+    const check = checks.find((c) => c.id === "SRV-RUNNING-COUNT-REASONABLE");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+  });
+
+  it("SRV-NO-RPCBIND passes when rpcbind is not active", () => {
+    const checks = parseServicesChecks(secureOutput, "bare");
+    const check = checks.find((c) => c.id === "SRV-NO-RPCBIND");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
   });
 
   it("severity budget: <= 40% critical checks", () => {

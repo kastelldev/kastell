@@ -19,6 +19,8 @@ describe("parseAccountsChecks", () => {
     "NONE",
     // System accounts with shells
     "sync:/bin/sync",
+    // Total user count (standalone number > 5, must come before "700" to avoid false match)
+    "25",
     // Root home perms
     "700",
     // login.defs
@@ -27,6 +29,10 @@ describe("parseAccountsChecks", () => {
     "UMASK 027",
     // Duplicate UIDs
     "NONE",
+    // lastlog output (no inactive accounts — N/A means not available)
+    "N/A",
+    // Home directory permissions (not world-writable)
+    "750 /home/admin",
   ].join("\n");
 
   const insecureOutput = [
@@ -56,9 +62,9 @@ describe("parseAccountsChecks", () => {
     "dup2:1000",
   ].join("\n");
 
-  it("should return 15+ checks for the Accounts category", () => {
+  it("should return 19 checks for the Accounts category", () => {
     const checks = parseAccountsChecks(validOutput, "bare");
-    expect(checks.length).toBeGreaterThanOrEqual(15);
+    expect(checks).toHaveLength(19);
     checks.forEach((c) => expect(c.category).toBe("Accounts"));
   });
 
@@ -127,7 +133,7 @@ describe("parseAccountsChecks", () => {
 
   it("should handle N/A output gracefully", () => {
     const checks = parseAccountsChecks("N/A", "bare");
-    expect(checks.length).toBeGreaterThanOrEqual(15);
+    expect(checks).toHaveLength(19);
     checks.forEach((c) => {
       expect(c.passed).toBe(false);
       expect(c.currentValue).toBe("Unable to determine");
@@ -136,8 +142,22 @@ describe("parseAccountsChecks", () => {
 
   it("should handle empty string output gracefully", () => {
     const checks = parseAccountsChecks("", "bare");
-    expect(checks.length).toBeGreaterThanOrEqual(15);
+    expect(checks).toHaveLength(19);
     checks.forEach((c) => expect(c.passed).toBe(false));
+  });
+
+  it("ACCT-TOTAL-USERS-REASONABLE passes when user count is a number > 5 and < 50", () => {
+    const checks = parseAccountsChecks(validOutput, "bare");
+    const check = checks.find((c) => c.id === "ACCT-TOTAL-USERS-REASONABLE");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+  });
+
+  it("ACCT-NO-WORLD-WRITABLE-HOME passes when no world-writable home dirs", () => {
+    const checks = parseAccountsChecks(validOutput, "bare");
+    const check = checks.find((c) => c.id === "ACCT-NO-WORLD-WRITABLE-HOME");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
   });
 
   it("severity budget: <= 40% critical checks", () => {

@@ -39,7 +39,7 @@ function makeDockerSkippedChecks(severity: "info" | "warning"): AuditCheck[] {
     { id: "DCK-NETWORK-DISABLED", name: "Custom Network Configured" },
     { id: "DCK-LOG-DRIVER-CONFIGURED", name: "Log Driver Not None" },
     { id: "DCK-ROOTLESS-MODE", name: "Rootless Docker Mode" },
-    { id: "DCK-NO-HOST-NETWORK", name: "No Host Network Mode Containers" },
+    { id: "DCK-NO-HOST-NETWORK-INSPECT", name: "No Host Network Mode (Inspect)" },
     { id: "DCK-HEALTH-CHECK", name: "Container Health Checks Configured" },
   ];
 
@@ -507,12 +507,12 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
       "Rootless Docker eliminates the daemon running as root, significantly reducing the blast radius of container escapes.",
   };
 
-  // DCK-24: No containers using host network mode
+  // DCK-24: No containers using host network mode (inspect JSON path)
   const hasHostNetworkMode = /"NetworkMode":\s*"host"/i.test(sectionOutput);
   const dck24: AuditCheck = {
-    id: "DCK-NO-HOST-NETWORK",
+    id: "DCK-NO-HOST-NETWORK-INSPECT",
     category: "Docker",
-    name: "No Host Network Mode Containers",
+    name: "No Host Network Mode (Inspect)",
     severity: "warning",
     passed: !isDockerAvailable(sectionOutput) ? true : !hasRunningContainers || !hasHostNetworkMode,
     currentValue: !isDockerAvailable(sectionOutput)

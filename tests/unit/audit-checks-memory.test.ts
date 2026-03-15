@@ -10,6 +10,10 @@ describe("parseMemoryChecks", () => {
     "32768",
     "core file size          (blocks, -c) 0\ndata seg size           (kbytes, -d) unlimited\nopen files                      (-n) 1024\nmax user processes              (-u) 63382",
     "fs.suid_dumpable = 0",
+    // /proc/sys/vm/swappiness (MEM-SWAPPINESS-REASONABLE) — standalone small number
+    "10",
+    // swapon --show output (MEM-SWAP-ENCRYPTED) — no swap
+    "NO_SWAP",
   ].join("\n");
 
   const badOutput = [
@@ -41,9 +45,9 @@ describe("parseMemoryChecks", () => {
   });
 
   describe("check count and shape", () => {
-    it("returns at least 7 checks", () => {
+    it("returns 10 checks", () => {
       const checks = parseMemoryChecks(validOutput, "bare");
-      expect(checks.length).toBeGreaterThanOrEqual(7);
+      expect(checks).toHaveLength(10);
     });
 
     it("all check IDs start with MEM-", () => {
@@ -189,6 +193,42 @@ describe("parseMemoryChecks", () => {
       const check = checks.find((c) => c.id === "MEM-PID-MAX-REASONABLE");
       expect(check).toBeDefined();
       expect(check!.passed).toBe(false);
+    });
+  });
+
+  describe("MEM-SWAP-ENCRYPTED", () => {
+    it("passes when NO_SWAP present", () => {
+      const checks = parseMemoryChecks(validOutput, "bare");
+      const check = checks.find((c) => c.id === "MEM-SWAP-ENCRYPTED");
+      expect(check).toBeDefined();
+      expect(check!.passed).toBe(true);
+    });
+  });
+
+  describe("MEM-SWAPPINESS-REASONABLE", () => {
+    it("passes when vm.swappiness is 10 (<= 60)", () => {
+      const checks = parseMemoryChecks(validOutput, "bare");
+      const check = checks.find((c) => c.id === "MEM-SWAPPINESS-REASONABLE");
+      expect(check).toBeDefined();
+      expect(check!.passed).toBe(true);
+    });
+  });
+
+  describe("MEM-HUGEPAGES-NOT-EXCESSIVE", () => {
+    it("passes when transparent hugepages is 'always' mode (checks against always)", () => {
+      const checks = parseMemoryChecks(validOutput, "bare");
+      const check = checks.find((c) => c.id === "MEM-HUGEPAGES-NOT-EXCESSIVE");
+      expect(check).toBeDefined();
+      // validOutput has [always] which should fail this check
+      expect(check!.passed).toBe(false);
+    });
+
+    it("passes when transparent hugepages is madvise mode", () => {
+      const output = validOutput.replace("[always] madvise never", "always [madvise] never");
+      const checks = parseMemoryChecks(output, "bare");
+      const check = checks.find((c) => c.id === "MEM-HUGEPAGES-NOT-EXCESSIVE");
+      expect(check).toBeDefined();
+      expect(check!.passed).toBe(true);
     });
   });
 });

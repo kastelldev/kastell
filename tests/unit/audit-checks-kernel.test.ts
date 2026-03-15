@@ -24,6 +24,12 @@ describe("parseKernelChecks", () => {
       "net.ipv6.conf.all.forwarding = 0",
       "net.ipv4.conf.all.send_redirects = 0",
       "net.ipv4.conf.all.secure_redirects = 0",
+      // new KRN-20..25 sysctl values
+      "kernel.sysrq = 0",
+      "kernel.core_pattern = core",
+      "kernel.panic_on_oops = 1",
+      "kernel.nmi_watchdog = 0",
+      "kernel.unprivileged_userns_clone = 0",
     ].join("\n"),
     // Kernel version
     "5.15.0-91-generic",
@@ -47,9 +53,9 @@ describe("parseKernelChecks", () => {
     "N/A",
   ].join("\n");
 
-  it("should return 19 checks", () => {
+  it("should return 25 checks", () => {
     const checks = parseKernelChecks(secureOutput, "bare");
-    expect(checks).toHaveLength(19);
+    expect(checks).toHaveLength(25);
     checks.forEach((check) => {
       expect(check.category).toBe("Kernel");
       expect(check.id).toMatch(/^KRN-[A-Z][A-Z0-9]*(-[A-Z][A-Z0-9]*)+$/);
@@ -123,9 +129,36 @@ describe("parseKernelChecks", () => {
     expect(bpf!.passed).toBe(true);
   });
 
+  it("KRN-SYSRQ-DISABLED passes when kernel.sysrq = 0", () => {
+    const checks = parseKernelChecks(secureOutput, "bare");
+    const check = checks.find((c: { id: string }) => c.id === "KRN-SYSRQ-DISABLED");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+  });
+
+  it("KRN-SYSRQ-DISABLED fails when kernel.sysrq = 176", () => {
+    const checks = parseKernelChecks("kernel.sysrq = 176", "bare");
+    const check = checks.find((c: { id: string }) => c.id === "KRN-SYSRQ-DISABLED");
+    expect(check!.passed).toBe(false);
+  });
+
+  it("KRN-CORE-PATTERN-SAFE passes when core_pattern does not start with |", () => {
+    const checks = parseKernelChecks("kernel.core_pattern = core", "bare");
+    const check = checks.find((c: { id: string }) => c.id === "KRN-CORE-PATTERN-SAFE");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+  });
+
+  it("KRN-UNPRIVILEGED-USERNS passes when value is 0", () => {
+    const checks = parseKernelChecks("kernel.unprivileged_userns_clone = 0", "bare");
+    const check = checks.find((c: { id: string }) => c.id === "KRN-UNPRIVILEGED-USERNS");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+  });
+
   it("should handle N/A output gracefully", () => {
     const checks = parseKernelChecks("N/A", "bare");
-    expect(checks).toHaveLength(19);
+    expect(checks).toHaveLength(25);
     checks.forEach((check) => {
       expect(check.passed).toBe(false);
     });

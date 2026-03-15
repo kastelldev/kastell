@@ -8,6 +8,8 @@ describe("parseMACChecks", () => {
     "NOT_INSTALLED",
     "N/A",
     "Seccomp:\t2",
+    // aa-status | grep -c 'enforce mode' — standalone count for MAC-APPARMOR-ENFORCE-COUNT
+    "33",
   ].join("\n");
 
   const selinuxOutput = [
@@ -46,9 +48,9 @@ describe("parseMACChecks", () => {
   });
 
   describe("check count and shape", () => {
-    it("returns at least 7 checks", () => {
+    it("returns 10 checks", () => {
       const checks = parseMACChecks(appArmorOutput, "bare");
-      expect(checks.length).toBeGreaterThanOrEqual(7);
+      expect(checks).toHaveLength(10);
     });
 
     it("all check IDs start with MAC-", () => {
@@ -226,6 +228,31 @@ describe("parseMACChecks", () => {
     it("fails when Seccomp is 0", () => {
       const checks = parseMACChecks(emptyOutput, "bare");
       const check = checks.find((c) => c.id === "MAC-SECCOMP-ENABLED");
+      expect(check).toBeDefined();
+      expect(check!.passed).toBe(false);
+    });
+  });
+
+  describe("MAC-APPARMOR-ENFORCE-COUNT", () => {
+    it("passes when enforce mode profile count > 0", () => {
+      const checks = parseMACChecks(appArmorOutput, "bare");
+      const check = checks.find((c) => c.id === "MAC-APPARMOR-ENFORCE-COUNT");
+      expect(check).toBeDefined();
+      expect(check!.passed).toBe(true);
+    });
+  });
+
+  describe("MAC-SECCOMP-STRICT", () => {
+    it("passes when Seccomp value is 2 (filter mode)", () => {
+      const checks = parseMACChecks(appArmorOutput, "bare");
+      const check = checks.find((c) => c.id === "MAC-SECCOMP-STRICT");
+      expect(check).toBeDefined();
+      expect(check!.passed).toBe(true);
+    });
+
+    it("fails when Seccomp value is 0", () => {
+      const checks = parseMACChecks(emptyOutput, "bare");
+      const check = checks.find((c) => c.id === "MAC-SECCOMP-STRICT");
       expect(check).toBeDefined();
       expect(check!.passed).toBe(false);
     });
