@@ -159,6 +159,96 @@ const MAC_CHECKS: MACCheckDef[] = [
     explain:
       "Seccomp (secure computing mode) restricts the system calls available to processes, limiting the attack surface if a process is compromised.",
   },
+  {
+    id: "MAC-APPARMOR-ENFORCE-COUNT",
+    name: "AppArmor Enforce Mode Count",
+    severity: "warning",
+    check: (output) => {
+      // aa-status | grep -c 'enforce mode' output — a standalone count
+      // This is separate from the profile count in MAC-APPARMOR-PROFILES
+      // Look for the raw count from the grep -c command
+      const lines = output.split("\n");
+      let enforceCount: number | null = null;
+      for (const line of lines) {
+        const trimmed = line.trim();
+        // Look for small standalone numbers (0-1000) that could be enforce mode count
+        if (/^\d+$/.test(trimmed)) {
+          const val = parseInt(trimmed, 10);
+          if (val >= 0 && val < 1000) {
+            enforceCount = val;
+            break;
+          }
+        }
+      }
+      // Also check profiles in enforce mode from aa-status main output
+      const enforceMatch = output.match(/(\d+)\s+profiles?\s+are\s+in\s+enforce\s+mode/i);
+      if (enforceMatch) {
+        enforceCount = parseInt(enforceMatch[1], 10);
+      }
+      if (enforceCount === null) {
+        return { passed: false, currentValue: "AppArmor enforce count not determinable" };
+      }
+      return {
+        passed: enforceCount > 0,
+        currentValue: enforceCount > 0
+          ? `${enforceCount} profile(s) in enforce mode`
+          : "0 profiles in enforce mode",
+      };
+    },
+    expectedValue: "At least 1 AppArmor profile in enforce mode",
+    fixCommand: "aa-enforce /etc/apparmor.d/*  # Enable enforce mode for all AppArmor profiles",
+    explain:
+      "AppArmor profiles in enforce mode actively restrict application behavior; complain mode only logs violations.",
+  },
+  {
+    id: "MAC-NO-UNCONFINED-PROCS",
+    name: "Minimal Unconfined Processes",
+    severity: "info",
+    check: (output) => {
+      const match = output.match(/(\d+)\s+processes?\s+are\s+unconfined/i);
+      if (!match) {
+        return { passed: true, currentValue: "Unconfined process count not available (AppArmor may not be active)" };
+      }
+      const count = parseInt(match[1], 10);
+      const passed = count < 10;
+      return {
+        passed,
+        currentValue: passed
+          ? `${count} unconfined processes (acceptable)`
+          : `${count} unconfined processes (high)`,
+      };
+    },
+    expectedValue: "Fewer than 10 unconfined processes",
+    fixCommand: "aa-genprof <process>  # Generate AppArmor profile for unconfined processes",
+    explain:
+      "Unconfined processes run without AppArmor restrictions; minimizing them reduces the attack surface.",
+  },
+  {
+    id: "MAC-SECCOMP-STRICT",
+    name: "Seccomp Filter Mode Active",
+    severity: "info",
+    check: (output) => {
+      const match = output.match(/Seccomp:\s*(\d+)/i);
+      if (!match) {
+        return { passed: false, currentValue: "Seccomp value not found" };
+      }
+      const value = parseInt(match[1], 10);
+      // 1 = strict, 2 = filter (both are good)
+      const passed = value === 1 || value === 2;
+      return {
+        passed,
+        currentValue: value === 1
+          ? "Seccomp: strict mode"
+          : value === 2
+            ? "Seccomp: filter mode"
+            : "Seccomp: disabled (0)",
+      };
+    },
+    expectedValue: "Seccomp value 1 (strict) or 2 (filter), not 0",
+    fixCommand: "# Seccomp is a kernel feature — ensure CONFIG_SECCOMP and CONFIG_SECCOMP_FILTER are enabled",
+    explain:
+      "Seccomp system call filtering restricts which syscalls processes can use, reducing kernel attack surface.",
+  },
 ];
 
 export const parseMACChecks: CheckParser = (

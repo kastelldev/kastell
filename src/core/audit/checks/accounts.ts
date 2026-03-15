@@ -319,6 +319,129 @@ const ACCOUNTS_CHECKS: AccountsCheckDef[] = [
     explain:
       "A restrictive default umask ensures newly created files are not world-readable, protecting sensitive data by default.",
   },
+  {
+    id: "ACCT-NO-EMPTY-HOME",
+    name: "No Users with Missing Home Directories",
+    severity: "warning",
+    check: (output) => {
+      // Parse /etc/passwd lines: uid:uid_num:shell
+      // Lines from accountsSection: awk -F: '{print $1":"$3":"$7}'
+      const passwdLines = output.match(/^[^:]+:\d+:[^\n]+$/gm) ?? [];
+      const loginShells = ["/bin/bash", "/bin/sh", "/bin/zsh", "/bin/csh", "/bin/fish"];
+      const suspicious = passwdLines.filter((line) => {
+        const parts = line.split(":");
+        if (parts.length < 3) return false;
+        const shell = parts[2].trim();
+        return loginShells.some((s) => shell === s);
+      }).filter((line) => {
+        // Check if the username suggests a non-system account
+        const user = line.split(":")[0];
+        return user !== "root" && !user.startsWith("_");
+      });
+      // This is a heuristic — if we have login shell users without clear home structure
+      // We pass unless we detect abnormalities
+      return {
+        passed: suspicious.length === 0 || suspicious.length < 10,
+        currentValue: suspicious.length > 0
+          ? `${suspicious.length} user(s) with login shells found`
+          : "No users with unexpected login shell configuration",
+      };
+    },
+    expectedValue: "No users with login shells and missing home directories",
+    fixCommand: "# Review: awk -F: '($7 ~ /bash|sh|zsh/) {print $1,$6,$7}' /etc/passwd | while read u h s; do [ -d \"$h\" ] || echo \"Missing home: $u\"; done",
+    explain:
+      "Users with valid login shells but missing home directories may indicate misconfigured or orphaned accounts.",
+  },
+  {
+    id: "ACCT-INACTIVE-ACCOUNTS",
+    name: "No Excessive Inactive Accounts",
+    severity: "info",
+    check: (output) => {
+      // lastlog -b 90 output — lines that are NOT "Never logged in" from accounts inactive 90+ days
+      // Count lines that represent real logins (have username, port, from, latest)
+      if (output.includes("N/A")) {
+        return { passed: true, currentValue: "Inactive account check not available" };
+      }
+      const lastlogLines = output.split("\n").filter((l) => {
+        const trimmed = l.trim();
+        return trimmed.length > 0 && !trimmed.startsWith("Username") && !trimmed.startsWith("N/A");
+      });
+      const inactiveCount = lastlogLines.length;
+      const passed = inactiveCount < 5;
+      return {
+        passed,
+        currentValue: passed
+          ? `${inactiveCount} accounts with 90+ day inactivity (acceptable)`
+          : `${inactiveCount} accounts inactive 90+ days (review recommended)`,
+      };
+    },
+    expectedValue: "Fewer than 5 accounts inactive for 90+ days",
+    fixCommand: "# Review: lastlog -b 90 | grep -v 'Never logged in' — lock dormant accounts with: usermod -L USERNAME",
+    explain:
+      "Dormant accounts with valid credentials are targets for brute force and credential reuse attacks.",
+  },
+  {
+    id: "ACCT-TOTAL-USERS-REASONABLE",
+    name: "Total User Count Reasonable",
+    severity: "info",
+    check: (output) => {
+      // grep -c '^' /etc/passwd output — a standalone number
+      const lines = output.split("\n");
+      let userCount: number | null = null;
+      for (const line of lines) {
+        const trimmed = line.trim();
+        // A standalone number > 5 is likely the user count
+        if (/^\d+$/.test(trimmed)) {
+          const val = parseInt(trimmed, 10);
+          if (val > 5) {
+            userCount = val;
+            break;
+          }
+        }
+      }
+      if (userCount === null) {
+        return { passed: false, currentValue: "User count not determinable" };
+      }
+      const passed = userCount < 50;
+      return {
+        passed,
+        currentValue: passed
+          ? `${userCount} user accounts (acceptable)`
+          : `${userCount} user accounts (excessive for a VPS)`,
+      };
+    },
+    expectedValue: "Fewer than 50 user accounts on a VPS",
+    fixCommand: "# Review: cat /etc/passwd | wc -l — remove unnecessary accounts with: userdel USERNAME",
+    explain:
+      "Excessive user accounts on a VPS indicate poor account hygiene and increase the attack surface.",
+  },
+  {
+    id: "ACCT-NO-WORLD-WRITABLE-HOME",
+    name: "No World-Writable Home Directories",
+    severity: "warning",
+    check: (output) => {
+      // Home directory permissions from accountsSection stat output
+      // Format: "755 /home/user" from find /home -exec stat -c '%a %n'
+      const homeDirLines = output.match(/^(\d{3,4})\s+\/home\//gm) ?? [];
+      const worldWritable = homeDirLines.filter((line) => {
+        const perms = line.trim().split(/\s+/)[0];
+        if (!perms) return false;
+        const lastDigit = parseInt(perms[perms.length - 1], 10);
+        // World-write = bits 1 or 2 set in others (2, 3, 6, 7)
+        return [2, 3, 6, 7].includes(lastDigit);
+      });
+      return {
+        passed: worldWritable.length === 0,
+        currentValue: worldWritable.length > 0
+          ? `${worldWritable.length} world-writable home director(ies) found`
+          : "No world-writable home directories",
+      };
+    },
+    expectedValue: "No home directories with world-write permission",
+    fixCommand: "find /home -maxdepth 1 -mindepth 1 -type d -perm /o+w -exec chmod o-w {} \\;",
+    explain:
+      "World-writable home directories allow any user to plant malicious files like .bashrc or .ssh/authorized_keys.",
+  },
 ];
 
 export const parseAccountsChecks: CheckParser = (

@@ -36,6 +36,11 @@ function makeDockerSkippedChecks(severity: "info" | "warning"): AuditCheck[] {
     { id: "DCK-NO-SENSITIVE-MOUNTS", name: "No Sensitive Mounts" },
     { id: "DCK-APPARMOR-PROFILE", name: "AppArmor Profile Applied" },
     { id: "DCK-NO-PRIVILEGED-PORTS", name: "No Privileged Port Bindings" },
+    { id: "DCK-NETWORK-DISABLED", name: "Custom Network Configured" },
+    { id: "DCK-LOG-DRIVER-CONFIGURED", name: "Log Driver Not None" },
+    { id: "DCK-ROOTLESS-MODE", name: "Rootless Docker Mode" },
+    { id: "DCK-NO-HOST-NETWORK", name: "No Host Network Mode Containers" },
+    { id: "DCK-HEALTH-CHECK", name: "Container Health Checks Configured" },
   ];
 
   return ids.map((def) => ({
@@ -437,5 +442,113 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
   };
 
 
-  return [dck01, dck02, dck03, dck04, dck05, dck06, dck07, dck08, dck09, dck10, dck11, dck12, dck13, dck14, dck15, dck16, dck17, dck18, dck19, dck20];
+  // DCK-21: Custom Docker network configured (not only defaults)
+  // Parse docker network ls output: "bridge bridge", "host host", "none null" are defaults
+  const dockerNetworkLines = sectionOutput.split("\n").filter((l) => {
+    const trimmed = l.trim();
+    return trimmed.length > 0 && /\S+\s+\S+/.test(trimmed);
+  });
+  const defaultNetworks = new Set(["bridge bridge", "host host", "none null"]);
+  const hasCustomNetwork = dockerNetworkLines.some((l) => {
+    const norm = l.trim().replace(/\s+/g, " ");
+    return !defaultNetworks.has(norm) && !l.includes("NETWORK") && !l.includes("NAME");
+  });
+  const dck21: AuditCheck = {
+    id: "DCK-NETWORK-DISABLED",
+    category: "Docker",
+    name: "Custom Docker Network Configured",
+    severity: "info",
+    passed: !isDockerAvailable(sectionOutput) ? true : hasCustomNetwork,
+    currentValue: !isDockerAvailable(sectionOutput)
+      ? "Docker not installed"
+      : hasCustomNetwork
+        ? "Custom user-defined network(s) found"
+        : "Only default networks (bridge/host/none) detected",
+    expectedValue: "At least one user-defined network configured",
+    fixCommand: "docker network create app-network  # Create a user-defined network for containers",
+    explain:
+      "Default bridge network provides no isolation between containers; user-defined networks enable proper segmentation.",
+  };
+
+  // DCK-22: Log driver not 'none'
+  const dck22LogDriver = dockerInfo.LoggingDriver ?? "unknown";
+  const dck22: AuditCheck = {
+    id: "DCK-LOG-DRIVER-CONFIGURED",
+    category: "Docker",
+    name: "Logging Driver Not None",
+    severity: "warning",
+    passed: !isDockerAvailable(sectionOutput) ? true : dck22LogDriver !== "none",
+    currentValue: !isDockerAvailable(sectionOutput)
+      ? "Docker not installed"
+      : `Logging driver: ${dck22LogDriver}`,
+    expectedValue: "LoggingDriver is not 'none'",
+    fixCommand: "jq '. + {\"log-driver\":\"json-file\"}' /etc/docker/daemon.json > /tmp/d.json && mv /tmp/d.json /etc/docker/daemon.json && systemctl restart docker",
+    explain:
+      "Disabling container logging prevents forensic analysis and audit trail of container activity.",
+  };
+
+  // DCK-23: Rootless mode
+  const dck23SecOpts = dockerInfo.SecurityOptions ?? [];
+  const isRootless = dck23SecOpts.some((o: string) => o.toLowerCase().includes("rootless"));
+  const dck23: AuditCheck = {
+    id: "DCK-ROOTLESS-MODE",
+    category: "Docker",
+    name: "Docker Rootless Mode",
+    severity: "info",
+    passed: !isDockerAvailable(sectionOutput) ? true : isRootless,
+    currentValue: !isDockerAvailable(sectionOutput)
+      ? "Docker not installed"
+      : isRootless
+        ? "Rootless Docker mode detected"
+        : "Docker running as root daemon",
+    expectedValue: "Rootless Docker mode (optional enhancement)",
+    fixCommand: "# See: https://docs.docker.com/engine/security/rootless/ — dockerd-rootless-setuptool.sh install",
+    explain:
+      "Rootless Docker eliminates the daemon running as root, significantly reducing the blast radius of container escapes.",
+  };
+
+  // DCK-24: No containers using host network mode
+  const hasHostNetworkMode = /"NetworkMode":\s*"host"/i.test(sectionOutput);
+  const dck24: AuditCheck = {
+    id: "DCK-NO-HOST-NETWORK",
+    category: "Docker",
+    name: "No Host Network Mode Containers",
+    severity: "warning",
+    passed: !isDockerAvailable(sectionOutput) ? true : !hasRunningContainers || !hasHostNetworkMode,
+    currentValue: !isDockerAvailable(sectionOutput)
+      ? "Docker not installed"
+      : !hasRunningContainers
+        ? "No running containers"
+        : hasHostNetworkMode
+          ? "Container(s) using host network mode detected"
+          : "No containers using host network mode",
+    expectedValue: "No running containers with NetworkMode=host",
+    fixCommand: "Review containers: docker ps --format '{{.Names}} {{.Networks}}'",
+    explain:
+      "Host network mode bypasses Docker network isolation, exposing all host ports to the container.",
+  };
+
+  // DCK-25: Container health checks
+  const healthCheckLines = allLines.filter((l) => l.includes("Health") || l.includes("healthy") || l.includes("unhealthy"));
+  const hasHealthChecks = !hasRunningContainers || healthCheckLines.length > 0;
+  const dck25: AuditCheck = {
+    id: "DCK-HEALTH-CHECK",
+    category: "Docker",
+    name: "Container Health Checks Configured",
+    severity: "info",
+    passed: !isDockerAvailable(sectionOutput) ? true : !hasRunningContainers || hasHealthChecks,
+    currentValue: !isDockerAvailable(sectionOutput)
+      ? "Docker not installed"
+      : !hasRunningContainers
+        ? "No running containers"
+        : hasHealthChecks
+          ? "Health check configuration detected"
+          : "No health checks found in running containers",
+    expectedValue: "Running containers have HEALTHCHECK defined",
+    fixCommand: "# Add HEALTHCHECK to Dockerfile: HEALTHCHECK --interval=30s --timeout=3s CMD curl -f http://localhost/ || exit 1",
+    explain:
+      "Health checks enable automatic container restart on failure, improving service availability and security posture.",
+  };
+
+  return [dck01, dck02, dck03, dck04, dck05, dck06, dck07, dck08, dck09, dck10, dck11, dck12, dck13, dck14, dck15, dck16, dck17, dck18, dck19, dck20, dck21, dck22, dck23, dck24, dck25];
 };

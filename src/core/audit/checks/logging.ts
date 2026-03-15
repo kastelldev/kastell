@@ -249,5 +249,76 @@ export const parseLoggingChecks: CheckParser = (sectionOutput: string, _platform
     explain: "Persistent journald storage retains logs across reboots, critical for post-incident forensics.",
   };
 
-  return [log01, log02, log03, log04, log05, log06, log07, log08, log09, log10, log11, log12];
+  // LOG-NO-WORLD-READABLE-LOGS: No excessive world-readable log files
+  // find /var/log -maxdepth 1 -perm -o+r -type f | wc -l — a standalone number
+  const worldReadableLogLines = output.split("\n");
+  let worldReadableCount: number | null = null;
+  for (const line of worldReadableLogLines) {
+    const trimmed = line.trim();
+    // Look for a standalone number that could be the count (0-200)
+    if (/^\d+$/.test(trimmed)) {
+      const val = parseInt(trimmed, 10);
+      if (val >= 0 && val < 200) {
+        // Skip if it's "0" from inactive (ambiguous) — use the last occurrence
+        worldReadableCount = val;
+      }
+    }
+  }
+  const log13: AuditCheck = {
+    id: "LOG-NO-WORLD-READABLE-LOGS",
+    category: "Logging",
+    name: "No Excessive World-Readable Logs",
+    severity: "info",
+    passed: isNA ? false : worldReadableCount === null ? true : worldReadableCount < 5,
+    currentValue: isNA
+      ? "Unable to determine"
+      : worldReadableCount !== null
+        ? `${worldReadableCount} world-readable log files in /var/log`
+        : "World-readable log count not determinable",
+    expectedValue: "Fewer than 5 world-readable log files in /var/log",
+    fixCommand: "find /var/log -maxdepth 1 -perm -o+r -type f -exec chmod o-r {} \\;",
+    explain:
+      "World-readable log files may expose sensitive authentication attempts, IP addresses, and system information.",
+  };
+
+  // LOG-SYSLOG-REMOTE: Remote syslog forwarding configured
+  const hasRemoteSyslog = /^\s*@@?\S/m.test(output);
+  const log14: AuditCheck = {
+    id: "LOG-SYSLOG-REMOTE",
+    category: "Logging",
+    name: "Remote Syslog Forwarding Configured",
+    severity: "info",
+    passed: isNA ? false : hasRemoteSyslog,
+    currentValue: isNA
+      ? "Unable to determine"
+      : hasRemoteSyslog
+        ? "Remote syslog forwarding configured"
+        : "No remote syslog forwarding found",
+    expectedValue: "At least one @host or @@host forwarding line in rsyslog config",
+    fixCommand: "echo '*.* @@logserver:514' >> /etc/rsyslog.conf && systemctl restart rsyslog",
+    explain:
+      "Remote syslog forwarding ensures logs survive even if the host is compromised or destroyed.",
+  };
+
+  // LOG-LOGROTATE-ACTIVE: logrotate timer or cron job active
+  const hasLogrotateActive = /^active$/m.test(output) ||
+    /\/etc\/cron\.daily\/logrotate/.test(output);
+  const log15: AuditCheck = {
+    id: "LOG-LOGROTATE-ACTIVE",
+    category: "Logging",
+    name: "Logrotate Active",
+    severity: "warning",
+    passed: isNA ? false : hasLogrotateActive,
+    currentValue: isNA
+      ? "Unable to determine"
+      : hasLogrotateActive
+        ? "logrotate timer or cron job active"
+        : "logrotate not active",
+    expectedValue: "logrotate.timer active or /etc/cron.daily/logrotate exists",
+    fixCommand: "apt install -y logrotate && systemctl enable logrotate.timer",
+    explain:
+      "Without logrotate, log files grow unbounded causing disk exhaustion and potential denial of service.",
+  };
+
+  return [log01, log02, log03, log04, log05, log06, log07, log08, log09, log10, log11, log12, log13, log14, log15];
 };

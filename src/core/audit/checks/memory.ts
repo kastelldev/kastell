@@ -195,6 +195,91 @@ const MEMORY_CHECKS: MemoryCheckDef[] = [
     explain:
       "An unlimited open files ulimit allows a single process to consume all available file descriptors, potentially causing denial-of-service by exhausting system resources.",
   },
+  {
+    id: "MEM-SWAP-ENCRYPTED",
+    name: "Swap Encrypted or Disabled",
+    severity: "info",
+    check: (output) => {
+      // swapon --show=NAME,TYPE output or NO_SWAP
+      const noSwap = /NO_SWAP/.test(output);
+      if (noSwap) {
+        return { passed: true, currentValue: "No swap configured" };
+      }
+      // Check if swap is on an encrypted volume (dm-crypt/LUKS)
+      const hasEncryptedSwap = /crypto|crypt|dm-/i.test(output);
+      return {
+        passed: noSwap || hasEncryptedSwap,
+        currentValue: noSwap
+          ? "No swap configured"
+          : hasEncryptedSwap
+            ? "Swap on encrypted volume"
+            : "Unencrypted swap detected",
+      };
+    },
+    expectedValue: "No swap, or swap on encrypted volume",
+    fixCommand: "# See: cryptsetup luksFormat /dev/sdX && mkswap /dev/mapper/swap — or disable swap: swapoff -a",
+    explain:
+      "Unencrypted swap can contain sensitive data like passwords and encryption keys that persist after power loss.",
+  },
+  {
+    id: "MEM-SWAPPINESS-REASONABLE",
+    name: "Swappiness Value Reasonable",
+    severity: "info",
+    check: (output) => {
+      // /proc/sys/vm/swappiness — standalone number
+      const lines = output.split("\n");
+      let swappiness: number | null = null;
+      for (const line of lines) {
+        const trimmed = line.trim();
+        // Look for a standalone small number (0-200) — swappiness range
+        if (/^\d+$/.test(trimmed)) {
+          const val = parseInt(trimmed, 10);
+          if (val >= 0 && val <= 200) {
+            swappiness = val;
+            break;
+          }
+        }
+      }
+      if (swappiness === null) {
+        return { passed: false, currentValue: "vm.swappiness not found" };
+      }
+      const passed = swappiness <= 60;
+      return {
+        passed,
+        currentValue: passed
+          ? `vm.swappiness = ${swappiness} (reasonable)`
+          : `vm.swappiness = ${swappiness} (high — increases sensitive data in swap)`,
+      };
+    },
+    expectedValue: "vm.swappiness <= 60",
+    fixCommand: "sysctl -w vm.swappiness=10 && echo 'vm.swappiness=10' >> /etc/sysctl.conf",
+    explain:
+      "High swappiness increases the chance of sensitive memory pages being written to potentially unencrypted swap.",
+  },
+  {
+    id: "MEM-HUGEPAGES-NOT-EXCESSIVE",
+    name: "Transparent Hugepages Not Always Mode",
+    severity: "info",
+    check: (output) => {
+      // /sys/kernel/mm/transparent_hugepage/enabled output contains [always], [madvise], or [never]
+      const alwaysMode = /\[always\]/.test(output);
+      const hasConfig = /\[(always|madvise|never)\]/.test(output);
+      if (!hasConfig) {
+        return { passed: true, currentValue: "Transparent hugepages configuration not available" };
+      }
+      const mode = output.match(/\[(always|madvise|never)\]/)?.[1] ?? "unknown";
+      return {
+        passed: !alwaysMode,
+        currentValue: alwaysMode
+          ? "Transparent hugepages: always (may cause latency)"
+          : `Transparent hugepages: ${mode} (acceptable)`,
+      };
+    },
+    expectedValue: "Transparent hugepages set to 'madvise' or 'never', not 'always'",
+    fixCommand: "echo madvise > /sys/kernel/mm/transparent_hugepage/enabled",
+    explain:
+      "Transparent hugepages set to 'always' can cause memory fragmentation and latency spikes; 'madvise' gives application control.",
+  },
 ];
 
 export const parseMemoryChecks: CheckParser = (

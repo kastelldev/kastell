@@ -196,5 +196,65 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
     explain: "Rate limiting rules protect against brute-force and DoS attacks by throttling connection attempts.",
   };
 
-  return [fw01, fw02, fw03, fw04, fw05, fw06, fw07, fw08, fw09, fw10, fw11, fw12];
+  // FW-13: FORWARD chain default policy DROP
+  const forwardPolicyLine = output.split("\n").find((l) => /Chain FORWARD.*policy/.test(l)) ?? "";
+  const hasForwardDeny = /policy DROP|policy REJECT/i.test(forwardPolicyLine);
+  const fw13: AuditCheck = {
+    id: "FW-FORWARD-CHAIN-DENY",
+    category: "Firewall",
+    name: "FORWARD Chain Default Deny",
+    severity: "warning",
+    passed: isNA ? false : hasForwardDeny,
+    currentValue: isNA
+      ? "Unable to determine"
+      : forwardPolicyLine.trim() || "No FORWARD policy found",
+    expectedValue: "Chain FORWARD (policy DROP) or (policy REJECT)",
+    fixCommand: "iptables -P FORWARD DROP",
+    explain:
+      "FORWARD chain default ACCEPT allows unintended traffic routing through the host, potentially bypassing network segmentation.",
+  };
+
+  // FW-14: IPv6 traffic filtered or disabled
+  // ip6tables -L INPUT -n | wc -l output — a number
+  const ipv6RuleCountStr = output.split("\n").filter((l) => /^\d+$/.test(l.trim())).pop() ?? "0";
+  const ipv6RuleCount = parseInt(ipv6RuleCountStr, 10);
+  // IPv6 disabled sysctl
+  const ipv6SysctlDisabled = /disable_ipv6\s*=\s*1/.test(output);
+  const fw14: AuditCheck = {
+    id: "FW-IPV6-DISABLED-OR-FILTERED",
+    category: "Firewall",
+    name: "IPv6 Disabled or Filtered",
+    severity: "info",
+    passed: isNA ? false : ipv6SysctlDisabled || ipv6RuleCount > 3,
+    currentValue: isNA
+      ? "Unable to determine"
+      : ipv6SysctlDisabled
+        ? "IPv6 disabled via sysctl"
+        : `ip6tables INPUT rules: ${ipv6RuleCount}`,
+    expectedValue: "IPv6 disabled or ip6tables has rules (> 3 lines)",
+    fixCommand: "ip6tables -P INPUT DROP && ip6tables -P FORWARD DROP && ip6tables -P OUTPUT ACCEPT",
+    explain:
+      "Unfiltered IPv6 traffic can bypass IPv4 firewall rules on dual-stack systems.",
+  };
+
+  // FW-15: No wildcard ACCEPT rule in INPUT chain
+  const hasWildcardAccept = /ACCEPT\s+all\s+--\s+0\.0\.0\.0\/0\s+0\.0\.0\.0\/0\s*$/.test(output);
+  const fw15: AuditCheck = {
+    id: "FW-NO-WILDCARD-ACCEPT",
+    category: "Firewall",
+    name: "No Unrestricted ACCEPT All Rule",
+    severity: "warning",
+    passed: isNA ? false : !hasWildcardAccept,
+    currentValue: isNA
+      ? "Unable to determine"
+      : hasWildcardAccept
+        ? "Wildcard ACCEPT all rule found in INPUT chain"
+        : "No unrestricted ACCEPT all rule found",
+    expectedValue: "No 'ACCEPT all -- 0.0.0.0/0 0.0.0.0/0' rule without restrictions",
+    fixCommand: "iptables -D INPUT -j ACCEPT  # Remove and replace with specific allow rules",
+    explain:
+      "A wildcard ACCEPT rule in the INPUT chain bypasses all other security rules, effectively disabling the firewall.",
+  };
+
+  return [fw01, fw02, fw03, fw04, fw05, fw06, fw07, fw08, fw09, fw10, fw11, fw12, fw13, fw14, fw15];
 };

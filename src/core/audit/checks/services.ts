@@ -386,6 +386,89 @@ const SERVICES_CHECKS: ServicesCheckDef[] = [
     explain:
       "The echo network service can be paired with chargen to create infinite traffic loops between hosts.",
   },
+  {
+    id: "SRV-NO-RPCBIND",
+    name: "rpcbind Not Running",
+    severity: "warning",
+    check: (output) => {
+      const active = /\brpcbind\b.*\bactive\b/i.test(output) || isServiceActive(output, "rpcbind");
+      return {
+        passed: !active,
+        currentValue: active ? "rpcbind is running" : "rpcbind is not running",
+      };
+    },
+    expectedValue: "rpcbind inactive unless NFS is required",
+    fixCommand: "systemctl stop rpcbind && systemctl disable rpcbind",
+    explain:
+      "rpcbind exposes RPC services to the network; rarely needed on modern VPS servers.",
+  },
+  {
+    id: "SRV-NO-AVAHI",
+    name: "Avahi mDNS Service Disabled",
+    severity: "info",
+    check: (output) => {
+      const active = /\bavahi-daemon\b.*\bactive\b/i.test(output) || isServiceActive(output, "avahi-daemon");
+      return {
+        passed: !active,
+        currentValue: active ? "avahi-daemon is running" : "avahi-daemon is not running",
+      };
+    },
+    expectedValue: "avahi-daemon inactive on production servers",
+    fixCommand: "systemctl stop avahi-daemon && systemctl disable avahi-daemon",
+    explain:
+      "Avahi provides mDNS/DNS-SD which is unnecessary on production servers and increases network attack surface.",
+  },
+  {
+    id: "SRV-NO-CUPS",
+    name: "CUPS Print Service Disabled",
+    severity: "info",
+    check: (output) => {
+      const active = /\bcups\b.*\bactive\b/i.test(output) || isServiceActive(output, "cups");
+      return {
+        passed: !active,
+        currentValue: active ? "CUPS is running" : "CUPS is not running",
+      };
+    },
+    expectedValue: "CUPS inactive unless print server needed",
+    fixCommand: "systemctl stop cups && systemctl disable cups",
+    explain:
+      "CUPS printing service is unnecessary on servers and has a history of security vulnerabilities.",
+  },
+  {
+    id: "SRV-RUNNING-COUNT-REASONABLE",
+    name: "Running Service Count Reasonable",
+    severity: "info",
+    check: (output) => {
+      // systemctl list-units --type=service --state=running | wc -l output
+      const lines = output.split("\n");
+      let serviceCount: number | null = null;
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (/^\d+$/.test(trimmed)) {
+          const val = parseInt(trimmed, 10);
+          // Service count should be > 0 and plausible (1-200)
+          if (val > 0 && val < 200) {
+            serviceCount = val;
+            break;
+          }
+        }
+      }
+      if (serviceCount === null) {
+        return { passed: true, currentValue: "Running service count not determinable" };
+      }
+      const passed = serviceCount < 50;
+      return {
+        passed,
+        currentValue: passed
+          ? `${serviceCount} running services (acceptable)`
+          : `${serviceCount} running services (review recommended)`,
+      };
+    },
+    expectedValue: "Fewer than 50 running services",
+    fixCommand: "# Review: systemctl list-units --type=service --state=running — disable unnecessary: systemctl disable --now SERVICE",
+    explain:
+      "Excessive running services increase attack surface; each service is a potential entry point for attackers.",
+  },
 ];
 
 export const parseServicesChecks: CheckParser = (

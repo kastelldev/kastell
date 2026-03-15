@@ -47,6 +47,10 @@ function firewallSection(): string {
     `iptables -L OUTPUT -n 2>/dev/null | head -1 || echo 'N/A'`,
     // NEW: rate limiting presence
     `iptables -L -n 2>/dev/null | grep -i 'limit' | head -5 || echo 'NONE'`,
+    // NEW: FORWARD chain policy
+    `iptables -L FORWARD -n 2>/dev/null | head -1 || echo 'N/A'`,
+    // NEW: IPv6 firewall rule count
+    `ip6tables -L INPUT -n 2>/dev/null | wc -l || echo '0'`,
   ].join("\n");
 }
 
@@ -92,6 +96,10 @@ function authSection(): string {
     `dpkg -l libpam-google-authenticator libpam-oath 2>/dev/null | grep '^ii' | head -5 || echo 'NONE'`,
     // NEW: login.defs extras (INACTIVE)
     `grep -E '^INACTIVE' /etc/default/useradd 2>/dev/null || echo 'N/A'`,
+    // NEW: su restricted to wheel group via pam_wheel
+    `grep -E '^auth.*pam_wheel' /etc/pam.d/su 2>/dev/null || echo 'NONE'`,
+    // NEW: gshadow permissions
+    `stat -c '%a' /etc/gshadow 2>/dev/null || echo 'N/A'`,
   ].join("\n");
 }
 
@@ -108,6 +116,10 @@ function dockerSection(platform: string): string {
     `echo "DOCKER_CONTENT_TRUST=\${DOCKER_CONTENT_TRUST:-unset}" 2>/dev/null`,
     // NEW: Docker socket permissions detail
     `stat -c '%a %U %G' /var/run/docker.sock 2>/dev/null || echo 'N/A'`,
+    // NEW: Docker network listing
+    `command -v docker >/dev/null 2>&1 && docker network ls --format '{{.Name}} {{.Driver}}' 2>/dev/null | head -10 || echo 'N/A'`,
+    // NEW: Docker volume listing
+    `command -v docker >/dev/null 2>&1 && docker volume ls --format '{{.Name}} {{.Driver}}' 2>/dev/null | head -10 || echo 'N/A'`,
   ];
 
   if (platform === "coolify") {
@@ -137,6 +149,10 @@ function networkSection(): string {
     `test -f /etc/hosts.deny && cat /etc/hosts.deny 2>/dev/null | head -10 || echo 'NO_HOSTS_DENY'`,
     `sysctl net.ipv6.conf.all.disable_ipv6 net.ipv4.conf.all.send_redirects net.ipv4.conf.all.secure_redirects net.ipv6.conf.all.accept_source_route net.ipv4.conf.all.rp_filter net.ipv4.tcp_syn_retries 2>/dev/null || echo 'N/A'`,
     `ss -tlnp 2>/dev/null | grep -E ':8080 |:8443 |:9000 |:3000 ' | grep '0.0.0.0' | head -10 || echo 'NONE'`,
+    // NEW: mail service ports
+    `ss -tlnp 2>/dev/null | grep -E ':25 |:110 |:143 ' | head -5 || echo 'NONE'`,
+    // NEW: promiscuous interfaces
+    `ip link show 2>/dev/null | grep -i 'PROMISC' | head -5 || echo 'NONE'`,
   ].join("\n");
 }
 
@@ -157,13 +173,19 @@ function loggingSection(): string {
     `grep -E '^Storage' /etc/systemd/journald.conf 2>/dev/null || echo 'N/A'`,
     // NEW: centralized logging tools
     `which vector promtail fluent-bit 2>/dev/null || echo 'NONE'`,
+    // NEW: world-readable log files count
+    `find /var/log -maxdepth 1 -perm -o+r -type f 2>/dev/null | wc -l || echo '0'`,
+    // NEW: remote syslog forwarding
+    `grep -E '^\\s*@@?' /etc/rsyslog.conf /etc/rsyslog.d/*.conf 2>/dev/null | head -5 || echo 'NONE'`,
+    // NEW: logrotate timer or cron
+    `systemctl is-active logrotate.timer 2>/dev/null || ls /etc/cron.daily/logrotate 2>/dev/null || echo 'inactive'`,
   ].join("\n");
 }
 
 function kernelSection(): string {
   return [
     NAMED_SEP("KERNEL"),
-    `sysctl -a 2>/dev/null | grep -E 'randomize_va_space|accept_redirects|accept_source_route|log_martians|syncookies|core_uses_pid|dmesg_restrict|kptr_restrict|ptrace_scope|perf_event_paranoid|tcp_timestamps|icmp_echo_ignore_broadcasts|rp_filter|ip_forward|modules_disabled|unprivileged_bpf_disabled|send_redirects|secure_redirects' || echo 'N/A'`,
+    `sysctl -a 2>/dev/null | grep -E 'randomize_va_space|accept_redirects|accept_source_route|log_martians|syncookies|core_uses_pid|dmesg_restrict|kptr_restrict|ptrace_scope|perf_event_paranoid|tcp_timestamps|icmp_echo_ignore_broadcasts|rp_filter|ip_forward|modules_disabled|unprivileged_bpf_disabled|send_redirects|secure_redirects|sysrq|exec_shield|core_pattern|unprivileged_userns_clone|panic_on_oops|nmi_watchdog' || echo 'N/A'`,
     `uname -r 2>/dev/null || echo 'N/A'`,
     `cat /sys/kernel/security/lsm 2>/dev/null || echo 'N/A'`,
   ].join("\n");
@@ -180,6 +202,10 @@ function accountsSection(): string {
     `stat -c '%a' /root 2>/dev/null || echo 'N/A'`,
     `cat /etc/login.defs 2>/dev/null | grep -E '^PASS_MAX_DAYS|^PASS_MIN_DAYS|^UMASK|^INACTIVE' || echo 'N/A'`,
     `awk -F: '{print $1":"$3}' /etc/passwd 2>/dev/null | sort -t: -k2 -n | uniq -d -f1 | head -10 || echo 'NONE'`,
+    // NEW: inactive accounts (90+ days)
+    `lastlog -b 90 2>/dev/null | tail +2 | head -20 || echo 'N/A'`,
+    // NEW: total account count
+    `grep -c '^' /etc/passwd 2>/dev/null || echo 'N/A'`,
   ].join("\n");
 }
 
@@ -190,6 +216,8 @@ function servicesSection(): string {
     `systemctl is-active nfs-server rpcbind smbd nmbd avahi-daemon cups isc-dhcp-server named snmpd squid xinetd ypserv 2>/dev/null | head -15 || echo 'N/A'`,
     `test -f /etc/inetd.conf && grep -v '^#' /etc/inetd.conf 2>/dev/null || echo 'NONE'`,
     `test -f /etc/xinetd.conf && cat /etc/xinetd.conf 2>/dev/null || echo 'NONE'`,
+    // NEW: running service count
+    `systemctl list-units --type=service --state=running --no-pager 2>/dev/null | wc -l || echo 'N/A'`,
   ].join("\n");
 }
 
@@ -263,6 +291,10 @@ function malwareSection(): string {
     `find /dev -perm -4000 -type f 2>/dev/null | head -5 || echo 'NONE'`,
     `find /root -perm -o+w -type f -maxdepth 3 2>/dev/null | head -5 || echo 'NONE'`,
     `test -f /var/log/rkhunter.log && tail -30 /var/log/rkhunter.log 2>/dev/null | grep -i 'system checks summary' | tail -1 || echo 'NO_SCAN'`,
+    // NEW: hidden files in /tmp and /dev/shm
+    `find /tmp /dev/shm -name ".*" -type f 2>/dev/null | head -10 || echo 'NONE'`,
+    // NEW: high CPU processes
+    `ps aux 2>/dev/null | awk '{if($3>50)print $0}' | head -5 || echo 'NONE'`,
   ].join("\n");
 }
 
@@ -275,6 +307,10 @@ function macSection(): string {
     `command -v getenforce >/dev/null 2>&1 && getenforce 2>/dev/null || echo 'NOT_INSTALLED'`,
     `test -f /etc/selinux/config && grep '^SELINUX=' /etc/selinux/config 2>/dev/null || echo 'N/A'`,
     `cat /proc/self/status 2>/dev/null | grep Seccomp || echo 'N/A'`,
+    // NEW: AppArmor enforce count
+    `aa-status 2>/dev/null | grep -c 'enforce mode' || echo '0'`,
+    // NEW: AppArmor base abstraction exists
+    `cat /etc/apparmor.d/abstractions/base 2>/dev/null | wc -l || echo '0'`,
   ].join("\n");
 }
 
@@ -287,6 +323,10 @@ function memorySection(): string {
     `cat /proc/sys/kernel/pid_max 2>/dev/null || echo 'N/A'`,
     `ulimit -a 2>/dev/null | head -20 || echo 'N/A'`,
     `sysctl fs.suid_dumpable 2>/dev/null || echo 'N/A'`,
+    // NEW: swappiness
+    `cat /proc/sys/vm/swappiness 2>/dev/null || echo 'N/A'`,
+    // NEW: swap info
+    `swapon --show=NAME,TYPE 2>/dev/null | tail +2 | head -5 || echo 'NO_SWAP'`,
   ].join("\n");
 }
 
@@ -300,6 +340,10 @@ function cryptoSection(): string {
     `cat /etc/ssl/openssl.cnf 2>/dev/null | grep -iE 'MinProtocol|CipherString' || echo 'N/A'`,
     `ss -tlnp 2>/dev/null | grep -E ':443 |:8443 ' | head -5 || echo 'NO_TLS_PORTS'`,
     `ss -tlnp 2>/dev/null | grep -q ':443' && timeout 5 openssl s_client -connect localhost:443 -servername localhost 2>/dev/null < /dev/null | openssl x509 -noout -enddate 2>/dev/null || echo 'N/A'`,
+    // NEW: host key permissions
+    `stat -c '%a %n' /etc/ssh/ssh_host_*_key 2>/dev/null || echo 'N/A'`,
+    // NEW: weak cipher count in OpenSSL
+    `openssl ciphers -v 'ALL:eNULL' 2>/dev/null | grep -ci 'NULL\\|RC4\\|DES\\|MD5' || echo '0'`,
   ].join("\n");
 }
 

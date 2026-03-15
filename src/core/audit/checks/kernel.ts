@@ -371,5 +371,125 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
     explain: "Even so-called secure ICMP redirects from gateways can be used to redirect traffic maliciously.",
   };
 
-  return [krn01, krn02, krn03, krn04, krn05, krn06, krn07, krn08, krn09, krn10, krn11, krn12, krn13, krn14, krn15, krn16, krn17, krn18, krn19];
+  // KRN-20: SysRq disabled or restricted (kernel.sysrq = 0 or 1)
+  const sysrq = extractSysctlValue(output, "kernel.sysrq");
+  const sysrqVal = sysrq !== null ? parseInt(sysrq, 10) : null;
+  const krn20: AuditCheck = {
+    id: "KRN-SYSRQ-DISABLED",
+    category: "Kernel",
+    name: "SysRq Disabled or Restricted",
+    severity: "warning",
+    passed: isNA ? false : sysrqVal !== null && sysrqVal <= 1,
+    currentValue: isNA
+      ? "Unable to determine"
+      : sysrq !== null
+        ? `kernel.sysrq = ${sysrq}`
+        : "Unable to determine",
+    expectedValue: "kernel.sysrq = 0 or 1 (restricted)",
+    fixCommand: "sysctl -w kernel.sysrq=0 && echo 'kernel.sysrq = 0' >> /etc/sysctl.d/99-kastell.conf",
+    explain:
+      "SysRq provides low-level kernel commands via keyboard; unrestricted access enables forced reboots and memory dumps.",
+  };
+
+  // KRN-21: Core pattern safe (not piped)
+  const corePattern = extractSysctlValue(output, "kernel.core_pattern");
+  const corePatternSafe = corePattern !== null && !corePattern.startsWith("|");
+  const krn21: AuditCheck = {
+    id: "KRN-CORE-PATTERN-SAFE",
+    category: "Kernel",
+    name: "Core Dump Pattern Safe",
+    severity: "warning",
+    passed: isNA ? false : corePatternSafe,
+    currentValue: isNA
+      ? "Unable to determine"
+      : corePattern !== null
+        ? `kernel.core_pattern = ${corePattern}`
+        : "Unable to determine",
+    expectedValue: "kernel.core_pattern does not start with | (no piped core dumps)",
+    fixCommand: "echo 'kernel.core_pattern=core' > /etc/sysctl.d/99-kastell-core.conf && sysctl -p",
+    explain:
+      "Piped core patterns can execute arbitrary programs when a process crashes, enabling privilege escalation.",
+  };
+
+  // KRN-22: Panic on oops (kernel.panic_on_oops = 1)
+  const panicOnOops = extractSysctlValue(output, "kernel.panic_on_oops");
+  const krn22: AuditCheck = {
+    id: "KRN-PANIC-ON-OOPS",
+    category: "Kernel",
+    name: "Panic on Kernel Oops",
+    severity: "info",
+    passed: isNA ? false : panicOnOops === "1",
+    currentValue: isNA
+      ? "Unable to determine"
+      : panicOnOops !== null
+        ? `kernel.panic_on_oops = ${panicOnOops}`
+        : "Unable to determine",
+    expectedValue: "kernel.panic_on_oops = 1",
+    fixCommand: "sysctl -w kernel.panic_on_oops=1 && echo 'kernel.panic_on_oops = 1' >> /etc/sysctl.d/99-kastell.conf",
+    explain:
+      "Kernel oops without panic allows a potentially compromised kernel to continue running.",
+  };
+
+  // KRN-23: NMI watchdog disabled (kernel.nmi_watchdog = 0)
+  const nmiWatchdog = extractSysctlValue(output, "kernel.nmi_watchdog");
+  const krn23: AuditCheck = {
+    id: "KRN-NMI-WATCHDOG-DISABLED",
+    category: "Kernel",
+    name: "NMI Watchdog Disabled",
+    severity: "info",
+    passed: isNA ? false : nmiWatchdog === "0",
+    currentValue: isNA
+      ? "Unable to determine"
+      : nmiWatchdog !== null
+        ? `kernel.nmi_watchdog = ${nmiWatchdog}`
+        : "Unable to determine",
+    expectedValue: "kernel.nmi_watchdog = 0 (disabled on production VPS)",
+    fixCommand: "sysctl -w kernel.nmi_watchdog=0 && echo 'kernel.nmi_watchdog = 0' >> /etc/sysctl.d/99-kastell.conf",
+    explain:
+      "NMI watchdog generates hardware interrupts that are rarely needed on VPS; disabling reduces attack surface.",
+  };
+
+  // KRN-24: Unprivileged user namespaces disabled
+  const unprivUserns = extractSysctlValue(output, "kernel.unprivileged_userns_clone");
+  const krn24: AuditCheck = {
+    id: "KRN-UNPRIVILEGED-USERNS",
+    category: "Kernel",
+    name: "Unprivileged User Namespaces Disabled",
+    severity: "warning",
+    passed: isNA
+      ? false
+      : unprivUserns === null
+        ? false
+        : unprivUserns === "0",
+    currentValue: isNA
+      ? "Unable to determine"
+      : unprivUserns !== null
+        ? `kernel.unprivileged_userns_clone = ${unprivUserns}`
+        : "Sysctl key not available (may not be supported on this kernel)",
+    expectedValue: "kernel.unprivileged_userns_clone = 0",
+    fixCommand: "sysctl -w kernel.unprivileged_userns_clone=0 && echo 'kernel.unprivileged_userns_clone = 0' >> /etc/sysctl.d/99-kastell.conf",
+    explain:
+      "Unprivileged user namespaces expand attack surface by allowing sandbox escapes and privilege escalation exploits.",
+  };
+
+  // KRN-25: Exec-shield (may not exist on modern kernels)
+  const execShield = extractSysctlValue(output, "kernel.exec_shield");
+  const krn25: AuditCheck = {
+    id: "KRN-EXEC-SHIELD",
+    category: "Kernel",
+    name: "Exec-Shield or NX Bit Protection",
+    severity: "info",
+    passed: isNA ? false : execShield === null || execShield === "1",
+    currentValue: isNA
+      ? "Unable to determine"
+      : execShield !== null
+        ? `kernel.exec_shield = ${execShield}`
+        : "Not present (modern kernel uses hardware NX bit)",
+    expectedValue: "kernel.exec_shield = 1 or not present (NX bit handles this on modern CPUs)",
+    fixCommand: "# Modern kernels use NX bit. Verify: grep -q ' nx ' /proc/cpuinfo && echo 'NX enabled'",
+    explain:
+      "Exec-shield provides executable space protection; on modern kernels, hardware NX bit provides equivalent protection.",
+  };
+
+  return [krn01, krn02, krn03, krn04, krn05, krn06, krn07, krn08, krn09, krn10, krn11, krn12, krn13, krn14, krn15, krn16, krn17, krn18, krn19, krn20, krn21, krn22, krn23, krn24, krn25];
 };

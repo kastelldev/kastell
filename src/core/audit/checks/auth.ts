@@ -322,5 +322,65 @@ export const parseAuthChecks: CheckParser = (sectionOutput: string, _platform: s
     explain: "Multi-factor authentication significantly reduces account compromise risk from stolen passwords.",
   };
 
-  return [auth01, auth02, auth03, auth04, auth05, auth06, auth07, auth08, auth09, auth10, auth11, auth12, auth13, auth14, auth15];
+  // AUTH-SU-RESTRICTED: su restricted to wheel group via pam_wheel
+  const hasPamWheel = /pam_wheel/i.test(output);
+  const auth16: AuditCheck = {
+    id: "AUTH-SU-RESTRICTED",
+    category: "Auth",
+    name: "su Restricted to Wheel Group",
+    severity: "info",
+    passed: isNA ? false : hasPamWheel,
+    currentValue: isNA
+      ? "Unable to determine"
+      : hasPamWheel
+        ? "pam_wheel configured in /etc/pam.d/su"
+        : "pam_wheel not found in /etc/pam.d/su",
+    expectedValue: "pam_wheel configured in /etc/pam.d/su",
+    fixCommand: "echo 'auth required pam_wheel.so use_uid' >> /etc/pam.d/su",
+    explain: "Restricting su to the wheel group prevents unprivileged users from attempting root password guesses.",
+  };
+
+  // AUTH-PASS-MAX-DAYS-SET: PASS_MAX_DAYS configured and reasonable
+  const passMaxDaysSetMatch = output.match(/PASS_MAX_DAYS\s+(\d+)/);
+  const passMaxDaysSet = passMaxDaysSetMatch ? parseInt(passMaxDaysSetMatch[1], 10) : null;
+  const auth17: AuditCheck = {
+    id: "AUTH-PASS-MAX-DAYS-SET",
+    category: "Auth",
+    name: "Password Maximum Age Configured",
+    severity: "info",
+    passed: isNA ? false : passMaxDaysSet !== null && passMaxDaysSet <= 365 && passMaxDaysSet > 0,
+    currentValue: isNA
+      ? "Unable to determine"
+      : passMaxDaysSet !== null
+        ? `PASS_MAX_DAYS = ${passMaxDaysSet}`
+        : "PASS_MAX_DAYS not configured",
+    expectedValue: "PASS_MAX_DAYS > 0 and <= 365",
+    fixCommand: "sed -i 's/^PASS_MAX_DAYS.*/PASS_MAX_DAYS 90/' /etc/login.defs",
+    explain: "Password maximum age ensures credentials are rotated periodically, limiting exposure from compromised passwords.",
+  };
+
+  // AUTH-GSHADOW-PERMISSIONS: /etc/gshadow permissions restrictive
+  // stat -c '%a' /etc/gshadow — match a standalone permission value
+  // We need to find it differently from shadow perms — look for second standalone number
+  const allPermMatches = output.match(/^(000|600|640|660|644|755|750|700|770)$/gm) ?? [];
+  // Shadow is first, gshadow is second (both from stat commands)
+  const gshadowPerms = allPermMatches.length >= 2 ? allPermMatches[1] : null;
+  const gshadowSecure = gshadowPerms !== null && ["000", "600", "640"].includes(gshadowPerms);
+  const auth18: AuditCheck = {
+    id: "AUTH-GSHADOW-PERMISSIONS",
+    category: "Auth",
+    name: "/etc/gshadow Permissions",
+    severity: "warning",
+    passed: isNA ? false : gshadowSecure,
+    currentValue: isNA
+      ? "Unable to determine"
+      : gshadowPerms !== null
+        ? `Mode: ${gshadowPerms}`
+        : "Unable to determine /etc/gshadow permissions",
+    expectedValue: "/etc/gshadow mode 640 or stricter (000 or 600)",
+    fixCommand: "chmod 640 /etc/gshadow && chown root:shadow /etc/gshadow",
+    explain: "World-readable /etc/gshadow exposes group password hashes to local attackers.",
+  };
+
+  return [auth01, auth02, auth03, auth04, auth05, auth06, auth07, auth08, auth09, auth10, auth11, auth12, auth13, auth14, auth15, auth16, auth17, auth18];
 };

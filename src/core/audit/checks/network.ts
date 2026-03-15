@@ -304,5 +304,66 @@ export const parseNetworkChecks: CheckParser = (sectionOutput: string, platform:
     explain: "Limiting SYN retries reduces the time wasted on unanswered connection attempts and mitigates resource exhaustion.",
   };
 
-  return [net01, net02, net03, net04, net05, net06, net07, net08, net09, net10, net11, net12, net13, net14, net15];
+  // NET-16: No unnecessary mail ports open
+  // ss -tlnp | grep -E ':25 |:110 |:143 ' output
+  const hasMailPorts = /:(25|110|143)\s/.test(output) && !/^NONE$/m.test(output.split("\n").filter((l) => /:(25|110|143)\s/.test(l) || l.trim() === "NONE").join("\n"));
+  // More precise: look for NONE in the mail ports section
+  const mailPortsNone = output.split("\n").some((l) => l.trim() === "NONE");
+  const mailPortsFound = !mailPortsNone && /:(25|110|143)\s/.test(output);
+  const net16: AuditCheck = {
+    id: "NET-NO-MAIL-PORTS",
+    category: "Network",
+    name: "No Unnecessary Mail Ports Open",
+    severity: "info",
+    passed: isNA ? false : !mailPortsFound,
+    currentValue: isNA
+      ? "Unable to determine"
+      : mailPortsFound
+        ? "Mail service port(s) (25/110/143) detected"
+        : "No unexpected mail ports open",
+    expectedValue: "Ports 25, 110, 143 not listening (unless mail server)",
+    fixCommand: "systemctl stop postfix sendmail dovecot 2>/dev/null; ufw deny 25/tcp && ufw deny 110/tcp && ufw deny 143/tcp",
+    explain: "Open mail service ports on a non-mail server indicate unnecessary services that increase attack surface.",
+  };
+
+  // NET-17: Total listening services count reasonable
+  // Count 0.0.0.0 and :: listening TCP services from ss output
+  const listeningCount = (output.match(/(?:0\.0\.0\.0|::|\*):(\d+)/g) ?? []).length;
+  const net17: AuditCheck = {
+    id: "NET-LISTENING-SERVICES-AUDIT",
+    category: "Network",
+    name: "Listening Services Count Reasonable",
+    severity: "info",
+    passed: isNA ? false : listeningCount < 20,
+    currentValue: isNA
+      ? "Unable to determine"
+      : `${listeningCount} listening TCP services detected`,
+    expectedValue: "Fewer than 20 listening TCP services",
+    fixCommand: "# Review: ss -tlnp — close unnecessary ports or restrict with firewall: ufw deny PORT",
+    explain: "Excessive listening services indicate poor service hygiene and increase the network attack surface.",
+  };
+
+  // NET-18: No promiscuous network interfaces
+  // ip link show | grep -i 'PROMISC' output
+  const hasPromiscuous = !/^NONE$/m.test(output.split("\n").filter((l) => /PROMISC/i.test(l) || l.trim() === "NONE").join("\n"))
+    && /PROMISC/i.test(output);
+  const promiscNone = output.split("\n").some((l) => l.trim() === "NONE");
+  const hasPromiscuousIface = !promiscNone && /PROMISC/i.test(output);
+  const net18: AuditCheck = {
+    id: "NET-NO-PROMISCUOUS-INTERFACES",
+    category: "Network",
+    name: "No Promiscuous Mode Interfaces",
+    severity: "warning",
+    passed: isNA ? false : !hasPromiscuousIface,
+    currentValue: isNA
+      ? "Unable to determine"
+      : hasPromiscuousIface
+        ? "Promiscuous mode interface(s) detected"
+        : "No promiscuous mode interfaces",
+    expectedValue: "No network interfaces in PROMISC mode",
+    fixCommand: "ip link set <interface> promisc off  # Replace <interface> with interface name",
+    explain: "Promiscuous mode interfaces capture all network traffic, potentially indicating network sniffing malware.",
+  };
+
+  return [net01, net02, net03, net04, net05, net06, net07, net08, net09, net10, net11, net12, net13, net14, net15, net16, net17, net18];
 };

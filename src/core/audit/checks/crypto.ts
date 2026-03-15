@@ -225,6 +225,120 @@ const CRYPTO_CHECKS: CryptoCheckDef[] = [
     fixCommand: "apt update && apt install --only-upgrade openssl -y",
     explain: "OpenSSL 1.0.x and earlier have known vulnerabilities including Heartbleed (1.0.1) and lack modern cipher support.",
   },
+  {
+    id: "CRYPTO-WEAK-SSH-KEYS",
+    name: "No Weak DSA SSH Host Keys",
+    severity: "warning",
+    check: (output) => {
+      const hasDsaKey = /ssh_host_dsa_key/.test(output);
+      return {
+        passed: !hasDsaKey,
+        currentValue: hasDsaKey ? "DSA host key present (weak 1024-bit)" : "No DSA host keys found",
+      };
+    },
+    expectedValue: "No ssh_host_dsa_key present in /etc/ssh/",
+    fixCommand: "rm -f /etc/ssh/ssh_host_dsa_key* && ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N ''",
+    explain: "DSA host keys use fixed 1024-bit key length which is cryptographically weak by modern standards.",
+  },
+  {
+    id: "CRYPTO-HOST-KEY-PERMS",
+    name: "SSH Host Key Permissions Restrictive",
+    severity: "critical",
+    check: (output) => {
+      // stat -c '%a %n' /etc/ssh/ssh_host_*_key output
+      // Lines like: "600 /etc/ssh/ssh_host_rsa_key"
+      const hostKeyLines = output.match(/^(\d{3,4})\s+\/etc\/ssh\/ssh_host_.*_key$/gm) ?? [];
+      if (hostKeyLines.length === 0) {
+        // No stat output found — check if N/A
+        if (/^N\/A$/m.test(output)) {
+          return { passed: false, currentValue: "Unable to determine SSH host key permissions" };
+        }
+        return { passed: false, currentValue: "No SSH host key stat output found" };
+      }
+      const insecure = hostKeyLines.filter((line) => {
+        const perms = line.trim().split(/\s+/)[0];
+        return perms !== "600" && perms !== "640";
+      });
+      return {
+        passed: insecure.length === 0,
+        currentValue: insecure.length === 0
+          ? "All SSH host keys have restrictive permissions"
+          : `${insecure.length} key(s) with non-restrictive permissions`,
+      };
+    },
+    expectedValue: "All SSH host private keys have mode 600 or 640",
+    fixCommand: "chmod 600 /etc/ssh/ssh_host_*_key",
+    explain: "World-readable SSH host private keys allow any local user to impersonate the server.",
+  },
+  {
+    id: "CRYPTO-NO-WEAK-OPENSSL-CIPHERS",
+    name: "No Excessive Weak OpenSSL Ciphers",
+    severity: "warning",
+    check: (output) => {
+      // openssl ciphers | grep -ci 'NULL|RC4|DES|MD5' — count on standalone line
+      const lines = output.split("\n");
+      let weakCount: number | null = null;
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (/^\d+$/.test(trimmed)) {
+          const val = parseInt(trimmed, 10);
+          // Look for a number that could be a cipher count (0-100)
+          if (val >= 0 && val < 200) {
+            weakCount = val;
+            break;
+          }
+        }
+      }
+      if (weakCount === null) {
+        return { passed: false, currentValue: "Weak cipher count not determinable" };
+      }
+      const passed = weakCount < 5;
+      return {
+        passed,
+        currentValue: passed
+          ? `${weakCount} weak cipher references (acceptable)`
+          : `${weakCount} weak cipher references (review recommended)`,
+      };
+    },
+    expectedValue: "Fewer than 5 NULL/RC4/DES/MD5 cipher references",
+    fixCommand: "Update /etc/ssl/openssl.cnf MinProtocol and CipherString to disable weak algorithms",
+    explain: "Weak ciphers in the OpenSSL configuration can be exploited through protocol downgrade attacks.",
+  },
+  {
+    id: "CRYPTO-MIN-PROTOCOL",
+    name: "OpenSSL Minimum TLS Protocol",
+    severity: "warning",
+    check: (output) => {
+      const minProtoMatch = output.match(/MinProtocol\s*=\s*(TLSv[\d.]+)/i);
+      if (!minProtoMatch) {
+        return { passed: false, currentValue: "MinProtocol not configured in openssl.cnf" };
+      }
+      const proto = minProtoMatch[1];
+      const passed = proto === "TLSv1.2" || proto === "TLSv1.3";
+      return {
+        passed,
+        currentValue: passed ? `MinProtocol = ${proto}` : `MinProtocol = ${proto} (below TLSv1.2)`,
+      };
+    },
+    expectedValue: "MinProtocol = TLSv1.2 or TLSv1.3",
+    fixCommand: "Add 'MinProtocol = TLSv1.2' to /etc/ssl/openssl.cnf [system_default_sect]",
+    explain: "TLS versions below 1.2 have known cryptographic weaknesses and are deprecated by NIST and PCI-DSS.",
+  },
+  {
+    id: "CRYPTO-LUKS-KEY-SIZE",
+    name: "LUKS Encryption Present or Info",
+    severity: "info",
+    check: (output) => {
+      const hasLuks = /crypto_luks/i.test(output) && !/NO_LUKS/.test(output);
+      return {
+        passed: true,
+        currentValue: hasLuks ? "LUKS disk encryption detected" : "No LUKS encrypted volumes (info only)",
+      };
+    },
+    expectedValue: "LUKS disk encryption presence checked",
+    fixCommand: "# Verify: cryptsetup luksDump /dev/sdX | grep 'Key Slot'",
+    explain: "LUKS disk encryption protects data at rest; key size should be >= 256 bits for strong protection.",
+  },
 ];
 
 export const parseCryptoChecks: CheckParser = (
