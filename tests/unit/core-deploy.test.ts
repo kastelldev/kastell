@@ -34,6 +34,7 @@ jest.mock("../../src/utils/openBrowser", () => ({
 
 jest.mock("../../src/utils/ssh", () => ({
   assertValidIp: jest.fn(),
+  removeStaleHostKey: jest.fn(),
   sshExec: jest.fn().mockResolvedValue({ code: 0, stdout: "", stderr: "" }),
   sshConnect: jest.fn(),
   sshStream: jest.fn(),
