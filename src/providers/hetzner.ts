@@ -1,6 +1,7 @@
 import { apiClient, stripSensitiveData, withProviderErrorHandling, assertValidServerId, uploadSshKeyWithConflict, type CloudProvider } from "./base.js";
 import { withRetry } from "../utils/retry.js";
 import type { Region, ServerSize, ServerConfig, ServerResult, SnapshotInfo, ServerMode } from "../types/index.js";
+import { formatSnapshotCost } from "../constants.js";
 
 interface HetznerLocation {
   name: string;
@@ -268,7 +269,7 @@ export class HetznerProvider implements CloudProvider {
         status: image.status,
         sizeGb: image.image_size || 0,
         createdAt: image.created,
-        costPerMonth: `€${((image.image_size || 0) * 0.006).toFixed(2)}/mo`,
+        costPerMonth: formatSnapshotCost("hetzner", image.image_size || 0),
       };
     }, extractHetznerError);
   }
@@ -317,7 +318,7 @@ export class HetznerProvider implements CloudProvider {
           headers: { Authorization: `Bearer ${this.apiToken}` },
         });
         const diskGb = response.data.server.server_type.disk;
-        return `€${(diskGb * 0.006).toFixed(2)}/mo`;
+        return formatSnapshotCost("hetzner", diskGb);
       }),
     extractHetznerError);
   }

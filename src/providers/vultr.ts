@@ -1,7 +1,7 @@
 import { apiClient, stripSensitiveData, withProviderErrorHandling, assertValidServerId, uploadSshKeyWithConflict, type CloudProvider } from "./base.js";
 import { withRetry } from "../utils/retry.js";
 import type { Region, ServerSize, ServerConfig, ServerResult, SnapshotInfo, ServerMode } from "../types/index.js";
-import { VULTR_UBUNTU_OS_ID } from "../constants.js";
+import { VULTR_UBUNTU_OS_ID, formatSnapshotCost } from "../constants.js";
 
 interface VultrPlan {
   id: string;
@@ -243,7 +243,7 @@ export class VultrProvider implements CloudProvider {
         status: snap.status,
         sizeGb: snap.size ? snap.size / (1024 * 1024 * 1024) : 0,
         createdAt: snap.date_created,
-        costPerMonth: `$${(snap.size ? (snap.size / (1024 * 1024 * 1024)) * 0.05 : 0).toFixed(2)}/mo`,
+        costPerMonth: formatSnapshotCost("vultr", snap.size ? snap.size / (1024 * 1024 * 1024) : 0),
       };
     }, extractVultrError);
   }
@@ -266,7 +266,7 @@ export class VultrProvider implements CloudProvider {
             status: s.status,
             sizeGb: s.size ? s.size / (1024 * 1024 * 1024) : 0,
             createdAt: s.date_created,
-            costPerMonth: `$${(s.size ? (s.size / (1024 * 1024 * 1024)) * 0.05 : 0).toFixed(2)}/mo`,
+            costPerMonth: formatSnapshotCost("vultr", s.size ? s.size / (1024 * 1024 * 1024) : 0),
           }),
         );
       }),
@@ -290,7 +290,7 @@ export class VultrProvider implements CloudProvider {
           headers: { Authorization: `Bearer ${this.apiToken}` },
         });
         const diskGb = response.data.instance?.disk || 0;
-        return `$${(diskGb * 0.05).toFixed(2)}/mo`;
+        return formatSnapshotCost("vultr", diskGb);
       }),
     extractVultrError);
   }

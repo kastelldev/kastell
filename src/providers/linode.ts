@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { apiClient, stripSensitiveData, withProviderErrorHandling, assertValidServerId, uploadSshKeyWithConflict, type CloudProvider } from "./base.js";
 import { withRetry } from "../utils/retry.js";
 import type { Region, ServerSize, ServerConfig, ServerResult, SnapshotInfo, ServerMode } from "../types/index.js";
+import { formatSnapshotCost } from "../constants.js";
 
 interface LinodeType {
   id: string;
@@ -267,7 +268,7 @@ export class LinodeProvider implements CloudProvider {
         status: image.status,
         sizeGb: image.size ? image.size / 1024 : 0,
         createdAt: image.created,
-        costPerMonth: `$${(image.size ? (image.size / 1024) * 0.004 : 0).toFixed(2)}/mo`,
+        costPerMonth: formatSnapshotCost("linode", image.size ? image.size / 1024 : 0),
       };
     }, extractLinodeError);
   }
@@ -291,7 +292,7 @@ export class LinodeProvider implements CloudProvider {
             status: img.status,
             sizeGb: img.size ? img.size / 1024 : 0,
             createdAt: img.created,
-            costPerMonth: `$${(img.size ? (img.size / 1024) * 0.004 : 0).toFixed(2)}/mo`,
+            costPerMonth: formatSnapshotCost("linode", img.size ? img.size / 1024 : 0),
           }),
         );
       }),

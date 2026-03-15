@@ -1,6 +1,7 @@
 import { apiClient, stripSensitiveData, withProviderErrorHandling, assertValidServerId, uploadSshKeyWithConflict, type CloudProvider } from "./base.js";
 import { withRetry } from "../utils/retry.js";
 import type { Region, ServerSize, ServerConfig, ServerResult, SnapshotInfo, ServerMode } from "../types/index.js";
+import { formatSnapshotCost } from "../constants.js";
 
 interface DORegion {
   slug: string;
@@ -273,7 +274,7 @@ export class DigitalOceanProvider implements CloudProvider {
             status: "available",
             sizeGb: snap.size_gigabytes,
             createdAt: snap.created_at,
-            costPerMonth: `$${(snap.size_gigabytes * 0.06).toFixed(2)}/mo`,
+            costPerMonth: formatSnapshotCost("digitalocean", snap.size_gigabytes),
           }),
         );
       }),
@@ -297,7 +298,7 @@ export class DigitalOceanProvider implements CloudProvider {
           headers: { Authorization: `Bearer ${this.apiToken}` },
         });
         const diskGb = response.data.droplet.disk;
-        return `$${(diskGb * 0.06).toFixed(2)}/mo`;
+        return formatSnapshotCost("digitalocean", diskGb);
       }),
     extractDOError);
   }

@@ -99,3 +99,17 @@ export const EVIDENCE_TIMEOUT_MS = 120_000;
 export const POLL_DELAY_MS = 5_000;         // status/deploy polling
 export const RESTART_DELAY_MS = 2_000;      // restart wait
 export const DEPLOY_STEP_DELAY_MS = 1_000;  // deploy inter-step
+
+// ─── Snapshot Cost Rates (per GB per month) ─────────────────────────────────
+export const SNAPSHOT_COST_PER_GB: Record<string, { rate: number; currency: string }> = {
+  hetzner:      { rate: 0.006, currency: "€" },
+  digitalocean: { rate: 0.06,  currency: "$" },
+  vultr:        { rate: 0.05,  currency: "$" },
+  linode:       { rate: 0.004, currency: "$" },
+};
+
+export function formatSnapshotCost(provider: string, sizeGb: number): string {
+  const cost = SNAPSHOT_COST_PER_GB[provider];
+  if (!cost) return "N/A";
+  return `${cost.currency}${(sizeGb * cost.rate).toFixed(2)}/mo`;
+}

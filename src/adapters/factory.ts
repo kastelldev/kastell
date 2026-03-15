@@ -26,15 +26,25 @@ export async function detectPlatform(ip: string): Promise<Platform | "bare"> {
   }
 }
 
+const adapterCache: Partial<Record<Platform, PlatformAdapter>> = {};
+
 export function getAdapter(platform: Platform): PlatformAdapter {
+  const cached = adapterCache[platform];
+  if (cached) return cached;
+
+  let adapter: PlatformAdapter;
   switch (platform) {
     case "coolify":
-      return new CoolifyAdapter();
+      adapter = new CoolifyAdapter();
+      break;
     case "dokploy":
-      return new DokployAdapter();
+      adapter = new DokployAdapter();
+      break;
     default:
       throw new Error(`Unknown platform: ${platform}`);
   }
+  adapterCache[platform] = adapter;
+  return adapter;
 }
 
 export function resolvePlatform(server: ServerRecord): Platform | undefined {
