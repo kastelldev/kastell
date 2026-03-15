@@ -8,7 +8,7 @@
 > [English](README.md) | Türkçe
 
 ![Tests](https://github.com/kastelldev/kastell/actions/workflows/ci.yml/badge.svg)
-[![Coverage](https://codecov.io/gh/kastelldev/kastell/branch/main/graph/badge.svg)](https://app.codecov.io/gh/kastelldev/kastell)
+[![Coverage](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fcodecov.io%2Fapi%2Fv2%2Fgithub%2Fkastelldev%2Frepos%2Fkastell&query=%24.totals.coverage&suffix=%25&label=coverage&logo=codecov&color=brightgreen)](https://app.codecov.io/gh/kastelldev/kastell)
 ![npm](https://img.shields.io/npm/v/kastell)
 ![Downloads](https://img.shields.io/npm/dt/kastell)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)
