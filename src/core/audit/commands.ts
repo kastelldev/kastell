@@ -255,12 +255,86 @@ function filesystemSection(): string {
   ].join("\n");
 }
 
+function secretsSection(): string {
+  return [
+    NAMED_SEP("SECRETS"),
+    `find /root /home /etc -maxdepth 3 -name ".env" -perm -o+r 2>/dev/null | head -10 || echo 'NONE'`,
+    `find /root /home /etc -maxdepth 3 -name "*.env" -perm -o+r 2>/dev/null | head -10 || echo 'NONE'`,
+    `stat -c '%a %n' /root/.ssh/id_rsa /root/.ssh/id_ed25519 /root/.ssh/id_ecdsa 2>/dev/null || echo 'NO_KEYS'`,
+    `git config --global --get-regexp 'url.*token' 2>/dev/null | head -5 || echo 'NO_GIT_TOKENS'`,
+    `grep -rEl '(password|secret|token|api_key|apikey|passwd)\s*=' /etc 2>/dev/null | grep -v '\.bak' | head -10 || echo 'NONE'`,
+  ].join("\n");
+}
+
+function cloudMetaSection(): string {
+  return [
+    NAMED_SEP("CLOUDMETA"),
+    `VPS=$(systemd-detect-virt 2>/dev/null || dmidecode -s system-product-name 2>/dev/null | head -1 || echo 'none'); if [ "$VPS" = "none" ]; then echo 'BARE_METAL'; else echo "VPS_TYPE:$VPS"; curl -sf --connect-timeout 2 http://169.254.169.254/latest/meta-data/ 2>/dev/null | head -10 || curl -sf --connect-timeout 2 http://metadata.google.internal/computeMetadata/v1/ -H "Metadata-Flavor: Google" 2>/dev/null | head -10 || echo 'METADATA_UNREACHABLE'; fi`,
+    `grep -i 'password\|secret\|token\|key' /var/log/cloud-init.log 2>/dev/null | head -5 || echo 'NO_CLOUDINIT_CREDS'`,
+    `curl -sf --connect-timeout 2 -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600" 2>/dev/null && echo 'IMDSV2_OK' || echo 'IMDSV2_UNAVAIL'`,
+  ].join("\n");
+}
+
+function supplyChainSection(): string {
+  return [
+    NAMED_SEP("SUPPLYCHAIN"),
+    `apt-cache policy 2>/dev/null | grep -E '^\s+[0-9]' | grep 'http://' | head -10 || echo 'NO_HTTP_REPOS'`,
+    `ls /etc/apt/trusted.gpg.d/ 2>/dev/null || echo 'NONE'`,
+    `dpkg --audit 2>/dev/null | head -10 || echo 'NONE'`,
+    `apt-key list 2>&1 | head -20 || echo 'NONE'`,
+  ].join("\n");
+}
+
+function backupSection(): string {
+  return [
+    NAMED_SEP("BACKUP"),
+    `stat /root/.kastell/backups/ 2>/dev/null | head -5 || echo 'NO_BACKUP_DIR'`,
+    `ls /var/backups/ 2>/dev/null | head -10 || echo 'NONE'`,
+    `grep -rE '(rsync|borg|restic|tar.*backup)' /etc/cron.d /etc/cron.daily /etc/crontab /var/spool/cron/crontabs/ 2>/dev/null | head -10 || echo 'NO_BACKUP_CRON'`,
+    `which rsync borg restic 2>/dev/null || echo 'NO_BACKUP_TOOLS'`,
+    `find /var/backups /root/.kastell/backups -maxdepth 2 -type f -perm /o+r 2>/dev/null | head -10 || echo 'NONE'`,
+  ].join("\n");
+}
+
+function resourceLimitsSection(): string {
+  return [
+    NAMED_SEP("RESOURCELIMITS"),
+    `cat /sys/fs/cgroup/cgroup.controllers 2>/dev/null || echo 'N/A'`,
+    `ulimit -u 2>/dev/null || echo 'N/A'`,
+    `sysctl kernel.threads-max 2>/dev/null || echo 'N/A'`,
+    `grep -E 'nproc|maxlogins' /etc/security/limits.conf /etc/security/limits.d/*.conf 2>/dev/null | head -10 || echo 'NONE'`,
+  ].join("\n");
+}
+
+function incidentReadySection(): string {
+  return [
+    NAMED_SEP("INCIDENTREADY"),
+    `dpkg -l auditd 2>/dev/null | grep '^ii' || echo 'NOT_INSTALLED'`,
+    `systemctl is-active auditd 2>/dev/null || echo 'inactive'`,
+    `sudo auditctl -l 2>/dev/null || auditctl -l 2>/dev/null || echo 'AUDITCTL_UNAVAIL'`,
+    `systemctl is-active rsyslog vector fluent-bit promtail 2>/dev/null | head -5 || echo 'N/A'`,
+    `last 2>/dev/null | head -3 && lastb 2>/dev/null | head -3 || echo 'NO_LAST'`,
+    `grep -E 'wtmp|lastb' /etc/logrotate.conf /etc/logrotate.d/* 2>/dev/null | head -5 || echo 'NO_LOGROTATE_WTMP'`,
+  ].join("\n");
+}
+
+function dnsSection(): string {
+  return [
+    NAMED_SEP("DNS"),
+    `resolvectl status 2>/dev/null | head -30 || echo 'N/A'`,
+    `cat /etc/resolv.conf 2>/dev/null || echo 'N/A'`,
+    `which stubby dnscrypt-proxy 2>/dev/null || echo 'NONE'`,
+    `lsattr /etc/resolv.conf 2>/dev/null || echo 'N/A'`,
+  ].join("\n");
+}
+
 /**
  * Build 3 tiered SSH batch commands for server auditing.
  *
  * Batch 1 (fast):   SSH, Firewall, Updates, Auth, Accounts, Boot, Scheduling, Banners — config reads (30s timeout)
- * Batch 2 (medium): Docker, Network, Logging, Kernel, Services, Time, MAC, Memory — active probes (60s timeout)
- * Batch 3 (slow):   Filesystem, Crypto, FileIntegrity, Malware — find commands and TLS probes (120s timeout)
+ * Batch 2 (medium): Docker, Network, Logging, Kernel, Services, Time, MAC, Memory,
+ *                   CloudMeta, Backup, ResourceLimits, IncidentReady, DNS — active probes (60s timeout)
+ * Batch 3 (slow):   Filesystem, Crypto, FileIntegrity, Malware, Secrets, SupplyChain — find commands (120s timeout)
  *
  * Each section is preceded by an ---SECTION:NAME--- named separator.
  * Parsers route by section name, not integer index.
@@ -291,6 +365,11 @@ export function buildAuditBatchCommands(platform: string): BatchDef[] {
       timeSection(),
       macSection(),
       memorySection(),
+      cloudMetaSection(),
+      backupSection(),
+      resourceLimitsSection(),
+      incidentReadySection(),
+      dnsSection(),
     ].join("\n"),
   };
 
@@ -301,6 +380,8 @@ export function buildAuditBatchCommands(platform: string): BatchDef[] {
       cryptoSection(),
       fileIntegritySection(),
       malwareSection(),
+      secretsSection(),
+      supplyChainSection(),
     ].join("\n"),
   };
 

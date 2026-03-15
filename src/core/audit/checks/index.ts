@@ -25,6 +25,13 @@ import { parseFileIntegrityChecks } from "./fileintegrity.js";
 import { parseMalwareChecks } from "./malware.js";
 import { parseMACChecks } from "./mac.js";
 import { parseMemoryChecks } from "./memory.js";
+import { parseSecretsChecks } from "./secrets.js";
+import { parseCloudMetaChecks } from "./cloudmeta.js";
+import { parseSupplyChainChecks } from "./supplychain.js";
+import { parseBackupChecks } from "./backup.js";
+import { parseResourceLimitsChecks } from "./resourcelimits.js";
+import { parseIncidentReadyChecks } from "./incidentready.js";
+import { parseDnsChecks } from "./dns.js";
 
 export interface CategoryEntry {
   name: string;
@@ -54,6 +61,13 @@ export const CHECK_REGISTRY: CategoryEntry[] = [
   { name: "Malware", sectionName: "MALWARE", parser: parseMalwareChecks },
   { name: "MAC", sectionName: "MAC", parser: parseMACChecks },
   { name: "Memory", sectionName: "MEMORY", parser: parseMemoryChecks },
+  { name: "Secrets", sectionName: "SECRETS", parser: parseSecretsChecks },
+  { name: "Cloud Metadata", sectionName: "CLOUDMETA", parser: parseCloudMetaChecks },
+  { name: "Supply Chain", sectionName: "SUPPLYCHAIN", parser: parseSupplyChainChecks },
+  { name: "Backup Hygiene", sectionName: "BACKUP", parser: parseBackupChecks },
+  { name: "Resource Limits", sectionName: "RESOURCELIMITS", parser: parseResourceLimitsChecks },
+  { name: "Incident Readiness", sectionName: "INCIDENTREADY", parser: parseIncidentReadyChecks },
+  { name: "DNS Security", sectionName: "DNS", parser: parseDnsChecks },
 ];
 
 /** Named separator pattern used between sections in SSH batch output */

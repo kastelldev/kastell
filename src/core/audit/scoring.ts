@@ -53,6 +53,13 @@ export const CATEGORY_WEIGHTS: Record<string, number> = {
   Auth: 3,
   Docker: 2,
   TLS: 2,
+  Secrets: 3,
+  "Supply Chain": 3,
+  "Cloud Metadata": 2,
+  "Backup Hygiene": 2,
+  "Resource Limits": 2,
+  "Incident Readiness": 2,
+  "DNS Security": 2,
 };
 
 const DEFAULT_CATEGORY_WEIGHT = 1;
