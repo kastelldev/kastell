@@ -3,7 +3,7 @@ import { existsSync, accessSync, constants } from "fs";
 import axios from "axios";
 import { getServers, CONFIG_DIR } from "../utils/config.js";
 import { checkSshAvailable } from "../utils/ssh.js";
-import { PROVIDER_REGISTRY } from "../constants.js";
+import { PROVIDER_REGISTRY, DOCTOR_TIMEOUT_MS } from "../constants.js";
 import { logger } from "../utils/logger.js";
 
 // ─── Token Validation ────────────────────────────────────────────────────────
@@ -25,7 +25,7 @@ async function validateToken(provider: string, token: string): Promise<boolean> 
   try {
     await axios.get(validateUrl, {
       headers: { Authorization: `Bearer ${token}` },
-      timeout: 10000,
+      timeout: DOCTOR_TIMEOUT_MS,
     });
     return true;
   } catch {

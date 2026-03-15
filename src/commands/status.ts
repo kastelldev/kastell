@@ -11,7 +11,7 @@ import { isBareServer, getServerModeLabel } from "../utils/modeGuard.js";
 import { getAdapter, resolvePlatform } from "../adapters/factory.js";
 import type { ServerRecord } from "../types/index.js";
 import type { StatusResult } from "../core/status.js";
-import { COOLIFY_RESTART_CMD } from "../constants.js";
+import { COOLIFY_RESTART_CMD, COOLIFY_PORT, DOKPLOY_PORT, POLL_DELAY_MS } from "../constants.js";
 
 interface StatusOptions {
   all?: boolean;
@@ -83,7 +83,7 @@ async function autostartCoolify(server: ServerRecord): Promise<void> {
       spinner.succeed("Coolify restart command sent");
 
       // Wait and check again
-      await new Promise((resolve) => setTimeout(resolve, 5000));
+      await new Promise((resolve) => setTimeout(resolve, POLL_DELAY_MS));
       const resolvedPlatform = resolvePlatform(server) ?? "coolify";
       const healthResult2 = await getAdapter(resolvedPlatform).healthCheck(server.ip, server.domain);
       if (healthResult2.status === "running") {
@@ -140,7 +140,7 @@ export async function statusCommand(query?: string, options?: StatusOptions): Pr
       // Platform servers: check and display platform status
       const platform = resolvePlatform(server) ?? "coolify";
       const platformLabel = platform === "dokploy" ? "Dokploy" : "Coolify";
-      const platformPort = platform === "dokploy" ? 3000 : 8000;
+      const platformPort = platform === "dokploy" ? DOKPLOY_PORT : COOLIFY_PORT;
       const adapter = getAdapter(platform);
       const healthResult = await adapter.healthCheck(server.ip, server.domain);
       const platformStatus = healthResult.status;

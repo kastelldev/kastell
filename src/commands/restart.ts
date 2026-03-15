@@ -7,6 +7,7 @@ import { isBareServer } from "../utils/modeGuard.js";
 import { resolvePlatform } from "../adapters/factory.js";
 import { platformDefaults } from "../core/domain.js";
 import { logger, createSpinner } from "../utils/logger.js";
+import { RESTART_DELAY_MS } from "../constants.js";
 
 function showDryRun(server: { name: string; ip: string; provider: string }): void {
   logger.title("Dry Run: Restart Server");
@@ -66,7 +67,7 @@ export async function restartCommand(query?: string, options?: { dryRun?: boolea
   const maxAttempts = 30;
 
   while (attempts < maxAttempts) {
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, RESTART_DELAY_MS));
     try {
       const status = await getCloudServerStatus(server, token);
       if (status === "running") {

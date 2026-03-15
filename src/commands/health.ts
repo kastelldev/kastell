@@ -1,9 +1,9 @@
 import { getServers, findServer } from "../utils/config.js";
 import { logger, createSpinner } from "../utils/logger.js";
 import { checkServerHealth } from "../core/health.js";
-import type { HealthResult } from "../core/health.js";
+import type { ServerHealthResult } from "../core/health.js";
 
-export { checkServerHealth, type HealthResult } from "../core/health.js";
+export { checkServerHealth, type ServerHealthResult } from "../core/health.js";
 
 export async function healthCommand(query?: string): Promise<void> {
   let servers = getServers();
@@ -38,7 +38,7 @@ export async function healthCommand(query?: string): Promise<void> {
   console.log("─".repeat(header.length));
 
   // Table rows
-  const hostKeyMismatches: HealthResult[] = [];
+  const hostKeyMismatches: ServerHealthResult[] = [];
   for (const result of results) {
     let statusStr: string;
     let timeStr: string;

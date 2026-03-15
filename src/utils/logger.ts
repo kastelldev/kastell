@@ -35,3 +35,7 @@ export function createSpinner(text: string): Ora {
     color: "cyan",
   });
 }
+
+export const debugLog = process.env.DEBUG
+  ? (...args: unknown[]) => console.error("[debug]", ...args)
+  : undefined;

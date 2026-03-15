@@ -1,14 +1,15 @@
 import axios from "axios";
 import { createSpinner } from "./logger.js";
+import { HTTP_TIMEOUT_MS, COOLIFY_PORT, DOKPLOY_PORT } from "../constants.js";
 
 export async function waitForCoolify(
   ip: string,
   minWaitMs: number,
   pollIntervalMs: number = 5000,
   maxAttempts: number = 60,
-  port: number = 8000,
+  port: number = COOLIFY_PORT,
 ): Promise<boolean> {
-  const platformName = port === 3000 ? "Dokploy" : "Coolify";
+  const platformName = port === DOKPLOY_PORT ? "Dokploy" : "Coolify";
   const spinner = createSpinner(`Installing ${platformName}...`);
   spinner.start();
 
@@ -20,7 +21,7 @@ export async function waitForCoolify(
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       await axios.get(`http://${ip}:${port}`, {
-        timeout: 5000,
+        timeout: HTTP_TIMEOUT_MS,
         validateStatus: () => true,
       });
       spinner.succeed(`${platformName} is ready!`);

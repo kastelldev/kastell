@@ -19,7 +19,7 @@ import {
 } from "../utils/prompts.js";
 import { firewallSetup } from "./firewall.js";
 import { secureSetup } from "./secure.js";
-import { IP_WAIT, COOLIFY_MIN_WAIT } from "../constants.js";
+import { IP_WAIT, COOLIFY_MIN_WAIT, COOLIFY_PORT, DOKPLOY_PORT, DEPLOY_STEP_DELAY_MS, POLL_DELAY_MS } from "../constants.js";
 
 /** Check if an IP address has been assigned (not placeholder) */
 function isValidAssignedIp(ip: string): boolean {
@@ -179,7 +179,7 @@ async function waitForReady(
   const maxAttempts = 30;
 
   while (status !== "running" && attempts < maxAttempts) {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, DEPLOY_STEP_DELAY_MS));
     status = await providerWithToken.getServerStatus(server.id);
     attempts++;
   }
@@ -227,8 +227,8 @@ async function waitForReady(
   const isBare = !platform;
   const hasValidIp = currentIp !== "0.0.0.0" && currentIp !== "pending" && currentIp !== "";
   const minWait = COOLIFY_MIN_WAIT[providerChoice] || 60000;
-  const platformPort = platform === "dokploy" ? 3000 : 8000;
-  const ready = !isBare && hasValidIp ? await waitForCoolify(currentIp, minWait, 5000, 60, platformPort) : false;
+  const platformPort = platform === "dokploy" ? DOKPLOY_PORT : COOLIFY_PORT;
+  const ready = !isBare && hasValidIp ? await waitForCoolify(currentIp, minWait, POLL_DELAY_MS, 60, platformPort) : false;
 
   return { ip: currentIp, ready };
 }
@@ -257,7 +257,7 @@ async function barePostSetup(
         break;
       } catch {
         cloudInitSpinner.text = `Waiting for server to accept SSH... (attempt ${attempt}/60)`;
-        await new Promise((r) => setTimeout(r, 5000));
+        await new Promise((r) => setTimeout(r, POLL_DELAY_MS));
       }
     }
 
@@ -331,7 +331,7 @@ async function platformPostSetup(
   noOpen?: boolean,
 ): Promise<KastellResult<DeployData>> {
   const hasValidIp = isValidAssignedIp(serverIp);
-  const platformPort = platform === "dokploy" ? 3000 : 8000;
+  const platformPort = platform === "dokploy" ? DOKPLOY_PORT : COOLIFY_PORT;
   const platformName = platform === "dokploy" ? "Dokploy" : "Coolify";
 
   // Full setup: auto-configure firewall + SSH hardening

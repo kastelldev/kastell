@@ -4,12 +4,13 @@ import { logger, createSpinner } from "../utils/logger.js";
 import { cmd, raw, and, type SshCommand } from "../utils/sshCommand.js";
 import type { FirewallStatus, FirewallRule, FirewallProtocol } from "../types/index.js";
 import type { Platform } from "../types/index.js";
+import { COOLIFY_PORT, DOKPLOY_PORT } from "../constants.js";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
 export const PROTECTED_PORTS = [22];
-export const COOLIFY_PORTS = [80, 443, 8000, 6001, 6002];
-export const DOKPLOY_PORTS = [80, 443, 3000];
+export const COOLIFY_PORTS = [80, 443, COOLIFY_PORT, 6001, 6002];
+export const DOKPLOY_PORTS = [80, 443, DOKPLOY_PORT];
 export const BARE_PORTS = [80, 443];
 
 // ─── Pure Functions ─────────────────────────────────────────────────────────

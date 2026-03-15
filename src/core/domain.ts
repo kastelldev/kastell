@@ -9,6 +9,8 @@ import {
   DOKPLOY_DB_CONTAINER,
   DOKPLOY_DB_USER,
   DOKPLOY_DB_NAME,
+  COOLIFY_PORT,
+  DOKPLOY_PORT,
 } from "../constants.js";
 import type { Platform } from "../types/index.js";
 
@@ -17,7 +19,7 @@ import type { Platform } from "../types/index.js";
 export function platformDefaults(platform?: Platform) {
   const isDokploy = platform === "dokploy";
   return {
-    port: isDokploy ? 3000 : 8000,
+    port: isDokploy ? DOKPLOY_PORT : COOLIFY_PORT,
     dbContainer: isDokploy ? DOKPLOY_DB_CONTAINER : COOLIFY_DB_CONTAINER,
     label: isDokploy ? "Dokploy" : "Coolify",
   };

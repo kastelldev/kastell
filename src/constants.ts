@@ -85,3 +85,17 @@ export const VULTR_UBUNTU_OS_ID = 2284; // Ubuntu 24.04
 export const DOKPLOY_DB_CONTAINER = "dokploy-postgres";
 export const DOKPLOY_DB_USER = "dokploy";
 export const DOKPLOY_DB_NAME = "dokploy";
+
+// Platform default ports
+export const COOLIFY_PORT = 8000;
+export const DOKPLOY_PORT = 3000;
+
+// ─── Timeout & Delay Constants ──────────────────────────────────────────────
+export const HTTP_TIMEOUT_MS = 5_000;       // axios health/status checks
+export const DOCTOR_TIMEOUT_MS = 10_000;    // doctor token validation
+export const LOCK_FIREWALL_TIMEOUT_MS = 60_000;
+export const LOCK_UPGRADES_TIMEOUT_MS = 120_000;
+export const EVIDENCE_TIMEOUT_MS = 120_000;
+export const POLL_DELAY_MS = 5_000;         // status/deploy polling
+export const RESTART_DELAY_MS = 2_000;      // restart wait
+export const DEPLOY_STEP_DELAY_MS = 1_000;  // deploy inter-step

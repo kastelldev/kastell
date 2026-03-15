@@ -22,6 +22,7 @@ import {
   type McpResponse,
 } from "../utils.js";
 import type { ServerRecord } from "../../types/index.js";
+import { COOLIFY_PORT, DOKPLOY_PORT } from "../../constants.js";
 
 // ─── Secure handlers ─────────────────────────────────────────────────────────
 
@@ -302,7 +303,7 @@ export async function handleDomainRemove(server: ServerRecord): Promise<McpRespo
     server: server.name,
     ip: server.ip,
     message: "Domain removed. Platform reset to default.",
-    url: `http://${server.ip}:${platform === "dokploy" ? 3000 : 8000}`,
+    url: `http://${server.ip}:${platform === "dokploy" ? DOKPLOY_PORT : COOLIFY_PORT}`,
     suggested_actions: [
       { command: `server_info { action: 'health', server: '${server.name}' }`, reason: "Verify Coolify is accessible" },
     ],
@@ -384,7 +385,7 @@ export async function handleDomainInfo(server: ServerRecord): Promise<McpRespons
     fqdn: result.fqdn,
     message: result.fqdn
       ? `Current domain: ${result.fqdn}`
-      : `No custom domain set. Default: http://${server.ip}:${platform === "dokploy" ? 3000 : 8000}`,
+      : `No custom domain set. Default: http://${server.ip}:${platform === "dokploy" ? DOKPLOY_PORT : COOLIFY_PORT}`,
     suggested_actions: domainSuggestedActions,
   });
 }

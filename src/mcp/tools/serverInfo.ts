@@ -10,7 +10,7 @@ import { createProviderWithToken } from "../../utils/providerFactory.js";
 import { mcpSuccess, mcpError } from "../utils.js";
 import type { ServerRecord, ServerMode } from "../../types/index.js";
 import type { StatusResult } from "../../core/status.js";
-import { SUPPORTED_PROVIDERS } from "../../constants.js";
+import { SUPPORTED_PROVIDERS, COOLIFY_PORT, DOKPLOY_PORT } from "../../constants.js";
 import type { SupportedProvider } from "../../constants.js";
 
 export const serverInfoSchema = {
@@ -251,7 +251,7 @@ export async function handleServerInfo(params: {
           }
           const adapter = getAdapter(platform);
           const healthResult = await adapter.healthCheck(server.ip, server.domain);
-          const port = platform === "dokploy" ? 3000 : 8000;
+          const port = platform === "dokploy" ? DOKPLOY_PORT : COOLIFY_PORT;
           const suggestedActions: SuggestedAction[] = healthResult.status === "not reachable"
             ? [{ command: `kastell status ${server.name} --autostart`, reason: `Try auto-restart ${platform}` }]
             : [{ command: `http://${server.ip}:${port}`, reason: `Access ${platform} dashboard` }];

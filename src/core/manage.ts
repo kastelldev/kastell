@@ -5,7 +5,7 @@ import { getErrorMessage, mapProviderError } from "../utils/errorMapper.js";
 import { getProviderToken } from "./tokens.js";
 import { detectPlatform } from "../adapters/factory.js";
 import type { ServerRecord, ServerMode, Platform } from "../types/index.js";
-import { SUPPORTED_PROVIDERS, invalidProviderError } from "../constants.js";
+import { SUPPORTED_PROVIDERS, invalidProviderError, COOLIFY_PORT, DOKPLOY_PORT } from "../constants.js";
 import chalk from "chalk";
 
 // ─── SAFE_MODE ────────────────────────────────────────────────────────────────
@@ -155,7 +155,7 @@ export async function addServerRecord(params: AddServerParams): Promise<AddServe
   // Optional platform verification via SSH (skip entirely for bare mode)
   let platformStatus = "skipped";
   if (!params.skipVerify && mode !== "bare") {
-    const healthPort = platform === "dokploy" ? 3000 : 8000;
+    const healthPort = platform === "dokploy" ? DOKPLOY_PORT : COOLIFY_PORT;
     const healthPath = platform === "dokploy" ? "/" : "/api/health";
     const containerGrep = platform === "dokploy" ? "dokploy" : "coolify";
 

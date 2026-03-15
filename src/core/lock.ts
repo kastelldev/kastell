@@ -4,6 +4,7 @@ import { buildFirewallSetupCommand } from "./firewall.js";
 import { runAudit } from "./audit/index.js";
 import { raw, type SshCommand } from "../utils/sshCommand.js";
 import type { Platform } from "../types/index.js";
+import { LOCK_FIREWALL_TIMEOUT_MS, LOCK_UPGRADES_TIMEOUT_MS } from "../constants.js";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -145,7 +146,7 @@ export async function applyLock(
 
   // Step 3: UFW firewall (non-fatal), 60s timeout for apt
   try {
-    await sshExec(ip, buildFirewallSetupCommand(platform), { timeoutMs: 60000 });
+    await sshExec(ip, buildFirewallSetupCommand(platform), { timeoutMs: LOCK_FIREWALL_TIMEOUT_MS });
     steps.ufw = true;
   } catch {
     // Non-fatal
@@ -161,7 +162,7 @@ export async function applyLock(
 
   // Step 5: unattended-upgrades (non-fatal), 120s timeout for apt
   try {
-    await sshExec(ip, buildUnattendedUpgradesCommand(), { timeoutMs: 120000 });
+    await sshExec(ip, buildUnattendedUpgradesCommand(), { timeoutMs: LOCK_UPGRADES_TIMEOUT_MS });
     steps.unattendedUpgrades = true;
   } catch {
     // Non-fatal

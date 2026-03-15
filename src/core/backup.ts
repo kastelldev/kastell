@@ -6,6 +6,7 @@ import { getErrorMessage, mapSshError, sanitizeStderr } from "../utils/errorMapp
 import { raw, type SshCommand } from "../utils/sshCommand.js";
 import type { BackupManifest, Platform } from "../types/index.js";
 import { getAdapter } from "../adapters/factory.js";
+import { debugLog } from "../utils/logger.js";
 import { formatTimestamp, getBackupDir } from "../utils/backupPath.js";
 import { scpDownload, scpUpload } from "../utils/scp.js";
 
@@ -172,7 +173,7 @@ export async function createBareBackup(
     writeFileSync(join(backupPath, "manifest.json"), JSON.stringify(manifest, null, 2), { mode: 0o600 });
 
     // Step 4: Cleanup remote
-    await sshExec(ip, buildBareCleanupCommand()).catch(() => {});
+    await sshExec(ip, buildBareCleanupCommand()).catch((e) => debugLog?.("bare backup cleanup failed:", e));
 
     return { success: true, backupPath, manifest };
   } catch (error: unknown) {
@@ -233,7 +234,7 @@ export async function restoreBareBackup(
     steps.push({ name: "Restore config", status: "success" });
 
     // Cleanup
-    await sshExec(ip, buildBareCleanupCommand()).catch(() => {});
+    await sshExec(ip, buildBareCleanupCommand()).catch((e) => debugLog?.("bare restore cleanup failed:", e));
 
     return { success: true, steps };
   } catch (error: unknown) {

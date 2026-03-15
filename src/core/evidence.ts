@@ -23,6 +23,7 @@ import {
   getEvidenceSectionFilenames,
 } from "./evidenceCommands.js";
 import type { KastellResult } from "../types/index.js";
+import { EVIDENCE_TIMEOUT_MS } from "../constants.js";
 
 // ─── Public types ──────────────────────────────────────────────────────────────
 
@@ -178,7 +179,7 @@ export async function collectEvidence(
   const sectionFilenames = getEvidenceSectionFilenames(platform, buildOpts);
 
   // Execute SSH (exactly one call)
-  const sshResult = await sshExec(ip, batchCommand, { timeoutMs: 120_000 });
+  const sshResult = await sshExec(ip, batchCommand, { timeoutMs: EVIDENCE_TIMEOUT_MS });
   if (sshResult.code !== 0) {
     rmSync(evidenceDir, { recursive: true, force: true });
     return {

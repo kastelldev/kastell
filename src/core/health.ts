@@ -3,13 +3,13 @@ import { isBareServer } from "../utils/modeGuard.js";
 import { getAdapter, resolvePlatform } from "../adapters/factory.js";
 import type { ServerRecord } from "../types/index.js";
 
-export interface HealthResult {
+export interface ServerHealthResult {
   server: ServerRecord;
   status: "healthy" | "unhealthy" | "unreachable" | "host-key-mismatch";
   responseTime: number;
 }
 
-export async function checkServerHealth(server: ServerRecord): Promise<HealthResult> {
+export async function checkServerHealth(server: ServerRecord): Promise<ServerHealthResult> {
   const start = Date.now();
 
   if (isBareServer(server)) {

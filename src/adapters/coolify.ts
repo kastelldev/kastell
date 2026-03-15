@@ -7,7 +7,7 @@ import type {
   UpdateResult,
 } from "./interface.js";
 import type { BackupManifest } from "../types/index.js";
-import { COOLIFY_UPDATE_CMD } from "../constants.js";
+import { COOLIFY_UPDATE_CMD, COOLIFY_PORT } from "../constants.js";
 import { sharedHealthCheck, sharedUpdate, sharedGetStatus, sharedCreateBackup, sharedRestoreBackup } from "./shared.js";
 import type { AdapterBackupConfig, AdapterRestoreConfig } from "./shared.js";
 
@@ -86,7 +86,7 @@ echo "Then access your instance at: http://YOUR_SERVER_IP:8000"
   }
 
   async healthCheck(ip: string, domain?: string): Promise<HealthResult> {
-    return sharedHealthCheck(ip, 8000, domain);
+    return sharedHealthCheck(ip, COOLIFY_PORT, domain);
   }
 
   async createBackup(
@@ -107,7 +107,7 @@ echo "Then access your instance at: http://YOUR_SERVER_IP:8000"
   }
 
   async getStatus(ip: string): Promise<PlatformStatusResult> {
-    return sharedGetStatus(ip, this.versionCmd(), 8000);
+    return sharedGetStatus(ip, this.versionCmd(), COOLIFY_PORT);
   }
 
   async update(ip: string): Promise<UpdateResult> {

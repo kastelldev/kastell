@@ -8,6 +8,7 @@ import { logger, createSpinner } from "../utils/logger.js";
 import { getErrorMessage, mapSshError } from "../utils/errorMapper.js";
 import { isSafeMode } from "../core/manage.js";
 import { getAdapter } from "../adapters/factory.js";
+import { COOLIFY_PORT, DOKPLOY_PORT } from "../constants.js";
 import {
   listBackups,
   getBackupDir,
@@ -214,7 +215,7 @@ export async function restoreCommand(
       console.log();
       logger.success(`Restore complete for ${server.name}`);
       logger.info(`Backup: ${selectedBackup} (${platformLabel} ${manifest.coolifyVersion})`);
-      const port = platform === "dokploy" ? 3000 : 8000;
+      const port = platform === "dokploy" ? DOKPLOY_PORT : COOLIFY_PORT;
       logger.info(`Access ${platformLabel}: http://${server.ip}:${port}`);
     } else {
       restoreSpinner.fail(`${platformLabel} restore failed`);
