@@ -213,10 +213,10 @@ export const parseLoggingChecks: CheckParser = (sectionOutput: string, _platform
     explain: "Restricting /var/log access prevents unprivileged users from reading system and application logs.",
   };
 
-  // LOG-CENTRALIZED: Centralized logging tool installed
+  // LOG-CENTRAL-LOGGING: Centralized logging tool installed
   const hasCentralized = /vector|promtail|fluent-bit/i.test(output) && !output.includes("NONE");
   const log11: AuditCheck = {
-    id: "LOG-CENTRALIZED",
+    id: "LOG-CENTRAL-LOGGING",
     category: "Logging",
     name: "Centralized Logging Tool",
     severity: "info",
