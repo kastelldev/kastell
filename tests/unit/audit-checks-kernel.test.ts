@@ -36,46 +36,46 @@ describe("parseKernelChecks", () => {
     expect(checks).toHaveLength(5);
     checks.forEach((check) => {
       expect(check.category).toBe("Kernel");
-      expect(check.id).toMatch(/^KRN-0[1-5]$/);
+      expect(check.id).toMatch(/^KRN-[A-Z][A-Z0-9]*(-[A-Z][A-Z0-9]*)+$/);
     });
   });
 
-  it("should return KRN-01 passed when ASLR=2", () => {
+  it("should return KRN-ASLR-ENABLED passed when ASLR=2", () => {
     const checks = parseKernelChecks(secureOutput, "bare");
-    const krn01 = checks.find((c: { id: string }) => c.id === "KRN-01");
+    const krn01 = checks.find((c: { id: string }) => c.id === "KRN-ASLR-ENABLED");
     expect(krn01!.passed).toBe(true);
   });
 
-  it("should return KRN-01 failed when ASLR=0 (critical)", () => {
+  it("should return KRN-ASLR-ENABLED failed when ASLR=0 (critical)", () => {
     const checks = parseKernelChecks(insecureOutput, "bare");
-    const krn01 = checks.find((c: { id: string }) => c.id === "KRN-01");
+    const krn01 = checks.find((c: { id: string }) => c.id === "KRN-ASLR-ENABLED");
     expect(krn01!.passed).toBe(false);
     expect(krn01!.severity).toBe("critical");
   });
 
-  it("should return KRN-02 passed when core_uses_pid=1 (indicating core dump controls)", () => {
+  it("should return KRN-CORE-DUMPS-RESTRICTED passed when core_uses_pid=1", () => {
     const checks = parseKernelChecks(secureOutput, "bare");
-    const krn02 = checks.find((c: { id: string }) => c.id === "KRN-02");
+    const krn02 = checks.find((c: { id: string }) => c.id === "KRN-CORE-DUMPS-RESTRICTED");
     expect(krn02).toBeDefined();
   });
 
-  it("should return KRN-03 for kernel hardening sysctls", () => {
+  it("should return KRN-NETWORK-HARDENING for kernel hardening sysctls", () => {
     const checks = parseKernelChecks(secureOutput, "bare");
-    const krn03 = checks.find((c: { id: string }) => c.id === "KRN-03");
+    const krn03 = checks.find((c: { id: string }) => c.id === "KRN-NETWORK-HARDENING");
     expect(krn03).toBeDefined();
     expect(krn03!.passed).toBe(true);
   });
 
-  it("should return KRN-03 failed with insecure sysctls", () => {
+  it("should return KRN-NETWORK-HARDENING failed with insecure sysctls", () => {
     const checks = parseKernelChecks(insecureOutput, "bare");
-    const krn03 = checks.find((c: { id: string }) => c.id === "KRN-03");
+    const krn03 = checks.find((c: { id: string }) => c.id === "KRN-NETWORK-HARDENING");
     expect(krn03!.passed).toBe(false);
   });
 
-  it("should return KRN-05 for dmesg restrict", () => {
+  it("should return KRN-DMESG-RESTRICTED for dmesg restrict", () => {
     const outputWithDmesg = secureOutput + "\nkernel.dmesg_restrict = 1";
     const checks = parseKernelChecks(outputWithDmesg, "bare");
-    const krn05 = checks.find((c: { id: string }) => c.id === "KRN-05");
+    const krn05 = checks.find((c: { id: string }) => c.id === "KRN-DMESG-RESTRICTED");
     expect(krn05).toBeDefined();
     expect(krn05!.passed).toBe(true);
   });

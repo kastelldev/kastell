@@ -16,7 +16,7 @@ export interface ComplianceRef {
 }
 
 export interface AuditCheck {
-  id: string;                    // e.g. "SSH-01"
+  id: string;                    // e.g. "SSH-PASSWORD-AUTH"
   category: string;              // e.g. "SSH"
   name: string;                  // e.g. "Password Authentication"
   severity: Severity;

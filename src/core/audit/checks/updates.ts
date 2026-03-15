@@ -1,6 +1,6 @@
 /**
  * System Updates check parser.
- * Parses apt/unattended-upgrades output into 4 security checks (UPD-01 through UPD-04).
+ * Parses apt/unattended-upgrades output into 4 security checks with semantic IDs.
  */
 
 import type { AuditCheck, CheckParser } from "../types.js";
@@ -27,7 +27,7 @@ export const parseUpdatesChecks: CheckParser = (sectionOutput: string, _platform
   const securityCount = parseInt(securityCountStr, 10);
   const hasSecurityUpdates = !isNaN(securityCount) && securityCount > 0;
   const upd01: AuditCheck = {
-    id: "UPD-01",
+    id: "UPD-SECURITY-PATCHES",
     category: "Updates",
     name: "Security Updates Pending",
     severity: "critical",
@@ -45,7 +45,7 @@ export const parseUpdatesChecks: CheckParser = (sectionOutput: string, _platform
   // UPD-02: Unattended upgrades installed
   const unattendedInstalled = unattendedLine.includes("unattended-upgrades");
   const upd02: AuditCheck = {
-    id: "UPD-02",
+    id: "UPD-AUTO-UPDATES",
     category: "Updates",
     name: "Automatic Security Updates",
     severity: "warning",
@@ -66,7 +66,7 @@ export const parseUpdatesChecks: CheckParser = (sectionOutput: string, _platform
   const sevenDays = 7 * 24 * 60 * 60;
   const isFresh = !isNaN(aptTimestamp) && (nowEpoch - aptTimestamp) < sevenDays;
   const upd03: AuditCheck = {
-    id: "UPD-03",
+    id: "UPD-CACHE-FRESH",
     category: "Updates",
     name: "Package Cache Fresh",
     severity: "info",
@@ -85,7 +85,7 @@ export const parseUpdatesChecks: CheckParser = (sectionOutput: string, _platform
   const rebootRequired = rebootLine.includes("REBOOT_REQUIRED");
   const noReboot = rebootLine.includes("NO_REBOOT");
   const upd04: AuditCheck = {
-    id: "UPD-04",
+    id: "UPD-REBOOT-REQUIRED",
     category: "Updates",
     name: "System Reboot Required",
     severity: "warning",

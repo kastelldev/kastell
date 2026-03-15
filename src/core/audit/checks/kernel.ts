@@ -1,6 +1,6 @@
 /**
  * Kernel security check parser.
- * Parses sysctl values into 5 security checks (KRN-01 through KRN-05).
+ * Parses sysctl values into 5 security checks with semantic IDs.
  */
 
 import type { AuditCheck, CheckParser } from "../types.js";
@@ -18,7 +18,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
   // KRN-01: ASLR (kernel.randomize_va_space = 2)
   const aslr = extractSysctlValue(output, "kernel.randomize_va_space");
   const krn01: AuditCheck = {
-    id: "KRN-01",
+    id: "KRN-ASLR-ENABLED",
     category: "Kernel",
     name: "ASLR Enabled (Full)",
     severity: "critical",
@@ -38,7 +38,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
   const coreUsesPid = extractSysctlValue(output, "kernel.core_uses_pid");
   const coreRestricted = suidDumpable === "0" || coreUsesPid === "1";
   const krn02: AuditCheck = {
-    id: "KRN-02",
+    id: "KRN-CORE-DUMPS-RESTRICTED",
     category: "Kernel",
     name: "Core Dumps Restricted",
     severity: "warning",
@@ -62,7 +62,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
 
   const hardeningPassed = acceptRedirects === "0" && acceptSourceRoute === "0" && logMartians === "1";
   const krn03: AuditCheck = {
-    id: "KRN-03",
+    id: "KRN-NETWORK-HARDENING",
     category: "Kernel",
     name: "Network Hardening Sysctls",
     severity: "warning",
@@ -86,7 +86,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
   // KRN-04: Kernel version (basic presence check)
   const kernelVersion = output.match(/(\d+\.\d+\.\d+[-\w]*)/);
   const krn04: AuditCheck = {
-    id: "KRN-04",
+    id: "KRN-KERNEL-VERSION",
     category: "Kernel",
     name: "Kernel Version",
     severity: "info",
@@ -104,7 +104,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
   // KRN-05: dmesg restricted (kernel.dmesg_restrict = 1)
   const dmesgRestrict = extractSysctlValue(output, "kernel.dmesg_restrict");
   const krn05: AuditCheck = {
-    id: "KRN-05",
+    id: "KRN-DMESG-RESTRICTED",
     category: "Kernel",
     name: "dmesg Restricted",
     severity: "info",

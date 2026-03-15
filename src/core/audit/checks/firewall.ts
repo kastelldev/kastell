@@ -1,6 +1,6 @@
 /**
  * Firewall check parser.
- * Parses ufw status verbose output into 5 security checks (FW-01 through FW-05).
+ * Parses ufw status verbose output into 5 security checks with semantic IDs.
  */
 
 import type { AuditCheck, CheckParser } from "../types.js";
@@ -15,7 +15,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
   // FW-01: Firewall active
   const isActive = /Status:\s*active/i.test(output);
   const fw01: AuditCheck = {
-    id: "FW-01",
+    id: "FW-UFW-ACTIVE",
     category: "Firewall",
     name: "Firewall Active",
     severity: "critical",
@@ -29,7 +29,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
   // FW-02: Default deny incoming
   const denyIncoming = /Default:\s*deny\s*\(incoming\)/i.test(output);
   const fw02: AuditCheck = {
-    id: "FW-02",
+    id: "FW-DEFAULT-DENY",
     category: "Firewall",
     name: "Default Deny Incoming",
     severity: "critical",
@@ -43,7 +43,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
   // FW-03: SSH port in rules
   const hasSSHRule = /22\/tcp\s+ALLOW/i.test(output) || /OpenSSH\s+ALLOW/i.test(output);
   const fw03: AuditCheck = {
-    id: "FW-03",
+    id: "FW-SSH-ALLOWED",
     category: "Firewall",
     name: "SSH Port in Rules",
     severity: "warning",
@@ -68,7 +68,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
     }
   }
   const fw04: AuditCheck = {
-    id: "FW-04",
+    id: "FW-NO-WIDE-OPEN",
     category: "Firewall",
     name: "No Wide-Open Rules",
     severity: "warning",
@@ -82,7 +82,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
   // FW-05: IPv6 consistency (basic check - just verify UFW supports IPv6)
   const ipv6Enabled = /IPV6=yes/i.test(output) || output.includes("(v6)");
   const fw05: AuditCheck = {
-    id: "FW-05",
+    id: "FW-IPV6-RULES",
     category: "Firewall",
     name: "IPv6 Firewall Rules",
     severity: "info",

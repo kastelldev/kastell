@@ -10,7 +10,7 @@ const mockResult: AuditResult = {
       name: "SSH",
       checks: [
         {
-          id: "SSH-01",
+          id: "SSH-PASSWORD-AUTH",
           category: "SSH",
           name: "Password Auth",
           severity: "critical",

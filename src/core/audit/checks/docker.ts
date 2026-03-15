@@ -1,6 +1,6 @@
 /**
  * Docker security check parser.
- * Parses docker info/ps output into 6 security checks (DCK-01 through DCK-06).
+ * Parses docker info/ps output into 6 security checks with semantic IDs.
  * Platform-aware: Docker checks adjust for coolify/dokploy vs bare.
  */
 
@@ -16,12 +16,12 @@ function isDockerAvailable(output: string): boolean {
 function makeDockerSkippedChecks(severity: "info" | "warning"): AuditCheck[] {
   const message = "Docker not installed";
   const ids = [
-    { id: "DCK-01", name: "No TCP Socket Exposed" },
-    { id: "DCK-02", name: "No Privileged Containers" },
-    { id: "DCK-03", name: "Docker Version Current" },
-    { id: "DCK-04", name: "User Namespace Enabled" },
-    { id: "DCK-05", name: "No Host Network Containers" },
-    { id: "DCK-06", name: "Logging Driver Configured" },
+    { id: "DCK-NO-TCP-SOCKET", name: "No TCP Socket Exposed" },
+    { id: "DCK-NO-PRIVILEGED", name: "No Privileged Containers" },
+    { id: "DCK-VERSION-CURRENT", name: "Docker Version Current" },
+    { id: "DCK-USER-NAMESPACE", name: "User Namespace Enabled" },
+    { id: "DCK-NO-HOST-NETWORK", name: "No Host Network Containers" },
+    { id: "DCK-LOGGING-DRIVER", name: "Logging Driver Configured" },
   ];
 
   return ids.map((def) => ({
@@ -66,11 +66,11 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
     // Continue with empty info
   }
 
-  // DCK-01: No TCP socket exposed
+  // DCK-NO-TCP-SOCKET: No TCP socket exposed
   const hosts = dockerInfo.Hosts ?? [];
   const hasTcpSocket = hosts.some((h: string) => h.startsWith("tcp://"));
   const dck01: AuditCheck = {
-    id: "DCK-01",
+    id: "DCK-NO-TCP-SOCKET",
     category: "Docker",
     name: "No TCP Socket Exposed",
     severity: "critical",
@@ -81,10 +81,10 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
     explain: "Exposing Docker daemon via TCP allows remote unauthenticated access to the host.",
   };
 
-  // DCK-02: No privileged containers
+  // DCK-NO-PRIVILEGED: No privileged containers
   const hasPrivileged = /--privileged/i.test(sectionOutput) || /"Privileged":\s*true/i.test(sectionOutput);
   const dck02: AuditCheck = {
-    id: "DCK-02",
+    id: "DCK-NO-PRIVILEGED",
     category: "Docker",
     name: "No Privileged Containers",
     severity: "critical",
@@ -95,12 +95,12 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
     explain: "Privileged containers have full host access, defeating container isolation.",
   };
 
-  // DCK-03: Docker version currency
+  // DCK-VERSION-CURRENT: Docker version currency
   const version = dockerInfo.ServerVersion ?? "unknown";
   const versionMajor = parseInt(version.split(".")[0], 10);
   const isCurrentVersion = !isNaN(versionMajor) && versionMajor >= 24;
   const dck03: AuditCheck = {
-    id: "DCK-03",
+    id: "DCK-VERSION-CURRENT",
     category: "Docker",
     name: "Docker Version Current",
     severity: "warning",
@@ -111,12 +111,12 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
     explain: "Older Docker versions may have unpatched security vulnerabilities.",
   };
 
-  // DCK-04: User namespace / rootless
+  // DCK-USER-NAMESPACE: User namespace / rootless
   const securityOpts = dockerInfo.SecurityOptions ?? [];
   const hasUserns = securityOpts.some((opt: string) => opt.includes("userns")) ||
     sectionOutput.includes("userns-remap");
   const dck04: AuditCheck = {
-    id: "DCK-04",
+    id: "DCK-USER-NAMESPACE",
     category: "Docker",
     name: "User Namespace Enabled",
     severity: "warning",
@@ -127,10 +127,10 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
     explain: "User namespace remapping prevents container root from being host root.",
   };
 
-  // DCK-05: No host network containers
+  // DCK-NO-HOST-NETWORK: No host network containers
   const hasHostNetwork = /--network\s*host/i.test(sectionOutput) || /"NetworkMode":\s*"host"/i.test(sectionOutput);
   const dck05: AuditCheck = {
-    id: "DCK-05",
+    id: "DCK-NO-HOST-NETWORK",
     category: "Docker",
     name: "No Host Network Containers",
     severity: "warning",
@@ -141,11 +141,11 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
     explain: "Host network mode bypasses Docker network isolation.",
   };
 
-  // DCK-06: Logging driver configured
+  // DCK-LOGGING-DRIVER: Logging driver configured
   const loggingDriver = dockerInfo.LoggingDriver ?? "unknown";
   const hasLogging = loggingDriver !== "none" && loggingDriver !== "unknown";
   const dck06: AuditCheck = {
-    id: "DCK-06",
+    id: "DCK-LOGGING-DRIVER",
     category: "Docker",
     name: "Logging Driver Configured",
     severity: "info",

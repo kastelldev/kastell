@@ -29,7 +29,7 @@ const sampleAuditResult: AuditResult = {
       name: "SSH",
       checks: [
         {
-          id: "SSH-01",
+          id: "SSH-PASSWORD-AUTH",
           category: "SSH",
           name: "Password Authentication",
           severity: "critical",
@@ -45,7 +45,7 @@ const sampleAuditResult: AuditResult = {
       name: "Firewall",
       checks: [
         {
-          id: "FW-01",
+          id: "FW-UFW-ACTIVE",
           category: "Firewall",
           name: "UFW Active",
           severity: "critical",

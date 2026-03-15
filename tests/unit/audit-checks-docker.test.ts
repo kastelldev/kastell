@@ -25,19 +25,19 @@ describe("parseDockerChecks", () => {
     expect(checks).toHaveLength(6);
     checks.forEach((check) => {
       expect(check.category).toBe("Docker");
-      expect(check.id).toMatch(/^DCK-0[1-6]$/);
+      expect(check.id).toMatch(/^DCK-[A-Z][A-Z0-9]*(-[A-Z][A-Z0-9]*)+$/);
     });
   });
 
-  it("should return DCK-01 passed when no TCP socket exposed", () => {
+  it("should return DCK-NO-TCP-SOCKET passed when no TCP socket exposed", () => {
     const checks = parseDockerChecks(secureDockerOutput, "bare");
-    const dck01 = checks.find((c) => c.id === "DCK-01");
+    const dck01 = checks.find((c) => c.id === "DCK-NO-TCP-SOCKET");
     expect(dck01!.passed).toBe(true);
   });
 
-  it("should return DCK-01 failed when TCP socket exposed", () => {
+  it("should return DCK-NO-TCP-SOCKET failed when TCP socket exposed", () => {
     const checks = parseDockerChecks(insecureDockerOutput, "bare");
-    const dck01 = checks.find((c) => c.id === "DCK-01");
+    const dck01 = checks.find((c) => c.id === "DCK-NO-TCP-SOCKET");
     expect(dck01!.passed).toBe(false);
     expect(dck01!.severity).toBe("critical");
   });
@@ -63,14 +63,14 @@ describe("parseDockerChecks", () => {
     const checks = parseDockerChecks("N/A", "coolify");
     expect(checks).toHaveLength(6);
     // On coolify, Docker missing is a warning not info
-    const dck01 = checks.find((c) => c.id === "DCK-01");
+    const dck01 = checks.find((c) => c.id === "DCK-NO-TCP-SOCKET");
     expect(dck01!.severity).toBe("warning");
   });
 
   it("should handle dokploy platform (Docker expected)", () => {
     const checks = parseDockerChecks("N/A", "dokploy");
     expect(checks).toHaveLength(6);
-    const dck01 = checks.find((c) => c.id === "DCK-01");
+    const dck01 = checks.find((c) => c.id === "DCK-NO-TCP-SOCKET");
     expect(dck01!.severity).toBe("warning");
   });
 });

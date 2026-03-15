@@ -28,31 +28,31 @@ describe("parseFilesystemChecks", () => {
     expect(checks).toHaveLength(5);
     checks.forEach((check) => {
       expect(check.category).toBe("Filesystem");
-      expect(check.id).toMatch(/^FS-0[1-5]$/);
+      expect(check.id).toMatch(/^FS-[A-Z][A-Z0-9]*(-[A-Z][A-Z0-9]*)+$/);
     });
   });
 
-  it("should return FS-01 passed when /tmp has sticky bit (1777)", () => {
+  it("should return FS-TMP-STICKY-BIT passed when /tmp has sticky bit (1777)", () => {
     const checks = parseFilesystemChecks(secureOutput, "bare");
-    const fs01 = checks.find((c: { id: string }) => c.id === "FS-01");
+    const fs01 = checks.find((c: { id: string }) => c.id === "FS-TMP-STICKY-BIT");
     expect(fs01!.passed).toBe(true);
   });
 
-  it("should return FS-01 failed when /tmp has 0777 (no sticky bit)", () => {
+  it("should return FS-TMP-STICKY-BIT failed when /tmp has 0777 (no sticky bit)", () => {
     const checks = parseFilesystemChecks(insecureOutput, "bare");
-    const fs01 = checks.find((c: { id: string }) => c.id === "FS-01");
+    const fs01 = checks.find((c: { id: string }) => c.id === "FS-TMP-STICKY-BIT");
     expect(fs01!.passed).toBe(false);
   });
 
-  it("should return FS-02 passed when no world-writable files", () => {
+  it("should return FS-NO-WORLD-WRITABLE passed when no world-writable files", () => {
     const checks = parseFilesystemChecks(secureOutput, "bare");
-    const fs02 = checks.find((c: { id: string }) => c.id === "FS-02");
+    const fs02 = checks.find((c: { id: string }) => c.id === "FS-NO-WORLD-WRITABLE");
     expect(fs02!.passed).toBe(true);
   });
 
-  it("should return FS-02 failed when world-writable files exist", () => {
+  it("should return FS-NO-WORLD-WRITABLE failed when world-writable files exist", () => {
     const checks = parseFilesystemChecks(insecureOutput, "bare");
-    const fs02 = checks.find((c: { id: string }) => c.id === "FS-02");
+    const fs02 = checks.find((c: { id: string }) => c.id === "FS-NO-WORLD-WRITABLE");
     expect(fs02!.passed).toBe(false);
   });
 

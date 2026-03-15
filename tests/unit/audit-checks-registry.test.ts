@@ -68,8 +68,8 @@ describe("parseAllChecks", () => {
     const ssh = categories.find((c) => c.name === "SSH");
     expect(ssh).toBeDefined();
     expect(ssh!.checks.length).toBeGreaterThan(0);
-    // passwordauthentication no → SSH-01 should pass
-    const pwdCheck = ssh!.checks.find((c) => c.id === "SSH-01");
+    // passwordauthentication no → SSH-PASSWORD-AUTH should pass
+    const pwdCheck = ssh!.checks.find((c) => c.id === "SSH-PASSWORD-AUTH");
     expect(pwdCheck).toBeDefined();
     expect(pwdCheck!.passed).toBe(true);
   });

@@ -64,8 +64,8 @@ function makeSnapshotFile(audit: AuditResult, name?: string): SnapshotFile {
 // ─── diffAudits ───────────────────────────────────────────────────────────────
 
 describe("diffAudits", () => {
-  const check1 = makeCheck({ id: "SSH-01", passed: true });
-  const check2 = makeCheck({ id: "SSH-02", passed: true });
+  const check1 = makeCheck({ id: "SSH-PASSWORD-AUTH", passed: true });
+  const check2 = makeCheck({ id: "SSH-ROOT-LOGIN", passed: true });
   const identicalAudit = makeAuditResult([{ ...check1 }, { ...check2 }], 80);
 
   it("identical audits: 0 improvements, 0 regressions, all unchanged", () => {
@@ -76,35 +76,35 @@ describe("diffAudits", () => {
   });
 
   it("one check improved (failed->passed): 1 improvement, correct entry", () => {
-    const before = makeAuditResult([{ id: "SSH-01", passed: false }], 40);
-    const after = makeAuditResult([{ id: "SSH-01", passed: true }], 80);
+    const before = makeAuditResult([{ id: "SSH-PASSWORD-AUTH", passed: false }], 40);
+    const after = makeAuditResult([{ id: "SSH-PASSWORD-AUTH", passed: true }], 80);
     const result = diffAudits(before, after);
     expect(result.improvements).toHaveLength(1);
-    expect(result.improvements[0].id).toBe("SSH-01");
+    expect(result.improvements[0].id).toBe("SSH-PASSWORD-AUTH");
     expect(result.improvements[0].status).toBe("improved");
     expect(result.improvements[0].before).toBe(false);
     expect(result.improvements[0].after).toBe(true);
   });
 
   it("one check regressed (passed->failed): 1 regression, correct entry", () => {
-    const before = makeAuditResult([{ id: "FW-01", passed: true }], 80);
-    const after = makeAuditResult([{ id: "FW-01", passed: false }], 40);
+    const before = makeAuditResult([{ id: "FW-UFW-ACTIVE", passed: true }], 80);
+    const after = makeAuditResult([{ id: "FW-UFW-ACTIVE", passed: false }], 40);
     const result = diffAudits(before, after);
     expect(result.regressions).toHaveLength(1);
-    expect(result.regressions[0].id).toBe("FW-01");
+    expect(result.regressions[0].id).toBe("FW-UFW-ACTIVE");
     expect(result.regressions[0].status).toBe("regressed");
   });
 
   it("mixed changes: correct counts for each category", () => {
     const before = makeAuditResult([
-      { id: "SSH-01", passed: false },
-      { id: "SSH-02", passed: true },
-      { id: "SSH-03", passed: true },
+      { id: "SSH-PASSWORD-AUTH", passed: false },
+      { id: "SSH-ROOT-LOGIN", passed: true },
+      { id: "SSH-EMPTY-PASSWORDS", passed: true },
     ], 60);
     const after = makeAuditResult([
-      { id: "SSH-01", passed: true },   // improved
-      { id: "SSH-02", passed: false },  // regressed
-      { id: "SSH-03", passed: true },   // unchanged
+      { id: "SSH-PASSWORD-AUTH", passed: true },   // improved
+      { id: "SSH-ROOT-LOGIN", passed: false },  // regressed
+      { id: "SSH-EMPTY-PASSWORDS", passed: true },   // unchanged
     ], 60);
     const result = diffAudits(before, after);
     expect(result.improvements).toHaveLength(1);
@@ -113,34 +113,34 @@ describe("diffAudits", () => {
   });
 
   it("added checks (present in after, not before): classified as 'added'", () => {
-    const before = makeAuditResult([{ id: "SSH-01", passed: true }], 80);
+    const before = makeAuditResult([{ id: "SSH-PASSWORD-AUTH", passed: true }], 80);
     const after = makeAuditResult([
-      { id: "SSH-01", passed: true },
-      { id: "SSH-02", passed: true },
+      { id: "SSH-PASSWORD-AUTH", passed: true },
+      { id: "SSH-ROOT-LOGIN", passed: true },
     ], 90);
     const result = diffAudits(before, after);
     expect(result.added).toHaveLength(1);
-    expect(result.added[0].id).toBe("SSH-02");
+    expect(result.added[0].id).toBe("SSH-ROOT-LOGIN");
     expect(result.added[0].before).toBeNull();
     expect(result.added[0].after).toBe(true);
   });
 
   it("removed checks (present in before, not after): classified as 'removed'", () => {
     const before = makeAuditResult([
-      { id: "SSH-01", passed: true },
-      { id: "SSH-02", passed: true },
+      { id: "SSH-PASSWORD-AUTH", passed: true },
+      { id: "SSH-ROOT-LOGIN", passed: true },
     ], 90);
-    const after = makeAuditResult([{ id: "SSH-01", passed: true }], 80);
+    const after = makeAuditResult([{ id: "SSH-PASSWORD-AUTH", passed: true }], 80);
     const result = diffAudits(before, after);
     expect(result.removed).toHaveLength(1);
-    expect(result.removed[0].id).toBe("SSH-02");
+    expect(result.removed[0].id).toBe("SSH-ROOT-LOGIN");
     expect(result.removed[0].before).toBe(true);
     expect(result.removed[0].after).toBeNull();
   });
 
   it("computes correct scoreDelta (after - before)", () => {
-    const before = makeAuditResult([{ id: "SSH-01", passed: false }], 40);
-    const after = makeAuditResult([{ id: "SSH-01", passed: true }], 80);
+    const before = makeAuditResult([{ id: "SSH-PASSWORD-AUTH", passed: false }], 40);
+    const after = makeAuditResult([{ id: "SSH-PASSWORD-AUTH", passed: true }], 80);
     const result = diffAudits(before, after);
     expect(result.scoreBefore).toBe(40);
     expect(result.scoreAfter).toBe(80);
@@ -148,14 +148,14 @@ describe("diffAudits", () => {
   });
 
   it("uses custom labels when provided", () => {
-    const audit = makeAuditResult([{ id: "SSH-01", passed: true }], 80);
+    const audit = makeAuditResult([{ id: "SSH-PASSWORD-AUTH", passed: true }], 80);
     const result = diffAudits(audit, audit, { before: "baseline", after: "current" });
     expect(result.beforeLabel).toBe("baseline");
     expect(result.afterLabel).toBe("current");
   });
 
   it("falls back to timestamp when no labels provided", () => {
-    const audit = makeAuditResult([{ id: "SSH-01", passed: true }], 80);
+    const audit = makeAuditResult([{ id: "SSH-PASSWORD-AUTH", passed: true }], 80);
     const result = diffAudits(audit, audit);
     expect(result.beforeLabel).toBe(audit.timestamp);
     expect(result.afterLabel).toBe(audit.timestamp);
@@ -166,7 +166,7 @@ describe("diffAudits", () => {
 
 describe("resolveSnapshotRef", () => {
   const serverIp = "10.0.0.1";
-  const audit = makeAuditResult([{ id: "SSH-01", passed: true }], 80);
+  const audit = makeAuditResult([{ id: "SSH-PASSWORD-AUTH", passed: true }], 80);
 
   beforeEach(() => {
     mockLoadSnapshot.mockReset();
@@ -241,8 +241,8 @@ describe("resolveSnapshotRef", () => {
 // ─── formatDiffTerminal ───────────────────────────────────────────────────────
 
 describe("formatDiffTerminal", () => {
-  const audit1 = makeAuditResult([{ id: "SSH-01", passed: false }], 40);
-  const audit2 = makeAuditResult([{ id: "SSH-01", passed: true }], 80);
+  const audit1 = makeAuditResult([{ id: "SSH-PASSWORD-AUTH", passed: false }], 40);
+  const audit2 = makeAuditResult([{ id: "SSH-PASSWORD-AUTH", passed: true }], 80);
 
   it("includes 'Kastell Audit Diff' header", () => {
     const diff = diffAudits(audit1, audit2, { before: "v1", after: "v2" });
@@ -257,8 +257,8 @@ describe("formatDiffTerminal", () => {
   });
 
   it("shows regression count in output", () => {
-    const before = makeAuditResult([{ id: "SSH-01", passed: true }], 80);
-    const after = makeAuditResult([{ id: "SSH-01", passed: false }], 40);
+    const before = makeAuditResult([{ id: "SSH-PASSWORD-AUTH", passed: true }], 80);
+    const after = makeAuditResult([{ id: "SSH-PASSWORD-AUTH", passed: false }], 40);
     const diff = diffAudits(before, after);
     const output = formatDiffTerminal(diff);
     // Should mention 1 regression
@@ -272,18 +272,18 @@ describe("formatDiffTerminal", () => {
   });
 
   it("lists individual regressions with check ID and name", () => {
-    const before = makeAuditResult([{ id: "FW-01", name: "Firewall Check", passed: true }], 80);
-    const after = makeAuditResult([{ id: "FW-01", name: "Firewall Check", passed: false }], 40);
+    const before = makeAuditResult([{ id: "FW-UFW-ACTIVE", name: "Firewall Check", passed: true }], 80);
+    const after = makeAuditResult([{ id: "FW-UFW-ACTIVE", name: "Firewall Check", passed: false }], 40);
     const diff = diffAudits(before, after);
     const output = formatDiffTerminal(diff);
-    expect(output).toContain("FW-01");
+    expect(output).toContain("FW-UFW-ACTIVE");
     expect(output).toContain("Firewall Check");
   });
 
   it("lists individual improvements with check ID and name", () => {
     const diff = diffAudits(audit1, audit2);
     const output = formatDiffTerminal(diff);
-    expect(output).toContain("SSH-01");
+    expect(output).toContain("SSH-PASSWORD-AUTH");
   });
 
   it("omits 'Added' section when no added checks", () => {
@@ -302,8 +302,8 @@ describe("formatDiffTerminal", () => {
 // ─── formatDiffJson ───────────────────────────────────────────────────────────
 
 describe("formatDiffJson", () => {
-  const audit1 = makeAuditResult([{ id: "SSH-01", passed: false }], 40);
-  const audit2 = makeAuditResult([{ id: "SSH-01", passed: true }], 80);
+  const audit1 = makeAuditResult([{ id: "SSH-PASSWORD-AUTH", passed: false }], 40);
+  const audit2 = makeAuditResult([{ id: "SSH-PASSWORD-AUTH", passed: true }], 80);
 
   it("returns valid JSON string", () => {
     const diff = diffAudits(audit1, audit2);
@@ -327,11 +327,11 @@ describe("formatDiffJson", () => {
   });
 
   it("regressions array matches input regressions", () => {
-    const before = makeAuditResult([{ id: "FW-01", passed: true }], 80);
-    const after = makeAuditResult([{ id: "FW-01", passed: false }], 40);
+    const before = makeAuditResult([{ id: "FW-UFW-ACTIVE", passed: true }], 80);
+    const after = makeAuditResult([{ id: "FW-UFW-ACTIVE", passed: false }], 40);
     const diff = diffAudits(before, after);
     const parsed = JSON.parse(formatDiffJson(diff));
     expect(parsed.regressions).toHaveLength(1);
-    expect(parsed.regressions[0].id).toBe("FW-01");
+    expect(parsed.regressions[0].id).toBe("FW-UFW-ACTIVE");
   });
 });

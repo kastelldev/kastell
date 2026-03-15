@@ -32,7 +32,7 @@ const mockAuditResult = {
       name: "SSH",
       checks: [
         {
-          id: "SSH-01",
+          id: "SSH-PASSWORD-AUTH",
           category: "SSH",
           name: "Password Auth",
           severity: "critical" as const,
@@ -42,7 +42,7 @@ const mockAuditResult = {
           fixCommand: "sed -i 's/PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config",
         },
         {
-          id: "SSH-02",
+          id: "SSH-ROOT-LOGIN",
           category: "SSH",
           name: "Root Login",
           severity: "critical" as const,
@@ -59,7 +59,7 @@ const mockAuditResult = {
       name: "Firewall",
       checks: [
         {
-          id: "FW-01",
+          id: "FW-UFW-ACTIVE",
           category: "Firewall",
           name: "UFW Enabled",
           severity: "critical" as const,

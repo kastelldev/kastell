@@ -10,7 +10,7 @@ const mockResult: AuditResult = {
       name: "SSH",
       checks: [
         {
-          id: "SSH-01",
+          id: "SSH-PASSWORD-AUTH",
           category: "SSH",
           name: "Password Auth",
           severity: "critical",
@@ -19,7 +19,7 @@ const mockResult: AuditResult = {
           expectedValue: "no",
         },
         {
-          id: "SSH-02",
+          id: "SSH-ROOT-LOGIN",
           category: "SSH",
           name: "Root Login",
           severity: "critical",
@@ -36,7 +36,7 @@ const mockResult: AuditResult = {
       name: "Firewall",
       checks: [
         {
-          id: "FW-01",
+          id: "FW-UFW-ACTIVE",
           category: "Firewall",
           name: "UFW Enabled",
           severity: "critical",
@@ -90,8 +90,8 @@ describe("formatTerminal", () => {
     const { formatTerminal } = await import("../../src/core/audit/formatters/terminal");
     const output = formatTerminal(mockResult);
 
-    // Failed check SSH-02 should appear
-    expect(output).toContain("SSH-02");
+    // Failed check SSH-ROOT-LOGIN should appear
+    expect(output).toContain("SSH-ROOT-LOGIN");
     expect(output).toContain("Root Login");
   });
 
@@ -122,7 +122,7 @@ describe("formatTerminal", () => {
           name: "SSH",
           checks: [
             {
-              id: "SSH-01",
+              id: "SSH-PASSWORD-AUTH",
               category: "SSH",
               name: "Password Auth",
               severity: "critical",

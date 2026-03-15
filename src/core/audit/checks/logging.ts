@@ -1,6 +1,6 @@
 /**
  * Logging check parser.
- * Parses systemctl/log status output into 5 security checks (LOG-01 through LOG-05).
+ * Parses systemctl/log status output into 5 security checks with semantic IDs.
  */
 
 import type { AuditCheck, CheckParser } from "../types.js";
@@ -24,7 +24,7 @@ export const parseLoggingChecks: CheckParser = (sectionOutput: string, _platform
   const journaldActive = lines[1] === "active";
   const anyLogActive = rsyslogActive || journaldActive;
   const log01: AuditCheck = {
-    id: "LOG-01",
+    id: "LOG-SYSLOG-ACTIVE",
     category: "Logging",
     name: "System Logging Active",
     severity: "critical",
@@ -43,7 +43,7 @@ export const parseLoggingChecks: CheckParser = (sectionOutput: string, _platform
   const authLogExists = output.includes("EXISTS");
   const authLogMissing = output.includes("MISSING");
   const log02: AuditCheck = {
-    id: "LOG-02",
+    id: "LOG-AUTH-LOG-PRESENT",
     category: "Logging",
     name: "Authentication Log Present",
     severity: "warning",
@@ -64,7 +64,7 @@ export const parseLoggingChecks: CheckParser = (sectionOutput: string, _platform
   const hasLogrotate = output.includes("weekly") || output.includes("daily") ||
     output.includes("monthly") || output.includes("rotate");
   const log03: AuditCheck = {
-    id: "LOG-03",
+    id: "LOG-ROTATION-CONFIGURED",
     category: "Logging",
     name: "Log Rotation Configured",
     severity: "info",
@@ -83,7 +83,7 @@ export const parseLoggingChecks: CheckParser = (sectionOutput: string, _platform
   // This is a nice-to-have, info severity
   const hasRemoteLogging = /@\S+:\d+/i.test(output) || /@@\S+:\d+/i.test(output);
   const log04: AuditCheck = {
-    id: "LOG-04",
+    id: "LOG-REMOTE-LOGGING",
     category: "Logging",
     name: "Remote Logging",
     severity: "info",
@@ -101,7 +101,7 @@ export const parseLoggingChecks: CheckParser = (sectionOutput: string, _platform
   // LOG-05: Auditd status
   const hasAuditd = /auditd.*active|active.*auditd/i.test(output);
   const log05: AuditCheck = {
-    id: "LOG-05",
+    id: "LOG-AUDIT-DAEMON",
     category: "Logging",
     name: "Audit Daemon",
     severity: "info",

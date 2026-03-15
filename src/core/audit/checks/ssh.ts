@@ -1,6 +1,6 @@
 /**
  * SSH hardening check parser.
- * Parses sshd -T output into 6 security checks (SSH-01 through SSH-06).
+ * Parses sshd -T output into 6 security checks with semantic IDs.
  */
 
 import type { AuditCheck, CheckParser } from "../types.js";
@@ -18,7 +18,7 @@ interface SshCheckDef {
 
 const SSH_CHECKS: SshCheckDef[] = [
   {
-    id: "SSH-01",
+    id: "SSH-PASSWORD-AUTH",
     name: "Password Authentication Disabled",
     severity: "critical",
     key: "passwordauthentication",
@@ -28,7 +28,7 @@ const SSH_CHECKS: SshCheckDef[] = [
     explain: "Password authentication allows brute-force attacks. Key-based auth is significantly more secure.",
   },
   {
-    id: "SSH-02",
+    id: "SSH-ROOT-LOGIN",
     name: "Root Login Restricted",
     severity: "critical",
     key: "permitrootlogin",
@@ -41,7 +41,7 @@ const SSH_CHECKS: SshCheckDef[] = [
     explain: "Direct root login increases attack surface. Use a regular user with sudo instead.",
   },
   {
-    id: "SSH-03",
+    id: "SSH-EMPTY-PASSWORDS",
     name: "Empty Passwords Denied",
     severity: "critical",
     key: "permitemptypasswords",
@@ -51,7 +51,7 @@ const SSH_CHECKS: SshCheckDef[] = [
     explain: "Allowing empty passwords lets anyone log in without credentials.",
   },
   {
-    id: "SSH-04",
+    id: "SSH-PUBKEY-AUTH",
     name: "Public Key Authentication Enabled",
     severity: "warning",
     key: "pubkeyauthentication",
@@ -61,7 +61,7 @@ const SSH_CHECKS: SshCheckDef[] = [
     explain: "Public key authentication provides strong cryptographic identity verification.",
   },
   {
-    id: "SSH-05",
+    id: "SSH-MAX-AUTH-TRIES",
     name: "Max Auth Tries Limited",
     severity: "warning",
     key: "maxauthtries",
@@ -74,7 +74,7 @@ const SSH_CHECKS: SshCheckDef[] = [
     explain: "Limiting authentication attempts slows down brute-force attacks.",
   },
   {
-    id: "SSH-06",
+    id: "SSH-X11-FORWARDING",
     name: "X11 Forwarding Disabled",
     severity: "info",
     key: "x11forwarding",

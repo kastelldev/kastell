@@ -1,6 +1,6 @@
 /**
  * Network check parser.
- * Parses ss/sysctl output into 5 security checks (NET-01 through NET-05).
+ * Parses ss/sysctl output into 5 security checks with semantic IDs.
  */
 
 import type { AuditCheck, CheckParser } from "../types.js";
@@ -30,7 +30,7 @@ export const parseNetworkChecks: CheckParser = (sectionOutput: string, platform:
     }
   }
   const net01: AuditCheck = {
-    id: "NET-01",
+    id: "NET-NO-DANGEROUS-PORTS",
     category: "Network",
     name: "No Dangerous Ports Exposed",
     severity: "warning",
@@ -50,7 +50,7 @@ export const parseNetworkChecks: CheckParser = (sectionOutput: string, platform:
   // NET-02: DNS resolver configured
   const hasDNS = /nameserver\s+\S+/i.test(output);
   const net02: AuditCheck = {
-    id: "NET-02",
+    id: "NET-DNS-RESOLVER",
     category: "Network",
     name: "DNS Resolver Configured",
     severity: "info",
@@ -69,7 +69,7 @@ export const parseNetworkChecks: CheckParser = (sectionOutput: string, platform:
   const hasNTP = /NTP\s*synchronized:\s*yes/i.test(output) ||
     /System clock synchronized:\s*yes/i.test(output);
   const net03: AuditCheck = {
-    id: "NET-03",
+    id: "NET-TIME-SYNC",
     category: "Network",
     name: "Time Synchronization",
     severity: "info",
@@ -89,7 +89,7 @@ export const parseNetworkChecks: CheckParser = (sectionOutput: string, platform:
   const isPlatform = platform === "coolify" || platform === "dokploy";
   const forwardingOff = ipForward === "0";
   const net04: AuditCheck = {
-    id: "NET-04",
+    id: "NET-IP-FORWARDING",
     category: "Network",
     name: "IP Forwarding Status",
     severity: "warning",
@@ -109,7 +109,7 @@ export const parseNetworkChecks: CheckParser = (sectionOutput: string, platform:
   // NET-05: TCP SYN cookies enabled
   const syncookies = extractSysctlValue(output, "net.ipv4.tcp_syncookies");
   const net05: AuditCheck = {
-    id: "NET-05",
+    id: "NET-SYN-COOKIES",
     category: "Network",
     name: "TCP SYN Cookies Enabled",
     severity: "warning",

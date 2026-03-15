@@ -28,23 +28,23 @@ describe("parseAuthChecks", () => {
     expect(checks).toHaveLength(5);
     checks.forEach((check) => {
       expect(check.category).toBe("Auth");
-      expect(check.id).toMatch(/^AUTH-0[1-5]$/);
+      expect(check.id).toMatch(/^AUTH-[A-Z][A-Z0-9]*(-[A-Z][A-Z0-9]*)+$/);
     });
   });
 
-  it("should return AUTH-03 passed when no empty-password accounts", () => {
+  it("should return AUTH-NO-EMPTY-PASSWORDS passed when no empty-password accounts", () => {
     const checks = parseAuthChecks(secureOutput, "bare");
-    const auth03 = checks.find((c: { id: string }) => c.id === "AUTH-03");
+    const auth03 = checks.find((c: { id: string }) => c.id === "AUTH-NO-EMPTY-PASSWORDS");
     expect(auth03!.passed).toBe(true);
   });
 
-  it("should return AUTH-03 failed when empty-password accounts exist", () => {
+  it("should return AUTH-NO-EMPTY-PASSWORDS failed when empty-password accounts exist", () => {
     const checks = parseAuthChecks(insecureOutput, "bare");
-    const auth03 = checks.find((c: { id: string }) => c.id === "AUTH-03");
+    const auth03 = checks.find((c: { id: string }) => c.id === "AUTH-NO-EMPTY-PASSWORDS");
     expect(auth03!.passed).toBe(false);
   });
 
-  it("should return AUTH-01 failed when NOPASSWD ALL in sudoers", () => {
+  it("should return AUTH-NO-NOPASSWD-ALL failed when NOPASSWD ALL in sudoers", () => {
     const nopasswdOutput = [
       "auth required pam_unix.so",
       "sudo:x:27:admin\nALL=(ALL) NOPASSWD: ALL",
@@ -52,7 +52,7 @@ describe("parseAuthChecks", () => {
       "N/A",
     ].join("\n");
     const checks = parseAuthChecks(nopasswdOutput, "bare");
-    const auth01 = checks.find((c: { id: string }) => c.id === "AUTH-01");
+    const auth01 = checks.find((c: { id: string }) => c.id === "AUTH-NO-NOPASSWD-ALL");
     expect(auth01!.passed).toBe(false);
     expect(auth01!.severity).toBe("critical");
   });

@@ -20,44 +20,44 @@ describe("parseUpdatesChecks", () => {
     expect(checks).toHaveLength(4);
     checks.forEach((check) => {
       expect(check.category).toBe("Updates");
-      expect(check.id).toMatch(/^UPD-0[1-4]$/);
+      expect(check.id).toMatch(/^UPD-[A-Z][A-Z0-9]*(-[A-Z][A-Z0-9]*)+$/);
     });
   });
 
-  it("should return UPD-01 passed when no security updates pending", () => {
+  it("should return UPD-SECURITY-PATCHES passed when no security updates pending", () => {
     const checks = parseUpdatesChecks(secureOutput, "bare");
-    const upd01 = checks.find((c) => c.id === "UPD-01");
+    const upd01 = checks.find((c) => c.id === "UPD-SECURITY-PATCHES");
     expect(upd01!.passed).toBe(true);
   });
 
-  it("should return UPD-01 failed when security updates pending", () => {
+  it("should return UPD-SECURITY-PATCHES failed when security updates pending", () => {
     const checks = parseUpdatesChecks(insecureOutput, "bare");
-    const upd01 = checks.find((c) => c.id === "UPD-01");
+    const upd01 = checks.find((c) => c.id === "UPD-SECURITY-PATCHES");
     expect(upd01!.passed).toBe(false);
     expect(upd01!.severity).toBe("critical");
   });
 
-  it("should return UPD-02 passed when unattended-upgrades installed", () => {
+  it("should return UPD-AUTO-UPDATES passed when unattended-upgrades installed", () => {
     const checks = parseUpdatesChecks(secureOutput, "bare");
-    const upd02 = checks.find((c) => c.id === "UPD-02");
+    const upd02 = checks.find((c) => c.id === "UPD-AUTO-UPDATES");
     expect(upd02!.passed).toBe(true);
   });
 
-  it("should return UPD-02 failed when unattended-upgrades missing", () => {
+  it("should return UPD-AUTO-UPDATES failed when unattended-upgrades missing", () => {
     const checks = parseUpdatesChecks(insecureOutput, "bare");
-    const upd02 = checks.find((c) => c.id === "UPD-02");
+    const upd02 = checks.find((c) => c.id === "UPD-AUTO-UPDATES");
     expect(upd02!.passed).toBe(false);
   });
 
-  it("should return UPD-04 passed when no reboot required", () => {
+  it("should return UPD-REBOOT-REQUIRED passed when no reboot required", () => {
     const checks = parseUpdatesChecks(secureOutput, "bare");
-    const upd04 = checks.find((c) => c.id === "UPD-04");
+    const upd04 = checks.find((c) => c.id === "UPD-REBOOT-REQUIRED");
     expect(upd04!.passed).toBe(true);
   });
 
-  it("should return UPD-04 failed when reboot required", () => {
+  it("should return UPD-REBOOT-REQUIRED failed when reboot required", () => {
     const checks = parseUpdatesChecks(insecureOutput, "bare");
-    const upd04 = checks.find((c) => c.id === "UPD-04");
+    const upd04 = checks.find((c) => c.id === "UPD-REBOOT-REQUIRED");
     expect(upd04!.passed).toBe(false);
     expect(upd04!.severity).toBe("warning");
   });

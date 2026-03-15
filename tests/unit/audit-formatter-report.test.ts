@@ -10,7 +10,7 @@ const mockResult: AuditResult = {
       name: "SSH",
       checks: [
         {
-          id: "SSH-01",
+          id: "SSH-PASSWORD-AUTH",
           category: "SSH",
           name: "Password Auth",
           severity: "critical",
@@ -19,7 +19,7 @@ const mockResult: AuditResult = {
           expectedValue: "no",
         },
         {
-          id: "SSH-02",
+          id: "SSH-ROOT-LOGIN",
           category: "SSH",
           name: "Root Login",
           severity: "critical",
@@ -36,7 +36,7 @@ const mockResult: AuditResult = {
       name: "Firewall",
       checks: [
         {
-          id: "FW-01",
+          id: "FW-UFW-ACTIVE",
           category: "Firewall",
           name: "UFW Enabled",
           severity: "critical",

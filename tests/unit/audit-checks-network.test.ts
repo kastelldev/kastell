@@ -36,45 +36,45 @@ describe("parseNetworkChecks", () => {
     expect(checks).toHaveLength(5);
     checks.forEach((check) => {
       expect(check.category).toBe("Network");
-      expect(check.id).toMatch(/^NET-0[1-5]$/);
+      expect(check.id).toMatch(/^NET-[A-Z][A-Z0-9]*(-[A-Z][A-Z0-9]*)+$/);
     });
   });
 
-  it("should return NET-01 passed for reasonable listening ports", () => {
+  it("should return NET-NO-DANGEROUS-PORTS passed for reasonable listening ports", () => {
     const checks = parseNetworkChecks(secureOutput, "bare");
-    const net01 = checks.find((c) => c.id === "NET-01");
+    const net01 = checks.find((c) => c.id === "NET-NO-DANGEROUS-PORTS");
     expect(net01!.passed).toBe(true);
   });
 
-  it("should return NET-01 failed for database ports exposed", () => {
+  it("should return NET-NO-DANGEROUS-PORTS failed for database ports exposed", () => {
     const checks = parseNetworkChecks(insecureOutput, "bare");
-    const net01 = checks.find((c) => c.id === "NET-01");
+    const net01 = checks.find((c) => c.id === "NET-NO-DANGEROUS-PORTS");
     expect(net01!.passed).toBe(false);
     expect(net01!.severity).toBe("warning");
   });
 
-  it("should return NET-04 passed when IP forwarding is disabled", () => {
+  it("should return NET-IP-FORWARDING passed when IP forwarding is disabled", () => {
     const checks = parseNetworkChecks(secureOutput, "bare");
-    const net04 = checks.find((c) => c.id === "NET-04");
+    const net04 = checks.find((c) => c.id === "NET-IP-FORWARDING");
     expect(net04!.passed).toBe(true);
   });
 
-  it("should return NET-04 failed when IP forwarding is enabled on bare", () => {
+  it("should return NET-IP-FORWARDING failed when IP forwarding is enabled on bare", () => {
     const checks = parseNetworkChecks(insecureOutput, "bare");
-    const net04 = checks.find((c) => c.id === "NET-04");
+    const net04 = checks.find((c) => c.id === "NET-IP-FORWARDING");
     expect(net04!.passed).toBe(false);
   });
 
   it("should allow IP forwarding on docker platforms", () => {
     const checks = parseNetworkChecks(insecureOutput, "coolify");
-    const net04 = checks.find((c) => c.id === "NET-04");
+    const net04 = checks.find((c) => c.id === "NET-IP-FORWARDING");
     expect(net04!.passed).toBe(true);
   });
 
-  it("should return NET-05 (SYN cookies) passed when tcp_syncookies=1", () => {
+  it("should return NET-SYN-COOKIES passed when tcp_syncookies=1", () => {
     const outputWithSyncookies = secureOutput + "\nnet.ipv4.tcp_syncookies = 1";
     const checks = parseNetworkChecks(outputWithSyncookies, "bare");
-    const net05 = checks.find((c) => c.id === "NET-05");
+    const net05 = checks.find((c) => c.id === "NET-SYN-COOKIES");
     expect(net05!.passed).toBe(true);
   });
 

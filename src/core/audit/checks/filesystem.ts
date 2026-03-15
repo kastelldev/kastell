@@ -1,6 +1,6 @@
 /**
  * Filesystem check parser.
- * Parses mount/find output into 5 security checks (FS-01 through FS-05).
+ * Parses mount/find output into 5 security checks with semantic IDs.
  */
 
 import type { AuditCheck, CheckParser } from "../types.js";
@@ -21,7 +21,7 @@ export const parseFilesystemChecks: CheckParser = (sectionOutput: string, _platf
   const tmpPerms = tmpMatch ? tmpMatch[1] : null;
   const hasStickyBit = tmpPerms !== null && tmpPerms.startsWith("1");
   const fs01: AuditCheck = {
-    id: "FS-01",
+    id: "FS-TMP-STICKY-BIT",
     category: "Filesystem",
     name: "/tmp Sticky Bit Set",
     severity: "warning",
@@ -53,7 +53,7 @@ export const parseFilesystemChecks: CheckParser = (sectionOutput: string, _platf
   }
   const hasWorldWritable = worldWritableLines.length > 0;
   const fs02: AuditCheck = {
-    id: "FS-02",
+    id: "FS-NO-WORLD-WRITABLE",
     category: "Filesystem",
     name: "No World-Writable Files",
     severity: "warning",
@@ -75,7 +75,7 @@ export const parseFilesystemChecks: CheckParser = (sectionOutput: string, _platf
   });
   const suidCount = suidLines.length;
   const fs03: AuditCheck = {
-    id: "FS-03",
+    id: "FS-SUID-THRESHOLD",
     category: "Filesystem",
     name: "SUID Binaries Within Threshold",
     severity: "info",
@@ -91,7 +91,7 @@ export const parseFilesystemChecks: CheckParser = (sectionOutput: string, _platf
   // FS-04: Home directory permissions
   // This is not directly in the output from commands.ts, so we do a basic check
   const fs04: AuditCheck = {
-    id: "FS-04",
+    id: "FS-HOME-PERMISSIONS",
     category: "Filesystem",
     name: "Home Directory Permissions",
     severity: "info",
@@ -106,7 +106,7 @@ export const parseFilesystemChecks: CheckParser = (sectionOutput: string, _platf
   const diskMatch = output.match(/(\d+)%\s+\/$/m);
   const diskUsage = diskMatch ? parseInt(diskMatch[1], 10) : null;
   const fs05: AuditCheck = {
-    id: "FS-05",
+    id: "FS-DISK-USAGE",
     category: "Filesystem",
     name: "Disk Usage Under Threshold",
     severity: "warning",

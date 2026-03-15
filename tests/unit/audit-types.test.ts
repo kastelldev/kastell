@@ -18,7 +18,7 @@ describe("Audit types", () => {
 
   it("should enforce AuditCheck required fields", () => {
     const check: AuditCheck = {
-      id: "SSH-01",
+      id: "SSH-PASSWORD-AUTH",
       category: "SSH",
       name: "Password Authentication",
       severity: "critical",
@@ -27,7 +27,7 @@ describe("Audit types", () => {
       expectedValue: "no",
     };
 
-    expect(check.id).toBe("SSH-01");
+    expect(check.id).toBe("SSH-PASSWORD-AUTH");
     expect(check.category).toBe("SSH");
     expect(check.severity).toBe("critical");
     expect(check.passed).toBe(false);
@@ -37,7 +37,7 @@ describe("Audit types", () => {
 
   it("should allow optional fixCommand and explain on AuditCheck", () => {
     const check: AuditCheck = {
-      id: "SSH-02",
+      id: "SSH-ROOT-LOGIN",
       category: "SSH",
       name: "Root Login",
       severity: "critical",
@@ -160,7 +160,7 @@ describe("ComplianceRef type", () => {
 describe("AuditCheck with complianceRefs and tags", () => {
   it("should be valid without complianceRefs and tags (backward compat)", () => {
     const check: AuditCheck = {
-      id: "SSH-01",
+      id: "SSH-PASSWORD-AUTH",
       category: "SSH",
       name: "Password Authentication",
       severity: "critical",
@@ -175,7 +175,7 @@ describe("AuditCheck with complianceRefs and tags", () => {
 
   it("should accept complianceRefs array and tags array", () => {
     const check: AuditCheck = {
-      id: "SSH-01",
+      id: "SSH-PASSWORD-AUTH",
       category: "SSH",
       name: "Password Authentication",
       severity: "critical",

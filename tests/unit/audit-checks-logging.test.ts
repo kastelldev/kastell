@@ -28,31 +28,31 @@ describe("parseLoggingChecks", () => {
     expect(checks).toHaveLength(5);
     checks.forEach((check) => {
       expect(check.category).toBe("Logging");
-      expect(check.id).toMatch(/^LOG-0[1-5]$/);
+      expect(check.id).toMatch(/^LOG-[A-Z][A-Z0-9]*(-[A-Z][A-Z0-9]*)+$/);
     });
   });
 
-  it("should return LOG-01 passed when journald is active", () => {
+  it("should return LOG-SYSLOG-ACTIVE passed when journald is active", () => {
     const checks = parseLoggingChecks(secureOutput, "bare");
-    const log01 = checks.find((c: { id: string }) => c.id === "LOG-01");
+    const log01 = checks.find((c: { id: string }) => c.id === "LOG-SYSLOG-ACTIVE");
     expect(log01!.passed).toBe(true);
   });
 
-  it("should return LOG-01 failed when neither syslog nor journald active", () => {
+  it("should return LOG-SYSLOG-ACTIVE failed when neither syslog nor journald active", () => {
     const checks = parseLoggingChecks(insecureOutput, "bare");
-    const log01 = checks.find((c: { id: string }) => c.id === "LOG-01");
+    const log01 = checks.find((c: { id: string }) => c.id === "LOG-SYSLOG-ACTIVE");
     expect(log01!.passed).toBe(false);
   });
 
-  it("should return LOG-02 passed when auth log exists", () => {
+  it("should return LOG-AUTH-LOG-PRESENT passed when auth log exists", () => {
     const checks = parseLoggingChecks(secureOutput, "bare");
-    const log02 = checks.find((c: { id: string }) => c.id === "LOG-02");
+    const log02 = checks.find((c: { id: string }) => c.id === "LOG-AUTH-LOG-PRESENT");
     expect(log02!.passed).toBe(true);
   });
 
-  it("should return LOG-02 failed when auth log missing", () => {
+  it("should return LOG-AUTH-LOG-PRESENT failed when auth log missing", () => {
     const checks = parseLoggingChecks(insecureOutput, "bare");
-    const log02 = checks.find((c: { id: string }) => c.id === "LOG-02");
+    const log02 = checks.find((c: { id: string }) => c.id === "LOG-AUTH-LOG-PRESENT");
     expect(log02!.passed).toBe(false);
   });
 
