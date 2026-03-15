@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-import { addChannel, testChannel } from "../core/notify.js";
+import { addChannel, testChannel, removeChannel } from "../core/notify.js";
 
 export function notifyCommand(program: Command): void {
   const notify = program
@@ -32,5 +32,12 @@ export function notifyCommand(program: Command): void {
     .description("Send a test notification to the specified channel")
     .action(async (channel: string) => {
       await testChannel(channel);
+    });
+
+  notify
+    .command("remove <channel>")
+    .description("Remove a configured notification channel (telegram, discord, slack)")
+    .action((channel: string) => {
+      removeChannel(channel);
     });
 }

@@ -6,10 +6,10 @@ import chalk from "chalk";
 import inquirer from "inquirer";
 import { CONFIG_DIR } from "../utils/config.js";
 import { createSpinner } from "../utils/logger.js";
+import { loadNotifyChannels, saveNotifyChannel, removeNotifyChannel } from "./notifyStore.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const NOTIFY_FILE = join(CONFIG_DIR, "notify.json");
 const COOLDOWN_FILE = join(CONFIG_DIR, "notify-cooldown.json");
 const COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
 const NOTIFY_TIMEOUT_MS = 10_000;
@@ -68,19 +68,7 @@ export interface ChannelResult {
 // ─── Config Management ────────────────────────────────────────────────────────
 
 export function loadNotifyConfig(): NotifyConfig {
-  if (!existsSync(NOTIFY_FILE)) return {};
-  try {
-    const raw = JSON.parse(readFileSync(NOTIFY_FILE, "utf-8"));
-    const result = NotifyConfigSchema.safeParse(raw);
-    return result.success ? result.data : {};
-  } catch {
-    return {};
-  }
-}
-
-export function saveNotifyConfig(config: NotifyConfig): void {
-  mkdirSync(CONFIG_DIR, { recursive: true });
-  writeFileSync(NOTIFY_FILE, JSON.stringify(config, null, 2), { mode: 0o600 });
+  return loadNotifyChannels();
 }
 
 // ─── Channel Dispatchers ──────────────────────────────────────────────────────
@@ -264,10 +252,14 @@ export async function addChannel(
     }
   }
 
-  const existing = loadNotifyConfig();
-  const merged: NotifyConfig = { ...existing, [channel]: channelConfig };
-  saveNotifyConfig(merged);
+  saveNotifyChannel(channel, channelConfig!);
   console.log(chalk.green(`${channel} notification channel configured successfully.`));
+}
+
+export function removeChannel(channelName: string): void {
+  if (!validateChannel(channelName)) return;
+  removeNotifyChannel(channelName);
+  console.log(chalk.green(`${channelName} notification channel removed.`));
 }
 
 export async function testChannel(channelName: string): Promise<void> {

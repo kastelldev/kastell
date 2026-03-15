@@ -5,12 +5,12 @@ import {
   addChannel,
   testChannel,
   loadNotifyConfig,
-  saveNotifyConfig,
   sendTelegram,
   sendDiscord,
   sendSlack,
 } from "../../src/core/notify.js";
 import type { NotifyConfig } from "../../src/core/notify.js";
+import { saveNotifyChannel, loadNotifyChannels } from "../../src/core/notifyStore.js";
 
 // ─── Module mocks ─────────────────────────────────────────────────────────────
 
@@ -36,6 +36,16 @@ jest.mock("../../src/utils/logger", () => ({
   })),
 }));
 
+jest.mock("../../src/core/notifyStore.js", () => ({
+  loadNotifyChannels: jest.fn(() => ({})),
+  saveNotifyChannel: jest.fn(),
+  removeNotifyChannel: jest.fn(),
+  isNotifyKeychainAvailable: jest.fn(() => true),
+  storeNotifySecret: jest.fn(),
+  readNotifySecret: jest.fn(),
+  removeNotifySecret: jest.fn(),
+}));
+
 
 
 const mockedExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;
@@ -43,6 +53,8 @@ const mockedReadFileSync = readFileSync as jest.MockedFunction<typeof readFileSy
 const mockedWriteFileSync = writeFileSync as jest.MockedFunction<typeof writeFileSync>;
 const mockedAxiosPost = axios.post as jest.Mock;
 const mockedInquirerPrompt = inquirer.prompt as unknown as jest.Mock;
+const mockedSaveNotifyChannel = saveNotifyChannel as jest.Mock;
+const mockedLoadNotifyChannels = loadNotifyChannels as jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -54,114 +66,87 @@ beforeEach(() => {
 
 describe("addChannel", () => {
   describe("force mode (non-interactive)", () => {
-    it("saves telegram config when --force with botToken and chatId (NOTF-01)", async () => {
-      mockedExistsSync.mockReturnValue(false);
-
+    it("saves telegram config via notifyStore when --force with botToken and chatId (NOTF-01)", async () => {
       await addChannel("telegram", {
         force: true,
         botToken: "bot123:ABC",
         chatId: "-100123",
       });
 
-      expect(mockedWriteFileSync).toHaveBeenCalledWith(
-        expect.stringContaining("notify.json"),
-        expect.stringContaining('"botToken": "bot123:ABC"'),
-        { mode: 0o600 },
-      );
+      expect(mockedSaveNotifyChannel).toHaveBeenCalledWith("telegram", {
+        botToken: "bot123:ABC",
+        chatId: "-100123",
+      });
     });
 
-    it("saves discord config when --force with webhookUrl (NOTF-02)", async () => {
-      mockedExistsSync.mockReturnValue(false);
-
+    it("saves discord config via notifyStore when --force with webhookUrl (NOTF-02)", async () => {
       await addChannel("discord", {
         force: true,
         webhookUrl: "https://discord.com/api/webhooks/123/abc",
       });
 
-      expect(mockedWriteFileSync).toHaveBeenCalledWith(
-        expect.stringContaining("notify.json"),
-        expect.stringContaining('"webhookUrl": "https://discord.com/api/webhooks/123/abc"'),
-        { mode: 0o600 },
-      );
+      expect(mockedSaveNotifyChannel).toHaveBeenCalledWith("discord", {
+        webhookUrl: "https://discord.com/api/webhooks/123/abc",
+      });
     });
 
-    it("saves slack config when --force with webhookUrl (NOTF-03)", async () => {
-      mockedExistsSync.mockReturnValue(false);
-
+    it("saves slack config via notifyStore when --force with webhookUrl (NOTF-03)", async () => {
       await addChannel("slack", {
         force: true,
         webhookUrl: "https://hooks.slack.com/services/T/B/secret",
       });
 
-      expect(mockedWriteFileSync).toHaveBeenCalledWith(
-        expect.stringContaining("notify.json"),
-        expect.stringContaining('"webhookUrl": "https://hooks.slack.com/services/T/B/secret"'),
-        { mode: 0o600 },
-      );
+      expect(mockedSaveNotifyChannel).toHaveBeenCalledWith("slack", {
+        webhookUrl: "https://hooks.slack.com/services/T/B/secret",
+      });
     });
 
-    it("merges telegram into existing config without removing discord (NOTF-01)", async () => {
-      const existing: NotifyConfig = {
-        discord: { webhookUrl: "https://discord.com/api/webhooks/1/tok" },
-      };
-      mockedExistsSync.mockReturnValue(true);
-      mockedReadFileSync.mockReturnValue(JSON.stringify(existing));
-
+    it("saves telegram secrets without affecting discord (notifyStore handles merge) (NOTF-01)", async () => {
       await addChannel("telegram", {
         force: true,
         botToken: "tok",
         chatId: "123",
       });
 
-      const written = (mockedWriteFileSync.mock.calls[0] as unknown[])[1] as string;
-      const parsed = JSON.parse(written) as NotifyConfig;
-      expect(parsed.telegram?.botToken).toBe("tok");
-      expect(parsed.discord?.webhookUrl).toBe("https://discord.com/api/webhooks/1/tok");
+      expect(mockedSaveNotifyChannel).toHaveBeenCalledWith("telegram", {
+        botToken: "tok",
+        chatId: "123",
+      });
     });
 
     it("errors when --force telegram is missing botToken", async () => {
-      const consoleSpy = jest.spyOn(process.stderr, "write").mockImplementation(() => true);
-      mockedExistsSync.mockReturnValue(false);
-
       await addChannel("telegram", { force: true, chatId: "123" });
 
-      // Should not have written config
-      expect(mockedWriteFileSync).not.toHaveBeenCalled();
-      consoleSpy.mockRestore();
+      expect(mockedSaveNotifyChannel).not.toHaveBeenCalled();
     });
 
     it("errors when --force discord is missing webhookUrl", async () => {
-      mockedExistsSync.mockReturnValue(false);
-
       await addChannel("discord", { force: true });
 
-      expect(mockedWriteFileSync).not.toHaveBeenCalled();
+      expect(mockedSaveNotifyChannel).not.toHaveBeenCalled();
     });
 
     it("errors when channel name is invalid", async () => {
       await addChannel("invalid-channel", { force: true });
 
-      expect(mockedWriteFileSync).not.toHaveBeenCalled();
+      expect(mockedSaveNotifyChannel).not.toHaveBeenCalled();
     });
   });
 
   describe("interactive mode (Inquirer)", () => {
     it("prompts for botToken and chatId when telegram without --force (NOTF-01)", async () => {
-      mockedExistsSync.mockReturnValue(false);
       mockedInquirerPrompt.mockResolvedValue({ botToken: "tok", chatId: "123" });
 
       await addChannel("telegram", {});
 
       expect(mockedInquirerPrompt).toHaveBeenCalled();
-      expect(mockedWriteFileSync).toHaveBeenCalledWith(
-        expect.stringContaining("notify.json"),
-        expect.stringContaining('"botToken": "tok"'),
-        { mode: 0o600 },
-      );
+      expect(mockedSaveNotifyChannel).toHaveBeenCalledWith("telegram", {
+        botToken: "tok",
+        chatId: "123",
+      });
     });
 
     it("prompts for webhookUrl when discord without --force (NOTF-02)", async () => {
-      mockedExistsSync.mockReturnValue(false);
       mockedInquirerPrompt.mockResolvedValue({
         webhookUrl: "https://discord.com/api/webhooks/1/tok",
       });
@@ -169,7 +154,7 @@ describe("addChannel", () => {
       await addChannel("discord", {});
 
       expect(mockedInquirerPrompt).toHaveBeenCalled();
-      expect(mockedWriteFileSync).toHaveBeenCalled();
+      expect(mockedSaveNotifyChannel).toHaveBeenCalled();
     });
   });
 });
@@ -178,11 +163,9 @@ describe("addChannel", () => {
 
 describe("testChannel", () => {
   it("sends test message to telegram when configured (NOTF-04)", async () => {
-    const config: NotifyConfig = {
+    mockedLoadNotifyChannels.mockReturnValue({
       telegram: { botToken: "bot123", chatId: "-100456" },
-    };
-    mockedExistsSync.mockReturnValue(true);
-    mockedReadFileSync.mockReturnValue(JSON.stringify(config));
+    });
     mockedAxiosPost.mockResolvedValue({ data: { ok: true }, status: 200 });
 
     await testChannel("telegram");
@@ -195,11 +178,9 @@ describe("testChannel", () => {
   });
 
   it("sends test message to discord when configured (NOTF-04)", async () => {
-    const config: NotifyConfig = {
+    mockedLoadNotifyChannels.mockReturnValue({
       discord: { webhookUrl: "https://discord.com/api/webhooks/1/tok" },
-    };
-    mockedExistsSync.mockReturnValue(true);
-    mockedReadFileSync.mockReturnValue(JSON.stringify(config));
+    });
     mockedAxiosPost.mockResolvedValue({ status: 204 });
 
     await testChannel("discord");
@@ -212,11 +193,9 @@ describe("testChannel", () => {
   });
 
   it("sends test message to slack when configured (NOTF-04)", async () => {
-    const config: NotifyConfig = {
+    mockedLoadNotifyChannels.mockReturnValue({
       slack: { webhookUrl: "https://hooks.slack.com/services/T/B/secret" },
-    };
-    mockedExistsSync.mockReturnValue(true);
-    mockedReadFileSync.mockReturnValue(JSON.stringify(config));
+    });
     mockedAxiosPost.mockResolvedValue({ data: "ok", status: 200 });
 
     await testChannel("slack");
@@ -229,7 +208,7 @@ describe("testChannel", () => {
   });
 
   it("errors when channel not configured", async () => {
-    mockedExistsSync.mockReturnValue(false);
+    mockedLoadNotifyChannels.mockReturnValue({});
 
     // Should not throw, just print error
     await expect(testChannel("telegram")).resolves.toBeUndefined();

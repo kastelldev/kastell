@@ -2,7 +2,6 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import axios from "axios";
 import {
   loadNotifyConfig,
-  saveNotifyConfig,
   sendTelegram,
   sendDiscord,
   sendSlack,
@@ -13,6 +12,7 @@ import {
   NotifyConfigSchema,
 } from "../../src/core/notify.js";
 import type { NotifyConfig, ChannelResult } from "../../src/core/notify.js";
+import { loadNotifyChannels } from "../../src/core/notifyStore.js";
 
 jest.mock("fs", () => ({
   readFileSync: jest.fn(),
@@ -21,124 +21,65 @@ jest.mock("fs", () => ({
   mkdirSync: jest.fn(),
 }));
 
+jest.mock("../../src/core/notifyStore.js", () => ({
+  loadNotifyChannels: jest.fn(),
+  saveNotifyChannel: jest.fn(),
+  removeNotifyChannel: jest.fn(),
+  isNotifyKeychainAvailable: jest.fn(() => true),
+  storeNotifySecret: jest.fn(),
+  readNotifySecret: jest.fn(),
+  removeNotifySecret: jest.fn(),
+}));
+
 const mockedExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;
 const mockedReadFileSync = readFileSync as jest.MockedFunction<typeof readFileSync>;
 const mockedWriteFileSync = writeFileSync as jest.MockedFunction<typeof writeFileSync>;
 const mockedMkdirSync = mkdirSync as jest.MockedFunction<typeof mkdirSync>;
 const mockedAxiosPost = axios.post as jest.Mock;
+const mockedLoadNotifyChannels = loadNotifyChannels as jest.Mock;
 
 beforeEach(() => {
   jest.resetAllMocks();
+  mockedLoadNotifyChannels.mockReturnValue({});
 });
 
-// ─── loadNotifyConfig / saveNotifyConfig ──────────────────────────────────────
+// ─── loadNotifyConfig ─────────────────────────────────────────────────────────
 
-describe("loadNotifyConfig / saveNotifyConfig", () => {
-  describe("loadNotifyConfig", () => {
-    it("returns empty object when notify.json does not exist (NOTF-01)", () => {
-      mockedExistsSync.mockReturnValue(false);
+describe("loadNotifyConfig — delegates to notifyStore", () => {
+  it("returns empty object when no channels configured (NOTF-01)", () => {
+    mockedLoadNotifyChannels.mockReturnValue({});
 
-      const result = loadNotifyConfig();
+    const result = loadNotifyConfig();
 
-      expect(result).toEqual({});
-    });
-
-    it("returns parsed telegram config when file is valid (NOTF-01)", () => {
-      const config = {
-        telegram: { botToken: "bot123:ABC", chatId: "-100123456" },
-      };
-      mockedExistsSync.mockReturnValue(true);
-      mockedReadFileSync.mockReturnValue(JSON.stringify(config));
-
-      const result = loadNotifyConfig();
-
-      expect(result.telegram?.botToken).toBe("bot123:ABC");
-      expect(result.telegram?.chatId).toBe("-100123456");
-    });
-
-    it("returns empty object when notify.json contains malformed JSON (NOTF-01)", () => {
-      mockedExistsSync.mockReturnValue(true);
-      mockedReadFileSync.mockReturnValue("{ invalid json ]");
-
-      const result = loadNotifyConfig();
-
-      expect(result).toEqual({});
-    });
-
-    it("returns parsed discord config when file is valid (NOTF-02)", () => {
-      const config = {
-        discord: { webhookUrl: "https://discord.com/api/webhooks/123/abc" },
-      };
-      mockedExistsSync.mockReturnValue(true);
-      mockedReadFileSync.mockReturnValue(JSON.stringify(config));
-
-      const result = loadNotifyConfig();
-
-      expect(result.discord?.webhookUrl).toBe("https://discord.com/api/webhooks/123/abc");
-    });
-
-    it("returns empty object when discord webhookUrl is invalid (NOTF-02)", () => {
-      const config = { discord: { webhookUrl: "not-a-url" } };
-      mockedExistsSync.mockReturnValue(true);
-      mockedReadFileSync.mockReturnValue(JSON.stringify(config));
-
-      const result = loadNotifyConfig();
-
-      expect(result).toEqual({});
-    });
-
-    it("returns parsed slack config when file is valid (NOTF-03)", () => {
-      const config = {
-        slack: { webhookUrl: "https://hooks.slack.com/services/T/B/secret" },
-      };
-      mockedExistsSync.mockReturnValue(true);
-      mockedReadFileSync.mockReturnValue(JSON.stringify(config));
-
-      const result = loadNotifyConfig();
-
-      expect(result.slack?.webhookUrl).toBe("https://hooks.slack.com/services/T/B/secret");
-    });
-
-    it("ignores unknown fields and returns only valid channels", () => {
-      const config = {
-        telegram: { botToken: "tok", chatId: "cid" },
-        unknown: { foo: "bar" },
-      };
-      mockedExistsSync.mockReturnValue(true);
-      mockedReadFileSync.mockReturnValue(JSON.stringify(config));
-
-      const result = loadNotifyConfig();
-
-      expect(result.telegram).toBeDefined();
-      expect((result as Record<string, unknown>).unknown).toBeUndefined();
-    });
+    expect(result).toEqual({});
   });
 
-  describe("saveNotifyConfig", () => {
-    it("writes notify.json to config dir with mode 0o600 (NOTF-01/02/03)", () => {
-      const config: NotifyConfig = {
-        telegram: { botToken: "bot123", chatId: "456" },
-      };
+  it("returns telegram config from notifyStore (NOTF-01)", () => {
+    const config = { telegram: { botToken: "bot123:ABC", chatId: "-100123456" } };
+    mockedLoadNotifyChannels.mockReturnValue(config);
 
-      saveNotifyConfig(config);
+    const result = loadNotifyConfig();
 
-      expect(mockedMkdirSync).toHaveBeenCalledWith(expect.any(String), { recursive: true });
-      expect(mockedWriteFileSync).toHaveBeenCalledWith(
-        expect.stringContaining("notify.json"),
-        JSON.stringify(config, null, 2),
-        { mode: 0o600 },
-      );
-    });
+    expect(result.telegram?.botToken).toBe("bot123:ABC");
+    expect(result.telegram?.chatId).toBe("-100123456");
+  });
 
-    it("writes empty config object", () => {
-      saveNotifyConfig({});
+  it("returns discord config from notifyStore (NOTF-02)", () => {
+    const config = { discord: { webhookUrl: "https://discord.com/api/webhooks/123/abc" } };
+    mockedLoadNotifyChannels.mockReturnValue(config);
 
-      expect(mockedWriteFileSync).toHaveBeenCalledWith(
-        expect.stringContaining("notify.json"),
-        JSON.stringify({}, null, 2),
-        { mode: 0o600 },
-      );
-    });
+    const result = loadNotifyConfig();
+
+    expect(result.discord?.webhookUrl).toBe("https://discord.com/api/webhooks/123/abc");
+  });
+
+  it("returns slack config from notifyStore (NOTF-03)", () => {
+    const config = { slack: { webhookUrl: "https://hooks.slack.com/services/T/B/secret" } };
+    mockedLoadNotifyChannels.mockReturnValue(config);
+
+    const result = loadNotifyConfig();
+
+    expect(result.slack?.webhookUrl).toBe("https://hooks.slack.com/services/T/B/secret");
   });
 });
 
@@ -308,11 +249,8 @@ describe("dispatchNotification", () => {
     expect(mockedAxiosPost).not.toHaveBeenCalled();
   });
 
-  it("loads config from file when config not provided", async () => {
-    mockedExistsSync.mockReturnValue(true);
-    mockedReadFileSync.mockReturnValue(
-      JSON.stringify({ telegram: { botToken: "bot", chatId: "cid" } }),
-    );
+  it("loads config from notifyStore when config not provided", async () => {
+    mockedLoadNotifyChannels.mockReturnValue({ telegram: { botToken: "bot", chatId: "cid" } });
     mockedAxiosPost.mockResolvedValue({ status: 200 });
 
     const results = await dispatchNotification("msg");
@@ -326,7 +264,7 @@ describe("dispatchNotification", () => {
 
 describe("dispatchWithCooldown", () => {
   it("dispatches when key is not in cooldown state (NOTF-06)", async () => {
-    // loadCooldownState: no file, loadNotifyConfig: no file
+    // loadCooldownState: no file
     mockedExistsSync.mockReturnValue(false);
     mockedAxiosPost.mockResolvedValue({ status: 200 });
 
@@ -341,7 +279,6 @@ describe("dispatchWithCooldown", () => {
     const recentTimestamp = new Date(fixedNow - 10 * 60 * 1000).toISOString(); // 10 minutes ago
 
     // dispatchWithCooldown: loadCooldownState calls existsSync then readFileSync
-    // loadNotifyConfig is NOT called because we skip before dispatchNotification
     mockedExistsSync.mockReturnValueOnce(true); // cooldown file exists
     mockedReadFileSync.mockReturnValueOnce(
       JSON.stringify({ "web:disk": recentTimestamp }),
@@ -359,11 +296,9 @@ describe("dispatchWithCooldown", () => {
     jest.spyOn(Date, "now").mockReturnValue(fixedNow);
     const expiredTimestamp = new Date(fixedNow - 31 * 60 * 1000).toISOString(); // 31 minutes ago
 
-    // loadCooldownState: file exists, returns expired state
-    // dispatchNotification -> loadNotifyConfig: no file
-    mockedExistsSync
-      .mockReturnValueOnce(true)  // cooldown file exists
-      .mockReturnValueOnce(false); // notify.json does not exist
+    // loadCooldownState: cooldown file exists, returns expired state
+    // loadNotifyConfig -> loadNotifyChannels (mocked, returns {})
+    mockedExistsSync.mockReturnValueOnce(true); // cooldown file exists
     mockedReadFileSync.mockReturnValueOnce(
       JSON.stringify({ "web:disk": expiredTimestamp }),
     );
@@ -379,13 +314,9 @@ describe("dispatchWithCooldown", () => {
     jest.spyOn(Date, "now").mockReturnValue(fixedNow);
 
     // loadCooldownState: no cooldown file
-    // dispatchNotification -> loadNotifyConfig: has telegram config
-    mockedExistsSync
-      .mockReturnValueOnce(false) // cooldown file missing
-      .mockReturnValueOnce(true); // notify.json exists
-    mockedReadFileSync.mockReturnValueOnce(
-      JSON.stringify({ telegram: { botToken: "bot", chatId: "cid" } }),
-    );
+    // loadNotifyConfig -> loadNotifyChannels (mocked with telegram config)
+    mockedExistsSync.mockReturnValueOnce(false); // cooldown file missing
+    mockedLoadNotifyChannels.mockReturnValue({ telegram: { botToken: "bot", chatId: "cid" } });
     mockedAxiosPost.mockResolvedValue({ status: 200 });
 
     await dispatchWithCooldown("api", "ram", "RAM 95%");
@@ -402,13 +333,9 @@ describe("dispatchWithCooldown", () => {
     jest.spyOn(Date, "now").mockReturnValue(fixedNow);
 
     // loadCooldownState: no cooldown file
-    // dispatchNotification -> loadNotifyConfig: has telegram config
-    mockedExistsSync
-      .mockReturnValueOnce(false) // cooldown file missing
-      .mockReturnValueOnce(true); // notify.json exists
-    mockedReadFileSync.mockReturnValueOnce(
-      JSON.stringify({ telegram: { botToken: "bot", chatId: "cid" } }),
-    );
+    // loadNotifyConfig -> loadNotifyChannels (mocked with telegram config)
+    mockedExistsSync.mockReturnValueOnce(false); // cooldown file missing
+    mockedLoadNotifyChannels.mockReturnValue({ telegram: { botToken: "bot", chatId: "cid" } });
     mockedAxiosPost.mockRejectedValue(new Error("All down"));
 
     await dispatchWithCooldown("api", "cpu", "CPU 200%");
@@ -426,10 +353,8 @@ describe("dispatchWithCooldown", () => {
     const recentTimestamp = new Date(fixedNow - 5 * 60 * 1000).toISOString(); // 5 minutes ago
 
     // loadCooldownState: has serverA:disk in cooldown — serverB:disk should not be skipped
-    // dispatchNotification -> loadNotifyConfig: no notify.json
-    mockedExistsSync
-      .mockReturnValueOnce(true)  // cooldown file exists
-      .mockReturnValueOnce(false); // notify.json does not exist
+    // loadNotifyConfig -> loadNotifyChannels (mocked, returns {})
+    mockedExistsSync.mockReturnValueOnce(true); // cooldown file exists
     mockedReadFileSync.mockReturnValueOnce(
       JSON.stringify({ "serverA:disk": recentTimestamp }),
     );
