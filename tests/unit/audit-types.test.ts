@@ -6,6 +6,8 @@ import type {
   QuickWin,
   AuditHistoryEntry,
   CheckParser,
+  ComplianceCoverage,
+  ComplianceRef,
 } from "../../src/core/audit/types.js";
 
 describe("Audit types", () => {
@@ -110,5 +112,90 @@ describe("Audit types", () => {
     };
 
     expect(parser("some output", "bare")).toEqual([]);
+  });
+});
+
+describe("ComplianceCoverage type", () => {
+  it("should accept full coverage value", () => {
+    const coverage: ComplianceCoverage = "full";
+    expect(coverage).toBe("full");
+  });
+
+  it("should accept partial coverage value", () => {
+    const coverage: ComplianceCoverage = "partial";
+    expect(coverage).toBe("partial");
+  });
+});
+
+describe("ComplianceRef type", () => {
+  it("should accept a ComplianceRef with all required fields and coverage=full", () => {
+    const ref: ComplianceRef = {
+      framework: "CIS",
+      controlId: "5.2.1",
+      version: "1.0",
+      description: "Ensure SSH MaxAuthTries is set to 4 or less",
+      coverage: "full",
+    };
+
+    expect(ref.framework).toBe("CIS");
+    expect(ref.controlId).toBe("5.2.1");
+    expect(ref.version).toBe("1.0");
+    expect(ref.description).toBeDefined();
+    expect(ref.coverage).toBe("full");
+  });
+
+  it("should accept a ComplianceRef with coverage=partial", () => {
+    const ref: ComplianceRef = {
+      framework: "PCI-DSS",
+      controlId: "2.2.4",
+      version: "4.0",
+      description: "Configure system security parameters",
+      coverage: "partial",
+    };
+
+    expect(ref.coverage).toBe("partial");
+  });
+});
+
+describe("AuditCheck with complianceRefs and tags", () => {
+  it("should be valid without complianceRefs and tags (backward compat)", () => {
+    const check: AuditCheck = {
+      id: "SSH-01",
+      category: "SSH",
+      name: "Password Authentication",
+      severity: "critical",
+      passed: false,
+      currentValue: "yes",
+      expectedValue: "no",
+    };
+
+    expect(check.complianceRefs).toBeUndefined();
+    expect(check.tags).toBeUndefined();
+  });
+
+  it("should accept complianceRefs array and tags array", () => {
+    const check: AuditCheck = {
+      id: "SSH-01",
+      category: "SSH",
+      name: "Password Authentication",
+      severity: "critical",
+      passed: false,
+      currentValue: "yes",
+      expectedValue: "no",
+      complianceRefs: [
+        {
+          framework: "CIS",
+          controlId: "5.2.1",
+          version: "1.0",
+          description: "SSH MaxAuthTries",
+          coverage: "full",
+        },
+      ],
+      tags: ["ssh", "authentication"],
+    };
+
+    expect(check.complianceRefs).toHaveLength(1);
+    expect(check.complianceRefs![0].framework).toBe("CIS");
+    expect(check.tags).toEqual(["ssh", "authentication"]);
   });
 });

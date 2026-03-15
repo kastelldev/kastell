@@ -5,6 +5,16 @@
 
 export type Severity = "critical" | "warning" | "info";
 
+export type ComplianceCoverage = "full" | "partial";
+
+export interface ComplianceRef {
+  framework: string;    // e.g. "CIS", "PCI-DSS", "HIPAA"
+  controlId: string;    // e.g. "5.2.1"
+  version: string;      // Framework version, e.g. "1.0"
+  description: string;  // Human-readable control description
+  coverage: ComplianceCoverage;
+}
+
 export interface AuditCheck {
   id: string;                    // e.g. "SSH-01"
   category: string;              // e.g. "SSH"
@@ -15,6 +25,8 @@ export interface AuditCheck {
   expectedValue: string;         // What should be
   fixCommand?: string;           // Shell command to fix
   explain?: string;              // Why this matters
+  complianceRefs?: ComplianceRef[];  // Compliance framework references (Phase 50)
+  tags?: string[];               // Searchable tags e.g. ["ssh", "authentication"]
 }
 
 export interface AuditCategory {

@@ -19,6 +19,14 @@ import type { AuditResult, SnapshotFile, SnapshotListEntry } from "./types.js";
 
 const SCHEMA_VERSION = 1;
 
+const complianceRefSchema = z.object({
+  framework: z.string(),
+  controlId: z.string(),
+  version: z.string(),
+  description: z.string(),
+  coverage: z.enum(["full", "partial"]),
+});
+
 const auditCheckSchema = z.object({
   id: z.string(),
   category: z.string(),
@@ -29,6 +37,8 @@ const auditCheckSchema = z.object({
   expectedValue: z.string(),
   fixCommand: z.string().optional(),
   explain: z.string().optional(),
+  complianceRefs: z.array(complianceRefSchema).optional(),
+  tags: z.array(z.string()).optional(),
 });
 
 const categorySchema = z.object({
