@@ -1,6 +1,8 @@
 /**
  * Audit history persistence and trend detection.
  * Stores audit results per server and detects score changes over time.
+ * History entries are validated with Zod .strict() to prevent bloat.
+ * detectTrend is version-aware: cross-methodology comparisons return "methodology-change".
  */
 
 import {
@@ -11,6 +13,7 @@ import {
   renameSync,
 } from "fs";
 import { join } from "path";
+import { z } from "zod";
 import { CONFIG_DIR } from "../../utils/config.js";
 import { withFileLock } from "../../utils/fileLock.js";
 import type {
@@ -32,8 +35,24 @@ function getHistoryPath(): string {
 const MAX_ENTRIES_PER_SERVER = 50;
 
 /**
+ * Zod schema for a single history entry.
+ * Uses .strict() to reject extra fields (e.g. checks arrays) that bloat the history file.
+ * auditVersion is optional for backward compat with legacy entries.
+ */
+const auditHistoryEntrySchema = z.object({
+  serverIp: z.string(),
+  serverName: z.string(),
+  timestamp: z.string(),
+  overallScore: z.number(),
+  categoryScores: z.record(z.string(), z.number()),
+  auditVersion: z.string().optional(),
+}).strict();
+
+const historyFileSchema = z.array(auditHistoryEntrySchema);
+
+/**
  * Load audit history for a specific server IP.
- * Returns empty array if no history exists or file is corrupt.
+ * Returns empty array if no history exists, file is corrupt, or any entry fails Zod .strict() validation.
  */
 export function loadAuditHistory(serverIp: string): AuditHistoryEntry[] {
   try {
@@ -42,11 +61,11 @@ export function loadAuditHistory(serverIp: string): AuditHistoryEntry[] {
       return [];
     }
     const data = readFileSync(historyFile, "utf-8");
-    const entries: AuditHistoryEntry[] = JSON.parse(data);
-    if (!Array.isArray(entries)) {
+    const result = historyFileSchema.safeParse(JSON.parse(data));
+    if (!result.success) {
       return [];
     }
-    return entries.filter((e) => e.serverIp === serverIp);
+    return result.data.filter((e) => e.serverIp === serverIp);
   } catch {
     return [];
   }
@@ -73,9 +92,11 @@ export async function saveAuditHistory(result: AuditResult): Promise<void> {
       if (existsSync(historyFile)) {
         const data = readFileSync(historyFile, "utf-8");
         const parsed = JSON.parse(data);
-        if (Array.isArray(parsed)) {
-          entries = parsed;
+        const validated = historyFileSchema.safeParse(parsed);
+        if (validated.success) {
+          entries = validated.data;
         }
+        // If validation fails, start fresh to avoid bloat propagation
       }
     } catch {
       // Start fresh if corrupt
@@ -94,6 +115,7 @@ export async function saveAuditHistory(result: AuditResult): Promise<void> {
       timestamp: result.timestamp,
       overallScore: result.overallScore,
       categoryScores,
+      auditVersion: result.auditVersion,
     };
 
     entries.push(newEntry);
@@ -200,21 +222,33 @@ export function computeTrend(
 
 /**
  * Detect score trend compared to previous audit.
- * Compares against the most recent history entry.
+ * Version-aware: filters history to same auditVersion before comparing.
+ * Returns "methodology-change" if no same-version history exists (cross-version comparison unsafe).
+ * Legacy entries without auditVersion are treated as "1.0.0".
  */
 export function detectTrend(
   currentScore: number,
+  currentVersion: string,
   history: AuditHistoryEntry[],
 ): string {
   if (history.length === 0) {
     return "first audit";
   }
 
-  // Find most recent entry
   const sorted = [...history].sort((a, b) =>
     b.timestamp.localeCompare(a.timestamp),
   );
-  const lastScore = sorted[0].overallScore;
+
+  // Filter to same audit version for meaningful comparison
+  const sameVersion = sorted.filter(
+    (e) => (e.auditVersion ?? "1.0.0") === currentVersion,
+  );
+
+  if (sameVersion.length === 0) {
+    return "methodology-change";
+  }
+
+  const lastScore = sameVersion[0].overallScore;
   const diff = currentScore - lastScore;
 
   if (diff > 0) {

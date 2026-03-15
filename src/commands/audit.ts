@@ -188,11 +188,13 @@ export async function auditCommand(
 
   // Detect trend from history (load BEFORE save so we compare against previous)
   const history = loadAuditHistory(auditResult.serverIp);
-  const trend = detectTrend(auditResult.overallScore, history);
+  const trend = detectTrend(auditResult.overallScore, auditResult.auditVersion, history);
 
   // Save to history (after trend detection)
   await saveAuditHistory(auditResult);
-  if (trend !== "first audit") {
+  if (trend === "methodology-change") {
+    logger.warning("Score methodology updated. New baseline established.");
+  } else if (trend !== "first audit") {
     logger.info(`Trend: ${trend}`);
   }
 

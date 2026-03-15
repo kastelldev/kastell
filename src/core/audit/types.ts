@@ -60,6 +60,7 @@ export interface AuditHistoryEntry {
   timestamp: string;
   overallScore: number;
   categoryScores: Record<string, number>;
+  auditVersion?: string;    // Optional for backward compat with legacy on-disk files
 }
 
 /** Check parser function signature — each category module exports this */
