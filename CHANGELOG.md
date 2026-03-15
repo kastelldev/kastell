@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.8.2] - 2026-03-15
+
+### Fixed
+- **doctor --fix apt hang** — `DEBIAN_FRONTEND=noninteractive` prefix added to apt fix commands over SSH, preventing interactive prompts on headless servers
+- **restore --force bypass** — `--force` flag now auto-selects the latest backup without prompting when `--backup` is not specified
+- **README codecov badge** — Replaced broken codecov.io badge URL with shields.io integration for reliable rendering with logo
+
+### Security
+- **Notify token keychain migration** — Notification tokens (Telegram/Discord/Slack) moved from plain-text config to OS keychain storage with secure file-backed fallback for headless environments
+- **SSH command builder** — New `SshCommand` branded type with `cmd()`/`raw()` builders and POSIX `shellEscape()` — eliminates string concatenation injection risk across 11 core modules
+
+### Changed
+- **MCP SDK isolation** — Dynamic `import()` boundary ensures non-MCP commands (`status`, `fleet`, `audit`, etc.) never load MCP SDK's 179 transitive dependencies
+- **execSync → spawnSync migration** — Shell invocation eliminated from `ssh.ts` and `doctor.ts`, closing Socket.dev shell alert
+- **MCP handler decomposition** — `serverSecure` (10 handlers) and `serverBackup` (6 handlers) extracted to colocated handler modules with 63 new unit tests
+- **Quality audit fixes** — 16 code quality findings resolved: layer violations, duplication, naming consistency, constant extraction
+- Test count: 3,175 → 3,333 (+158 new tests)
+
 ## [1.8.1] - 2026-03-15
 
 ### Added
