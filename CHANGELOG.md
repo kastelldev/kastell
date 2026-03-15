@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.9.1] - 2026-03-15
+
+### Security
+- **Socket.dev alert fixes** — Resolved 3 supply-chain alerts on npm:
+  - `curl|bash` update commands moved from `constants.ts` into adapter files (eliminates obfuscated code alert)
+  - `child_process` import removed from `deploy.ts` — uses `removeStaleHostKey()` utility instead
+  - `globalThis["fetch"]` false positive documented in SOCKET_JUSTIFICATION.md
+
 ## [1.9.0] - 2026-03-15
 
 ### Fixed
