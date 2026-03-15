@@ -1,4 +1,4 @@
-import { spawn, execSync, type ChildProcess } from "child_process";
+import { spawn, spawnSync, type ChildProcess } from "child_process";
 import { existsSync } from "fs";
 import { dirname, join } from "path";
 import type { SshCommand } from "./sshCommand.js";
@@ -24,13 +24,11 @@ let cachedSshPath: string | null = null;
 export function resolveSshPath(): string {
   if (cachedSshPath) return cachedSshPath;
 
-  // Try default PATH first
-  try {
-    execSync("ssh -V", { stdio: "pipe" });
+  // Try default PATH first (spawnSync avoids shell invocation)
+  const probe = spawnSync("ssh", ["-V"], { stdio: "pipe" });
+  if (probe.status === 0) {
     cachedSshPath = "ssh";
     return cachedSshPath;
-  } catch {
-    // Not in PATH, try common locations
   }
 
   // Windows common SSH locations
@@ -64,13 +62,10 @@ export function resolveScpPath(): string {
 }
 
 export function checkSshAvailable(): boolean {
-  try {
-    const sshBin = resolveSshPath();
-    execSync(`"${sshBin}" -V`, { stdio: "pipe" });
-    return true;
-  } catch {
-    return false;
-  }
+  const sshBin = resolveSshPath();
+  // spawnSync avoids shell invocation — pass binary and args separately
+  const result = spawnSync(sshBin, ["-V"], { stdio: "pipe" });
+  return result.status === 0;
 }
 
 export function assertValidIp(ip: string): void {
@@ -131,11 +126,9 @@ export function sanitizedEnv(): NodeJS.ProcessEnv {
  */
 export function removeStaleHostKey(ip: string): void {
   assertValidIp(ip);
-  try {
-    execSync(`ssh-keygen -R "${ip}"`, { stdio: "ignore", env: sanitizedEnv() });
-  } catch {
-    // Silently ignore — ssh-keygen may not be available or no entry exists
-  }
+  // spawnSync with separate args prevents shell injection of ip (defense-in-depth,
+  // even though assertValidIp() already validates the format above)
+  spawnSync("ssh-keygen", ["-R", ip], { stdio: "ignore", env: sanitizedEnv() });
 }
 
 export const HOST_KEY_PATTERN = /Host key verification failed|REMOTE HOST IDENTIFICATION HAS CHANGED/i;

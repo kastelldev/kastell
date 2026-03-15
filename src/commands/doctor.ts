@@ -1,4 +1,4 @@
-import { execSync } from "child_process";
+import { spawnSync } from "child_process";
 import { existsSync, accessSync, constants } from "fs";
 import axios from "axios";
 import { getServers } from "../utils/config.js";
@@ -89,12 +89,13 @@ function checkNodeVersion(): CheckResult {
 }
 
 function checkNpmVersion(): CheckResult {
-  try {
-    const version = execSync("npm --version", { stdio: "pipe" }).toString().trim();
+  // spawnSync avoids shell invocation — pass binary and args separately
+  const result = spawnSync("npm", ["--version"], { stdio: "pipe" });
+  if (result.status === 0) {
+    const version = result.stdout?.toString().trim() ?? "";
     return { name: "npm", status: "pass", detail: `v${version}` };
-  } catch {
-    return { name: "npm", status: "fail", detail: "not found" };
   }
+  return { name: "npm", status: "fail", detail: "not found" };
 }
 
 function checkSsh(): CheckResult {

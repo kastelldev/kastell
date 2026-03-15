@@ -2,10 +2,10 @@ import { EventEmitter } from "events";
 
 jest.mock("child_process", () => ({
   spawn: jest.fn(),
-  execSync: jest.fn(),
+  spawnSync: jest.fn(),
 }));
 
-import { spawn, execSync } from "child_process";
+import { spawn, spawnSync } from "child_process";
 import {
   checkSshAvailable,
   sshConnect,
@@ -15,7 +15,7 @@ import {
 } from "../../src/utils/ssh";
 
 const mockedSpawn = spawn as jest.MockedFunction<typeof spawn>;
-const mockedExecSync = execSync as jest.MockedFunction<typeof execSync>;
+const mockedSpawnSync = spawnSync as jest.MockedFunction<typeof spawnSync>;
 
 function createMockProcess(exitCode: number = 0) {
   const cp = new EventEmitter() as any;
@@ -31,6 +31,8 @@ describe("security-ssh E2E", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env = { ...originalEnv };
+    // resolveSshPath() uses spawnSync to check if ssh is in PATH
+    mockedSpawnSync.mockReturnValue({ status: 0, stdout: Buffer.from("OpenSSH_8.9"), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
   });
 
   afterEach(() => {
@@ -298,15 +300,13 @@ describe("security-ssh E2E", () => {
 
   describe("SSH availability check", () => {
     it("should return true when ssh is available", () => {
-      mockedExecSync.mockReturnValue(Buffer.from("OpenSSH_8.9"));
+      mockedSpawnSync.mockReturnValue({ status: 0, stdout: Buffer.from("OpenSSH_8.9"), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
 
       expect(checkSshAvailable()).toBe(true);
     });
 
     it("should return false when ssh is not available", () => {
-      mockedExecSync.mockImplementation(() => {
-        throw new Error("not found");
-      });
+      mockedSpawnSync.mockReturnValue({ status: 1, stdout: Buffer.from(""), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
 
       expect(checkSshAvailable()).toBe(false);
     });

@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// MCP SDK isolation: This file is the entry point for kastell-mcp binary only.
+// The main kastell CLI (src/index.ts) must NEVER import from this module.
+// See tests/unit/dep-isolation.test.ts for the guard test.
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";

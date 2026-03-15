@@ -2,14 +2,14 @@ import { EventEmitter } from "events";
 
 jest.mock("child_process", () => ({
   spawn: jest.fn(),
-  execSync: jest.fn(),
+  spawnSync: jest.fn(),
 }));
 
 jest.mock("fs", () => ({
   existsSync: jest.fn().mockReturnValue(false),
 }));
 
-import { spawn, execSync } from "child_process";
+import { spawn, spawnSync } from "child_process";
 import { existsSync } from "fs";
 import {
   checkSshAvailable,
@@ -25,7 +25,7 @@ import {
 const mockedExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;
 
 const mockedSpawn = spawn as jest.MockedFunction<typeof spawn>;
-const mockedExecSync = execSync as jest.MockedFunction<typeof execSync>;
+const mockedSpawnSync = spawnSync as jest.MockedFunction<typeof spawnSync>;
 
 function createMockProcess(exitCode: number = 0) {
   const cp = new EventEmitter() as any;
@@ -44,17 +44,15 @@ describe("ssh utils", () => {
 
   describe("resolveSshPath (BUG-13)", () => {
     it("should return 'ssh' when ssh is available in PATH", () => {
-      mockedExecSync.mockReturnValue(Buffer.from("OpenSSH_8.9"));
+      mockedSpawnSync.mockReturnValue({ status: 0, stdout: Buffer.from("OpenSSH_8.9"), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
       // Clear cache by using a fresh import each time isn't feasible,
-      // but since execSync succeeds, it should return "ssh"
+      // but since spawnSync succeeds, it should return "ssh"
       const result = resolveSshPath();
       expect(result).toBe("ssh");
     });
 
     it("should return 'ssh' as fallback when not found anywhere", () => {
-      mockedExecSync.mockImplementation(() => {
-        throw new Error("not found");
-      });
+      mockedSpawnSync.mockReturnValue({ status: 1, stdout: Buffer.from(""), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
       mockedExistsSync.mockReturnValue(false);
 
       const result = resolveSshPath();
@@ -65,9 +63,7 @@ describe("ssh utils", () => {
       const originalPlatform = process.platform;
       Object.defineProperty(process, "platform", { value: "win32", configurable: true });
 
-      mockedExecSync.mockImplementation(() => {
-        throw new Error("not found");
-      });
+      mockedSpawnSync.mockReturnValue({ status: 1, stdout: Buffer.from(""), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
       // First candidate (System32/OpenSSH/ssh.exe) exists
       mockedExistsSync.mockImplementation((p: any) =>
         typeof p === "string" && p.includes("OpenSSH") && p.includes("System32"),
@@ -82,14 +78,12 @@ describe("ssh utils", () => {
 
   describe("checkSshAvailable", () => {
     it("should return true when ssh is available", () => {
-      mockedExecSync.mockReturnValue(Buffer.from("OpenSSH_8.9"));
+      mockedSpawnSync.mockReturnValue({ status: 0, stdout: Buffer.from("OpenSSH_8.9"), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
       expect(checkSshAvailable()).toBe(true);
     });
 
     it("should return false when ssh is not available", () => {
-      mockedExecSync.mockImplementation(() => {
-        throw new Error("not found");
-      });
+      mockedSpawnSync.mockReturnValue({ status: 1, stdout: Buffer.from(""), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
       expect(checkSshAvailable()).toBe(false);
     });
   });
@@ -281,24 +275,18 @@ describe("ssh utils", () => {
   });
 
   describe("removeStaleHostKey", () => {
-    it("should call execSync with ssh-keygen -R and the IP", () => {
-      mockedExecSync.mockReturnValue(Buffer.from(""));
+    it("should call spawnSync with ssh-keygen -R and the IP as separate args", () => {
+      mockedSpawnSync.mockReturnValue({ status: 0, stdout: Buffer.from(""), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
       removeStaleHostKey("1.2.3.4");
-      expect(mockedExecSync).toHaveBeenCalledWith(
-        expect.stringContaining("ssh-keygen"),
+      expect(mockedSpawnSync).toHaveBeenCalledWith(
+        "ssh-keygen",
+        ["-R", "1.2.3.4"],
         expect.objectContaining({ stdio: "ignore" }),
       );
-      const call = mockedExecSync.mock.calls.find((c) =>
-        typeof c[0] === "string" && c[0].includes("-R"),
-      );
-      expect(call).toBeDefined();
-      expect(call![0]).toContain("1.2.3.4");
     });
 
     it("should not throw when ssh-keygen fails", () => {
-      mockedExecSync.mockImplementation(() => {
-        throw new Error("ssh-keygen not found");
-      });
+      mockedSpawnSync.mockReturnValue({ status: 1, stdout: Buffer.from(""), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
       expect(() => removeStaleHostKey("1.2.3.4")).not.toThrow();
     });
 
@@ -320,7 +308,7 @@ describe("ssh utils", () => {
       mockCp2.stderr = new EventEmitter();
 
       mockedSpawn.mockReturnValueOnce(mockCp1).mockReturnValueOnce(mockCp2);
-      mockedExecSync.mockReturnValue(Buffer.from(""));
+      mockedSpawnSync.mockReturnValue({ status: 0, stdout: Buffer.from(""), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
 
       const promise = sshExec("1.2.3.4", "echo ok");
       process.nextTick(() => {
@@ -336,11 +324,8 @@ describe("ssh utils", () => {
       expect(result.code).toBe(0);
       expect(result.stdout).toBe("ok");
       expect(mockedSpawn).toHaveBeenCalledTimes(2);
-      // Verify ssh-keygen -R was called
-      const keyScanCall = mockedExecSync.mock.calls.find((c) =>
-        typeof c[0] === "string" && c[0].includes("-R"),
-      );
-      expect(keyScanCall).toBeDefined();
+      // Verify ssh-keygen -R was called via spawnSync
+      expect(mockedSpawnSync).toHaveBeenCalledWith("ssh-keygen", ["-R", "1.2.3.4"], expect.objectContaining({ stdio: "ignore" }));
     });
 
     it("should retry once when stderr contains 'REMOTE HOST IDENTIFICATION HAS CHANGED'", async () => {
@@ -353,7 +338,7 @@ describe("ssh utils", () => {
       mockCp2.stderr = new EventEmitter();
 
       mockedSpawn.mockReturnValueOnce(mockCp1).mockReturnValueOnce(mockCp2);
-      mockedExecSync.mockReturnValue(Buffer.from(""));
+      mockedSpawnSync.mockReturnValue({ status: 0, stdout: Buffer.from(""), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
 
       const promise = sshExec("1.2.3.4", "uptime");
       process.nextTick(() => {
@@ -399,7 +384,7 @@ describe("ssh utils", () => {
       const mockCp2 = makeHostKeyMockCp();
 
       mockedSpawn.mockReturnValueOnce(mockCp1).mockReturnValueOnce(mockCp2);
-      mockedExecSync.mockReturnValue(Buffer.from(""));
+      mockedSpawnSync.mockReturnValue({ status: 0, stdout: Buffer.from(""), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
 
       const promise = sshExec("1.2.3.4", "uptime");
       process.nextTick(() => {
@@ -427,7 +412,7 @@ describe("ssh utils", () => {
       mockCp2.stderr = new EventEmitter();
 
       mockedSpawn.mockReturnValueOnce(mockCp1).mockReturnValueOnce(mockCp2);
-      mockedExecSync.mockReturnValue(Buffer.from(""));
+      mockedSpawnSync.mockReturnValue({ status: 0, stdout: Buffer.from(""), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
 
       const promise = sshExec("1.2.3.4", "hostname");
       process.nextTick(() => {
@@ -458,7 +443,7 @@ describe("ssh utils", () => {
       mockCp2.stderr = new EventEmitter();
 
       mockedSpawn.mockReturnValueOnce(mockCp1).mockReturnValueOnce(mockCp2);
-      mockedExecSync.mockReturnValue(Buffer.from(""));
+      mockedSpawnSync.mockReturnValue({ status: 0, stdout: Buffer.from(""), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
 
       const promise = sshStream("1.2.3.4", "journalctl -f");
       process.nextTick(() => {
@@ -495,7 +480,7 @@ describe("ssh utils", () => {
   describe("resolveScpPath", () => {
     it("should return 'scp' when resolveSshPath returns 'ssh' (default PATH)", () => {
       // resolveSshPath is cached from earlier tests as "ssh"
-      mockedExecSync.mockReturnValue(Buffer.from("OpenSSH_8.9"));
+      mockedSpawnSync.mockReturnValue({ status: 0, stdout: Buffer.from("OpenSSH_8.9"), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
       const result = resolveScpPath();
       expect(result).toBe("scp");
     });

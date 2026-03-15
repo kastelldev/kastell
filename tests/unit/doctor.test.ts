@@ -1,9 +1,9 @@
-import { execSync } from "child_process";
+import { spawnSync } from "child_process";
 import { existsSync, accessSync } from "fs";
 import axios from "axios";
 
 jest.mock("child_process", () => ({
-  execSync: jest.fn(),
+  spawnSync: jest.fn(),
 }));
 
 jest.mock("fs", () => ({
@@ -51,7 +51,7 @@ import { runDoctorFix } from "../../src/core/doctor-fix";
 import { runDoctorChecks, doctorCommand, checkProviderTokens } from "../../src/commands/doctor";
 
 const mockedAxios = axios as jest.Mocked<typeof axios>;
-const mockedExecSync = execSync as jest.MockedFunction<typeof execSync>;
+const mockedSpawnSync = spawnSync as jest.MockedFunction<typeof spawnSync>;
 const mockedExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;
 const mockedAccessSync = accessSync as jest.MockedFunction<typeof accessSync>;
 const mockedCheckSsh = checkSshAvailable as jest.MockedFunction<typeof checkSshAvailable>;
@@ -72,7 +72,7 @@ describe("doctorCommand — local mode (no server arg)", () => {
   });
 
   it("should pass Node.js check when version >= 20", () => {
-    mockedExecSync.mockReturnValue(Buffer.from("10.0.0"));
+    mockedSpawnSync.mockReturnValue({ status: 0, stdout: Buffer.from("10.0.0"), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
     mockedCheckSsh.mockReturnValue(true);
     mockedExistsSync.mockReturnValue(true);
     mockedAccessSync.mockImplementation(() => {});
@@ -84,7 +84,7 @@ describe("doctorCommand — local mode (no server arg)", () => {
   });
 
   it("should pass npm check when npm is available", () => {
-    mockedExecSync.mockReturnValue(Buffer.from("10.0.0"));
+    mockedSpawnSync.mockReturnValue({ status: 0, stdout: Buffer.from("10.0.0"), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
     mockedCheckSsh.mockReturnValue(true);
     mockedExistsSync.mockReturnValue(true);
     mockedAccessSync.mockImplementation(() => {});
@@ -96,9 +96,7 @@ describe("doctorCommand — local mode (no server arg)", () => {
   });
 
   it("should fail npm check when npm is not found", () => {
-    mockedExecSync.mockImplementation(() => {
-      throw new Error("not found");
-    });
+    mockedSpawnSync.mockReturnValue({ status: 1, stdout: Buffer.from(""), stderr: Buffer.from("npm: command not found"), pid: 1, output: [], signal: null });
     mockedCheckSsh.mockReturnValue(true);
     mockedExistsSync.mockReturnValue(true);
     mockedAccessSync.mockImplementation(() => {});
@@ -110,7 +108,7 @@ describe("doctorCommand — local mode (no server arg)", () => {
   });
 
   it("should pass SSH check when available", () => {
-    mockedExecSync.mockReturnValue(Buffer.from("10.0.0"));
+    mockedSpawnSync.mockReturnValue({ status: 0, stdout: Buffer.from("10.0.0"), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
     mockedCheckSsh.mockReturnValue(true);
     mockedExistsSync.mockReturnValue(true);
     mockedAccessSync.mockImplementation(() => {});
@@ -121,7 +119,7 @@ describe("doctorCommand — local mode (no server arg)", () => {
   });
 
   it("should warn SSH check when not available", () => {
-    mockedExecSync.mockReturnValue(Buffer.from("10.0.0"));
+    mockedSpawnSync.mockReturnValue({ status: 0, stdout: Buffer.from("10.0.0"), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
     mockedCheckSsh.mockReturnValue(false);
     mockedExistsSync.mockReturnValue(true);
     mockedAccessSync.mockImplementation(() => {});
@@ -132,7 +130,7 @@ describe("doctorCommand — local mode (no server arg)", () => {
   });
 
   it("should show kastell version when provided", () => {
-    mockedExecSync.mockReturnValue(Buffer.from("10.0.0"));
+    mockedSpawnSync.mockReturnValue({ status: 0, stdout: Buffer.from("10.0.0"), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
     mockedCheckSsh.mockReturnValue(true);
     mockedExistsSync.mockReturnValue(true);
     mockedAccessSync.mockImplementation(() => {});
@@ -144,7 +142,7 @@ describe("doctorCommand — local mode (no server arg)", () => {
   });
 
   it("should warn kastell version when not provided", () => {
-    mockedExecSync.mockReturnValue(Buffer.from("10.0.0"));
+    mockedSpawnSync.mockReturnValue({ status: 0, stdout: Buffer.from("10.0.0"), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
     mockedCheckSsh.mockReturnValue(true);
     mockedExistsSync.mockReturnValue(true);
     mockedAccessSync.mockImplementation(() => {});
@@ -156,7 +154,7 @@ describe("doctorCommand — local mode (no server arg)", () => {
   });
 
   it("should warn when config dir does not exist", () => {
-    mockedExecSync.mockReturnValue(Buffer.from("10.0.0"));
+    mockedSpawnSync.mockReturnValue({ status: 0, stdout: Buffer.from("10.0.0"), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
     mockedCheckSsh.mockReturnValue(true);
     mockedExistsSync.mockReturnValue(false);
     mockedAccessSync.mockImplementation(() => {});
@@ -167,7 +165,7 @@ describe("doctorCommand — local mode (no server arg)", () => {
   });
 
   it("should fail when config dir is not writable", () => {
-    mockedExecSync.mockReturnValue(Buffer.from("10.0.0"));
+    mockedSpawnSync.mockReturnValue({ status: 0, stdout: Buffer.from("10.0.0"), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
     mockedCheckSsh.mockReturnValue(true);
     mockedExistsSync.mockReturnValue(true);
     mockedAccessSync.mockImplementation(() => {
@@ -180,7 +178,7 @@ describe("doctorCommand — local mode (no server arg)", () => {
   });
 
   it("should display all checks and summary — new signature (undefined, options, version)", async () => {
-    mockedExecSync.mockReturnValue(Buffer.from("10.0.0"));
+    mockedSpawnSync.mockReturnValue({ status: 0, stdout: Buffer.from("10.0.0"), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
     mockedCheckSsh.mockReturnValue(true);
     mockedExistsSync.mockReturnValue(true);
     mockedAccessSync.mockImplementation(() => {});
@@ -194,7 +192,7 @@ describe("doctorCommand — local mode (no server arg)", () => {
   });
 
   it("should show info message with --check-tokens when no servers — new signature", async () => {
-    mockedExecSync.mockReturnValue(Buffer.from("10.0.0"));
+    mockedSpawnSync.mockReturnValue({ status: 0, stdout: Buffer.from("10.0.0"), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
     mockedCheckSsh.mockReturnValue(true);
     mockedExistsSync.mockReturnValue(true);
     mockedAccessSync.mockImplementation(() => {});
@@ -209,7 +207,7 @@ describe("doctorCommand — local mode (no server arg)", () => {
     const original = process.version;
     Object.defineProperty(process, "version", { value: "v18.0.0", configurable: true });
 
-    mockedExecSync.mockReturnValue(Buffer.from("10.0.0"));
+    mockedSpawnSync.mockReturnValue({ status: 0, stdout: Buffer.from("10.0.0"), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
     mockedCheckSsh.mockReturnValue(true);
     mockedExistsSync.mockReturnValue(true);
     mockedAccessSync.mockImplementation(() => {});
@@ -223,7 +221,7 @@ describe("doctorCommand — local mode (no server arg)", () => {
   });
 
   it("should pass servers check when servers registered", () => {
-    mockedExecSync.mockReturnValue(Buffer.from("10.0.0"));
+    mockedSpawnSync.mockReturnValue({ status: 0, stdout: Buffer.from("10.0.0"), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
     mockedCheckSsh.mockReturnValue(true);
     mockedExistsSync.mockReturnValue(true);
     mockedAccessSync.mockImplementation(() => {});
@@ -251,7 +249,7 @@ describe("doctorCommand — local mode (no server arg)", () => {
   });
 
   it("should show error summary when failures exist", async () => {
-    mockedExecSync.mockReturnValue(Buffer.from("10.0.0"));
+    mockedSpawnSync.mockReturnValue({ status: 0, stdout: Buffer.from("10.0.0"), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
     mockedCheckSsh.mockReturnValue(true);
     mockedExistsSync.mockReturnValue(true);
     mockedAccessSync.mockImplementation(() => {
@@ -265,7 +263,7 @@ describe("doctorCommand — local mode (no server arg)", () => {
   });
 
   it("should show all-pass message when no failures and no warnings", async () => {
-    mockedExecSync.mockReturnValue(Buffer.from("10.0.0"));
+    mockedSpawnSync.mockReturnValue({ status: 0, stdout: Buffer.from("10.0.0"), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
     mockedCheckSsh.mockReturnValue(true);
     mockedExistsSync.mockReturnValue(true);
     mockedAccessSync.mockImplementation(() => {});
@@ -293,7 +291,7 @@ describe("doctorCommand — local mode (no server arg)", () => {
   });
 
   it("does not call resolveServer when no server argument given", async () => {
-    mockedExecSync.mockReturnValue(Buffer.from("10.0.0"));
+    mockedSpawnSync.mockReturnValue({ status: 0, stdout: Buffer.from("10.0.0"), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
     mockedCheckSsh.mockReturnValue(true);
     mockedExistsSync.mockReturnValue(true);
     mockedAccessSync.mockImplementation(() => {});
