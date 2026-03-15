@@ -1,6 +1,16 @@
 import { parseLoggingChecks } from "../../src/core/audit/checks/logging.js";
 
 describe("parseLoggingChecks", () => {
+  // Secure output includes data from all 9 loggingSection() commands:
+  // 1. rsyslog status
+  // 2. journald status
+  // 3. logrotate config
+  // 4. auth log exists
+  // 5. auditctl rules output
+  // 6. systemctl auditd status
+  // 7. /var/log stat
+  // 8. journald.conf Storage
+  // 9. which output for centralized tools
   const secureOutput = [
     // rsyslog status
     "active",
@@ -10,6 +20,16 @@ describe("parseLoggingChecks", () => {
     "weekly\nrotate 4\ncreate\ncompress",
     // auth log
     "EXISTS",
+    // auditctl rules (includes login, sudo, file rules)
+    "-w /var/log/lastlog -p wa -k logins\n-w /etc/sudoers -p wa -k privilege\n-w /etc/passwd -p wa -k identity\n-w /etc/shadow -p wa -k identity",
+    // auditd service active
+    "active",
+    // /var/log permissions (750 = not world-readable)
+    "750",
+    // journald persistent storage
+    "Storage=persistent",
+    // centralized logging tool installed
+    "/usr/bin/vector",
   ].join("\n");
 
   const insecureOutput = [
@@ -21,11 +41,21 @@ describe("parseLoggingChecks", () => {
     "N/A",
     // auth log missing
     "MISSING",
+    // no auditctl rules
+    "NO_RULES",
+    // auditd not running
+    "inactive",
+    // /var/log permissions (755 = world-readable)
+    "755",
+    // journald volatile
+    "N/A",
+    // no centralized logging
+    "NONE",
   ].join("\n");
 
-  it("should return 5 checks", () => {
+  it("should return 12 checks", () => {
     const checks = parseLoggingChecks(secureOutput, "bare");
-    expect(checks).toHaveLength(5);
+    expect(checks).toHaveLength(12);
     checks.forEach((check) => {
       expect(check.category).toBe("Logging");
       expect(check.id).toMatch(/^LOG-[A-Z][A-Z0-9]*(-[A-Z][A-Z0-9]*)+$/);
@@ -56,8 +86,44 @@ describe("parseLoggingChecks", () => {
     expect(log02!.passed).toBe(false);
   });
 
+  it("should return LOG-AUDIT-LOGIN-RULES passed when auditctl output contains /var/log/lastlog", () => {
+    const checks = parseLoggingChecks(secureOutput, "bare");
+    const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-LOGIN-RULES");
+    expect(check!.passed).toBe(true);
+  });
+
+  it("should return LOG-AUDIT-LOGIN-RULES failed when no login audit rules", () => {
+    const checks = parseLoggingChecks(insecureOutput, "bare");
+    const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-LOGIN-RULES");
+    expect(check!.passed).toBe(false);
+  });
+
+  it("should return LOG-VARLOG-PERMISSIONS passed when /var/log is mode 750", () => {
+    const checks = parseLoggingChecks(secureOutput, "bare");
+    const check = checks.find((c: { id: string }) => c.id === "LOG-VARLOG-PERMISSIONS");
+    expect(check!.passed).toBe(true);
+  });
+
+  it("should return LOG-VARLOG-PERMISSIONS failed when /var/log is mode 755 (world-readable)", () => {
+    const checks = parseLoggingChecks(insecureOutput, "bare");
+    const check = checks.find((c: { id: string }) => c.id === "LOG-VARLOG-PERMISSIONS");
+    expect(check!.passed).toBe(false);
+  });
+
+  it("should return LOG-CENTRAL-LOGGING passed when centralized logging tool installed", () => {
+    const checks = parseLoggingChecks(secureOutput, "bare");
+    const check = checks.find((c: { id: string }) => c.id === "LOG-CENTRAL-LOGGING");
+    expect(check!.passed).toBe(true);
+  });
+
+  it("should return LOG-CENTRAL-LOGGING failed when no centralized logging tool", () => {
+    const checks = parseLoggingChecks(insecureOutput, "bare");
+    const check = checks.find((c: { id: string }) => c.id === "LOG-CENTRAL-LOGGING");
+    expect(check!.passed).toBe(false);
+  });
+
   it("should handle N/A output gracefully", () => {
     const checks = parseLoggingChecks("N/A", "bare");
-    expect(checks).toHaveLength(5);
+    expect(checks).toHaveLength(12);
   });
 });
