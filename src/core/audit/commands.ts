@@ -25,6 +25,9 @@ function sshSection(): string {
     `cat /etc/ssh/sshd_config 2>/dev/null || echo 'N/A'`,
     `ss -tlnp 2>/dev/null | grep ssh || netstat -tlnp 2>/dev/null | grep ssh || echo 'N/A'`,
     `sshd -T 2>/dev/null | grep -iE 'passwordauthentication|permitrootlogin|permitemptypasswords|pubkeyauthentication|protocol|maxauthtries|x11forwarding' || echo 'N/A'`,
+    `sshd -T 2>/dev/null | grep -iE 'clientaliveinterval|clientalivecountmax|logingracetime|maxsessions|allowusers|allowgroups|denyusers|denygroups' || echo 'N/A'`,
+    `sshd -T 2>/dev/null | grep -iE 'hostbasedauthentication|ignorerhosts|usedns|permituserenvironment|loglevel|banner' || echo 'N/A'`,
+    `sshd -T 2>/dev/null | grep -iE '^ciphers|^macs|^kexalgorithms' || echo 'N/A'`,
   ].join("\n");
 }
 
@@ -34,6 +37,16 @@ function firewallSection(): string {
     `command -v ufw >/dev/null 2>&1 && ufw status verbose 2>/dev/null || echo 'N/A'`,
     `command -v iptables >/dev/null 2>&1 && iptables -L -n 2>/dev/null | wc -l || echo 'N/A'`,
     `command -v fail2ban-client >/dev/null 2>&1 && fail2ban-client status 2>/dev/null || echo 'N/A'`,
+    // NEW: nftables detection
+    `command -v nft >/dev/null 2>&1 && nft list ruleset 2>/dev/null | head -20 || echo 'N/A'`,
+    // NEW: iptables INPUT chain details
+    `iptables -L INPUT -n --line-numbers 2>/dev/null | head -20 || echo 'N/A'`,
+    // NEW: iptables INPUT default policy
+    `iptables -L INPUT -n 2>/dev/null | head -1 || echo 'N/A'`,
+    // NEW: outbound rules
+    `iptables -L OUTPUT -n 2>/dev/null | head -1 || echo 'N/A'`,
+    // NEW: rate limiting presence
+    `iptables -L -n 2>/dev/null | grep -i 'limit' | head -5 || echo 'NONE'`,
   ].join("\n");
 }
 
@@ -44,6 +57,17 @@ function updatesSection(): string {
     `dpkg -l unattended-upgrades 2>/dev/null | grep '^ii' || echo 'N/A'`,
     `stat -c '%Y' /var/lib/apt/lists/ 2>/dev/null || echo 'N/A'`,
     `test -f /var/run/reboot-required && echo 'REBOOT_REQUIRED' || echo 'NO_REBOOT'`,
+    // NEW: last upgrade timestamp
+    `stat -c '%Y' /var/log/dpkg.log 2>/dev/null || echo 'N/A'`,
+    // NEW: CVE scanner presence
+    `which trivy grype 2>/dev/null || echo 'NONE'`,
+    // NEW: half-installed packages
+    `dpkg --audit 2>/dev/null | wc -l || echo '0'`,
+    // NEW: running kernel version
+    `uname -r 2>/dev/null || echo 'N/A'`,
+    `dpkg -l 'linux-image-*' 2>/dev/null | grep '^ii' | tail -1 | awk '{print $3}' || echo 'N/A'`,
+    // NEW: auto-upgrades config
+    `cat /etc/apt/apt.conf.d/20auto-upgrades 2>/dev/null || echo 'N/A'`,
   ].join("\n");
 }
 
@@ -54,6 +78,20 @@ function authSection(): string {
     `getent group sudo 2>/dev/null || echo 'N/A'`,
     `cat /etc/login.defs 2>/dev/null | grep -E '^PASS_MAX_DAYS|^PASS_MIN_DAYS|^PASS_WARN_AGE' || echo 'N/A'`,
     `awk -F: '($2 == "" || $2 == "!") {print $1}' /etc/shadow 2>/dev/null || echo 'N/A'`,
+    // NEW: shadow file permissions
+    `stat -c '%a' /etc/shadow 2>/dev/null || echo 'N/A'`,
+    // NEW: sudo logging
+    `grep -E '^Defaults.*log_output|^Defaults.*syslog' /etc/sudoers /etc/sudoers.d/* 2>/dev/null | head -5 || echo 'NONE'`,
+    // NEW: sudo requiretty
+    `grep -E '^Defaults.*requiretty' /etc/sudoers /etc/sudoers.d/* 2>/dev/null | head -3 || echo 'NONE'`,
+    // NEW: UID 0 accounts
+    `awk -F: '($3 == 0) {print $1}' /etc/passwd 2>/dev/null || echo 'N/A'`,
+    // NEW: faillock/pam_tally2
+    `grep -E 'pam_faillock|pam_tally2' /etc/pam.d/common-auth /etc/pam.d/system-auth 2>/dev/null || echo 'NONE'`,
+    // NEW: MFA packages
+    `dpkg -l libpam-google-authenticator libpam-oath 2>/dev/null | grep '^ii' | head -5 || echo 'NONE'`,
+    // NEW: login.defs extras (INACTIVE)
+    `grep -E '^INACTIVE' /etc/default/useradd 2>/dev/null || echo 'N/A'`,
   ].join("\n");
 }
 
@@ -64,6 +102,12 @@ function dockerSection(platform: string): string {
     `cat /etc/docker/daemon.json 2>/dev/null || echo 'N/A'`,
     `command -v docker >/dev/null 2>&1 && docker ps --format '{{.Names}} {{.Image}} {{.Status}}' 2>/dev/null || echo 'N/A'`,
     `ls -la /var/run/docker.sock 2>/dev/null || echo 'N/A'`,
+    // NEW: container security inspection (top 5 running containers)
+    `command -v docker >/dev/null 2>&1 && docker ps -q 2>/dev/null | head -5 | xargs -r docker inspect --format '{{.Name}} SecurityOpt={{.HostConfig.SecurityOpt}} ReadonlyRootfs={{.HostConfig.ReadonlyRootfs}} User={{.Config.User}} Privileged={{.HostConfig.Privileged}}' 2>/dev/null || echo 'N/A'`,
+    // NEW: Docker content trust env
+    `echo "DOCKER_CONTENT_TRUST=\${DOCKER_CONTENT_TRUST:-unset}" 2>/dev/null`,
+    // NEW: Docker socket permissions detail
+    `stat -c '%a %U %G' /var/run/docker.sock 2>/dev/null || echo 'N/A'`,
   ];
 
   if (platform === "coolify") {
@@ -89,6 +133,10 @@ function networkSection(): string {
     `sysctl net.ipv4.ip_forward 2>/dev/null || echo 'N/A'`,
     `cat /etc/resolv.conf 2>/dev/null | grep nameserver || echo 'N/A'`,
     `timedatectl 2>/dev/null || echo 'N/A'`,
+    `test -f /etc/hosts.allow && cat /etc/hosts.allow 2>/dev/null | head -10 || echo 'NO_HOSTS_ALLOW'`,
+    `test -f /etc/hosts.deny && cat /etc/hosts.deny 2>/dev/null | head -10 || echo 'NO_HOSTS_DENY'`,
+    `sysctl net.ipv6.conf.all.disable_ipv6 net.ipv4.conf.all.send_redirects net.ipv4.conf.all.secure_redirects net.ipv6.conf.all.accept_source_route net.ipv4.conf.all.rp_filter net.ipv4.tcp_syn_retries 2>/dev/null || echo 'N/A'`,
+    `ss -tlnp 2>/dev/null | grep -E ':8080 |:8443 |:9000 |:3000 ' | grep '0.0.0.0' | head -10 || echo 'NONE'`,
   ].join("\n");
 }
 
@@ -99,13 +147,23 @@ function loggingSection(): string {
     `systemctl is-active systemd-journald 2>/dev/null || echo 'N/A'`,
     `cat /etc/logrotate.conf 2>/dev/null | head -10 || echo 'N/A'`,
     `test -f /var/log/auth.log && echo 'EXISTS' || test -f /var/log/secure && echo 'EXISTS' || echo 'MISSING'`,
+    // NEW: auditd rules
+    `auditctl -l 2>/dev/null | head -20 || echo 'NO_RULES'`,
+    // NEW: auditd active status
+    `systemctl is-active auditd 2>/dev/null || echo 'inactive'`,
+    // NEW: /var/log permissions
+    `stat -c '%a' /var/log 2>/dev/null || echo 'N/A'`,
+    // NEW: journald persistent storage
+    `grep -E '^Storage' /etc/systemd/journald.conf 2>/dev/null || echo 'N/A'`,
+    // NEW: centralized logging tools
+    `which vector promtail fluent-bit 2>/dev/null || echo 'NONE'`,
   ].join("\n");
 }
 
 function kernelSection(): string {
   return [
     NAMED_SEP("KERNEL"),
-    `sysctl -a 2>/dev/null | grep -E 'randomize_va_space|accept_redirects|accept_source_route|log_martians|syncookies|core_uses_pid' || echo 'N/A'`,
+    `sysctl -a 2>/dev/null | grep -E 'randomize_va_space|accept_redirects|accept_source_route|log_martians|syncookies|core_uses_pid|dmesg_restrict|kptr_restrict|ptrace_scope|perf_event_paranoid|tcp_timestamps|icmp_echo_ignore_broadcasts|rp_filter|ip_forward|modules_disabled|unprivileged_bpf_disabled|send_redirects|secure_redirects' || echo 'N/A'`,
     `uname -r 2>/dev/null || echo 'N/A'`,
     `cat /sys/kernel/security/lsm 2>/dev/null || echo 'N/A'`,
   ].join("\n");
@@ -252,6 +310,16 @@ function filesystemSection(): string {
     `find /usr/bin /usr/sbin -perm -4000 -type f 2>/dev/null | head -20 || echo 'N/A'`,
     `stat -c '%a %U %G' /tmp 2>/dev/null || echo 'N/A'`,
     `df -h / 2>/dev/null || echo 'N/A'`,
+    // NEW: mount option checks
+    `findmnt -o TARGET,OPTIONS --raw 2>/dev/null || cat /proc/mounts 2>/dev/null || echo 'N/A'`,
+    // NEW: /dev/shm permissions
+    `stat -c '%a %U %G' /dev/shm 2>/dev/null || echo 'N/A'`,
+    // NEW: umask
+    `umask 2>/dev/null || echo 'N/A'`,
+    // NEW: home directory permissions
+    `find /home -maxdepth 1 -mindepth 1 -type d -exec stat -c '%a %n' {} \\; 2>/dev/null | head -20 || echo 'N/A'`,
+    // NEW: /var/tmp permissions
+    `stat -c '%a %U %G' /var/tmp 2>/dev/null || echo 'N/A'`,
   ].join("\n");
 }
 
