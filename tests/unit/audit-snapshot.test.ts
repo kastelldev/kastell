@@ -1,7 +1,6 @@
 /**
  * Unit tests for audit snapshot persistence module.
  * Tests: saveSnapshot, loadSnapshot, listSnapshots
- * Includes schema v2 + v1-to-v2 migration tests (Plan 45-02).
  */
 
 import {
@@ -28,7 +27,7 @@ function makeAuditResult(overrides: Partial<AuditResult> = {}): AuditResult {
     serverIp: "1.2.3.4",
     platform: "bare",
     timestamp: "2026-03-08T10:00:00.000Z",
-    auditVersion: "1.10.0",
+    auditVersion: "1.0.0",
     categories: [
       { name: "SSH", checks: [], score: 80, maxScore: 100 },
       { name: "Firewall", checks: [], score: 60, maxScore: 100 },
@@ -73,20 +72,12 @@ describe("saveSnapshot", () => {
     );
   });
 
-  it("should produce JSON with schemaVersion: 2 (v2 schema)", async () => {
+  it("should produce JSON with schemaVersion: 1", async () => {
     await saveSnapshot(makeAuditResult());
 
     const writeContent = (mockedFs.writeFileSync as jest.Mock).mock.calls[0][1] as string;
     const parsed = JSON.parse(writeContent);
-    expect(parsed.schemaVersion).toBe(2);
-  });
-
-  it("should include auditVersion in saved audit object", async () => {
-    await saveSnapshot(makeAuditResult({ auditVersion: "1.10.0" }));
-
-    const writeContent = (mockedFs.writeFileSync as jest.Mock).mock.calls[0][1] as string;
-    const parsed = JSON.parse(writeContent);
-    expect(parsed.audit.auditVersion).toBe("1.10.0");
+    expect(parsed.schemaVersion).toBe(1);
   });
 
   it("should contain full audit result in envelope", async () => {
@@ -170,50 +161,17 @@ describe("loadSnapshot", () => {
     jest.clearAllMocks();
   });
 
-  it("should return parsed SnapshotFile for valid v2 JSON", async () => {
+  it("should return parsed SnapshotFile for valid JSON", async () => {
     const snapshotData = {
-      schemaVersion: 2,
+      schemaVersion: 1,
       savedAt: "2026-03-08T10:00:00.000Z",
-      audit: makeAuditResult({ auditVersion: "1.10.0" }),
+      audit: makeAuditResult(),
     };
     mockedFs.readFileSync.mockReturnValue(JSON.stringify(snapshotData));
 
     const result = await loadSnapshot("1.2.3.4", "2026-03-08T10-00-00-000Z.json");
     expect(result).not.toBeNull();
-    expect(result!.schemaVersion).toBe(2);
-    expect(result!.audit.serverIp).toBe("1.2.3.4");
-    expect(result!.audit.auditVersion).toBe("1.10.0");
-  });
-
-  it("should migrate v1 file: returns schemaVersion=2 and auditVersion=1.0.0", async () => {
-    // V1 snapshot: no auditVersion in audit object
-    const v1AuditResult = {
-      serverName: "test-server",
-      serverIp: "1.2.3.4",
-      platform: "bare",
-      timestamp: "2026-03-08T10:00:00.000Z",
-      categories: [
-        { name: "SSH", checks: [], score: 80, maxScore: 100 },
-      ],
-      overallScore: 80,
-      quickWins: [],
-      // no auditVersion — v1 format
-    };
-    const v1SnapshotData = {
-      schemaVersion: 1,
-      savedAt: "2026-03-08T10:00:00.000Z",
-      audit: v1AuditResult,
-    };
-    mockedFs.readFileSync.mockReturnValue(JSON.stringify(v1SnapshotData));
-
-    const result = await loadSnapshot("1.2.3.4", "old.json");
-    expect(result).not.toBeNull();
-    // Migration: schemaVersion bumped to 2
-    expect(result!.schemaVersion).toBe(2);
-    // Migration: auditVersion defaults to "1.0.0" for legacy snapshots
-    expect(result!.audit.auditVersion).toBe("1.0.0");
-    // Original data preserved
-    expect(result!.audit.overallScore).toBe(80);
+    expect(result!.schemaVersion).toBe(1);
     expect(result!.audit.serverIp).toBe("1.2.3.4");
   });
 
@@ -253,102 +211,95 @@ describe("loadSnapshot", () => {
   });
 });
 
-describe("Schema migration (v1 -> v2)", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
+describe("Zod schema backward/forward compatibility", () => {
+  it("should validate snapshot without complianceRefs/tags (existing format)", async () => {
+    const snapshotData = {
+      schemaVersion: 1,
+      savedAt: "2026-03-08T10:00:00.000Z",
+      audit: makeAuditResult(),
+    };
+    mockedFs.readFileSync.mockReturnValue(JSON.stringify(snapshotData));
+
+    const result = await loadSnapshot("1.2.3.4", "old-format.json");
+    expect(result).not.toBeNull();
+    expect(result!.audit.categories[0].checks).toEqual([]);
   });
 
-  it("should handle v1 snapshot with complianceRefs/tags — migrated to v2", async () => {
-    const v1Audit = {
-      serverName: "test-server",
-      serverIp: "1.2.3.4",
-      platform: "bare",
-      timestamp: "2026-03-08T10:00:00.000Z",
-      categories: [
-        {
-          name: "SSH",
-          score: 80,
-          maxScore: 100,
-          checks: [
-            {
-              id: "SSH-PASSWORD-AUTH",
-              category: "SSH",
-              name: "Password Auth",
-              severity: "critical",
-              passed: false,
-              currentValue: "yes",
-              expectedValue: "no",
-              complianceRefs: [
-                {
-                  framework: "CIS",
-                  controlId: "5.2.1",
-                  version: "1.0",
-                  description: "SSH MaxAuthTries",
-                  coverage: "full",
-                },
-              ],
-              tags: ["ssh", "authentication"],
-            },
-          ],
-        },
-      ],
-      overallScore: 80,
-      quickWins: [],
-      // no auditVersion
-    };
+  it("should validate snapshot with complianceRefs and tags fields (new format)", async () => {
+    const auditWithRefs = makeAuditResult();
+    auditWithRefs.categories = [
+      {
+        name: "SSH",
+        score: 80,
+        maxScore: 100,
+        checks: [
+          {
+            id: "SSH-01",
+            category: "SSH",
+            name: "Password Auth",
+            severity: "critical",
+            passed: false,
+            currentValue: "yes",
+            expectedValue: "no",
+            complianceRefs: [
+              {
+                framework: "CIS",
+                controlId: "5.2.1",
+                version: "1.0",
+                description: "SSH MaxAuthTries",
+                coverage: "full",
+              },
+            ],
+            tags: ["ssh", "authentication"],
+          },
+        ],
+      },
+    ];
 
     const snapshotData = {
       schemaVersion: 1,
       savedAt: "2026-03-08T10:00:00.000Z",
-      audit: v1Audit,
+      audit: auditWithRefs,
     };
     mockedFs.readFileSync.mockReturnValue(JSON.stringify(snapshotData));
 
-    const result = await loadSnapshot("1.2.3.4", "old-with-refs.json");
+    const result = await loadSnapshot("1.2.3.4", "new-format.json");
     expect(result).not.toBeNull();
-    expect(result!.schemaVersion).toBe(2);
-    expect(result!.audit.auditVersion).toBe("1.0.0");
     const check = result!.audit.categories[0].checks[0];
     expect(check.complianceRefs).toHaveLength(1);
+    expect(check.complianceRefs![0].framework).toBe("CIS");
     expect(check.tags).toEqual(["ssh", "authentication"]);
   });
 
-  it("should reject v1 snapshot with complianceRefs missing required coverage field", async () => {
-    const auditWithBadRefs = {
-      serverName: "test-server",
-      serverIp: "1.2.3.4",
-      platform: "bare",
-      timestamp: "2026-03-08T10:00:00.000Z",
-      categories: [
-        {
-          name: "SSH",
-          score: 80,
-          maxScore: 100,
-          checks: [
-            {
-              id: "SSH-PASSWORD-AUTH",
-              category: "SSH",
-              name: "Password Auth",
-              severity: "critical",
-              passed: false,
-              currentValue: "yes",
-              expectedValue: "no",
-              complianceRefs: [
-                {
-                  framework: "CIS",
-                  controlId: "5.2.1",
-                  version: "1.0",
-                  description: "SSH MaxAuthTries",
-                  // coverage intentionally omitted
-                },
-              ],
-            },
-          ],
-        },
-      ],
-      overallScore: 80,
-      quickWins: [],
-    };
+  it("should reject snapshot with complianceRefs missing required coverage field", async () => {
+    const auditWithBadRefs = makeAuditResult();
+    auditWithBadRefs.categories = [
+      {
+        name: "SSH",
+        score: 80,
+        maxScore: 100,
+        checks: [
+          {
+            id: "SSH-01",
+            category: "SSH",
+            name: "Password Auth",
+            severity: "critical",
+            passed: false,
+            currentValue: "yes",
+            expectedValue: "no",
+            complianceRefs: [
+              {
+                framework: "CIS",
+                controlId: "5.2.1",
+                version: "1.0",
+                description: "SSH MaxAuthTries",
+                // coverage intentionally omitted to test Zod rejection
+              } as never,
+            ],
+          },
+        ],
+      },
+    ];
 
     const snapshotData = {
       schemaVersion: 1,
@@ -374,7 +325,7 @@ describe("listSnapshots", () => {
     expect(entries).toEqual([]);
   });
 
-  it("should return list sorted chronologically (oldest first) with v1 files", async () => {
+  it("should return list sorted chronologically (oldest first)", async () => {
     mockedFs.existsSync.mockReturnValue(true);
     mockedFs.readdirSync.mockReturnValue([
       "2026-03-08T12-00-00-000Z.json",
@@ -382,56 +333,22 @@ describe("listSnapshots", () => {
       "2026-03-07T08-00-00-000Z.json",
     ] as unknown as ReturnType<typeof fs.readdirSync>);
 
-    // V1 format snapshots (no auditVersion)
-    const makeV1Entry = (ts: string) =>
+    const makeEntry = (ts: string) =>
       JSON.stringify({
         schemaVersion: 1,
-        savedAt: ts,
-        audit: {
-          serverName: "test-server",
-          serverIp: "1.2.3.4",
-          platform: "bare",
-          timestamp: ts,
-          categories: [],
-          overallScore: 70,
-          quickWins: [],
-        },
-      });
-
-    mockedFs.readFileSync
-      .mockReturnValueOnce(makeV1Entry("2026-03-08T12:00:00.000Z"))
-      .mockReturnValueOnce(makeV1Entry("2026-03-06T10:00:00.000Z"))
-      .mockReturnValueOnce(makeV1Entry("2026-03-07T08:00:00.000Z"));
-
-    const entries = await listSnapshots("1.2.3.4");
-    expect(entries).toHaveLength(3);
-    expect(entries[0].filename).toBe("2026-03-06T10-00-00-000Z.json");
-    expect(entries[2].filename).toBe("2026-03-08T12-00-00-000Z.json");
-    // V1 entries should be valid (not corrupt) after migration
-    expect(entries[0].corrupt).toBeFalsy();
-  });
-
-  it("should return list sorted chronologically with v2 files", async () => {
-    mockedFs.existsSync.mockReturnValue(true);
-    mockedFs.readdirSync.mockReturnValue([
-      "2026-03-08T12-00-00-000Z.json",
-      "2026-03-06T10-00-00-000Z.json",
-    ] as unknown as ReturnType<typeof fs.readdirSync>);
-
-    const makeV2Entry = (ts: string) =>
-      JSON.stringify({
-        schemaVersion: 2,
         savedAt: ts,
         audit: makeAuditResult({ overallScore: 70 }),
       });
 
     mockedFs.readFileSync
-      .mockReturnValueOnce(makeV2Entry("2026-03-08T12:00:00.000Z"))
-      .mockReturnValueOnce(makeV2Entry("2026-03-06T10:00:00.000Z"));
+      .mockReturnValueOnce(makeEntry("2026-03-08T12:00:00.000Z"))
+      .mockReturnValueOnce(makeEntry("2026-03-06T10:00:00.000Z"))
+      .mockReturnValueOnce(makeEntry("2026-03-07T08:00:00.000Z"));
 
     const entries = await listSnapshots("1.2.3.4");
-    expect(entries).toHaveLength(2);
+    expect(entries).toHaveLength(3);
     expect(entries[0].filename).toBe("2026-03-06T10-00-00-000Z.json");
+    expect(entries[2].filename).toBe("2026-03-08T12-00-00-000Z.json");
   });
 
   it("should include savedAt, overallScore in each entry", async () => {
@@ -441,7 +358,7 @@ describe("listSnapshots", () => {
     ] as unknown as ReturnType<typeof fs.readdirSync>);
     mockedFs.readFileSync.mockReturnValue(
       JSON.stringify({
-        schemaVersion: 2,
+        schemaVersion: 1,
         savedAt: "2026-03-08T10:00:00.000Z",
         audit: makeAuditResult({ overallScore: 85 }),
       }),
@@ -460,7 +377,7 @@ describe("listSnapshots", () => {
     ] as unknown as ReturnType<typeof fs.readdirSync>);
     mockedFs.readFileSync.mockReturnValue(
       JSON.stringify({
-        schemaVersion: 2,
+        schemaVersion: 1,
         name: "pre-upgrade",
         savedAt: "2026-03-08T10:00:00.000Z",
         audit: makeAuditResult(),
@@ -492,7 +409,7 @@ describe("listSnapshots", () => {
     ] as unknown as ReturnType<typeof fs.readdirSync>);
     mockedFs.readFileSync.mockReturnValue(
       JSON.stringify({
-        schemaVersion: 2,
+        schemaVersion: 1,
         savedAt: "2026-03-08T10:00:00.000Z",
         audit: makeAuditResult(),
       }),

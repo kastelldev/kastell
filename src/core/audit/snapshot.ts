@@ -1,6 +1,8 @@
 /**
  * Audit snapshot persistence module.
  * Save, load, and list point-in-time audit result snapshots.
+ * Schema v2 adds auditVersion to the audit envelope.
+ * V1 snapshots are auto-migrated on load (auditVersion defaults to "1.0.0").
  */
 
 import {
@@ -17,7 +19,7 @@ import { CONFIG_DIR } from "../../utils/config.js";
 import { withFileLock } from "../../utils/fileLock.js";
 import type { AuditResult, SnapshotFile, SnapshotListEntry } from "./types.js";
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 const complianceRefSchema = z.object({
   framework: z.string(),
@@ -55,7 +57,8 @@ const quickWinSchema = z.object({
   description: z.string(),
 });
 
-const snapshotFileSchema = z.object({
+/** Schema v1 — legacy format, no auditVersion field */
+const snapshotFileV1Schema = z.object({
   schemaVersion: z.literal(1),
   name: z.string().optional(),
   savedAt: z.string(),
@@ -64,6 +67,23 @@ const snapshotFileSchema = z.object({
     serverIp: z.string(),
     platform: z.enum(["coolify", "dokploy", "bare"]),
     timestamp: z.string(),
+    overallScore: z.number(),
+    categories: z.array(categorySchema),
+    quickWins: z.array(quickWinSchema),
+  }),
+});
+
+/** Schema v2 — includes auditVersion in audit object */
+const snapshotFileV2Schema = z.object({
+  schemaVersion: z.literal(2),
+  name: z.string().optional(),
+  savedAt: z.string(),
+  audit: z.object({
+    serverName: z.string(),
+    serverIp: z.string(),
+    platform: z.enum(["coolify", "dokploy", "bare"]),
+    timestamp: z.string(),
+    auditVersion: z.string(),
     overallScore: z.number(),
     categories: z.array(categorySchema),
     quickWins: z.array(quickWinSchema),
@@ -88,6 +108,38 @@ function buildFilename(timestamp: string, name?: string): string {
     return `${safeTs}_${name}.json`;
   }
   return `${safeTs}.json`;
+}
+
+/**
+ * Parse a raw snapshot JSON string, trying v2 first, then v1 with migration.
+ * V1 snapshots are migrated to v2 (schemaVersion bumped, auditVersion defaults to "1.0.0").
+ * Returns null for unknown schema versions or invalid data.
+ */
+function parseSnapshotFile(raw: string): SnapshotFile | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+
+  // Try v2 first
+  const v2 = snapshotFileV2Schema.safeParse(parsed);
+  if (v2.success) {
+    return v2.data as SnapshotFile;
+  }
+
+  // Fall back to v1 with migration
+  const v1 = snapshotFileV1Schema.safeParse(parsed);
+  if (v1.success) {
+    return {
+      ...v1.data,
+      schemaVersion: 2,
+      audit: { ...v1.data.audit, auditVersion: "1.0.0" },
+    } as SnapshotFile;
+  }
+
+  return null;
 }
 
 /**
@@ -124,6 +176,7 @@ export async function saveSnapshot(
 
 /**
  * Load and validate a snapshot file.
+ * Supports schema v2 (native) and v1 (auto-migrated to v2).
  * Returns null for missing files, corrupt JSON, or unknown schema versions.
  */
 export async function loadSnapshot(
@@ -134,12 +187,7 @@ export async function loadSnapshot(
 
   try {
     const raw = readFileSync(filePath, "utf-8");
-    const parsed = JSON.parse(raw) as unknown;
-    const result = snapshotFileSchema.safeParse(parsed);
-    if (!result.success) {
-      return null;
-    }
-    return result.data as SnapshotFile;
+    return parseSnapshotFile(raw);
   } catch {
     return null;
   }
@@ -148,6 +196,7 @@ export async function loadSnapshot(
 /**
  * List all snapshots for a server IP, sorted chronologically (oldest first).
  * Handles corrupt files gracefully by marking them with corrupt: true.
+ * Supports both v1 (migrated) and v2 snapshot formats.
  * Returns empty array if no snapshots directory exists.
  */
 export async function listSnapshots(serverIp: string): Promise<SnapshotListEntry[]> {
@@ -163,12 +212,10 @@ export async function listSnapshots(serverIp: string): Promise<SnapshotListEntry
   const entries: SnapshotListEntry[] = jsonFiles.map((filename) => {
     try {
       const raw = readFileSync(join(snapshotDir, filename), "utf-8");
-      const parsed = JSON.parse(raw) as unknown;
-      const result = snapshotFileSchema.safeParse(parsed);
-      if (!result.success) {
+      const data = parseSnapshotFile(raw);
+      if (!data) {
         return { filename, savedAt: "", overallScore: 0, corrupt: true };
       }
-      const data = result.data;
       return {
         filename,
         savedAt: data.savedAt,
