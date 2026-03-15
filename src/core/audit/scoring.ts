@@ -41,14 +41,38 @@ export function calculateCategoryScore(
 }
 
 /**
+ * Category weights for overall score calculation.
+ * Higher weight = more impact on overall score.
+ * SSH/Firewall/Auth: most security-critical (weight 3)
+ * Docker/TLS: important but narrower scope (weight 2)
+ * All others: default weight 1
+ */
+export const CATEGORY_WEIGHTS: Record<string, number> = {
+  SSH: 3,
+  Firewall: 3,
+  Auth: 3,
+  Docker: 2,
+  TLS: 2,
+};
+
+const DEFAULT_CATEGORY_WEIGHT = 1;
+
+/**
  * Calculate overall audit score from category scores.
- * Equal weight per category — simple average, rounded to nearest integer.
+ * Uses weighted average — critical categories (SSH, Firewall, Auth) count more.
  */
 export function calculateOverallScore(categories: AuditCategory[]): number {
-  if (categories.length === 0) {
-    return 0;
+  const active = categories.filter((c) => c.maxScore > 0);
+  if (active.length === 0) return 0;
+
+  let weightedSum = 0;
+  let totalWeight = 0;
+
+  for (const cat of active) {
+    const weight = CATEGORY_WEIGHTS[cat.name] ?? DEFAULT_CATEGORY_WEIGHT;
+    weightedSum += cat.score * weight;
+    totalWeight += weight;
   }
 
-  const sum = categories.reduce((acc, cat) => acc + cat.score, 0);
-  return Math.round(sum / categories.length);
+  return Math.round(weightedSum / totalWeight);
 }
