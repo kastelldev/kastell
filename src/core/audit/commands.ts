@@ -269,9 +269,10 @@ function secretsSection(): string {
 function cloudMetaSection(): string {
   return [
     NAMED_SEP("CLOUDMETA"),
-    `VPS=$(systemd-detect-virt 2>/dev/null || dmidecode -s system-product-name 2>/dev/null | head -1 || echo 'none'); if [ "$VPS" = "none" ]; then echo 'BARE_METAL'; else echo "VPS_TYPE:$VPS"; curl -sf --connect-timeout 2 http://169.254.169.254/latest/meta-data/ 2>/dev/null | head -10 || curl -sf --connect-timeout 2 http://metadata.google.internal/computeMetadata/v1/ -H "Metadata-Flavor: Google" 2>/dev/null | head -10 || echo 'METADATA_UNREACHABLE'; fi`,
-    `grep -i 'password\|secret\|token\|key' /var/log/cloud-init.log 2>/dev/null | head -5 || echo 'NO_CLOUDINIT_CREDS'`,
-    `curl -sf --connect-timeout 2 -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600" 2>/dev/null && echo 'IMDSV2_OK' || echo 'IMDSV2_UNAVAIL'`,
+    `VPS=$(systemd-detect-virt 2>/dev/null || dmidecode -s system-product-name 2>/dev/null | head -1 || echo 'none'); if [ "$VPS" = "none" ]; then echo 'BARE_METAL'; else echo "VPS_TYPE:$VPS"; curl -sf --connect-timeout 2 http://169.254.169.254/latest/meta-data/ 2>/dev/null && echo 'METADATA_ACCESSIBLE' || { curl -sf --connect-timeout 2 http://metadata.google.internal/computeMetadata/v1/ -H "Metadata-Flavor: Google" 2>/dev/null && echo 'METADATA_ACCESSIBLE' || echo 'METADATA_BLOCKED'; }; iptables -S OUTPUT 2>/dev/null | grep -q '169.254.169.254' && echo 'METADATA_FIREWALL_OK' || echo 'METADATA_FIREWALL_MISSING'; fi`,
+    `grep -i 'password\|secret\|token\|key' /var/log/cloud-init.log 2>/dev/null | head -5 || echo 'CLOUDINIT_CLEAN'`,
+    `grep -iE '(DB_PASSWORD|API_KEY|SECRET_KEY|AWS_SECRET|PRIVATE_KEY)' /var/lib/cloud/instances/*/user-data.txt 2>/dev/null && echo 'SENSITIVE_ENV_IN_CLOUDINIT' || echo 'CLOUDINIT_NO_SENSITIVE_ENV'`,
+    `curl -sf --connect-timeout 2 -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600" 2>/dev/null && echo 'IMDSV2_AVAILABLE' || echo 'IMDSV2_UNAVAILABLE'`,
   ].join("\n");
 }
 
