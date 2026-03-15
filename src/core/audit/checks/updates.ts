@@ -112,13 +112,13 @@ export const parseUpdatesChecks: CheckParser = (sectionOutput: string, _platform
   // [9]: cat /etc/apt/apt.conf.d/20auto-upgrades -> auto-upgrades config
 
   // UPD-05: Last dpkg activity within 30 days
-  const dpkgTimestampStr = lines.find((l) => /^d{10,}$/.test(l) && parseInt(l, 10) > 1700000000) ?? "N/A";
+  const dpkgTimestampStr = lines.find((l) => /^\d{10,}$/.test(l) && parseInt(l, 10) > 1700000000) ?? "N/A";
   const dpkgTimestamp = parseInt(dpkgTimestampStr, 10);
   const thirtyDays = 30 * 24 * 60 * 60;
   const isDpkgRecent = !isNaN(dpkgTimestamp) && dpkgTimestamp !== aptTimestamp &&
     (Math.floor(Date.now() / 1000) - dpkgTimestamp) < thirtyDays;
   // If we can't distinguish from apt timestamp, use a broader heuristic
-  const allTimestamps = lines.filter((l) => /^d{10,}$/.test(l)).map((l) => parseInt(l, 10));
+  const allTimestamps = lines.filter((l) => /^\d{10,}$/.test(l)).map((l) => parseInt(l, 10));
   const latestTimestamp = allTimestamps.length > 0 ? Math.max(...allTimestamps) : NaN;
   const isUpgradeRecent = !isNaN(latestTimestamp) && (Math.floor(Date.now() / 1000) - latestTimestamp) < thirtyDays;
   const upd05: AuditCheck = {
@@ -153,8 +153,8 @@ export const parseUpdatesChecks: CheckParser = (sectionOutput: string, _platform
   };
 
   // UPD-07: No half-installed packages
-  const dpkgAuditLine = lines.find((l) => /^d{1,4}$/.test(l) && l !== securityCountStr) ?? "0";
-  const dpkgPartialCount = parseInt(dpkgAuditLine, 10);
+  const dpkgAuditLine = isNA ? null : lines.find((l) => /^\d{1,4}$/.test(l) && l !== securityCountStr);
+  const dpkgPartialCount = dpkgAuditLine !== undefined && dpkgAuditLine !== null ? parseInt(dpkgAuditLine, 10) : NaN;
   const noDpkgPartial = !isNaN(dpkgPartialCount) && dpkgPartialCount === 0;
   const upd07: AuditCheck = {
     id: "UPD-DPKG-NO-PARTIAL",
@@ -185,7 +185,7 @@ export const parseUpdatesChecks: CheckParser = (sectionOutput: string, _platform
 
   // UPD-09: Unattended-upgrades actually enabled (not just installed)
   const autoUpgradesContent = lines.find((l) => l.includes("APT::Periodic") || l.includes("Unattended-Upgrade")) ?? "";
-  const isUnattendedEnabled = /APT::Periodic::Unattended-Upgrades+"1"/.test(sectionOutput);
+  const isUnattendedEnabled = /APT::Periodic::Unattended-Upgrade\s+"1"/.test(sectionOutput);
   const upd09: AuditCheck = {
     id: "UPD-UNATTENDED-ENABLED",
     category: "Updates",
@@ -201,14 +201,14 @@ export const parseUpdatesChecks: CheckParser = (sectionOutput: string, _platform
   };
 
   // UPD-10: APT repos use HTTPS (informational)
-  const hasHttpRepos = /http:///.test(sectionOutput) && !/apt list|upgradable/.test(sectionOutput);
+  const hasHttpRepos = !isNA && /http:///.test(sectionOutput) && !/apt list|upgradable/.test(sectionOutput);
   const upd10: AuditCheck = {
     id: "UPD-APT-HTTPS",
     category: "Updates",
     name: "APT Sources Use HTTPS",
     severity: "info",
-    passed: !hasHttpRepos,
-    currentValue: hasHttpRepos ? "Some APT repos use HTTP" : "APT repo HTTPS status not directly verified here",
+    passed: !isNA && !hasHttpRepos,
+    currentValue: isNA ? "Unable to determine" : hasHttpRepos ? "Some APT repos use HTTP" : "APT repo HTTPS status not directly verified here",
     expectedValue: "APT repositories using HTTPS",
     fixCommand: "See /etc/apt/sources.list and replace http:// with https://",
     explain: "APT repos using HTTPS prevent man-in-the-middle attacks during package downloads.",

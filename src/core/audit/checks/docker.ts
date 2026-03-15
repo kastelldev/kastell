@@ -34,7 +34,7 @@ function makeDockerSkippedChecks(severity: "info" | "warning"): AuditCheck[] {
     { id: "DCK-SECCOMP-ENABLED", name: "Seccomp Profile Applied" },
     { id: "DCK-CONTENT-TRUST", name: "Docker Content Trust Enabled" },
     { id: "DCK-NO-SENSITIVE-MOUNTS", name: "No Sensitive Mounts" },
-    { id: "DCK-APPARMOR", name: "AppArmor Profile Applied" },
+    { id: "DCK-APPARMOR-PROFILE", name: "AppArmor Profile Applied" },
     { id: "DCK-NO-PRIVILEGED-PORTS", name: "No Privileged Port Bindings" },
   ];
 
@@ -395,7 +395,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
   const hasApparmor = !hasRunningContainers ||
     (seccompLines.length > 0 && seccompLines.some((l) => l.includes("apparmor")));
   const dck19: AuditCheck = {
-    id: "DCK-APPARMOR",
+    id: "DCK-APPARMOR-PROFILE",
     category: "Docker",
     name: "AppArmor Profile Applied",
     severity: "warning",
