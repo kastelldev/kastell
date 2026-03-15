@@ -14,6 +14,12 @@ import { parseNetworkChecks } from "./network.js";
 import { parseFilesystemChecks } from "./filesystem.js";
 import { parseLoggingChecks } from "./logging.js";
 import { parseKernelChecks } from "./kernel.js";
+import { parseAccountsChecks } from "./accounts.js";
+import { parseServicesChecks } from "./services.js";
+import { parseBootChecks } from "./boot.js";
+import { parseSchedulingChecks } from "./scheduling.js";
+import { parseTimeChecks } from "./time.js";
+import { parseBannersChecks } from "./banners.js";
 
 export interface CategoryEntry {
   name: string;
@@ -32,6 +38,12 @@ export const CHECK_REGISTRY: CategoryEntry[] = [
   { name: "Filesystem", sectionName: "FILESYSTEM", parser: parseFilesystemChecks },
   { name: "Logging", sectionName: "LOGGING", parser: parseLoggingChecks },
   { name: "Kernel", sectionName: "KERNEL", parser: parseKernelChecks },
+  { name: "Accounts", sectionName: "ACCOUNTS", parser: parseAccountsChecks },
+  { name: "Services", sectionName: "SERVICES", parser: parseServicesChecks },
+  { name: "Boot", sectionName: "BOOT", parser: parseBootChecks },
+  { name: "Scheduling", sectionName: "SCHEDULING", parser: parseSchedulingChecks },
+  { name: "Time", sectionName: "TIME", parser: parseTimeChecks },
+  { name: "Banners", sectionName: "BANNERS", parser: parseBannersChecks },
 ];
 
 /** Named separator pattern used between sections in SSH batch output */

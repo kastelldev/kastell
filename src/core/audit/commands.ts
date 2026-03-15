@@ -111,6 +111,78 @@ function kernelSection(): string {
   ].join("\n");
 }
 
+function accountsSection(): string {
+  return [
+    NAMED_SEP("ACCOUNTS"),
+    `awk -F: '{print $1":"$3":"$7}' /etc/passwd 2>/dev/null || echo 'N/A'`,
+    `awk -F: '{print $1":"$2}' /etc/shadow 2>/dev/null || echo 'N/A'`,
+    `find /home -maxdepth 1 -mindepth 1 -type d 2>/dev/null | xargs stat -c '%n %U' 2>/dev/null || echo 'N/A'`,
+    `ls -la /root/.rhosts /root/.netrc /root/.forward /etc/hosts.equiv 2>/dev/null || echo 'NONE'`,
+    `awk -F: '($3 < 1000 && $7 != "/usr/sbin/nologin" && $7 != "/bin/false" && $7 != "/sbin/nologin") {print $1":"$7}' /etc/passwd 2>/dev/null || echo 'N/A'`,
+    `stat -c '%a' /root 2>/dev/null || echo 'N/A'`,
+    `cat /etc/login.defs 2>/dev/null | grep -E '^PASS_MAX_DAYS|^PASS_MIN_DAYS|^UMASK|^INACTIVE' || echo 'N/A'`,
+    `awk -F: '{print $1":"$3}' /etc/passwd 2>/dev/null | sort -t: -k2 -n | uniq -d -f1 | head -10 || echo 'NONE'`,
+  ].join("\n");
+}
+
+function servicesSection(): string {
+  return [
+    NAMED_SEP("SERVICES"),
+    `systemctl is-active telnet rsh rlogin vsftpd ftp tftpd-hpa 2>/dev/null | head -10 || echo 'N/A'`,
+    `systemctl is-active nfs-server rpcbind smbd nmbd avahi-daemon cups isc-dhcp-server named snmpd squid xinetd ypserv 2>/dev/null | head -15 || echo 'N/A'`,
+    `test -f /etc/inetd.conf && grep -v '^#' /etc/inetd.conf 2>/dev/null || echo 'NONE'`,
+    `test -f /etc/xinetd.conf && cat /etc/xinetd.conf 2>/dev/null || echo 'NONE'`,
+  ].join("\n");
+}
+
+function bootSection(): string {
+  return [
+    NAMED_SEP("BOOT"),
+    `stat -c '%a %U %G' /boot/grub/grub.cfg /boot/grub2/grub.cfg 2>/dev/null || echo 'N/A'`,
+    `grep -q 'set superusers' /boot/grub/grub.cfg 2>/dev/null && echo 'GRUB_PW_SET' || echo 'GRUB_NO_PW'`,
+    `mokutil --sb-state 2>/dev/null || echo 'N/A'`,
+    `cat /proc/cmdline 2>/dev/null || echo 'N/A'`,
+    `stat -c '%a %U %G %n' /etc/grub.d 2>/dev/null || echo 'N/A'`,
+    `grep '/boot' /proc/mounts 2>/dev/null || echo 'N/A'`,
+    `grep -l sulogin /usr/lib/systemd/system/rescue.service /usr/lib/systemd/system/emergency.service 2>/dev/null || echo 'N/A'`,
+    `sysctl kernel.modules_disabled 2>/dev/null || echo 'N/A'`,
+  ].join("\n");
+}
+
+function schedulingSection(): string {
+  return [
+    NAMED_SEP("SCHEDULING"),
+    `test -f /etc/cron.allow && echo 'cron.allow EXISTS' || echo 'cron.allow MISSING'`,
+    `test -f /etc/cron.deny && echo 'cron.deny EXISTS' || echo 'cron.deny MISSING'`,
+    `test -f /etc/at.allow && echo 'at.allow EXISTS' || echo 'at.allow MISSING'`,
+    `test -f /etc/at.deny && echo 'at.deny EXISTS' || echo 'at.deny MISSING'`,
+    `stat -c '%a %U %G %n' /etc/cron.d /etc/cron.daily /etc/cron.weekly /etc/cron.monthly /etc/cron.hourly 2>/dev/null || echo 'N/A'`,
+    `stat -c '%a %U %G %n' /etc/crontab 2>/dev/null || echo 'N/A'`,
+    `find /etc/cron* -perm -o+w 2>/dev/null | head -10 || echo 'NONE'`,
+  ].join("\n");
+}
+
+function timeSection(): string {
+  return [
+    NAMED_SEP("TIME"),
+    `timedatectl 2>/dev/null || echo 'N/A'`,
+    `systemctl is-active ntp chrony chronyd systemd-timesyncd 2>/dev/null | head -5 || echo 'N/A'`,
+    `chronyc tracking 2>/dev/null | head -10 || echo 'N/A'`,
+    `cat /etc/timezone 2>/dev/null || echo 'N/A'`,
+    `hwclock --show 2>/dev/null | head -3 || echo 'N/A'`,
+  ].join("\n");
+}
+
+function bannersSection(): string {
+  return [
+    NAMED_SEP("BANNERS"),
+    `cat /etc/issue 2>/dev/null || echo 'MISSING'`,
+    `cat /etc/issue.net 2>/dev/null || echo 'MISSING'`,
+    `cat /etc/motd 2>/dev/null || echo 'MISSING'`,
+    `grep -i '^Banner' /etc/ssh/sshd_config 2>/dev/null || sshd -T 2>/dev/null | grep -i '^banner' || echo 'N/A'`,
+  ].join("\n");
+}
+
 function filesystemSection(): string {
   return [
     NAMED_SEP("FILESYSTEM"),
@@ -124,8 +196,8 @@ function filesystemSection(): string {
 /**
  * Build 3 tiered SSH batch commands for server auditing.
  *
- * Batch 1 (fast):   SSH, Firewall, Updates, Auth — config reads (30s timeout)
- * Batch 2 (medium): Docker, Network, Logging, Kernel — active probes (60s timeout)
+ * Batch 1 (fast):   SSH, Firewall, Updates, Auth, Accounts, Boot, Scheduling, Banners — config reads (30s timeout)
+ * Batch 2 (medium): Docker, Network, Logging, Kernel, Services, Time — active probes (60s timeout)
  * Batch 3 (slow):   Filesystem — find commands that can take time (120s timeout)
  *
  * Each section is preceded by an ---SECTION:NAME--- named separator.
@@ -139,6 +211,10 @@ export function buildAuditBatchCommands(platform: string): BatchDef[] {
       firewallSection(),
       updatesSection(),
       authSection(),
+      accountsSection(),
+      bootSection(),
+      schedulingSection(),
+      bannersSection(),
     ].join("\n"),
   };
 
@@ -149,6 +225,8 @@ export function buildAuditBatchCommands(platform: string): BatchDef[] {
       networkSection(),
       loggingSection(),
       kernelSection(),
+      servicesSection(),
+      timeSection(),
     ].join("\n"),
   };
 

@@ -1,0 +1,143 @@
+import { parseServicesChecks } from "../../src/core/audit/checks/services.js";
+
+describe("parseServicesChecks", () => {
+  const secureOutput = [
+    // Legacy services all inactive
+    "inactive",
+    "inactive",
+    "inactive",
+    "inactive",
+    "inactive",
+    "inactive",
+    // Network services all inactive
+    "inactive",
+    "inactive",
+    "inactive",
+    "inactive",
+    "inactive",
+    "inactive",
+    "inactive",
+    "inactive",
+    "inactive",
+    "inactive",
+    "inactive",
+    "inactive",
+    // No inetd
+    "NONE",
+    // No xinetd
+    "NONE",
+  ].join("\n");
+
+  const insecureOutput = [
+    // telnet active
+    "telnet active",
+    "rsh active",
+    "rlogin active",
+    "vsftpd active",
+    "ftp active",
+    "tftpd active",
+    // Network services
+    "nfs-server active",
+    "rpcbind active",
+    "smbd active",
+    "avahi-daemon active",
+    "cups active",
+    "isc-dhcp-server active",
+    "named active",
+    "snmpd active",
+    "squid active",
+    "xinetd active",
+    "ypserv active",
+    // inetd with dangerous services
+    "telnet stream tcp nowait root /usr/sbin/telnetd",
+    "chargen stream tcp nowait root internal",
+    "daytime stream tcp nowait root internal",
+    "discard stream tcp nowait root internal",
+    "echo stream tcp nowait root internal",
+  ].join("\n");
+
+  it("should return 21+ checks for the Services category", () => {
+    const checks = parseServicesChecks(secureOutput, "bare");
+    expect(checks.length).toBeGreaterThanOrEqual(21);
+    checks.forEach((c) => expect(c.category).toBe("Services"));
+  });
+
+  it("all check IDs should start with SVC-", () => {
+    const checks = parseServicesChecks(secureOutput, "bare");
+    checks.forEach((c) => expect(c.id).toMatch(/^SVC-/));
+  });
+
+  it("all checks should have explain > 20 chars and fixCommand defined", () => {
+    const checks = parseServicesChecks(secureOutput, "bare");
+    checks.forEach((c) => {
+      expect(c.explain!.length).toBeGreaterThan(20);
+      expect(c.fixCommand).toBeDefined();
+      expect(c.fixCommand!.length).toBeGreaterThan(0);
+    });
+  });
+
+  it("SVC-NO-TELNET passes when telnet is inactive", () => {
+    const checks = parseServicesChecks(secureOutput, "bare");
+    const check = checks.find((c) => c.id === "SVC-NO-TELNET");
+    expect(check!.passed).toBe(true);
+  });
+
+  it("SVC-NO-TELNET fails when telnet is active", () => {
+    const checks = parseServicesChecks(insecureOutput, "bare");
+    const check = checks.find((c) => c.id === "SVC-NO-TELNET");
+    expect(check!.passed).toBe(false);
+  });
+
+  it("SVC-NO-RSH passes when rsh is inactive", () => {
+    const checks = parseServicesChecks(secureOutput, "bare");
+    const check = checks.find((c) => c.id === "SVC-NO-RSH");
+    expect(check!.passed).toBe(true);
+  });
+
+  it("SVC-NO-FTP fails when vsftpd is active", () => {
+    const checks = parseServicesChecks(insecureOutput, "bare");
+    const check = checks.find((c) => c.id === "SVC-NO-FTP");
+    expect(check!.passed).toBe(false);
+  });
+
+  it("treats 'not-found' as passing (service not installed)", () => {
+    const notFoundOutput = "not-found\nnot-found\nnot-found\nNONE\nNONE";
+    const checks = parseServicesChecks(notFoundOutput, "bare");
+    const telnet = checks.find((c) => c.id === "SVC-NO-TELNET");
+    expect(telnet!.passed).toBe(true);
+  });
+
+  it("SVC-NO-INETD passes when no inetd.conf", () => {
+    const checks = parseServicesChecks(secureOutput, "bare");
+    const check = checks.find((c) => c.id === "SVC-NO-INETD");
+    expect(check!.passed).toBe(true);
+  });
+
+  it("SVC-NO-CHARGEN fails when chargen in inetd", () => {
+    const checks = parseServicesChecks(insecureOutput, "bare");
+    const check = checks.find((c) => c.id === "SVC-NO-CHARGEN");
+    expect(check!.passed).toBe(false);
+  });
+
+  it("should handle N/A output gracefully", () => {
+    const checks = parseServicesChecks("N/A", "bare");
+    expect(checks.length).toBeGreaterThanOrEqual(21);
+    checks.forEach((c) => {
+      expect(c.passed).toBe(false);
+      expect(c.currentValue).toBe("Unable to determine");
+    });
+  });
+
+  it("should handle empty string output gracefully", () => {
+    const checks = parseServicesChecks("", "bare");
+    expect(checks.length).toBeGreaterThanOrEqual(21);
+    checks.forEach((c) => expect(c.passed).toBe(false));
+  });
+
+  it("severity budget: <= 40% critical checks", () => {
+    const checks = parseServicesChecks("", "bare");
+    const criticalCount = checks.filter((c) => c.severity === "critical").length;
+    const ratio = criticalCount / checks.length;
+    expect(ratio).toBeLessThanOrEqual(0.4);
+  });
+});
