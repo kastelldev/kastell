@@ -93,5 +93,117 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
     explain: "IPv6 firewall rules prevent bypassing security through IPv6 connections.",
   };
 
-  return [fw01, fw02, fw03, fw04, fw05];
+  
+  // FW-06: nftables available
+  const nftOutput = sectionOutput.includes("nft") && !sectionOutput.includes("nft list ruleset") ? false :
+    /tables+w+/.test(sectionOutput) || /chains+w+/.test(sectionOutput);
+  const hasNftAvailable = /command -v nft/.test(sectionOutput) === false &&
+    sectionOutput.includes("nft") && !sectionOutput.trim().endsWith("N/A");
+  // Detect nft by checking output that is not just N/A
+  const nftSection = (() => {
+    const lines = sectionOutput.split("\n");
+    const nftIdx = lines.findIndex((l) => /tables+|chains+|counter/.test(l));
+    return nftIdx !== -1;
+  })();
+  const fw06: AuditCheck = {
+    id: "FW-NFTABLES-PRESENT",
+    category: "Firewall",
+    name: "nftables Available",
+    severity: "info",
+    passed: nftSection,
+    currentValue: nftSection ? "nftables ruleset present" : "nftables not detected",
+    expectedValue: "nftables available as modern firewall",
+    fixCommand: "apt install -y nftables && systemctl enable --now nftables",
+    explain: "nftables is the modern replacement for iptables with improved performance and maintainability.",
+  };
+
+  // FW-07: fail2ban active (uses existing output from fail2ban-client status)
+  const hasFail2banJails = /Number of jail/.test(output);
+  const fw07: AuditCheck = {
+    id: "FW-FAIL2BAN-ACTIVE",
+    category: "Firewall",
+    name: "Fail2ban Active",
+    severity: "warning",
+    passed: hasFail2banJails,
+    currentValue: hasFail2banJails ? "fail2ban running with jails" : "fail2ban not active",
+    expectedValue: "fail2ban running with at least one jail",
+    fixCommand: "apt install -y fail2ban && systemctl enable --now fail2ban",
+    explain: "fail2ban blocks brute-force attacks by banning IPs with repeated failed logins.",
+  };
+
+  // FW-08: iptables has rules beyond defaults (wc line > 8)
+  const iptablesCountStr = output.split("\n").find((l) => /^d+$/.test(l.trim())) ?? "0";
+  const iptablesCount = parseInt(iptablesCountStr, 10);
+  const hasIptablesRules = !isNaN(iptablesCount) && iptablesCount > 8;
+  const fw08: AuditCheck = {
+    id: "FW-IPTABLES-BASELINE",
+    category: "Firewall",
+    name: "iptables Has Rules",
+    severity: "warning",
+    passed: hasIptablesRules,
+    currentValue: isNA ? "Unable to determine" : `iptables line count: ${iptablesCount}`,
+    expectedValue: "More than 8 iptables lines (non-empty chains)",
+    fixCommand: "iptables -A INPUT -j DROP",
+    explain: "An iptables ruleset with only default chains (< 8 lines) provides no real protection.",
+  };
+
+  // FW-09: iptables INPUT default policy DROP or REJECT
+  const inputPolicyLine = output.split("\n").find((l) => /Chain INPUT.*policy/.test(l)) ?? "";
+  const hasInputDeny = /policy DROP|policy REJECT/i.test(inputPolicyLine);
+  const fw09: AuditCheck = {
+    id: "FW-INPUT-CHAIN-DENY",
+    category: "Firewall",
+    name: "iptables INPUT Default Deny",
+    severity: "critical",
+    passed: hasInputDeny,
+    currentValue: isNA ? "Unable to determine" : inputPolicyLine.trim() || "No INPUT policy found",
+    expectedValue: "Chain INPUT (policy DROP) or (policy REJECT)",
+    fixCommand: "iptables -P INPUT DROP",
+    explain: "Setting iptables INPUT default policy to DROP ensures all inbound traffic is denied unless explicitly allowed.",
+  };
+
+  // FW-10: REJECT preferred over DROP (informational)
+  const hasRejectRules = /REJECT/.test(output);
+  const fw10: AuditCheck = {
+    id: "FW-REJECT-NOT-DROP",
+    category: "Firewall",
+    name: "REJECT Rules Present",
+    severity: "info",
+    passed: isNA ? false : isActive,
+    currentValue: hasRejectRules ? "REJECT rules present" : "No REJECT rules found (DROP-only)",
+    expectedValue: "REJECT preferred for user-facing services",
+    fixCommand: "iptables -A INPUT -j REJECT --reject-with icmp-port-unreachable",
+    explain: "REJECT informs the client the port is closed, which is preferable for user-facing services.",
+  };
+
+  // FW-11: OUTPUT chain not fully open (informational)
+  const outputPolicyLine = output.split("\n").find((l) => /Chain OUTPUT.*policy/.test(l)) ?? "";
+  const hasRestrictedOutput = /policy DROP|policy REJECT/.test(outputPolicyLine);
+  const fw11: AuditCheck = {
+    id: "FW-OUTBOUND-RESTRICTED",
+    category: "Firewall",
+    name: "Outbound Traffic Restricted",
+    severity: "info",
+    passed: isNA ? false : isActive,
+    currentValue: isNA ? "Unable to determine" : hasRestrictedOutput ? "OUTPUT chain restricted" : "OUTPUT chain not restricted",
+    expectedValue: "Consider restricting outbound traffic",
+    fixCommand: "iptables -P OUTPUT DROP && iptables -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT",
+    explain: "Restricting outbound traffic limits damage from compromised services attempting to exfiltrate data.",
+  };
+
+  // FW-12: Rate limiting rules present
+  const hasRateLimit = /limit/.test(output) && !output.split("\n").filter((l) => /limit/.test(l)).every((l) => l.trim() === "NONE");
+  const fw12: AuditCheck = {
+    id: "FW-RATE-LIMIT",
+    category: "Firewall",
+    name: "Rate Limiting Rules Present",
+    severity: "info",
+    passed: hasRateLimit,
+    currentValue: hasRateLimit ? "Rate limiting rules found" : "No rate limiting rules",
+    expectedValue: "iptables rate limiting rules configured",
+    fixCommand: "iptables -A INPUT -p tcp --dport 22 -m limit --limit 3/minute --limit-burst 3 -j ACCEPT",
+    explain: "Rate limiting rules protect against brute-force and DoS attacks by throttling connection attempts.",
+  };
+
+  return [fw01, fw02, fw03, fw04, fw05, fw06, fw07, fw08, fw09, fw10, fw11, fw12];
 };
