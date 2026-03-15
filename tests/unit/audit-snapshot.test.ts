@@ -210,6 +210,108 @@ describe("loadSnapshot", () => {
   });
 });
 
+describe("Zod schema backward/forward compatibility", () => {
+  it("should validate snapshot without complianceRefs/tags (existing format)", async () => {
+    const snapshotData = {
+      schemaVersion: 1,
+      savedAt: "2026-03-08T10:00:00.000Z",
+      audit: makeAuditResult(),
+    };
+    mockedFs.readFileSync.mockReturnValue(JSON.stringify(snapshotData));
+
+    const result = await loadSnapshot("1.2.3.4", "old-format.json");
+    expect(result).not.toBeNull();
+    expect(result!.audit.categories[0].checks).toEqual([]);
+  });
+
+  it("should validate snapshot with complianceRefs and tags fields (new format)", async () => {
+    const auditWithRefs = makeAuditResult();
+    auditWithRefs.categories = [
+      {
+        name: "SSH",
+        score: 80,
+        maxScore: 100,
+        checks: [
+          {
+            id: "SSH-01",
+            category: "SSH",
+            name: "Password Auth",
+            severity: "critical",
+            passed: false,
+            currentValue: "yes",
+            expectedValue: "no",
+            complianceRefs: [
+              {
+                framework: "CIS",
+                controlId: "5.2.1",
+                version: "1.0",
+                description: "SSH MaxAuthTries",
+                coverage: "full",
+              },
+            ],
+            tags: ["ssh", "authentication"],
+          },
+        ],
+      },
+    ];
+
+    const snapshotData = {
+      schemaVersion: 1,
+      savedAt: "2026-03-08T10:00:00.000Z",
+      audit: auditWithRefs,
+    };
+    mockedFs.readFileSync.mockReturnValue(JSON.stringify(snapshotData));
+
+    const result = await loadSnapshot("1.2.3.4", "new-format.json");
+    expect(result).not.toBeNull();
+    const check = result!.audit.categories[0].checks[0];
+    expect(check.complianceRefs).toHaveLength(1);
+    expect(check.complianceRefs![0].framework).toBe("CIS");
+    expect(check.tags).toEqual(["ssh", "authentication"]);
+  });
+
+  it("should reject snapshot with complianceRefs missing required coverage field", async () => {
+    const auditWithBadRefs = makeAuditResult();
+    auditWithBadRefs.categories = [
+      {
+        name: "SSH",
+        score: 80,
+        maxScore: 100,
+        checks: [
+          {
+            id: "SSH-01",
+            category: "SSH",
+            name: "Password Auth",
+            severity: "critical",
+            passed: false,
+            currentValue: "yes",
+            expectedValue: "no",
+            complianceRefs: [
+              {
+                framework: "CIS",
+                controlId: "5.2.1",
+                version: "1.0",
+                description: "SSH MaxAuthTries",
+                // coverage intentionally omitted to test Zod rejection
+              } as never,
+            ],
+          },
+        ],
+      },
+    ];
+
+    const snapshotData = {
+      schemaVersion: 1,
+      savedAt: "2026-03-08T10:00:00.000Z",
+      audit: auditWithBadRefs,
+    };
+    mockedFs.readFileSync.mockReturnValue(JSON.stringify(snapshotData));
+
+    const result = await loadSnapshot("1.2.3.4", "bad-compliance.json");
+    expect(result).toBeNull();
+  });
+});
+
 describe("listSnapshots", () => {
   beforeEach(() => {
     jest.clearAllMocks();
