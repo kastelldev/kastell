@@ -84,7 +84,7 @@ describe("Compliance mapper CI guards", () => {
             version: "CIS Ubuntu 22.04 v2.0.0",
             description: "Test",
             coverage: "full" as const,
-            level: "L1",
+            level: "L1" as const,
           },
         ],
       };
