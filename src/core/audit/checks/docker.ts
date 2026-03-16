@@ -611,9 +611,13 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
   };
 
   // DCK-28: No experimental build features
+  // The experimental flag section emits a standalone "true" or "false" line.
+  // It is the last section in the output, following the swarm state line.
+  // We detect it by finding the last standalone boolean line.
   const experimentalLine = allLines.find((l) => /ExperimentalBuild|experimental/i.test(l) && !/^#/.test(l));
-  const isExperimental = experimentalLine !== undefined
-    && experimentalLine.trim() === "true";
+  const lastBoolLine = [...allLines].reverse().find((l) => /^(true|false)$/.test(l.trim()));
+  const isExperimental = (experimentalLine !== undefined && experimentalLine.trim() === "true")
+    || (lastBoolLine?.trim() === "true");
   const dck28: AuditCheck = {
     id: "DCK-NO-EXPERIMENTAL",
     category: "Docker",

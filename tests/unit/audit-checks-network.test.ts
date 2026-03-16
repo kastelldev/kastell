@@ -35,6 +35,16 @@ describe("parseNetworkChecks", () => {
     "NONE",
     // No promiscuous interfaces (NET-NO-PROMISCUOUS-INTERFACES) — empty output
     "NONE",
+    // NET-ARP-ANNOUNCE: arp_announce = 2
+    "net.ipv4.conf.all.arp_announce = 2",
+    // NET-ARP-IGNORE: arp_ignore = 1
+    "net.ipv4.conf.all.arp_ignore = 1",
+    // NET-BOGUS-ICMP-IGNORE: icmp_ignore_bogus_error_responses = 1
+    "net.ipv4.icmp_ignore_bogus_error_responses = 1",
+    // NET-TCP-WRAPPERS-CONFIGURED: hosts.allow has entry
+    "sshd: 192.168.1.0/24",
+    // NET-LISTENING-PORT-COUNT: 15 listening ports (<=20 = pass)
+    "15",
   ].join("\n");
 
   const insecureOutput = [
@@ -55,9 +65,9 @@ describe("parseNetworkChecks", () => {
     "net.ipv4.conf.all.secure_redirects = 1",
   ].join("\n");
 
-  it("should return 18 checks", () => {
+  it("should return 23 checks", () => {
     const checks = parseNetworkChecks(secureOutput, "bare");
-    expect(checks).toHaveLength(18);
+    expect(checks).toHaveLength(23);
     checks.forEach((check) => {
       expect(check.category).toBe("Network");
       expect(check.id).toMatch(/^NET-[A-Z][A-Z0-9]*(-[A-Z][A-Z0-9]*)+$/);
@@ -138,6 +148,103 @@ describe("parseNetworkChecks", () => {
 
   it("should handle N/A output gracefully", () => {
     const checks = parseNetworkChecks("N/A", "bare");
-    expect(checks).toHaveLength(18);
+    expect(checks).toHaveLength(23);
+  });
+
+  it("NET-ARP-ANNOUNCE passes when arp_announce = 2", () => {
+    const checks = parseNetworkChecks(secureOutput, "bare");
+    const check = checks.find((c) => c.id === "NET-ARP-ANNOUNCE");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+    expect(check!.severity).toBe("warning");
+    expect(check!.currentValue).toContain("2");
+  });
+
+  it("NET-ARP-ANNOUNCE fails when arp_announce = 0", () => {
+    const checks = parseNetworkChecks("net.ipv4.conf.all.arp_announce = 0", "bare");
+    const check = checks.find((c) => c.id === "NET-ARP-ANNOUNCE");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(false);
+  });
+
+  it("NET-ARP-IGNORE passes when arp_ignore = 1", () => {
+    const checks = parseNetworkChecks(secureOutput, "bare");
+    const check = checks.find((c) => c.id === "NET-ARP-IGNORE");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+    expect(check!.severity).toBe("warning");
+  });
+
+  it("NET-ARP-IGNORE fails when arp_ignore = 0", () => {
+    const checks = parseNetworkChecks("net.ipv4.conf.all.arp_ignore = 0", "bare");
+    const check = checks.find((c) => c.id === "NET-ARP-IGNORE");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(false);
+  });
+
+  it("NET-BOGUS-ICMP-IGNORE passes when icmp_ignore_bogus_error_responses = 1", () => {
+    const checks = parseNetworkChecks(secureOutput, "bare");
+    const check = checks.find((c) => c.id === "NET-BOGUS-ICMP-IGNORE");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+    expect(check!.severity).toBe("info");
+  });
+
+  it("NET-BOGUS-ICMP-IGNORE fails when not configured", () => {
+    const checks = parseNetworkChecks("net.ipv4.icmp_ignore_bogus_error_responses = 0", "bare");
+    const check = checks.find((c) => c.id === "NET-BOGUS-ICMP-IGNORE");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(false);
+  });
+
+  it("NET-TCP-WRAPPERS-CONFIGURED passes when hosts.allow has entry with colon", () => {
+    const checks = parseNetworkChecks(secureOutput, "bare");
+    const check = checks.find((c) => c.id === "NET-TCP-WRAPPERS-CONFIGURED");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+    expect(check!.severity).toBe("info");
+  });
+
+  it("NET-TCP-WRAPPERS-CONFIGURED fails when hosts.allow is empty or missing", () => {
+    const checks = parseNetworkChecks("NO_HOSTS_ALLOW", "bare");
+    const check = checks.find((c) => c.id === "NET-TCP-WRAPPERS-CONFIGURED");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(false);
+  });
+
+  it("NET-LISTENING-PORT-COUNT passes when count <= 20", () => {
+    const checks = parseNetworkChecks(secureOutput, "bare");
+    const check = checks.find((c) => c.id === "NET-LISTENING-PORT-COUNT");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+    expect(check!.severity).toBe("info");
+    expect(check!.currentValue).toContain("15");
+  });
+
+  it("NET-LISTENING-PORT-COUNT fails when count > 20", () => {
+    const highPortOutput = [
+      "State   Recv-Q  Send-Q  Local Address:Port  Peer Address:Port",
+      "LISTEN  0       128     0.0.0.0:22           0.0.0.0:*",
+      "N/A",
+      "net.ipv4.ip_forward = 0",
+      "nameserver 1.1.1.1",
+      "NTP synchronized: yes",
+      "sshd: ALL",
+      "ALL : ALL",
+      "net.ipv6.conf.all.disable_ipv6 = 1",
+      "NONE",
+      "NONE",
+      "NONE",
+      "net.ipv4.conf.all.arp_announce = 2",
+      "net.ipv4.conf.all.arp_ignore = 1",
+      "net.ipv4.icmp_ignore_bogus_error_responses = 1",
+      "sshd: ALL",
+      "35",
+    ].join("\n");
+    const checks = parseNetworkChecks(highPortOutput, "bare");
+    const check = checks.find((c) => c.id === "NET-LISTENING-PORT-COUNT");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(false);
+    expect(check!.currentValue).toContain("35");
   });
 });

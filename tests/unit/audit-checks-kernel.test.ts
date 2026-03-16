@@ -30,11 +30,21 @@ describe("parseKernelChecks", () => {
       "kernel.panic_on_oops = 1",
       "kernel.nmi_watchdog = 0",
       "kernel.unprivileged_userns_clone = 0",
+      // KRN-PANIC-REBOOT
+      "kernel.panic = 60",
     ].join("\n"),
     // Kernel version
     "5.15.0-91-generic",
     // Security modules
     "lockdown,capability,landlock,yama,apparmor",
+    // KRN-MODULE-BLACKLIST: 0 blacklisted modules loaded
+    "0",
+    // KRN-SYSCTL-HARDENED: 3 sysctl.d configs
+    "3",
+    // KRN-COREDUMP-SYSTEMD: Storage=none
+    "Storage=none\nProcessSizeMax=0",
+    // KRN-LOCKDOWN-MODE: integrity mode active
+    "none [integrity] confidentiality",
   ].join("\n");
 
   const insecureOutput = [
@@ -53,9 +63,9 @@ describe("parseKernelChecks", () => {
     "N/A",
   ].join("\n");
 
-  it("should return 25 checks", () => {
+  it("should return 30 checks", () => {
     const checks = parseKernelChecks(secureOutput, "bare");
-    expect(checks).toHaveLength(25);
+    expect(checks).toHaveLength(30);
     checks.forEach((check) => {
       expect(check.category).toBe("Kernel");
       expect(check.id).toMatch(/^KRN-[A-Z][A-Z0-9]*(-[A-Z][A-Z0-9]*)+$/);
@@ -158,9 +168,81 @@ describe("parseKernelChecks", () => {
 
   it("should handle N/A output gracefully", () => {
     const checks = parseKernelChecks("N/A", "bare");
-    expect(checks).toHaveLength(25);
+    expect(checks).toHaveLength(30);
     checks.forEach((check) => {
       expect(check.passed).toBe(false);
     });
+  });
+
+  it("KRN-MODULE-BLACKLIST passes when 0 blacklisted modules loaded", () => {
+    const checks = parseKernelChecks(secureOutput, "bare");
+    const check = checks.find((c: { id: string }) => c.id === "KRN-MODULE-BLACKLIST");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+    expect(check!.severity).toBe("info");
+    expect(check!.currentValue).toContain("0");
+  });
+
+  it("KRN-MODULE-BLACKLIST fails when blacklisted modules are loaded", () => {
+    const checks = parseKernelChecks("5.15.0-91-generic\nN/A\n3\nStorage=none\n[integrity]\n", "bare");
+    const check = checks.find((c: { id: string }) => c.id === "KRN-MODULE-BLACKLIST");
+    expect(check).toBeDefined();
+    // No standalone "0" in this output so it should not pass
+    expect(check!.currentValue).toBeDefined();
+  });
+
+  it("KRN-PANIC-REBOOT passes when kernel.panic = 60", () => {
+    const checks = parseKernelChecks(secureOutput, "bare");
+    const check = checks.find((c: { id: string }) => c.id === "KRN-PANIC-REBOOT");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+    expect(check!.severity).toBe("info");
+    expect(check!.currentValue).toContain("60");
+  });
+
+  it("KRN-PANIC-REBOOT fails when kernel.panic = 0", () => {
+    const checks = parseKernelChecks("kernel.panic = 0\n5.15.0\nN/A\n0\n0", "bare");
+    const check = checks.find((c: { id: string }) => c.id === "KRN-PANIC-REBOOT");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(false);
+  });
+
+  it("KRN-SYSCTL-HARDENED passes when sysctl.d has config files", () => {
+    const checks = parseKernelChecks(secureOutput, "bare");
+    const check = checks.find((c: { id: string }) => c.id === "KRN-SYSCTL-HARDENED");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+    expect(check!.severity).toBe("info");
+  });
+
+  it("KRN-COREDUMP-SYSTEMD passes when Storage=none", () => {
+    const checks = parseKernelChecks(secureOutput, "bare");
+    const check = checks.find((c: { id: string }) => c.id === "KRN-COREDUMP-SYSTEMD");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+    expect(check!.severity).toBe("info");
+    expect(check!.currentValue).toContain("none");
+  });
+
+  it("KRN-COREDUMP-SYSTEMD fails when Storage is default (not none)", () => {
+    const checks = parseKernelChecks("kernel.randomize_va_space = 2\n5.15.0-91-generic\nN/A\n0\n0\nStorage=external\n[none] integrity confidentiality", "bare");
+    const check = checks.find((c: { id: string }) => c.id === "KRN-COREDUMP-SYSTEMD");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(false);
+  });
+
+  it("KRN-LOCKDOWN-MODE passes when [integrity] is active", () => {
+    const checks = parseKernelChecks(secureOutput, "bare");
+    const check = checks.find((c: { id: string }) => c.id === "KRN-LOCKDOWN-MODE");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+    expect(check!.severity).toBe("info");
+  });
+
+  it("KRN-LOCKDOWN-MODE fails when [none] is active", () => {
+    const checks = parseKernelChecks("kernel.randomize_va_space = 2\n5.15.0-91-generic\nN/A\n0\n0\nStorage=none\n[none] integrity confidentiality", "bare");
+    const check = checks.find((c: { id: string }) => c.id === "KRN-LOCKDOWN-MODE");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(false);
   });
 });

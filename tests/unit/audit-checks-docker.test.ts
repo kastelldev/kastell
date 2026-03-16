@@ -22,6 +22,20 @@ describe("parseDockerChecks", () => {
     "app-network bridge",
     // docker volume ls (named volume)
     "myapp_data local",
+    // docker info security options (userns enabled — DCK-26..32 data)
+    "[name=userns name=seccomp name=apparmor]",
+    // bridge network inspect — ICC disabled (DCK-BRIDGE-NFCALL)
+    '{"com.docker.network.bridge.enable_icc":"false","com.docker.network.bridge.enable_ip_masquerade":"true"}',
+    // authorization plugins — none (DCK-AUTH-PLUGIN)
+    "[]",
+    // registry certs dir — certs exist (DCK-REGISTRY-CERTS)
+    "/etc/docker/certs.d/registry.example.com",
+    // insecure registry CIDRs — only loopback (DCK-NO-INSECURE-REGISTRY)
+    "[127.0.0.0/8]",
+    // swarm state — inactive (DCK-SWARM-INACTIVE)
+    "inactive",
+    // experimental build — false (DCK-NO-EXPERIMENTAL)
+    "false",
   ].join("\n");
 
   const insecureDockerOutput = [
@@ -34,9 +48,9 @@ describe("parseDockerChecks", () => {
     "660 root root",
   ].join("\n");
 
-  it("should return 25 checks for secure Docker setup", () => {
+  it("should return 32 checks for secure Docker setup", () => {
     const checks = parseDockerChecks(secureDockerOutput, "bare");
-    expect(checks).toHaveLength(25);
+    expect(checks).toHaveLength(32);
     checks.forEach((check) => {
       expect(check.category).toBe("Docker");
       expect(check.id).toMatch(/^DCK-[A-Z][A-Z0-9]*(-[A-Z][A-Z0-9]*)+$/);
@@ -56,18 +70,18 @@ describe("parseDockerChecks", () => {
     expect(dck01!.severity).toBe("critical");
   });
 
-  it("should return 25 checks as info/skipped when Docker not installed (N/A)", () => {
+  it("should return 32 checks as info/skipped when Docker not installed (N/A)", () => {
     const checks = parseDockerChecks("N/A", "bare");
-    expect(checks).toHaveLength(25);
+    expect(checks).toHaveLength(32);
     checks.forEach((check) => {
       expect(check.severity).toBe("info");
       expect(check.currentValue).toContain("Docker not installed");
     });
   });
 
-  it("should return 25 checks as info/skipped for empty output on bare platform", () => {
+  it("should return 32 checks as info/skipped for empty output on bare platform", () => {
     const checks = parseDockerChecks("", "bare");
-    expect(checks).toHaveLength(25);
+    expect(checks).toHaveLength(32);
     checks.forEach((check) => {
       expect(check.severity).toBe("info");
     });
@@ -75,7 +89,7 @@ describe("parseDockerChecks", () => {
 
   it("should handle coolify platform (Docker expected)", () => {
     const checks = parseDockerChecks("N/A", "coolify");
-    expect(checks).toHaveLength(25);
+    expect(checks).toHaveLength(32);
     // On coolify, Docker missing is a warning not info
     const dck01 = checks.find((c) => c.id === "DCK-NO-TCP-SOCKET");
     expect(dck01!.severity).toBe("warning");
@@ -83,7 +97,7 @@ describe("parseDockerChecks", () => {
 
   it("should handle dokploy platform (Docker expected)", () => {
     const checks = parseDockerChecks("N/A", "dokploy");
-    expect(checks).toHaveLength(25);
+    expect(checks).toHaveLength(32);
     const dck01 = checks.find((c) => c.id === "DCK-NO-TCP-SOCKET");
     expect(dck01!.severity).toBe("warning");
   });
@@ -152,5 +166,98 @@ describe("parseDockerChecks", () => {
     const check = checks.find((c) => c.id === "DCK-NETWORK-DISABLED");
     expect(check).toBeDefined();
     expect(check!.passed).toBe(true);
+  });
+
+  it("DCK-BRIDGE-NFCALL passes when ICC is disabled on bridge network", () => {
+    const checks = parseDockerChecks(secureDockerOutput, "bare");
+    const check = checks.find((c) => c.id === "DCK-BRIDGE-NFCALL");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+    expect(check!.severity).toBe("warning");
+  });
+
+  it("DCK-BRIDGE-NFCALL fails when ICC is enabled on bridge network", () => {
+    const iccOutput = [
+      '{"Hosts":["unix:///var/run/docker.sock"],"ServerVersion":"24.0.7","SecurityOptions":[],"LoggingDriver":"json-file"}',
+      "{}",
+      "N/A",
+      "N/A",
+      "N/A",
+      '{"com.docker.network.bridge.enable_icc":"true"}',
+    ].join("\n");
+    const checks = parseDockerChecks(iccOutput, "bare");
+    const check = checks.find((c) => c.id === "DCK-BRIDGE-NFCALL");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(false);
+    expect(check!.currentValue).toContain("ICC enabled");
+  });
+
+  it("DCK-NO-INSECURE-REGISTRY passes when only loopback CIDR configured", () => {
+    const checks = parseDockerChecks(secureDockerOutput, "bare");
+    const check = checks.find((c) => c.id === "DCK-NO-INSECURE-REGISTRY");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+    expect(check!.severity).toBe("warning");
+  });
+
+  it("DCK-NO-EXPERIMENTAL passes when experimental features disabled", () => {
+    const checks = parseDockerChecks(secureDockerOutput, "bare");
+    const check = checks.find((c) => c.id === "DCK-NO-EXPERIMENTAL");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+    expect(check!.severity).toBe("info");
+  });
+
+  it("DCK-NO-EXPERIMENTAL fails when experimental features enabled", () => {
+    const experimentalOutput = [
+      '{"Hosts":["unix:///var/run/docker.sock"],"ServerVersion":"24.0.7","SecurityOptions":[],"LoggingDriver":"json-file"}',
+      "{}",
+      "N/A",
+      "N/A",
+      "N/A",
+      "N/A",
+      "N/A",
+      "N/A",
+      "N/A",
+      "[127.0.0.0/8]",
+      "inactive",
+      "true",
+    ].join("\n");
+    const checks = parseDockerChecks(experimentalOutput, "bare");
+    const check = checks.find((c) => c.id === "DCK-NO-EXPERIMENTAL");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(false);
+    expect(check!.currentValue).toContain("Experimental features enabled");
+  });
+
+  it("DCK-SWARM-INACTIVE passes when swarm is inactive", () => {
+    const checks = parseDockerChecks(secureDockerOutput, "bare");
+    const check = checks.find((c) => c.id === "DCK-SWARM-INACTIVE");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+    expect(check!.severity).toBe("info");
+  });
+
+  it("DCK-PID-MODE passes when no running containers use host PID namespace", () => {
+    const checks = parseDockerChecks(secureDockerOutput, "bare");
+    const check = checks.find((c) => c.id === "DCK-PID-MODE");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+    expect(check!.severity).toBe("warning");
+  });
+
+  it("DCK-PID-MODE fails when a container uses host PID namespace", () => {
+    const pidOutput = [
+      '{"Hosts":["unix:///var/run/docker.sock"],"ServerVersion":"24.0.7","SecurityOptions":[],"LoggingDriver":"json-file"}',
+      "{}",
+      "myapp nginx:latest Up 2 hours",
+      "srw-rw---- 1 root docker 0 Mar  1 10:00 /var/run/docker.sock",
+      '/myapp SecurityOpt=[] "PidMode":"host" ReadonlyRootfs=false User= Privileged=false',
+    ].join("\n");
+    const checks = parseDockerChecks(pidOutput, "bare");
+    const check = checks.find((c) => c.id === "DCK-PID-MODE");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(false);
+    expect(check!.currentValue).toContain("host PID");
   });
 });

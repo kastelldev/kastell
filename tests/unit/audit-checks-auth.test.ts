@@ -40,6 +40,15 @@ describe("parseAuthChecks", () => {
     "auth required pam_wheel.so use_uid",
     // /etc/gshadow permissions (second standalone perm after shadow 640) — AUTH-GSHADOW-PERMISSIONS
     "640",
+    // New auth checks data (auth19..22)
+    // AUTH-PWQUALITY-CONFIGURED: pam_pwquality in /etc/pam.d/
+    "/etc/pam.d/common-password:password requisite pam_pwquality.so retry=3",
+    // AUTH-UMASK-LOGIN-DEFS: UMASK 027
+    "UMASK\t027",
+    // AUTH-SHA512-HASH: SHA512
+    "ENCRYPT_METHOD SHA512",
+    // AUTH-PWQUALITY-MINLEN: minlen = 14
+    "minlen = 14",
   ].join("\n");
 
   const insecureOutput = [
@@ -67,9 +76,9 @@ describe("parseAuthChecks", () => {
     "N/A",
   ].join("\n");
 
-  it("should return 18 checks", () => {
+  it("should return 22 checks", () => {
     const checks = parseAuthChecks(secureOutput, "bare");
-    expect(checks).toHaveLength(18);
+    expect(checks).toHaveLength(22);
     checks.forEach((check) => {
       expect(check.category).toBe("Auth");
       expect(check.id).toMatch(/^AUTH-[A-Z][A-Z0-9]*(-[A-Z][A-Z0-9]*)+$/);
@@ -169,6 +178,67 @@ describe("parseAuthChecks", () => {
 
   it("should handle N/A output gracefully", () => {
     const checks = parseAuthChecks("N/A", "bare");
-    expect(checks).toHaveLength(18);
+    expect(checks).toHaveLength(22);
+  });
+
+  it("AUTH-PWQUALITY-CONFIGURED passes when pam_pwquality is in pam.d", () => {
+    const checks = parseAuthChecks(secureOutput, "bare");
+    const check = checks.find((c: { id: string }) => c.id === "AUTH-PWQUALITY-CONFIGURED");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+    expect(check!.severity).toBe("warning");
+  });
+
+  it("AUTH-PWQUALITY-CONFIGURED fails when pam_pwquality absent", () => {
+    const checks = parseAuthChecks(insecureOutput, "bare");
+    const check = checks.find((c: { id: string }) => c.id === "AUTH-PWQUALITY-CONFIGURED");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(false);
+  });
+
+  it("AUTH-UMASK-LOGIN-DEFS passes when UMASK is 027", () => {
+    const checks = parseAuthChecks(secureOutput, "bare");
+    const check = checks.find((c: { id: string }) => c.id === "AUTH-UMASK-LOGIN-DEFS");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+    expect(check!.severity).toBe("info");
+  });
+
+  it("AUTH-UMASK-LOGIN-DEFS fails when UMASK is not present", () => {
+    const checks = parseAuthChecks(insecureOutput, "bare");
+    const check = checks.find((c: { id: string }) => c.id === "AUTH-UMASK-LOGIN-DEFS");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(false);
+  });
+
+  it("AUTH-SHA512-HASH passes when ENCRYPT_METHOD is SHA512", () => {
+    const checks = parseAuthChecks(secureOutput, "bare");
+    const check = checks.find((c: { id: string }) => c.id === "AUTH-SHA512-HASH");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+    expect(check!.severity).toBe("warning");
+  });
+
+  it("AUTH-SHA512-HASH fails when ENCRYPT_METHOD absent or weak", () => {
+    const checks = parseAuthChecks(insecureOutput, "bare");
+    const check = checks.find((c: { id: string }) => c.id === "AUTH-SHA512-HASH");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(false);
+  });
+
+  it("AUTH-PWQUALITY-MINLEN passes when minlen >= 12", () => {
+    const checks = parseAuthChecks(secureOutput, "bare");
+    const check = checks.find((c: { id: string }) => c.id === "AUTH-PWQUALITY-MINLEN");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+    expect(check!.severity).toBe("warning");
+    expect(check!.currentValue).toContain("14");
+  });
+
+  it("AUTH-PWQUALITY-MINLEN fails when minlen not configured", () => {
+    const checks = parseAuthChecks(insecureOutput, "bare");
+    const check = checks.find((c: { id: string }) => c.id === "AUTH-PWQUALITY-MINLEN");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(false);
   });
 });

@@ -476,15 +476,20 @@ const SERVICES_CHECKS: ServicesCheckDef[] = [
     severity: "warning",
     check: (output) => {
       // ss -tlnp | grep -c '0.0.0.0:' output — count of wildcard listeners
+      // The running-count check consumes the first standalone digit; wildcard count is the second.
       const lines = output.split("\n");
       let wildcardCount: number | null = null;
+      let standaloneDigitsSeen = 0;
       for (const line of lines) {
         const trimmed = line.trim();
         if (/^\d+$/.test(trimmed)) {
           const val = parseInt(trimmed, 10);
           if (val >= 0 && val < 1000) {
-            wildcardCount = val;
-            break;
+            standaloneDigitsSeen++;
+            if (standaloneDigitsSeen === 2) {
+              wildcardCount = val;
+              break;
+            }
           }
         }
       }
@@ -534,21 +539,23 @@ const SERVICES_CHECKS: ServicesCheckDef[] = [
     severity: "info",
     check: (output) => {
       // find /etc -name '*.conf' -perm -o+r -path '*/systemd/*' output
-      // NONE = no world-readable configs found
+      // NONE = no world-readable configs found; this is the last section in output.
+      // We look at lines from the end to find the world-readable section result.
       const lines = output.split("\n").map((l) => l.trim()).filter(Boolean);
-      const noneFound = lines.some((l) => l === "NONE");
-      if (noneFound) {
+      // Collect all path lines (lines starting with /) — these are world-readable config files
+      const configFiles = lines.filter((l) => l.startsWith("/") && l.includes(".conf"));
+      if (configFiles.length > 0) {
+        return {
+          passed: false,
+          currentValue: `${configFiles.length} world-readable service config(s) found`,
+        };
+      }
+      // Check if the last non-empty line (or any line) is explicitly "NONE"
+      const lastLine = lines[lines.length - 1];
+      if (lastLine === "NONE") {
         return { passed: true, currentValue: "None found" };
       }
-      // Count non-empty, non-NONE lines as config files found
-      const configFiles = lines.filter((l) => l.startsWith("/") && l.includes(".conf"));
-      const passed = configFiles.length === 0;
-      return {
-        passed,
-        currentValue: passed
-          ? "None found"
-          : `${configFiles.length} world-readable service config(s) found`,
-      };
+      return { passed: true, currentValue: "None found" };
     },
     expectedValue: "No world-readable systemd service configuration files",
     fixCommand: "find /etc/systemd/ -name '*.conf' -perm -o+r -exec chmod o-r {} \\;",

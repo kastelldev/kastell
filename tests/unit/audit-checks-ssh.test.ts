@@ -21,6 +21,11 @@ describe("parseSSHChecks", () => {
     "ciphers aes256-ctr,aes192-ctr,aes128-ctr",
     "macs hmac-sha2-256,hmac-sha2-512",
     "kexalgorithms curve25519-sha256,diffie-hellman-group16-sha512",
+    // New SSH checks (SSH-MAX-STARTUPS, SSH-STRICT-MODES, SSH-NO-AGENT-FORWARDING, SSH-PRINT-MOTD)
+    "maxstartups 10:30:60",
+    "strictmodes yes",
+    "allowagentforwarding no",
+    "printmotd no",
   ].join("\n");
 
   const insecureOutput = [
@@ -44,9 +49,9 @@ describe("parseSSHChecks", () => {
     "kexalgorithms diffie-hellman-group1-sha1,curve25519-sha256",
   ].join("\n");
 
-  it("should return 18 checks for secure sshd output, all passed", () => {
+  it("should return 22 checks for secure sshd output, all passed", () => {
     const checks = parseSSHChecks(secureOutput, "bare");
-    expect(checks).toHaveLength(18);
+    expect(checks).toHaveLength(22);
     checks.forEach((check) => {
       expect(check.passed).toBe(true);
       expect(check.category).toBe("SSH");
@@ -163,15 +168,15 @@ describe("parseSSHChecks", () => {
 
   it("severity budget: no more than 55% critical checks in SSH category", () => {
     const checks = parseSSHChecks(secureOutput, "bare");
-    expect(checks).toHaveLength(18);
+    expect(checks).toHaveLength(22);
     const criticalCount = checks.filter((c: AuditCheck) => c.severity === "critical").length;
-    const maxAllowed = Math.ceil(18 * 0.55);
+    const maxAllowed = Math.ceil(22 * 0.55);
     expect(criticalCount).toBeLessThanOrEqual(maxAllowed);
   });
 
   it("should handle empty/N/A output with all checks failed", () => {
     const checks = parseSSHChecks("N/A", "bare");
-    expect(checks).toHaveLength(18);
+    expect(checks).toHaveLength(22);
     checks.forEach((check) => {
       expect(check.passed).toBe(false);
       expect(check.currentValue).toContain("Unable to determine");
@@ -180,9 +185,71 @@ describe("parseSSHChecks", () => {
 
   it("should handle empty string output", () => {
     const checks = parseSSHChecks("", "bare");
-    expect(checks).toHaveLength(18);
+    expect(checks).toHaveLength(22);
     checks.forEach((check) => {
       expect(check.passed).toBe(false);
     });
+  });
+
+  it("SSH-MAX-STARTUPS passes with maxstartups 10:30:60", () => {
+    const checks = parseSSHChecks(secureOutput, "bare");
+    const check = checks.find((c) => c.id === "SSH-MAX-STARTUPS");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+    expect(check!.severity).toBe("warning");
+    expect(check!.currentValue).toContain("10:30:60");
+  });
+
+  it("SSH-MAX-STARTUPS fails with maxstartups 100", () => {
+    const checks = parseSSHChecks("maxstartups 100", "bare");
+    const check = checks.find((c) => c.id === "SSH-MAX-STARTUPS");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(false);
+    expect(check!.currentValue).toBe("100");
+  });
+
+  it("SSH-STRICT-MODES passes with strictmodes yes", () => {
+    const checks = parseSSHChecks(secureOutput, "bare");
+    const check = checks.find((c) => c.id === "SSH-STRICT-MODES");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+    expect(check!.severity).toBe("warning");
+  });
+
+  it("SSH-STRICT-MODES fails with strictmodes no", () => {
+    const checks = parseSSHChecks("strictmodes no", "bare");
+    const check = checks.find((c) => c.id === "SSH-STRICT-MODES");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(false);
+  });
+
+  it("SSH-NO-AGENT-FORWARDING passes with allowagentforwarding no", () => {
+    const checks = parseSSHChecks(secureOutput, "bare");
+    const check = checks.find((c) => c.id === "SSH-NO-AGENT-FORWARDING");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+    expect(check!.severity).toBe("warning");
+  });
+
+  it("SSH-NO-AGENT-FORWARDING fails with allowagentforwarding yes", () => {
+    const checks = parseSSHChecks("allowagentforwarding yes", "bare");
+    const check = checks.find((c) => c.id === "SSH-NO-AGENT-FORWARDING");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(false);
+  });
+
+  it("SSH-PRINT-MOTD passes with printmotd no", () => {
+    const checks = parseSSHChecks(secureOutput, "bare");
+    const check = checks.find((c) => c.id === "SSH-PRINT-MOTD");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(true);
+    expect(check!.severity).toBe("info");
+  });
+
+  it("SSH-PRINT-MOTD fails with printmotd yes", () => {
+    const checks = parseSSHChecks("printmotd yes", "bare");
+    const check = checks.find((c) => c.id === "SSH-PRINT-MOTD");
+    expect(check).toBeDefined();
+    expect(check!.passed).toBe(false);
   });
 });
