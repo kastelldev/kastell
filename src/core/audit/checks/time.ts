@@ -186,6 +186,23 @@ const TIME_CHECKS: TimeCheckDef[] = [
     explain:
       "Clock drift causes TLS certificate validation failures, log correlation errors, and authentication token expiry issues.",
   },
+  {
+    id: "TIME-NTP-SYNCHRONIZED",
+    name: "NTP Synchronized via timedatectl show",
+    severity: "warning",
+    check: (output) => {
+      // timedatectl show output includes NTPSynchronized=yes
+      const synced = /NTPSynchronized=yes/i.test(output);
+      return {
+        passed: synced,
+        currentValue: synced ? "NTPSynchronized=yes (timedatectl show)" : "NTPSynchronized not confirmed",
+      };
+    },
+    expectedValue: "timedatectl show reports NTPSynchronized=yes",
+    fixCommand: "timedatectl set-ntp true",
+    explain:
+      "Accurate time synchronization is critical for log correlation, certificate validation, and forensic timeline reconstruction.",
+  },
 ];
 
 export const parseTimeChecks: CheckParser = (

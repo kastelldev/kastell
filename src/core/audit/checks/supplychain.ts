@@ -250,6 +250,42 @@ const SUPPLY_CHECKS: SupplyChainCheckDef[] = [
     explain:
       "GPG keys in the trusted keyring ensure package integrity verification during apt operations.",
   },
+  {
+    id: "SUPPLY-PACKAGE-VERIFY-CLEAN",
+    name: "dpkg Package File Integrity Verified",
+    severity: "warning",
+    check: (output) => {
+      // dpkg --verify | wc -l output — count of modified package files
+      const match = output.match(/\b(\d+)\b/);
+      if (!match) return { passed: false, currentValue: "Unable to determine modified package file count" };
+      const count = parseInt(match[1], 10);
+      return {
+        passed: count <= 5,
+        currentValue: `${count} modified package file(s) detected by dpkg --verify`,
+      };
+    },
+    expectedValue: "5 or fewer modified package files (small intentional modifications are normal)",
+    fixCommand: "dpkg --verify — investigate modified files and reinstall affected packages",
+    explain:
+      "Modified package files may indicate rootkit installation or unauthorized system tampering.",
+  },
+  {
+    id: "SUPPLY-DEBSUMS-INSTALLED",
+    name: "debsums Package Integrity Tool Installed",
+    severity: "info",
+    check: (output) => {
+      // which debsums output — path or NOT_INSTALLED
+      const isInstalled = !output.includes("NOT_INSTALLED") && /debsums/.test(output);
+      return {
+        passed: isInstalled,
+        currentValue: isInstalled ? "debsums is installed" : "debsums is not installed",
+      };
+    },
+    expectedValue: "debsums is installed on the system",
+    fixCommand: "apt install debsums",
+    explain:
+      "debsums verifies installed package file integrity against known checksums, detecting unauthorized file modifications.",
+  },
 ];
 
 export const parseSupplyChainChecks: CheckParser = (

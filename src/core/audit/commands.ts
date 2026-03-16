@@ -78,6 +78,8 @@ function updatesSection(): string {
     `dpkg -l 'linux-image-*' 2>/dev/null | grep '^ii' | tail -1 | awk '{print $3}' || echo 'N/A'`,
     // NEW: auto-upgrades config
     `cat /etc/apt/apt.conf.d/20auto-upgrades 2>/dev/null || echo 'N/A'`,
+    // NEW: security repository presence
+    `grep -rE 'security' /etc/apt/sources.list /etc/apt/sources.list.d/ 2>/dev/null | head -5 || echo 'NONE'`,
   ].join("\n");
 }
 
@@ -313,6 +315,10 @@ function schedulingSection(): string {
     `stat -c '%a %U %G %n' /etc/cron.d /etc/cron.daily /etc/cron.weekly /etc/cron.monthly /etc/cron.hourly 2>/dev/null || echo 'N/A'`,
     `stat -c '%a %U %G %n' /etc/crontab 2>/dev/null || echo 'N/A'`,
     `find /etc/cron* -perm -o+w 2>/dev/null | head -10 || echo 'NONE'`,
+    // NEW: cron.d file count
+    `find /etc/cron.d/ -type f 2>/dev/null | wc -l || echo '0'`,
+    // NEW: world-readable user crontabs
+    `find /var/spool/cron/crontabs/ -type f -perm -o+r 2>/dev/null | head -5 || echo 'NONE'`,
   ].join("\n");
 }
 
@@ -326,6 +332,8 @@ function timeSection(): string {
     `hwclock --show 2>/dev/null | head -3 || echo 'N/A'`,
     // NEW: NTP peer status
     `ntpq -p 2>/dev/null | head -5 || echo 'N/A'`,
+    // NEW: timedatectl show for NTPSynchronized property
+    `timedatectl show 2>/dev/null | grep -E 'NTPSynchronized|Timezone' | head -3 || echo 'N/A'`,
   ].join("\n");
 }
 
@@ -496,7 +504,11 @@ function supplyChainSection(): string {
     `dpkg --audit 2>/dev/null | head -10 || echo 'NONE'`,
     `apt-key list 2>&1 | head -20 || echo 'NONE'`,
     // NEW: insecure apt config
-    `apt-config dump 2>/dev/null | grep -i 'AllowUnauthenticated\|AllowInsecureRepositories' | head -5 || echo 'NONE'`,
+    `apt-config dump 2>/dev/null | grep -i 'AllowUnauthenticated\\|AllowInsecureRepositories' | head -5 || echo 'NONE'`,
+    // NEW: modified package file count
+    `dpkg --verify 2>/dev/null | wc -l || echo '0'`,
+    // NEW: debsums presence
+    `which debsums 2>/dev/null || echo 'NOT_INSTALLED'`,
   ].join("\n");
 }
 
@@ -536,6 +548,10 @@ function incidentReadySection(): string {
     `grep -E 'wtmp|lastb' /etc/logrotate.conf /etc/logrotate.d/* 2>/dev/null | head -5 || echo 'NO_LOGROTATE_WTMP'`,
     // NEW: wtmp and btmp file existence
     `ls -la /var/log/wtmp /var/log/btmp 2>/dev/null || echo 'N/A'`,
+    // NEW: forensic tools presence
+    `which volatility3 volatility dc3dd 2>/dev/null | head -3 || echo 'NONE'`,
+    // NEW: recent archived log count
+    `find /var/log -name '*.gz' -mtime -30 2>/dev/null | wc -l || echo '0'`,
   ].join("\n");
 }
 
@@ -548,6 +564,10 @@ function dnsSection(): string {
     `lsattr /etc/resolv.conf 2>/dev/null || echo 'N/A'`,
     // NEW: nameserver count in resolv.conf
     `grep -c 'nameserver' /etc/resolv.conf 2>/dev/null || echo '0'`,
+    // NEW: systemd-resolved active status
+    `systemctl is-active systemd-resolved 2>/dev/null || echo 'inactive'`,
+    // NEW: search domain presence
+    `grep -E 'search\\s+' /etc/resolv.conf 2>/dev/null || echo 'NONE'`,
   ].join("\n");
 }
 

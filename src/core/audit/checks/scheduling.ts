@@ -204,6 +204,44 @@ const SCHEDULING_CHECKS: SchedulingCheckDef[] = [
     explain:
       "World-writable cron directories allow any user to inject scheduled tasks for privilege escalation.",
   },
+  {
+    id: "SCHED-CRON-D-FILE-COUNT",
+    name: "cron.d File Count Reasonable",
+    severity: "info",
+    check: (output) => {
+      // find /etc/cron.d/ -type f | wc -l output — a number
+      const match = output.match(/\b(\d+)\b/);
+      if (!match) return { passed: false, currentValue: "Unable to determine cron.d file count" };
+      const count = parseInt(match[1], 10);
+      return {
+        passed: count <= 15,
+        currentValue: `${count} file(s) in /etc/cron.d/`,
+      };
+    },
+    expectedValue: "15 or fewer files in /etc/cron.d/",
+    fixCommand: "ls /etc/cron.d/ — review and remove unnecessary scheduled tasks",
+    explain:
+      "Excessive cron.d files indicate unmanaged scheduled tasks that may run with elevated privileges.",
+  },
+  {
+    id: "SCHED-NO-WORLD-READABLE-CRONTABS",
+    name: "No World-Readable User Crontabs",
+    severity: "warning",
+    check: (output) => {
+      // find /var/spool/cron/crontabs/ -type f -perm -o+r output — paths or NONE
+      const hasWorldReadable = !output.includes("NONE") && /\/var\/spool\/cron\/crontabs/i.test(output);
+      return {
+        passed: !hasWorldReadable,
+        currentValue: hasWorldReadable
+          ? "World-readable crontab file(s) found in /var/spool/cron/crontabs/"
+          : "No world-readable crontabs found",
+      };
+    },
+    expectedValue: "No world-readable files in /var/spool/cron/crontabs/",
+    fixCommand: "chmod 600 /var/spool/cron/crontabs/*",
+    explain:
+      "World-readable crontab files expose scheduled task details including credentials and internal paths to all local users.",
+  },
 ];
 
 export const parseSchedulingChecks: CheckParser = (

@@ -214,5 +214,28 @@ export const parseUpdatesChecks: CheckParser = (sectionOutput: string, _platform
     explain: "APT repos using HTTPS prevent man-in-the-middle attacks during package downloads.",
   };
 
-  return [upd01, upd02, upd03, upd04, upd05, upd06, upd07, upd08, upd09, upd10];
+  // UPD-11: Security repository configured in APT sources
+  // grep -rE 'security' /etc/apt/sources.list* output — matching lines or NONE
+  const securityRepoLine = lines.find(
+    (l) => l.includes("security") && (l.includes("deb ") || l.includes("https://") || l.includes("http://"))
+  ) ?? "";
+  const hasSecurityRepo = securityRepoLine.length > 0;
+  const upd11: AuditCheck = {
+    id: "UPD-SECURITY-REPO-PRIORITY",
+    category: "Updates",
+    name: "Security Repository Configured",
+    severity: "info",
+    passed: hasSecurityRepo,
+    currentValue: isNA
+      ? "Unable to determine"
+      : hasSecurityRepo
+        ? "Security repository found in APT sources"
+        : "No dedicated security repository found in APT sources",
+    expectedValue: "A security repository entry exists in /etc/apt/sources.list",
+    fixCommand: "Ensure /etc/apt/sources.list includes the Ubuntu security repository",
+    explain:
+      "A dedicated security repository ensures critical patches are available immediately without waiting for general release cycles.",
+  };
+
+  return [upd01, upd02, upd03, upd04, upd05, upd06, upd07, upd08, upd09, upd10, upd11];
 };

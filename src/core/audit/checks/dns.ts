@@ -147,6 +147,42 @@ const DNS_CHECKS: DnsCheckDef[] = [
     explain:
       "DNS resolution relying solely on localhost without a running resolver causes total DNS failure.",
   },
+  {
+    id: "DNS-LOCAL-RESOLVER-ACTIVE",
+    name: "systemd-resolved Local Resolver Active",
+    severity: "info",
+    check: (output) => {
+      // systemctl is-active systemd-resolved output — "active" or "inactive"
+      const isActive = /^active$/im.test(output);
+      return {
+        passed: isActive,
+        currentValue: isActive ? "systemd-resolved is active" : "systemd-resolved is inactive",
+      };
+    },
+    expectedValue: "systemd-resolved service is active",
+    fixCommand: "systemctl enable --now systemd-resolved",
+    explain:
+      "A local DNS resolver provides caching, DNSSEC validation, and protection against DNS cache poisoning from upstream resolvers.",
+  },
+  {
+    id: "DNS-SEARCH-DOMAIN-SET",
+    name: "DNS Search Domain Configured",
+    severity: "info",
+    check: (output) => {
+      // grep -E 'search\s+' /etc/resolv.conf output — matching line or NONE
+      const hasSearch = /^\s*search\s+\S+/im.test(output) && !output.includes("NONE");
+      return {
+        passed: hasSearch,
+        currentValue: hasSearch
+          ? "DNS search domain is configured in /etc/resolv.conf"
+          : "No search domain configured in /etc/resolv.conf",
+      };
+    },
+    expectedValue: "A search domain is configured in /etc/resolv.conf",
+    fixCommand: "echo 'search example.com' >> /etc/resolv.conf",
+    explain:
+      "A configured search domain prevents DNS queries from leaking internal hostnames to external resolvers.",
+  },
 ];
 
 export const parseDnsChecks: CheckParser = (

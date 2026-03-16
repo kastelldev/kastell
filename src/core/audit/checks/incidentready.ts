@@ -222,6 +222,45 @@ const INCIDENT_CHECKS: IncidentReadyCheckDef[] = [
     explain:
       "btmp records failed login attempts; its absence prevents detection of brute-force attack patterns.",
   },
+  {
+    id: "INCID-FORENSIC-TOOLS",
+    name: "Forensic Tools Pre-installed",
+    severity: "info",
+    check: (output) => {
+      // which volatility3 volatility dc3dd output — each tool path on its own line or NONE
+      const tools: string[] = [];
+      if (/volatility/.test(output)) tools.push("volatility");
+      if (/dc3dd/.test(output)) tools.push("dc3dd");
+      const hasTool = tools.length > 0 && !output.includes("NONE");
+      return {
+        passed: hasTool,
+        currentValue: hasTool ? `Forensic tools found: ${tools.join(", ")}` : "None installed",
+      };
+    },
+    expectedValue: "At least one forensic tool (volatility3, dc3dd) is installed",
+    fixCommand: "apt install dc3dd — install forensic imaging tool for incident response",
+    explain:
+      "Having forensic tools pre-installed enables rapid incident response without contaminating the compromised system with new package installations.",
+  },
+  {
+    id: "INCID-LOG-ARCHIVE-EXISTS",
+    name: "Recent Archived Log Files Present",
+    severity: "info",
+    check: (output) => {
+      // find /var/log -name '*.gz' -mtime -30 | wc -l output — a number
+      const match = output.match(/\b(\d+)\b/);
+      if (!match) return { passed: false, currentValue: "Unable to determine archived log count" };
+      const count = parseInt(match[1], 10);
+      return {
+        passed: count > 0,
+        currentValue: count > 0 ? `${count} recent archived log file(s) found` : "0 archived log files found",
+      };
+    },
+    expectedValue: "At least 1 recently archived log file in /var/log",
+    fixCommand: "logrotate -f /etc/logrotate.conf — verify log rotation is working",
+    explain:
+      "Archived logs provide forensic evidence for incident investigation; absence indicates log rotation failure or evidence tampering.",
+  },
 ];
 
 export const parseIncidentReadyChecks: CheckParser = (
