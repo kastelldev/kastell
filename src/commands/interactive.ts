@@ -35,7 +35,7 @@ const MENU: MenuCategory[] = [
     label: "Security",
     emoji: "\uD83D\uDD12",
     actions: [
-      { name: "Run security audit", value: "audit", description: "Score server security across 9 categories with quick wins" },
+      { name: "Run security audit", value: "audit", description: "Score server security across 27 categories with compliance mapping" },
       { name: "Harden SSH & fail2ban", value: "secure", description: "Configure SSH security and brute-force protection" },
       { name: "Lock server (production hardening)", value: "lock", description: "Apply SSH + fail2ban + UFW + sysctl hardening in one step" },
       { name: "Manage firewall (UFW)", value: "firewall", description: "View, add, or remove UFW firewall port rules" },
@@ -416,6 +416,57 @@ async function promptImport(): Promise<string[] | null> {
 }
 
 async function promptAudit(): Promise<string[] | null> {
+  const mode = await promptList("Audit mode:", [
+    { name: "Run full audit", value: "run" },
+    { name: "List all checks (no scan)", value: "list-checks" },
+    { name: "Run with compliance profile", value: "profile" },
+    { name: "Compliance framework report", value: "compliance" },
+  ]);
+  if (!mode) return null;
+
+  if (mode === "list-checks") return ["audit", "--list-checks"];
+
+  if (mode === "profile") {
+    const profile = await promptList("Compliance profile:", [
+      { name: "CIS Level 1 (essential)", value: "cis-level1" },
+      { name: "CIS Level 2 (advanced)", value: "cis-level2" },
+      { name: "PCI-DSS (payment)", value: "pci-dss" },
+      { name: "HIPAA (healthcare)", value: "hipaa" },
+    ]);
+    if (!profile) return null;
+
+    const format = await promptList("Output format:", [
+      { name: "Dashboard summary", value: "summary" },
+      { name: "JSON output", value: "json" },
+      { name: "Score only", value: "score-only" },
+    ]);
+    if (!format) return null;
+
+    const args = ["audit", "--profile", profile];
+    if (format === "json") args.push("--json");
+    else if (format === "score-only") args.push("--score-only");
+    else args.push("--summary");
+    return args;
+  }
+
+  if (mode === "compliance") {
+    const { frameworks } = await inquirer.prompt([
+      {
+        type: "checkbox",
+        name: "frameworks",
+        message: "Select compliance frameworks:",
+        choices: [
+          { name: "CIS Benchmark", value: "cis" },
+          { name: "PCI-DSS", value: "pci-dss" },
+          { name: "HIPAA", value: "hipaa" },
+        ],
+        validate: (v: string[]) => (v.length > 0 ? true : "Select at least one framework"),
+      },
+    ]);
+    return ["audit", "--compliance", frameworks.join(",")];
+  }
+
+  // mode === "run" — standard audit
   const format = await promptList("Output format:", [
     { name: "Dashboard summary", value: "summary" },
     { name: "JSON output", value: "json" },
@@ -471,7 +522,9 @@ async function promptGuard(): Promise<string[] | null> {
 
 async function promptNotify(): Promise<string[] | null> {
   const sub = await promptList("Notification action:", [
+    { name: "List notification channels", value: "list" },
     { name: "Add a notification channel", value: "add" },
+    { name: "Remove a notification channel", value: "remove" },
     { name: "Send a test notification", value: "test" },
   ]);
   if (!sub) return null;
