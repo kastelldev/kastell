@@ -13,6 +13,7 @@ export interface ComplianceRef {
   version: string;      // Framework version, e.g. "1.0"
   description: string;  // Human-readable control description
   coverage: ComplianceCoverage;
+  level?: string;       // "L1" | "L2" — only meaningful for CIS framework
 }
 
 export interface AuditCheck {

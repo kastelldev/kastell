@@ -3,7 +3,7 @@
  * Routes batched SSH output to the correct category parser by named separator.
  */
 
-import type { AuditCategory, CheckParser } from "../types.js";
+import type { AuditCategory, CheckParser, ComplianceRef } from "../types.js";
 import { calculateCategoryScore } from "../scoring.js";
 import { parseSSHChecks } from "./ssh.js";
 import { parseFirewallChecks } from "./firewall.js";
@@ -127,4 +127,22 @@ export function parseAllChecks(
       maxScore,
     };
   });
+}
+
+/**
+ * Inject compliance references into parsed audit categories.
+ * Called after parseAllChecks() — returns new objects, never mutates originals.
+ */
+export function mergeComplianceRefs(
+  categories: AuditCategory[],
+  map: Record<string, ComplianceRef[]>,
+): AuditCategory[] {
+  return categories.map((cat) => ({
+    ...cat,
+    checks: cat.checks.map((check) => {
+      const refs = map[check.id];
+      if (!refs || refs.length === 0) return check;
+      return { ...check, complianceRefs: refs };
+    }),
+  }));
 }

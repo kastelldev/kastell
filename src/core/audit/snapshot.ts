@@ -27,6 +27,7 @@ const complianceRefSchema = z.object({
   version: z.string(),
   description: z.string(),
   coverage: z.enum(["full", "partial"]),
+  level: z.string().optional(),
 });
 
 const auditCheckSchema = z.object({
