@@ -5,6 +5,7 @@
 
 import chalk from "chalk";
 import type { AuditResult } from "../types.js";
+import { calculateComplianceScores } from "../compliance/scoring.js";
 
 /** Score color */
 function scoreColor(score: number): (text: string) => string {
@@ -36,6 +37,23 @@ export function formatSummary(result: AuditResult): string {
     `Overall: ${colorFn(chalk.bold(`${result.overallScore}/100`))} ${progressBar(result.overallScore, 14)}`,
   );
   lines.push("");
+
+  // Compliance summary
+  const complianceScores = calculateComplianceScores(result.categories);
+  if (complianceScores.length > 0) {
+    const parts = complianceScores.map((cs) => {
+      const catColor = scoreColor(cs.passRate);
+      const label = cs.framework === "CIS" ? "CIS L1" : cs.framework;
+      return `${label}: ${catColor(`${cs.passRate}%`)}`;
+    });
+    lines.push(`Compliance: ${parts.join(" | ")}`);
+
+    const hasPartials = complianceScores.some((cs) => cs.partialCount > 0);
+    if (hasPartials) {
+      lines.push(chalk.yellow("  * partial mappings — manual review recommended"));
+    }
+    lines.push("");
+  }
 
   // Category bars
   for (const category of result.categories) {

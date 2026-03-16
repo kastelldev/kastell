@@ -5,6 +5,7 @@
 
 import chalk from "chalk";
 import type { AuditResult, AuditCheck, Severity } from "../types.js";
+import { calculateComplianceScores } from "../compliance/scoring.js";
 
 /** Severity emoji indicators */
 const SEVERITY_EMOJI: Record<Severity, string> = {
@@ -51,6 +52,27 @@ export function formatTerminal(result: AuditResult): string {
     `Overall Score: ${colorFn(chalk.bold(`${result.overallScore}/100`))} ${progressBar(result.overallScore)}`,
   );
   lines.push("");
+
+  // Compliance summary (only if compliance data exists on checks)
+  const complianceScores = calculateComplianceScores(result.categories);
+  if (complianceScores.length > 0) {
+    const parts = complianceScores.map((cs) => {
+      const rateColor = scoreColor(cs.passRate);
+      const label = cs.framework === "CIS" ? "CIS L1" : cs.framework;
+      return `${label}: ${rateColor(`${cs.passRate}%`)}`;
+    });
+    lines.push(`Compliance: ${parts.join(" | ")}`);
+
+    // Show "manual review recommended" if any framework has partial-coverage controls
+    const hasPartials = complianceScores.some((cs) => cs.partialCount > 0);
+    if (hasPartials) {
+      const partialFrameworks = complianceScores
+        .filter((cs) => cs.partialCount > 0)
+        .map((cs) => `${cs.framework} (${cs.partialCount} partial)`);
+      lines.push(chalk.yellow(`  manual review recommended: ${partialFrameworks.join(", ")}`));
+    }
+    lines.push("");
+  }
 
   // Category table
   lines.push(chalk.bold("Categories"));
