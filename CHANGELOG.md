@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.10.0] - 2026-03-16
+
+### Added
+- **Audit Pro: 27 categories, 406+ checks** — Expanded from 9 categories / 46 checks to 27 categories / 406+ checks with Lynis-parity coverage
+- **New audit categories** — Accounts, Services, Boot, Scheduling, Time, Banners, Crypto, File Integrity, Malware, MAC, Memory, Secrets, Cloud Metadata, Supply Chain, Backup Hygiene, Resource Limits, Incident Readiness, DNS Security
+- **Compliance mapping** — CIS Ubuntu L1/L2 (290 mappings), PCI-DSS v4.0 (89 refs), HIPAA §164.312 (41 refs)
+- **`audit --list-checks`** — Static catalog of all 406+ checks with severity, description, and compliance refs
+- **`audit --profile`** — Filter audit by compliance profile (cis-level1, cis-level2, pci-dss, hipaa)
+- **`audit --compliance`** — Framework-grouped compliance report (cis, pci-dss, hipaa)
+- **VPS detection** — Auto-detect virtualization type (kvm, vmware, xen, etc.) with VPS-irrelevant check skipping
+- **Interactive menu v1.10 options** — Audit sub-menu now includes list-checks, profile filter, compliance report; notify sub-menu includes list/remove
+
+### Changed
+- **Weighted category scoring** — Categories now have configurable weights (Secrets, Supply Chain weight=3)
+- **Snapshot schema v2** — Added `auditVersion` field, automatic v1→v2 migration, Zod strict validation
+- **Version-aware trend detection** — Methodology-change banner when comparing different audit versions
+- **Semantic check IDs** — All checks renamed from numeric to `CATEGORY-DESCRIPTION` format (e.g., `SSH-PASSWORD-AUTH`)
+- **Named separators + 3-tier batches** — SSH command grouping optimized for audit performance
+- **Terminal formatter** — Category grouping (fail expanded / pass collapsed), stats header, VPS banner
+- **QuickWins** — Max 7, compliance boost factor 1.5x for compliance-mapped checks
+- **Provider boot timeout** — Provider-specific polling: Hetzner 30s, DigitalOcean 60s, Vultr 135s, Linode 120s
+- Test count: 3,333 → 3,992 (+659 new tests across 178 suites)
+
+### Fixed
+- **Pre-release audit cleanup** — Deduplicated formatter helpers, strengthened secrets regex, fixed compliance mapper edge cases, added NaN guards
+- **Boot timeout** — Vultr/Linode provision no longer times out due to fixed 30s polling
+
 ## [1.9.1] - 2026-03-15
 
 ### Security
