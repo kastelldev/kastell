@@ -335,6 +335,8 @@ program
   .option("--compare <server1:server2>", "Compare latest snapshots from two servers")
   .option("--trend", "Show audit score trend over time")
   .option("--days <n>", "Limit trend to last N days")
+  .option("--list-checks", "List all audit checks without running audit")
+  .option("--severity <level>", "Filter by severity (critical, warning, info)")
   .action((serverName?: string, options?: Record<string, unknown>) =>
     auditCommand(serverName, options),
   );

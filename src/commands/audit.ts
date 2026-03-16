@@ -16,6 +16,7 @@ import { runFix } from "../core/audit/fix.js";
 import { watchAudit } from "../core/audit/watch.js";
 import { diffAudits, resolveSnapshotRef, formatDiffTerminal, formatDiffJson } from "../core/audit/diff.js";
 import { getServers } from "../utils/config.js";
+import { listAllChecks, formatListChecksTerminal, formatListChecksJson } from "../core/audit/listChecks.js";
 import type { AuditCliOptions } from "../core/audit/formatters/index.js";
 import type { AuditDiffResult } from "../core/audit/types.js";
 
@@ -33,12 +34,14 @@ export interface AuditCommandOptions extends AuditCliOptions {
   dryRun?: boolean;
   watch?: string;
   category?: string;
+  severity?: string;
   snapshot?: boolean | string;
   snapshots?: boolean;
   diff?: string;
   compare?: string;
   trend?: boolean;
   days?: string;
+  listChecks?: boolean;
 }
 
 /**
@@ -49,6 +52,22 @@ export async function auditCommand(
   serverName?: string,
   options: AuditCommandOptions = {},
 ): Promise<void> {
+  // --list-checks: static catalog display — no SSH connection needed
+  if (options.listChecks) {
+    const filter: { category?: string; severity?: "critical" | "warning" | "info" } = {};
+    if (options.category) filter.category = options.category;
+    if (options.severity) {
+      filter.severity = options.severity as "critical" | "warning" | "info";
+    }
+    const checks = listAllChecks(filter);
+    if (options.json) {
+      console.log(formatListChecksJson(checks));
+    } else {
+      console.log(formatListChecksTerminal(checks));
+    }
+    return;
+  }
+
   let ip: string;
   let name: string;
   let platform: string;
