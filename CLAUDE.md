@@ -53,6 +53,27 @@ Commands (thin) -> Core (logic) -> Providers (API) / Adapters (platform)
 - `__tests__/` alongside source, `.test.ts` suffix
 - Config dir: `~/.kastell/` (auto-migrated from `~/.quicklify/`)
 
+## Paralel Session Kuralı
+
+Birden fazla Claude Code session'ı aynı anda çalıştırılabilir.
+Tercih edilen yöntem: git worktree (izole çalışma dizini).
+
+```bash
+git worktree add ../kastell-<konu> feature/<konu>
+# Bitince:
+git checkout main && git merge feature/<konu>
+git worktree remove ../kastell-<konu>
+git branch -d feature/<konu>
+```
+
+Basit, kısa işlerde branch da yeterli:
+`git checkout -b session/<konu>`
+
+Kurallar:
+- Aynı dosyaya iki session aynı anda dokunmamalı
+- Session/feature branch'leri ASLA push edilmez
+- İş bitince main'e merge et, branch'i sil, sadece main push edilir
+
 ## Lessons
 
 -> `LESSONS.md` (tek kaynak — tum proje dersleri burada konsolide)
