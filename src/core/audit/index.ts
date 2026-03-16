@@ -7,7 +7,8 @@ import type { KastellResult } from "../../types/index.js";
 import type { AuditResult } from "./types.js";
 import { buildAuditBatchCommands, BATCH_TIMEOUTS } from "./commands.js";
 import { calculateOverallScore } from "./scoring.js";
-import { parseAllChecks } from "./checks/index.js";
+import { parseAllChecks, mergeComplianceRefs } from "./checks/index.js";
+import { COMPLIANCE_MAP } from "./compliance/mapper.js";
 import { sshExec } from "../../utils/ssh.js";
 import { calculateQuickWins } from "./quickwin.js";
 import { AUDIT_VERSION } from "../../constants.js";
@@ -44,7 +45,8 @@ export async function runAudit(
     }
 
     // Parse all batch outputs through the check registry
-    const categories = parseAllChecks(batchOutputs, platform);
+    const rawCategories = parseAllChecks(batchOutputs, platform);
+    const categories = mergeComplianceRefs(rawCategories, COMPLIANCE_MAP);
     const overallScore = calculateOverallScore(categories);
 
     const auditResult: AuditResult = {
