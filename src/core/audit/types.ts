@@ -30,6 +30,7 @@ export interface AuditCheck {
   explain?: string;              // Why this matters
   complianceRefs?: ComplianceRef[];  // Compliance framework references (Phase 50)
   tags?: string[];               // Searchable tags e.g. ["ssh", "authentication"]
+  vpsIrrelevant?: boolean;       // true for checks not meaningful on VPS (physical-hardware)
 }
 
 export interface AuditCategory {
@@ -50,6 +51,8 @@ export interface AuditResult {
   quickWins: QuickWin[];
   skippedCategories?: string[];  // Categories where all checks have "not installed" currentValue
   complianceDetail?: ComplianceDetailScore[];  // Per-control compliance detail (optional, set when framework requested)
+  vpsType?: string;              // e.g. "kvm", "xen", "vmware"; undefined on bare metal
+  vpsAdjustedCount?: number;     // number of checks downgraded to info on VPS
 }
 
 export interface QuickWin {

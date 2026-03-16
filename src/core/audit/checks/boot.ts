@@ -13,6 +13,7 @@ interface BootCheckDef {
   expectedValue: string;
   fixCommand: string;
   explain: string;
+  vpsIrrelevant?: boolean;
 }
 
 const BOOT_CHECKS: BootCheckDef[] = [
@@ -20,6 +21,7 @@ const BOOT_CHECKS: BootCheckDef[] = [
     id: "BOOT-GRUB-PERMS",
     name: "Bootloader Config Restricted",
     severity: "warning",
+    vpsIrrelevant: true,
     check: (output) => {
       // stat output: "400 root root" or "600 root root"
       const permMatch = output.match(/(\d{3,4})\s+root\s+root/);
@@ -40,6 +42,7 @@ const BOOT_CHECKS: BootCheckDef[] = [
     id: "BOOT-GRUB-PASSWORD",
     name: "GRUB Password Set",
     severity: "info",
+    vpsIrrelevant: true,
     check: (output) => {
       const hasPw = /GRUB_PW_SET/i.test(output) || /set superusers/i.test(output);
       return {
@@ -56,6 +59,7 @@ const BOOT_CHECKS: BootCheckDef[] = [
     id: "BOOT-SECURE-BOOT",
     name: "Secure Boot Status",
     severity: "info",
+    vpsIrrelevant: true,
     check: (output) => {
       if (/N\/A/i.test(output) && !/SecureBoot/i.test(output)) {
         return { passed: false, currentValue: "mokutil not available (VPS/container)" };
@@ -94,6 +98,7 @@ const BOOT_CHECKS: BootCheckDef[] = [
     id: "BOOT-GRUB-DIR-PERMS",
     name: "GRUB Directory Restricted",
     severity: "warning",
+    vpsIrrelevant: true,
     check: (output) => {
       // stat of /etc/grub.d
       const match = output.match(/(\d{3,4})\s+root\s+root.*grub/);
@@ -115,6 +120,7 @@ const BOOT_CHECKS: BootCheckDef[] = [
     id: "BOOT-BOOT-PARTITION",
     name: "/boot Mount Options",
     severity: "info",
+    vpsIrrelevant: true,
     check: (output) => {
       if (!output.includes("/boot")) {
         return { passed: false, currentValue: "/boot not found as separate partition" };
@@ -139,6 +145,7 @@ const BOOT_CHECKS: BootCheckDef[] = [
     id: "BOOT-SINGLE-USER-AUTH",
     name: "Single User Mode Authentication",
     severity: "warning",
+    vpsIrrelevant: true,
     check: (output) => {
       const hasAuth = /sulogin/i.test(output);
       return {
@@ -178,6 +185,7 @@ const BOOT_CHECKS: BootCheckDef[] = [
     id: "BOOT-UEFI-SECURE",
     name: "System Uses UEFI Boot",
     severity: "info",
+    vpsIrrelevant: true,
     check: (output) => {
       const isUefi = /\bUEFI\b/.test(output);
       return {
@@ -194,6 +202,7 @@ const BOOT_CHECKS: BootCheckDef[] = [
     id: "BOOT-RESCUE-AUTH",
     name: "Rescue/Emergency Mode Requires Authentication",
     severity: "warning",
+    vpsIrrelevant: true,
     check: (output) => {
       const hasAuth = /sulogin/i.test(output);
       return {
@@ -213,6 +222,7 @@ const BOOT_CHECKS: BootCheckDef[] = [
     id: "BOOT-GRUB-UNRESTRICTED",
     name: "GRUB Bootloader Has Password Authentication",
     severity: "info",
+    vpsIrrelevant: true,
     check: (output) => {
       // grep for 'set superusers' or 'password_pbkdf2' in grub config
       // Returns matching lines or "NONE"
@@ -256,6 +266,7 @@ export const parseBootChecks: CheckParser = (
         expectedValue: def.expectedValue,
         fixCommand: def.fixCommand,
         explain: def.explain,
+        ...(def.vpsIrrelevant !== undefined && { vpsIrrelevant: def.vpsIrrelevant }),
       };
     }
     const { passed, currentValue } = def.check(output);
@@ -269,6 +280,7 @@ export const parseBootChecks: CheckParser = (
       expectedValue: def.expectedValue,
       fixCommand: def.fixCommand,
       explain: def.explain,
+      ...(def.vpsIrrelevant !== undefined && { vpsIrrelevant: def.vpsIrrelevant }),
     };
   });
 };
