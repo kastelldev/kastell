@@ -97,7 +97,7 @@ describe("calculateQuickWins", () => {
     expect(infoWin!.projectedScore).toBeGreaterThanOrEqual(criticalWin!.projectedScore);
   });
 
-  it("should default to max 5 quick wins", () => {
+  it("should default to max 7 quick wins", () => {
     const checks = Array.from({ length: 10 }, (_, i) =>
       makeCheck({
         id: `T-${String(i + 1).padStart(2, "0")}`,
@@ -110,7 +110,7 @@ describe("calculateQuickWins", () => {
 
     const result = makeResult([makeCategory("Test", checks)]);
     const wins = calculateQuickWins(result);
-    expect(wins).toHaveLength(5);
+    expect(wins).toHaveLength(7);
   });
 
   it("should respect custom maxWins parameter", () => {
@@ -152,5 +152,86 @@ describe("calculateQuickWins", () => {
 
     const wins = calculateQuickWins(result);
     expect(wins).toEqual([]);
+  });
+
+  it("should prioritize compliance-ref checks in sort order", () => {
+    // Both checks have same severity — compliance-ref check should sort higher via 1.5x boost
+    const result = makeResult([
+      makeCategory("Auth", [
+        makeCheck({
+          id: "AUTH-NO-COMPLIANCE",
+          category: "Auth",
+          name: "No Compliance Ref Check",
+          severity: "warning",
+          passed: false,
+          fixCommand: "fix-no-compliance",
+        }),
+        makeCheck({
+          id: "AUTH-WITH-COMPLIANCE",
+          category: "Auth",
+          name: "With Compliance Ref Check",
+          severity: "warning",
+          passed: false,
+          fixCommand: "fix-with-compliance",
+          complianceRefs: [
+            {
+              framework: "CIS",
+              controlId: "5.2.1",
+              version: "2.0.0",
+              description: "test control",
+              coverage: "full",
+            },
+          ],
+        }),
+      ]),
+    ]);
+
+    const wins = calculateQuickWins(result);
+    // The compliance-ref check should appear first due to 1.5x effective impact boost
+    expect(wins[0].description).toContain("With Compliance Ref Check");
+  });
+
+  it("should not inflate projected score with compliance boost", () => {
+    // Both checks have complianceRefs — projected score should use baseImpact not effectiveImpact
+    const result = makeResult([
+      makeCategory("Test", [
+        makeCheck({
+          id: "T-01",
+          category: "Test",
+          name: "Check One",
+          severity: "warning",
+          passed: false,
+          fixCommand: "fix-one",
+          complianceRefs: [
+            { framework: "CIS", controlId: "1.1", version: "2.0.0", description: "d", coverage: "full" },
+          ],
+        }),
+        makeCheck({
+          id: "T-02",
+          category: "Test",
+          name: "Check Two",
+          severity: "warning",
+          passed: false,
+          fixCommand: "fix-two",
+          complianceRefs: [
+            { framework: "PCI-DSS", controlId: "2.1", version: "4.0", description: "d", coverage: "partial" },
+          ],
+        }),
+      ]),
+    ]);
+
+    const wins = calculateQuickWins(result);
+    expect(wins.length).toBeGreaterThan(0);
+
+    // Each win's projectedScore should never exceed currentScore + 100
+    // (base impact per check is at most 50 for 2 equal-weight checks in 1 category)
+    const lastProjected = wins[wins.length - 1].projectedScore;
+    expect(lastProjected).toBeLessThanOrEqual(100);
+
+    // Projected score should be strictly based on base (unboosted) impact
+    // With 2 equal warning checks in 1 category, total weight=4, each base impact = (2/4)*100/1 = 50
+    // currentScore = 0, after both fixes projected = 100
+    const secondProjected = wins.length >= 2 ? wins[1].projectedScore : wins[0].projectedScore;
+    expect(secondProjected).toBe(100);
   });
 });

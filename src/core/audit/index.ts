@@ -6,11 +6,12 @@
 import type { KastellResult } from "../../types/index.js";
 import type { AuditCategory, AuditResult } from "./types.js";
 import { buildAuditBatchCommands, BATCH_TIMEOUTS } from "./commands.js";
-import { calculateOverallScore } from "./scoring.js";
+import { calculateOverallScore, calculateCategoryScore } from "./scoring.js";
 import { parseAllChecks, mergeComplianceRefs } from "./checks/index.js";
 import { COMPLIANCE_MAP } from "./compliance/mapper.js";
 import { sshExec } from "../../utils/ssh.js";
 import { calculateQuickWins } from "./quickwin.js";
+import { extractVpsType, applyVpsAdjustments } from "./vps.js";
 import { AUDIT_VERSION } from "../../constants.js";
 
 /**
@@ -64,8 +65,19 @@ export async function runAudit(
     // Parse all batch outputs through the check registry
     const rawCategories = parseAllChecks(batchOutputs, platform);
     const categories = mergeComplianceRefs(rawCategories, COMPLIANCE_MAP);
-    const overallScore = calculateOverallScore(categories);
-    const skippedCategories = detectSkippedCategories(categories);
+
+    // VPS detection: extract type from batch outputs, adjust severity before scoring
+    const vpsType = extractVpsType(batchOutputs);
+    const { categories: adjustedCategories, adjustedCount } = applyVpsAdjustments(categories, vpsType);
+
+    // Recalculate scores after VPS adjustment (severity changes affect weights)
+    const finalCategories = adjustedCategories.map((cat) => {
+      const { score, maxScore } = calculateCategoryScore(cat.checks);
+      return { ...cat, score, maxScore };
+    });
+
+    const overallScore = calculateOverallScore(finalCategories);
+    const skippedCategories = detectSkippedCategories(finalCategories);
 
     const auditResult: AuditResult = {
       serverName,
@@ -73,10 +85,11 @@ export async function runAudit(
       platform: platform as AuditResult["platform"],
       timestamp: new Date().toISOString(),
       auditVersion: AUDIT_VERSION,
-      categories,
+      categories: finalCategories,
       overallScore,
       quickWins: [],
       ...(skippedCategories.length > 0 ? { skippedCategories } : {}),
+      ...(vpsType ? { vpsType, vpsAdjustedCount: adjustedCount } : {}),
     };
 
     auditResult.quickWins = calculateQuickWins(auditResult);
