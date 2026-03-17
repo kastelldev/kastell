@@ -26,8 +26,16 @@ export interface ListChecksFilter {
  * Enumerate all checks from CHECK_REGISTRY using "bare" platform mode.
  * Optionally filter by category (case-insensitive) and/or severity.
  */
-/** Synthetic input for Cloud Metadata parser so it returns all checks in catalog mode */
-const CLOUDMETA_CATALOG_INPUT = "VPS_TYPE:catalog METADATA_BLOCKED CLOUDINIT_CLEAN CLOUDINIT_NO_SENSITIVE_ENV IMDSV2_AVAILABLE METADATA_FIREWALL_OK";
+/** Synthetic input for Cloud Metadata parser so it returns all checks in catalog mode.
+ *  Uses newline-separated sentinels matching actual SSH batch output format. */
+const CLOUDMETA_CATALOG_INPUT = [
+  "IS_VPS",
+  "METADATA_BLOCKED",
+  "CLOUDINIT_CLEAN",
+  "CLOUDINIT_NO_SENSITIVE_ENV",
+  "IMDSV2_AVAILABLE",
+  "METADATA_FIREWALL_OK",
+].join("\n");
 
 export function listAllChecks(filter?: ListChecksFilter): CheckCatalogEntry[] {
   const entries: CheckCatalogEntry[] = CHECK_REGISTRY.flatMap((entry) => {

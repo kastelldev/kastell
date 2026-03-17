@@ -74,7 +74,11 @@ export async function runAudit(
     const vpsType = extractVpsType(batchOutputs);
     const { categories: adjustedCategories, adjustedCount } = applyVpsAdjustments(categories, vpsType);
 
-    // Mark categories from failed batches as connectionError
+    // Mark categories from failed batches as connectionError.
+    // Uses check-content heuristic (all checks "Unable to determine" or empty) rather than
+    // tier-to-category mapping because the batch→category relationship is N:M — one batch
+    // can produce checks across multiple categories. The batchErrors guard ensures this
+    // only triggers when an actual SSH batch failure occurred.
     if (batchErrors.length > 0) {
       for (const cat of adjustedCategories) {
         const allUndetermined = cat.checks.length > 0 && cat.checks.every(

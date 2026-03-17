@@ -71,8 +71,9 @@ const { openBrowser } = jest.requireMock("../../src/utils/openBrowser") as {
 const { saveServer } = jest.requireMock("../../src/utils/config") as {
   saveServer: jest.Mock;
 };
-const { sshExec } = jest.requireMock("../../src/utils/ssh") as {
+const { sshExec, removeStaleHostKey } = jest.requireMock("../../src/utils/ssh") as {
   sshExec: jest.Mock;
+  removeStaleHostKey: jest.Mock;
 };
 const { firewallSetup } = jest.requireMock("../../src/core/firewall") as {
   firewallSetup: jest.Mock;
@@ -240,6 +241,40 @@ describe("deployServer — bare mode", () => {
     expect(result.success).toBe(true);
     expect(result.data).toBeDefined();
     expect(result.data!.platform).toBeUndefined();
+  });
+
+  it("should call removeStaleHostKey before sshExec in bare mode with valid IP", async () => {
+    const provider = createMockProvider();
+
+    await deployServer("hetzner", provider, "nbg1", "cax11", "my-server", false, false, "bare");
+
+    expect(removeStaleHostKey).toHaveBeenCalledWith("10.0.0.1");
+    expect(sshExec).toHaveBeenCalled();
+    // Verify call order: removeStaleHostKey before sshExec
+    const removeCallOrder = removeStaleHostKey.mock.invocationCallOrder[0];
+    const sshExecCallOrder = sshExec.mock.invocationCallOrder[0];
+    expect(removeCallOrder).toBeLessThan(sshExecCallOrder);
+  });
+
+  it("should call removeStaleHostKey even without fullSetup in bare mode", async () => {
+    const provider = createMockProvider();
+
+    // fullSetup=false — proactive call still fires
+    await deployServer("hetzner", provider, "nbg1", "cax11", "my-server", false, false, "bare");
+
+    expect(removeStaleHostKey).toHaveBeenCalledWith("10.0.0.1");
+  });
+
+  it("should NOT call removeStaleHostKey before SSH polling when IP is invalid (0.0.0.0)", async () => {
+    const provider = createMockProvider({
+      createServer: jest.fn().mockResolvedValue({ id: "999", ip: "0.0.0.0", status: "running" }),
+      getServerDetails: jest.fn().mockResolvedValue({ ip: "0.0.0.0" }),
+    });
+
+    await deployServer("hetzner", provider, "nbg1", "cax11", "my-server", false, false, "bare");
+
+    // No proactive removeStaleHostKey call when IP is 0.0.0.0 (invalid)
+    expect(removeStaleHostKey).not.toHaveBeenCalledWith("0.0.0.0");
   });
 });
 
