@@ -46,22 +46,21 @@ while [ $ATTEMPTS -lt $MAX_ATTEMPTS ]; do
   sleep 2
 done
 
+# Disable needrestart to prevent interactive prompts during Docker/package installation
+echo "Disabling needrestart..."
+if dpkg -l needrestart > /dev/null 2>&1; then
+  apt-get remove -y needrestart || true
+fi
+export NEEDRESTART_MODE=a
+export NEEDRESTART_SUSPEND=1
+
 # Update system
 echo "Updating system packages..."
 apt-get update -y
 
-# Install Coolify
-echo "Installing Coolify..."
-curl -fsSL https://cdn.coollabs.io/coolify/install.sh -o /tmp/coolify-install.sh && head -c2 /tmp/coolify-install.sh | grep -q "#!" && [ "$(wc -c < /tmp/coolify-install.sh)" -gt 100 ] && bash /tmp/coolify-install.sh && rm -f /tmp/coolify-install.sh
-
-# Wait for services
-echo "Waiting for Coolify services to start..."
-sleep 30
-
-# Configure firewall for Coolify
+# Configure firewall BEFORE installer (prevents SSH lockout if installer hangs)
 echo "Configuring firewall..."
 if command -v ufw &> /dev/null; then
-  # DigitalOcean and UFW-enabled systems
   ufw allow 22/tcp
   ufw allow 80/tcp
   ufw allow 443/tcp
@@ -70,7 +69,6 @@ if command -v ufw &> /dev/null; then
   ufw allow 6002/tcp
   echo "y" | ufw enable || true
 else
-  # Hetzner and iptables-based systems
   iptables -A INPUT -p tcp --dport 8000 -j ACCEPT
   iptables -A INPUT -p tcp --dport 22 -j ACCEPT
   iptables -A INPUT -p tcp --dport 80 -j ACCEPT
@@ -78,8 +76,28 @@ else
   iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
   mkdir -p /etc/iptables
   iptables-save > /etc/iptables/rules.v4 || true
-  DEBIAN_FRONTEND=noninteractive apt-get install -y iptables-persistent || true
+  apt-get install -y iptables-persistent || true
 fi
+
+# Switch from socket activation to traditional SSH service (prevents Ubuntu 24.04 ssh.socket bugs)
+echo "Switching to traditional SSH service..."
+systemctl disable --now ssh.socket 2>/dev/null || true
+systemctl enable --now ssh.service 2>/dev/null || true
+
+# Install Coolify
+echo "Installing Coolify..."
+curl -fsSL https://cdn.coollabs.io/coolify/install.sh -o /tmp/coolify-install.sh && head -c2 /tmp/coolify-install.sh | grep -q "#!" && [ "$(wc -c < /tmp/coolify-install.sh)" -gt 100 ] && env DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a NEEDRESTART_SUSPEND=1 bash /tmp/coolify-install.sh && rm -f /tmp/coolify-install.sh
+
+# Ensure SSH remains accessible after Coolify installation
+echo "Ensuring SSH service is active..."
+if ! ss -tlnp | grep -q ':22 '; then
+  systemctl restart ssh.service 2>/dev/null || systemctl restart sshd.service 2>/dev/null || true
+  sleep 2
+fi
+
+# Wait for services
+echo "Waiting for Coolify services to start..."
+sleep 30
 
 echo "=================================="
 echo "Coolify installation completed!"

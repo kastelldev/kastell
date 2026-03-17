@@ -377,7 +377,12 @@ if (args.length === 0) {
   printQuickHelp();
   const selected = await interactiveMenu();
   if (selected) {
-    await program.parseAsync(["node", "kastell", ...selected]);
+    if (selected[0] === "version") {
+      console.log(pkg.version);
+      await checkForUpdate(pkg.version);
+    } else {
+      await program.parseAsync(["node", "kastell", ...selected]);
+    }
   }
 } else {
   await program.parseAsync();

@@ -88,6 +88,7 @@ const MENU: MenuCategory[] = [
       { name: "Export server list", value: "export", description: "Export server configuration to a JSON file" },
       { name: "Import server list", value: "import", description: "Import servers from a previously exported JSON file" },
       { name: "Shell completions", value: "completions", description: "Generate bash, zsh, or fish completion scripts" },
+      { name: "Check version", value: "version", description: "Show current Kastell version and check for updates" },
     ],
   },
 ];
@@ -299,57 +300,57 @@ async function promptSnapshot(): Promise<string[] | null> {
 }
 
 async function promptMonitor(): Promise<string[] | null> {
-  const { containers } = await inquirer.prompt([
-    {
-      type: "confirm",
-      name: "containers",
-      message: "Include Docker container list?",
-      default: false,
-    },
+  const mode = await promptList("Monitor options:", [
+    { name: "Basic (CPU/RAM/Disk)", value: "basic" },
+    { name: "With Docker containers", value: "containers" },
   ]);
+  if (!mode) return null;
   const args = ["monitor"];
-  if (containers) args.push("--containers");
+  if (mode === "containers") args.push("--containers");
   return args;
 }
 
 async function promptMaintain(): Promise<string[] | null> {
-  const { skipReboot } = await inquirer.prompt([
-    {
-      type: "confirm",
-      name: "skipReboot",
-      message: "Skip reboot step? (useful during business hours)",
-      default: false,
-    },
+  const mode = await promptList("Maintenance mode:", [
+    { name: "Full cycle (update + reboot)", value: "full" },
+    { name: "Skip reboot (business hours)", value: "skip-reboot" },
   ]);
+  if (!mode) return null;
   const args = ["maintain"];
-  if (skipReboot) args.push("--skip-reboot");
+  if (mode === "skip-reboot") args.push("--skip-reboot");
   return args;
 }
 
 async function promptStatus(): Promise<string[] | null> {
-  const { all } = await inquirer.prompt([
-    { type: "confirm", name: "all", message: "Check all servers at once?", default: false },
+  const mode = await promptList("Status check:", [
+    { name: "Single server", value: "single" },
+    { name: "All servers at once", value: "all" },
   ]);
+  if (!mode) return null;
   const args = ["status"];
-  if (all) args.push("--all");
+  if (mode === "all") args.push("--all");
   return args;
 }
 
 async function promptUpdate(): Promise<string[] | null> {
-  const { all } = await inquirer.prompt([
-    { type: "confirm", name: "all", message: "Update all servers at once?", default: false },
+  const mode = await promptList("Update scope:", [
+    { name: "Single server", value: "single" },
+    { name: "All servers at once", value: "all" },
   ]);
+  if (!mode) return null;
   const args = ["update"];
-  if (all) args.push("--all");
+  if (mode === "all") args.push("--all");
   return args;
 }
 
 async function promptDoctor(): Promise<string[] | null> {
-  const { fresh } = await inquirer.prompt([
-    { type: "confirm", name: "fresh", message: "Fetch fresh data via SSH? (slower but accurate)", default: true },
+  const mode = await promptList("Doctor mode:", [
+    { name: "Fresh data via SSH (accurate)", value: "fresh" },
+    { name: "Use cached metrics (fast)", value: "cached" },
   ]);
+  if (!mode) return null;
   const args = ["doctor"];
-  if (fresh) args.push("--fresh");
+  if (mode === "fresh") args.push("--fresh");
   return args;
 }
 
@@ -404,6 +405,11 @@ async function promptBackup(): Promise<string[] | null> {
 }
 
 async function promptImport(): Promise<string[] | null> {
+  const action = await promptList("Import server list:", [
+    { name: "Import from JSON file", value: "file" },
+  ]);
+  if (!action) return null;
+
   const { path } = await inquirer.prompt([
     {
       type: "input",
@@ -499,15 +505,24 @@ async function promptLock(): Promise<string[] | null> {
 }
 
 async function promptEvidence(): Promise<string[] | null> {
-  const { name } = await inquirer.prompt([
-    {
-      type: "input",
-      name: "name",
-      message: "Evidence label (e.g. pre-incident, weekly-check):",
-      default: "manual",
-    },
+  const action = await promptList("Evidence collection:", [
+    { name: "Collect with default label", value: "default" },
+    { name: "Collect with custom label", value: "custom" },
   ]);
-  return ["evidence", "--name", name];
+  if (!action) return null;
+
+  if (action === "custom") {
+    const { name } = await inquirer.prompt([
+      {
+        type: "input",
+        name: "name",
+        message: "Evidence label (e.g. pre-incident, weekly-check):",
+        default: "manual",
+      },
+    ]);
+    return ["evidence", "--name", name];
+  }
+  return ["evidence", "--name", "manual"];
 }
 
 async function promptGuard(): Promise<string[] | null> {
@@ -569,7 +584,7 @@ const SUB_PROMPTS: Record<string, () => Promise<string[] | null>> = {
 
 const DIRECT_COMMANDS = new Set([
   "list", "add", "destroy", "restart", "remove", "restore", "export", "config",
-  "health", "fleet", "backup-list",
+  "health", "fleet", "backup-list", "version",
 ]);
 
 export async function interactiveMenu(): Promise<string[] | null> {

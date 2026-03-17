@@ -343,7 +343,7 @@ describe("interactiveMenu", () => {
   it("monitor: returns with --containers", async () => {
     mockedInquirer.prompt
       .mockResolvedValueOnce({ action: "monitor" })
-      .mockResolvedValueOnce({ containers: true });
+      .mockResolvedValueOnce({ answer: "containers" });
 
     expect(await interactiveMenu()).toEqual(["monitor", "--containers"]);
   });
@@ -351,7 +351,7 @@ describe("interactiveMenu", () => {
   it("monitor: returns without --containers", async () => {
     mockedInquirer.prompt
       .mockResolvedValueOnce({ action: "monitor" })
-      .mockResolvedValueOnce({ containers: false });
+      .mockResolvedValueOnce({ answer: "basic" });
 
     expect(await interactiveMenu()).toEqual(["monitor"]);
   });
@@ -361,7 +361,7 @@ describe("interactiveMenu", () => {
   it("maintain: returns with --skip-reboot", async () => {
     mockedInquirer.prompt
       .mockResolvedValueOnce({ action: "maintain" })
-      .mockResolvedValueOnce({ skipReboot: true });
+      .mockResolvedValueOnce({ answer: "skip-reboot" });
 
     expect(await interactiveMenu()).toEqual(["maintain", "--skip-reboot"]);
   });
@@ -369,7 +369,7 @@ describe("interactiveMenu", () => {
   it("maintain: returns without --skip-reboot", async () => {
     mockedInquirer.prompt
       .mockResolvedValueOnce({ action: "maintain" })
-      .mockResolvedValueOnce({ skipReboot: false });
+      .mockResolvedValueOnce({ answer: "full" });
 
     expect(await interactiveMenu()).toEqual(["maintain"]);
   });
@@ -379,7 +379,7 @@ describe("interactiveMenu", () => {
   it("status: returns with --all", async () => {
     mockedInquirer.prompt
       .mockResolvedValueOnce({ action: "status" })
-      .mockResolvedValueOnce({ all: true });
+      .mockResolvedValueOnce({ answer: "all" });
 
     expect(await interactiveMenu()).toEqual(["status", "--all"]);
   });
@@ -387,7 +387,7 @@ describe("interactiveMenu", () => {
   it("status: returns without --all", async () => {
     mockedInquirer.prompt
       .mockResolvedValueOnce({ action: "status" })
-      .mockResolvedValueOnce({ all: false });
+      .mockResolvedValueOnce({ answer: "single" });
 
     expect(await interactiveMenu()).toEqual(["status"]);
   });
@@ -397,7 +397,7 @@ describe("interactiveMenu", () => {
   it("update: returns with --all", async () => {
     mockedInquirer.prompt
       .mockResolvedValueOnce({ action: "update" })
-      .mockResolvedValueOnce({ all: true });
+      .mockResolvedValueOnce({ answer: "all" });
 
     expect(await interactiveMenu()).toEqual(["update", "--all"]);
   });
@@ -405,7 +405,7 @@ describe("interactiveMenu", () => {
   it("update: returns without --all", async () => {
     mockedInquirer.prompt
       .mockResolvedValueOnce({ action: "update" })
-      .mockResolvedValueOnce({ all: false });
+      .mockResolvedValueOnce({ answer: "single" });
 
     expect(await interactiveMenu()).toEqual(["update"]);
   });
@@ -415,7 +415,7 @@ describe("interactiveMenu", () => {
   it("doctor: returns with --fresh", async () => {
     mockedInquirer.prompt
       .mockResolvedValueOnce({ action: "doctor" })
-      .mockResolvedValueOnce({ fresh: true });
+      .mockResolvedValueOnce({ answer: "fresh" });
 
     expect(await interactiveMenu()).toEqual(["doctor", "--fresh"]);
   });
@@ -423,7 +423,7 @@ describe("interactiveMenu", () => {
   it("doctor: returns without --fresh", async () => {
     mockedInquirer.prompt
       .mockResolvedValueOnce({ action: "doctor" })
-      .mockResolvedValueOnce({ fresh: false });
+      .mockResolvedValueOnce({ answer: "cached" });
 
     expect(await interactiveMenu()).toEqual(["doctor"]);
   });
@@ -479,6 +479,7 @@ describe("interactiveMenu", () => {
   it("import: returns with path", async () => {
     mockedInquirer.prompt
       .mockResolvedValueOnce({ action: "import" })
+      .mockResolvedValueOnce({ answer: "file" })
       .mockResolvedValueOnce({ path: "./servers.json" });
 
     expect(await interactiveMenu()).toEqual(["import", "./servers.json"]);
