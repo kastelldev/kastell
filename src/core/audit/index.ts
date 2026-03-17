@@ -55,6 +55,7 @@ export async function runAudit(
       try {
         const result = await sshExec(ip, batch.command, {
           timeoutMs: BATCH_TIMEOUTS[batch.tier],
+          useStdin: true,
         });
         batchOutputs.push(result.stdout);
       } catch (batchErr) {

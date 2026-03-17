@@ -234,6 +234,7 @@ function sshExecInner(
   command: string | SshCommand,
   retried: boolean,
   timeoutMs: number = SSH_EXEC_TIMEOUT_MS,
+  useStdin: boolean = false,
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   const sshBin = resolveSshPath();
   return new Promise((resolve) => {
@@ -245,22 +246,32 @@ function sshExecInner(
       resolve(result);
     };
 
+    // When useStdin is true, pipe the command via stdin to avoid Windows
+    // argument escaping that corrupts long multi-line commands with special chars.
+    // SSH receives "bash -s" as remote command, actual script arrives via stdin.
+    const sshArgs = [
+      "-o", `StrictHostKeyChecking=${getHostKeyPolicy()}`,
+      "-o", "BatchMode=yes",
+      "-o", `ConnectTimeout=${SSH_CONNECT_TIMEOUT}`,
+      `root@${ip}`,
+      ...(useStdin ? ["bash", "-s"] : [command]),
+    ];
+
     const child = spawn(
       sshBin,
-      [
-        "-o", `StrictHostKeyChecking=${getHostKeyPolicy()}`,
-        "-o", "BatchMode=yes",
-        "-o", `ConnectTimeout=${SSH_CONNECT_TIMEOUT}`,
-        `root@${ip}`,
-        command,
-      ],
+      sshArgs,
       {
-        // stdin must be "ignore" — not "inherit". MCP uses stdin for JSON-RPC transport;
-        // inheriting it would let SSH read MCP messages, causing silent failures.
-        stdio: ["ignore", "pipe", "pipe"],
+        // stdin: "pipe" when useStdin (we write the command), otherwise "ignore".
+        // "ignore" prevents MCP stdin (JSON-RPC) from leaking into SSH.
+        stdio: [useStdin ? "pipe" : "ignore", "pipe", "pipe"],
         env: sanitizedEnv(),
       },
     );
+
+    if (useStdin) {
+      child.stdin?.write(command);
+      child.stdin?.end();
+    }
 
     // Process-level timeout — kill SSH if it takes too long
     const timer = setTimeout(() => {
@@ -286,7 +297,7 @@ function sshExecInner(
         removeStaleHostKey(ip);
         clearTimeout(timer);
         settled = true;
-        resolve(sshExecInner(ip, command, true, timeoutMs));
+        resolve(sshExecInner(ip, command, true, timeoutMs, useStdin));
       } else {
         finish({ code: exitCode, stdout, stderr });
       }
@@ -298,8 +309,8 @@ function sshExecInner(
 export function sshExec(
   ip: string,
   command: string | SshCommand,
-  opts?: { timeoutMs?: number },
+  opts?: { timeoutMs?: number; useStdin?: boolean },
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   assertValidIp(ip);
-  return sshExecInner(ip, command, false, opts?.timeoutMs ?? SSH_EXEC_TIMEOUT_MS);
+  return sshExecInner(ip, command, false, opts?.timeoutMs ?? SSH_EXEC_TIMEOUT_MS, opts?.useStdin ?? false);
 }
