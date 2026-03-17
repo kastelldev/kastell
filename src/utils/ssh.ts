@@ -315,7 +315,13 @@ function sshExecInner(
         removeStaleHostKey(ip);
         clearTimeout(timer);
         settled = true;
-        resolve(sshExecInner(ip, command, true, timeoutMs, useStdin));
+        // Retry once after clearing stale key; if retry fails, append remediation hint
+        sshExecInner(ip, command, true, timeoutMs, useStdin).then((retryResult) => {
+          if (retryResult.code !== 0 && isHostKeyMismatch(retryResult.stderr)) {
+            retryResult.stderr += `\nHint: Run "ssh-keygen -R ${ip}" to remove the stale host key, then retry.`;
+          }
+          resolve(retryResult);
+        });
       } else {
         finish({ code: exitCode, stdout, stderr });
       }
