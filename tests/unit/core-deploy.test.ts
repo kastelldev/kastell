@@ -266,12 +266,16 @@ describe("deployServer — bare mode", () => {
   });
 
   it("should NOT call removeStaleHostKey before SSH polling when IP is invalid (0.0.0.0)", async () => {
+    jest.useFakeTimers();
     const provider = createMockProvider({
       createServer: jest.fn().mockResolvedValue({ id: "999", ip: "0.0.0.0", status: "running" }),
       getServerDetails: jest.fn().mockResolvedValue({ ip: "0.0.0.0" }),
     });
 
-    await deployServer("hetzner", provider, "nbg1", "cax11", "my-server", false, false, "bare");
+    const deployPromise = deployServer("hetzner", provider, "nbg1", "cax11", "my-server", false, false, "bare");
+    await jest.runAllTimersAsync();
+    await deployPromise;
+    jest.useRealTimers();
 
     // No proactive removeStaleHostKey call when IP is 0.0.0.0 (invalid)
     expect(removeStaleHostKey).not.toHaveBeenCalledWith("0.0.0.0");

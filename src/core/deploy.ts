@@ -244,6 +244,9 @@ async function barePostSetup(
 
   // Wait for SSH + cloud-init to finish (BUG-5)
   if (hasValidIp) {
+    // Proactively clear stale known_hosts entry (cloud providers reuse IPs)
+    removeStaleHostKey(serverIp);
+
     const cloudInitSpinner = createSpinner("Waiting for server to accept SSH...");
     cloudInitSpinner.start();
 
