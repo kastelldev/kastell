@@ -42,6 +42,7 @@ const auditCheckSchema = z.object({
   explain: z.string().optional(),
   complianceRefs: z.array(complianceRefSchema).optional(),
   tags: z.array(z.string()).optional(),
+  vpsIrrelevant: z.boolean().optional(),
 });
 
 const categorySchema = z.object({
@@ -49,6 +50,7 @@ const categorySchema = z.object({
   checks: z.array(auditCheckSchema),
   score: z.number(),
   maxScore: z.number(),
+  connectionError: z.boolean().optional(),
 });
 
 const quickWinSchema = z.object({
@@ -67,6 +69,10 @@ const baseAuditSchema = z.object({
   overallScore: z.number(),
   categories: z.array(categorySchema),
   quickWins: z.array(quickWinSchema),
+  skippedCategories: z.array(z.string()).optional(),
+  vpsType: z.string().optional(),
+  vpsAdjustedCount: z.number().optional(),
+  warnings: z.array(z.string()).optional(),
 });
 
 const snapshotEnvelopeBase = {
