@@ -530,42 +530,69 @@ function supplyChainSection(): string {
 function backupSection(): string {
   return [
     NAMED_SEP("BACKUP"),
-    `stat /root/.kastell/backups/ 2>/dev/null | head -5 || echo 'NO_BACKUP_DIR'`,
-    `ls /var/backups/ 2>/dev/null | head -10 || echo 'NONE'`,
-    `grep -rE '(rsync|borg|restic|tar.*backup)' /etc/cron.d /etc/cron.daily /etc/crontab /var/spool/cron/crontabs/ 2>/dev/null | head -10 || echo 'NO_BACKUP_CRON'`,
+    // BACKUP-RECENT-BACKUP: sentinel KASTELL_BACKUP_FOUND / KASTELL_BACKUP_MISSING
+    `find /root/.kastell/backups/ -maxdepth 1 -type f -mtime -30 2>/dev/null | grep -q . && echo 'KASTELL_BACKUP_FOUND' || echo 'KASTELL_BACKUP_MISSING'`,
+    // BACKUP-ENCRYPTION-PRESENT: sentinel BACKUP_FILE_PERMS:<mode>:<owner>:<group>
+    `BFILE=$(find /root/.kastell/backups /var/backups -maxdepth 2 -type f 2>/dev/null | head -1); [ -n "$BFILE" ] && stat -c 'BACKUP_FILE_PERMS:%a:%U:%G' "$BFILE" 2>/dev/null || echo 'BACKUP_FILE_PERMS:000:unknown:unknown'`,
+    // BACKUP-SCRIPT-PERMS: sentinel BACKUP_SCRIPT_PERMS_OK / BACKUP_SCRIPT_PERMS_WRITABLE
+    `find /etc/cron.daily /etc/cron.d /usr/local/bin -maxdepth 1 -name '*backup*' -perm /o+w 2>/dev/null | grep -q . && echo 'BACKUP_SCRIPT_PERMS_WRITABLE' || echo 'BACKUP_SCRIPT_PERMS_OK'`,
+    // BACKUP-TOOL-INSTALLED: sentinel BACKUP_TOOL_INSTALLED:<tool> / BACKUP_TOOL_NOT_INSTALLED
+    `BTOOL=""; for t in rsync borg restic; do which $t >/dev/null 2>&1 && { BTOOL=$t; break; }; done; [ -n "$BTOOL" ] && echo "BACKUP_TOOL_INSTALLED:$BTOOL" || echo 'BACKUP_TOOL_NOT_INSTALLED'`,
+    // BACKUP-CRON-JOB: sentinel BACKUP_CRON_JOB_FOUND / BACKUP_CRON_JOB_NOT_FOUND
+    `grep -rEq '(rsync|borg|restic|tar.*backup)' /etc/cron.d /etc/cron.daily /etc/crontab /var/spool/cron/crontabs/ 2>/dev/null && echo 'BACKUP_CRON_JOB_FOUND' || echo 'BACKUP_CRON_JOB_NOT_FOUND'`,
+    // BACKUP-VAR-BACKUPS: sentinel VAR_BACKUPS_EXISTS / VAR_BACKUPS_MISSING
+    `[ -d /var/backups ] && ls /var/backups/ 2>/dev/null | grep -q . && echo 'VAR_BACKUPS_EXISTS' || echo 'VAR_BACKUPS_MISSING'`,
+    // BKUP-ENCRYPTED-BACKUPS: parser checks .enc/.gpg in output (works as-is)
+    `find /var/backups /root/.kastell/backups -maxdepth 2 \\( -name "*.enc" -o -name "*.gpg" \\) 2>/dev/null | head -5 || echo 'NONE'`,
+    // BKUP-BACKUP-TOOL-INSTALLED: parser checks NO_BACKUP_TOOLS / tool name regex (works as-is)
     `which rsync borg restic 2>/dev/null || echo 'NO_BACKUP_TOOLS'`,
-    `find /var/backups /root/.kastell/backups -maxdepth 2 -type f -perm /o+r 2>/dev/null | head -10 || echo 'NONE'`,
-    // NEW: encrypted backup files
-    `find /var/backups /root/.kastell/backups -maxdepth 2 -name "*.enc" -o -name "*.gpg" 2>/dev/null | head -5 || echo 'NONE'`,
   ].join("\n");
 }
 
 function resourceLimitsSection(): string {
   return [
     NAMED_SEP("RESOURCELIMITS"),
-    `cat /sys/fs/cgroup/cgroup.controllers 2>/dev/null || echo 'N/A'`,
-    `ulimit -u 2>/dev/null || echo 'N/A'`,
-    `sysctl kernel.threads-max 2>/dev/null || echo 'N/A'`,
-    `grep -E 'nproc|maxlogins' /etc/security/limits.conf /etc/security/limits.d/*.conf 2>/dev/null | head -10 || echo 'NONE'`,
-    // NEW: limits.conf active entries
+    // RLIMIT-CGROUPS-V2: sentinel CGROUPS_V2_ACTIVE / CGROUPS_V2_ABSENT
+    `[ -f /sys/fs/cgroup/cgroup.controllers ] && echo 'CGROUPS_V2_ACTIVE' || echo 'CGROUPS_V2_ABSENT'`,
+    // RLIMIT-NPROC-SOFT: sentinel NPROC_SOFT:<value>
+    `NSOFT=$(ulimit -Su 2>/dev/null || echo 'unlimited'); echo "NPROC_SOFT:$NSOFT"`,
+    // RLIMIT-NPROC-HARD: sentinel NPROC_HARD:<value>
+    `NHARD=$(ulimit -Hu 2>/dev/null || echo 'NOT_SET'); echo "NPROC_HARD:$NHARD"`,
+    // RLIMIT-THREADS-MAX: sentinel THREADS_MAX:kernel.threads-max = <value>
+    `TMAX=$(sysctl -n kernel.threads-max 2>/dev/null); [ -n "$TMAX" ] && echo "THREADS_MAX:kernel.threads-max = $TMAX" || echo 'THREADS_MAX_NOT_FOUND'`,
+    // RLIMIT-LIMITS-CONF-NPROC: sentinel LIMITS_CONF_NPROC_SET / LIMITS_CONF_NPROC_NOT_SET
+    `grep -qE '\\bnproc\\b' /etc/security/limits.conf /etc/security/limits.d/*.conf 2>/dev/null && echo 'LIMITS_CONF_NPROC_SET' || echo 'LIMITS_CONF_NPROC_NOT_SET'`,
+    // RLIMIT-MAXLOGINS: sentinel LIMITS_CONF_MAXLOGINS_SET / LIMITS_CONF_MAXLOGINS_NOT_SET
+    `grep -qE '\\bmaxlogins\\b' /etc/security/limits.conf /etc/security/limits.d/*.conf 2>/dev/null && echo 'LIMITS_CONF_MAXLOGINS_SET' || echo 'LIMITS_CONF_MAXLOGINS_NOT_SET'`,
+    // RLIMIT-LIMITS-CONF-CONFIGURED: parser counts non-comment lines (works as-is)
     `cat /etc/security/limits.conf 2>/dev/null | grep -vE '^#|^$' | head -20 || echo 'NONE'`,
+    // RLIMIT-NPROC-LIMITED: parser regex matches nproc + number
+    `grep -E 'nproc' /etc/security/limits.conf /etc/security/limits.d/*.conf 2>/dev/null | head -10 || echo 'NONE'`,
   ].join("\n");
 }
 
 function incidentReadySection(): string {
   return [
     NAMED_SEP("INCIDENTREADY"),
-    `dpkg -l auditd 2>/dev/null | grep '^ii' || echo 'NOT_INSTALLED'`,
-    `systemctl is-active auditd 2>/dev/null || echo 'inactive'`,
-    `sudo auditctl -l 2>/dev/null || auditctl -l 2>/dev/null || echo 'AUDITCTL_UNAVAIL'`,
-    `systemctl is-active rsyslog vector fluent-bit promtail 2>/dev/null | head -5 || echo 'N/A'`,
-    `last 2>/dev/null | head -3 && lastb 2>/dev/null | head -3 || echo 'NO_LAST'`,
-    `grep -E 'wtmp|lastb' /etc/logrotate.conf /etc/logrotate.d/* 2>/dev/null | head -5 || echo 'NO_LOGROTATE_WTMP'`,
-    // NEW: wtmp and btmp file existence
+    // INCIDENT-AUDITD-INSTALLED: sentinel AUDITD_INSTALLED / AUDITD_NOT_INSTALLED
+    `dpkg -l auditd 2>/dev/null | grep -q '^ii' && echo 'AUDITD_INSTALLED' || echo 'AUDITD_NOT_INSTALLED'`,
+    // INCIDENT-AUDITD-RUNNING: sentinel AUDITD_RUNNING / AUDITD_NOT_RUNNING
+    `systemctl is-active auditd 2>/dev/null | grep -q '^active$' && echo 'AUDITD_RUNNING' || echo 'AUDITD_NOT_RUNNING'`,
+    // INCIDENT-AUDITD-PASSWD-RULE + SUDO-RULE: sentinel AUDITCTL_RULES:<rule> or AUDITCTL_UNAVAIL
+    `if RULES=$(auditctl -l 2>/dev/null) && [ -n "$RULES" ]; then echo "$RULES" | while IFS= read -r line; do echo "AUDITCTL_RULES:$line"; done; else echo 'AUDITCTL_UNAVAIL'; fi`,
+    // INCIDENT-LOG-FORWARDING: sentinel LOG_FORWARDING_ACTIVE:<service> / LOG_FORWARDING_INACTIVE
+    `LFWD=""; for s in rsyslog vector fluent-bit promtail; do systemctl is-active "$s" 2>/dev/null | grep -q '^active$' && { LFWD=$s; break; }; done; [ -n "$LFWD" ] && echo "LOG_FORWARDING_ACTIVE:$LFWD" || echo 'LOG_FORWARDING_INACTIVE'`,
+    // INCIDENT-LAST-ACCESSIBLE: sentinel LAST_AVAILABLE / LAST_NOT_AVAILABLE
+    `last -1 2>/dev/null | grep -q . && echo 'LAST_AVAILABLE' || echo 'LAST_NOT_AVAILABLE'`,
+    // INCIDENT-LASTB-ACCESSIBLE: sentinel LASTB_AVAILABLE / LASTB_NOT_AVAILABLE
+    `lastb -1 2>/dev/null | grep -q . && echo 'LASTB_AVAILABLE' || echo 'LASTB_NOT_AVAILABLE'`,
+    // INCIDENT-WTMP-ROTATION: sentinel WTMP_ROTATION_CONFIGURED / WTMP_ROTATION_NOT_CONFIGURED
+    `grep -rqE 'wtmp' /etc/logrotate.conf /etc/logrotate.d/ 2>/dev/null && echo 'WTMP_ROTATION_CONFIGURED' || echo 'WTMP_ROTATION_NOT_CONFIGURED'`,
+    // INCID-WTMP-EXISTS + INCID-BTMP-EXISTS: parser regex matches /var/log/wtmp and /var/log/btmp
     `ls -la /var/log/wtmp /var/log/btmp 2>/dev/null || echo 'N/A'`,
-    // NEW: forensic tools presence
+    // INCID-FORENSIC-TOOLS: parser regex matches volatility/dc3dd (works as-is)
     `which volatility3 volatility dc3dd 2>/dev/null | head -3 || echo 'NONE'`,
-    // NEW: recent archived log count
+    // INCID-LOG-ARCHIVE-EXISTS: parser matches standalone number from wc -l (works as-is)
     `find /var/log -name '*.gz' -mtime -30 2>/dev/null | wc -l || echo '0'`,
   ].join("\n");
 }
@@ -573,15 +600,21 @@ function incidentReadySection(): string {
 function dnsSection(): string {
   return [
     NAMED_SEP("DNS"),
-    `resolvectl status 2>/dev/null | head -30 || echo 'N/A'`,
-    `cat /etc/resolv.conf 2>/dev/null || echo 'N/A'`,
-    `which stubby dnscrypt-proxy 2>/dev/null || echo 'NONE'`,
-    `lsattr /etc/resolv.conf 2>/dev/null || echo 'N/A'`,
-    // NEW: nameserver count in resolv.conf
+    // DNS-DNSSEC-ENABLED: sentinel DNSSEC_ENABLED / DNSSEC_DISABLED
+    `resolvectl status 2>/dev/null | grep -qiE 'DNSSEC.*(yes|allow-downgrade|supported)' && echo 'DNSSEC_ENABLED' || echo 'DNSSEC_DISABLED'`,
+    // DNS-DOH-DOT-AVAILABLE: sentinel DOH_DOT_TOOL_INSTALLED:<tool> / DOH_DOT_TOOL_NOT_INSTALLED
+    `DTOOL=""; for t in stubby dnscrypt-proxy; do which $t >/dev/null 2>&1 && { DTOOL=$t; break; }; done; [ -n "$DTOOL" ] && echo "DOH_DOT_TOOL_INSTALLED:$DTOOL" || echo 'DOH_DOT_TOOL_NOT_INSTALLED'`,
+    // DNS-RESOLV-IMMUTABLE: sentinel RESOLV_CONF_IMMUTABLE / RESOLV_CONF_MUTABLE
+    `RATTR=$(lsattr /etc/resolv.conf 2>/dev/null); RLINK=$(readlink /etc/resolv.conf 2>/dev/null); if echo "$RATTR" | grep -qP '^\\S*i' 2>/dev/null; then echo 'RESOLV_CONF_IMMUTABLE'; elif echo "$RLINK" | grep -q 'systemd' 2>/dev/null; then echo 'RESOLV_CONF_IMMUTABLE'; else echo 'RESOLV_CONF_MUTABLE'; fi`,
+    // DNS-NAMESERVER-CONFIGURED: sentinel NAMESERVER_CONFIGURED:<ip> / NAMESERVER_NOT_CONFIGURED
+    `NS=$(grep -m1 '^nameserver' /etc/resolv.conf 2>/dev/null | awk '{print $2}'); [ -n "$NS" ] && echo "NAMESERVER_CONFIGURED:$NS" || echo 'NAMESERVER_NOT_CONFIGURED'`,
+    // DNS-MULTIPLE-NAMESERVERS: parser extracts standalone number
     `grep -c 'nameserver' /etc/resolv.conf 2>/dev/null || echo '0'`,
-    // NEW: systemd-resolved active status
+    // DNS-RESOLV-NOT-LOCALHOST-ONLY: parser parses nameserver lines from resolv.conf
+    `cat /etc/resolv.conf 2>/dev/null || echo 'N/A'`,
+    // DNS-LOCAL-RESOLVER-ACTIVE: parser regex matches ^active$
     `systemctl is-active systemd-resolved 2>/dev/null || echo 'inactive'`,
-    // NEW: search domain presence
+    // DNS-SEARCH-DOMAIN-SET: parser regex matches search + domain
     `grep -E 'search\\s+' /etc/resolv.conf 2>/dev/null || echo 'NONE'`,
   ].join("\n");
 }
