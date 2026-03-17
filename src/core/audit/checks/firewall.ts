@@ -8,7 +8,11 @@ import type { AuditCheck, CheckParser } from "../types.js";
 /** Dangerous ports that should not be exposed to 0.0.0.0/0 (except SSH 22, HTTP 80, HTTPS 443) */
 const SAFE_PUBLIC_PORTS = new Set(["22", "80", "443"]);
 
-/** Extract the number immediately following a sentinel line */
+/**
+ * Extract the numeric value immediately following a sentinel marker in SSH output.
+ * Intentionally local to this file — only used by firewall checks (4 calls).
+ * Not extracted to a shared utility because no other parser uses this sentinel→number pattern.
+ */
 function extractSentinelValue(output: string, sentinel: string): number | null {
   const idx = output.indexOf(sentinel);
   if (idx === -1) return null;
