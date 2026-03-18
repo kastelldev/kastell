@@ -303,7 +303,7 @@ export async function sharedRestoreBackup(
     steps.push({ name: "Upload config backup", status: "success" });
 
     // Step 1: Stop platform
-    const platformLabel = config.platform.charAt(0).toUpperCase() + config.platform.slice(1);
+    const platformLabel = adapterDisplayName({ name: config.platform });
     const stopResult = await sshExec(ip, config.stopCmd);
     if (stopResult.code !== 0) {
       steps.push({

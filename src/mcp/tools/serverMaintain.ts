@@ -7,6 +7,7 @@ import {
   maintainServer,
 } from "../../core/maintain.js";
 import { getAdapter, resolvePlatform } from "../../adapters/factory.js";
+import { adapterDisplayName } from "../../adapters/shared.js";
 import { requireManagedMode } from "../../utils/modeGuard.js";
 import {
   resolveServerForMcp,
@@ -89,7 +90,7 @@ export async function handleServerMaintain(params: {
           success: true,
           server: server.name,
           ip: server.ip,
-          message: `${adapter.name.charAt(0).toUpperCase() + adapter.name.slice(1)} update completed successfully`,
+          message: `${adapterDisplayName(adapter)} update completed successfully`,
           suggested_actions: [
             { command: `server_info { action: 'health', server: '${server.name}' }`, reason: "Verify platform is running after update" },
             { command: `server_logs { action: 'logs', server: '${server.name}' }`, reason: "Check logs after update" },

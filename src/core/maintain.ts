@@ -4,6 +4,7 @@ import { getErrorMessage, mapProviderError } from "../utils/errorMapper.js";
 import type { ServerRecord } from "../types/index.js";
 import type { PlatformAdapter } from "../adapters/interface.js";
 import { getAdapter, resolvePlatform } from "../adapters/factory.js";
+import { adapterDisplayName } from "../adapters/shared.js";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -111,9 +112,7 @@ export interface MaintainOptions {
   rebootInitialWaitMs?: number;
 }
 
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
+const capitalize = (s: string): string => adapterDisplayName({ name: s });
 
 export async function maintainServer(
   server: ServerRecord,
