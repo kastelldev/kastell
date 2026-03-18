@@ -594,7 +594,7 @@ describe("applyLock", () => {
   });
 
   describe("happy path", () => {
-    it("calls sshExec 18 times: key check + 17 steps", async () => {
+    it("calls sshExec 19 times: key check + 18 steps", async () => {
       mockedAudit.runAudit
         .mockResolvedValueOnce(makeAuditResult(45))
         .mockResolvedValueOnce(makeAuditResult(72));
@@ -602,10 +602,10 @@ describe("applyLock", () => {
 
       await applyLock("1.2.3.4", "test-server", undefined, {});
 
-      // key check + SSH hardening + fail2ban + banners + accountLock + UFW + cloudMeta + DNS
+      // key check + SSH hardening + fail2ban + banners + accountLock + sshCipher + UFW + cloudMeta + DNS
       // + sysctl + unattended-upgrades + aptValidation + resourceLimits + serviceDisable
-      // + backupPermissions + pwquality + auditd + logRetention + aide = 18
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(18);
+      // + backupPermissions + pwquality + auditd + logRetention + aide = 19
+      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(19);
     });
 
     it("captures scoreBefore=45 and scoreAfter=72 from runAudit", async () => {
@@ -753,8 +753,8 @@ describe("applyLock", () => {
 
       await applyLock("1.2.3.4", "test-server", undefined, {});
 
-      // All 18 calls were made (key check + 17 steps)
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(18);
+      // All 19 calls were made (key check + 18 steps)
+      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(19);
     });
   });
 
@@ -781,7 +781,7 @@ describe("applyLock", () => {
 
       await applyLock("1.2.3.4", "test-server", undefined, {});
 
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(18);
+      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(19);
     });
   });
 
@@ -794,6 +794,7 @@ describe("applyLock", () => {
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // fail2ban
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // banners
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // accountLock
+        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // sshCipher
         .mockRejectedValueOnce(new Error("UFW failed")) // UFW
         // cloudMeta is SKIPPED (no sshExec call)
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // DNS
@@ -814,8 +815,8 @@ describe("applyLock", () => {
       expect(result.steps.cloudMeta).toBe(false);
       expect(result.stepErrors?.ufw).toBeDefined();
       expect(result.stepErrors?.cloudMeta).toBe("UFW required");
-      // 17 calls: no cloudMeta call since UFW failed, but pwquality still runs
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(17);
+      // 18 calls: no cloudMeta call since UFW failed, but all other steps run
+      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(18);
     });
   });
 
@@ -828,6 +829,7 @@ describe("applyLock", () => {
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // fail2ban
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // banners
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // accountLock
+        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // sshCipher
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // UFW
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // cloudMeta
         .mockRejectedValueOnce(new Error("dig timeout")) // DNS FAIL
@@ -847,8 +849,8 @@ describe("applyLock", () => {
 
       expect(result.steps.dns).toBe(false);
       expect(result.stepErrors?.dns).toContain("dig timeout");
-      // 19 calls: 18 normal + 1 DNS rollback
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(19);
+      // 20 calls: 19 normal + 1 DNS rollback
+      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(20);
     });
   });
 
@@ -888,8 +890,8 @@ describe("applyLock", () => {
 
       const result = await applyLock("1.2.3.4", "test-server", undefined, {});
 
-      // Should still complete all 18 steps
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(18);
+      // Should still complete all 19 calls (key check + 18 steps)
+      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(19);
       expect(result.steps.sshHardening).toBe(true);
     });
   });

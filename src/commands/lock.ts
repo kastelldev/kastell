@@ -16,6 +16,7 @@ const groups: Array<{
       { key: "fail2ban", label: "Fail2ban" },
       { key: "banners", label: "Login banners" },
       { key: "accountLock", label: "Account locking" },
+      { key: "sshCipher", label: "SSH cipher blacklist" },
     ],
   },
   {
@@ -35,6 +36,7 @@ const groups: Array<{
       { key: "resourceLimits", label: "Resource limits" },
       { key: "serviceDisable", label: "Service disabling" },
       { key: "backupPermissions", label: "Backup permissions" },
+      { key: "pwquality", label: "Password quality policy" },
     ],
   },
   {

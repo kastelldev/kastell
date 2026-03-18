@@ -34,6 +34,7 @@ const successResult: LockResult = {
     fail2ban: true,
     banners: true,
     accountLock: true,
+    sshCipher: true,
     ufw: true,
     cloudMeta: true,
     dns: true,
@@ -59,6 +60,7 @@ const failedResult: LockResult = {
     fail2ban: true,
     banners: true,
     accountLock: true,
+    sshCipher: true,
     ufw: true,
     cloudMeta: true,
     dns: false,
@@ -191,7 +193,7 @@ describe("lockCommand", () => {
       expect(mockSpinner.start).toHaveBeenCalled();
     });
 
-    it("displays per-step results for all 16 steps", async () => {
+    it("displays per-step results for all 17 steps", async () => {
       await lockCommand("prod-server", { production: true, force: true });
       const allCalls = [
         ...(mockedLogger.logger.info as jest.Mock).mock.calls.map((c: string[]) => c[0]),
@@ -203,6 +205,7 @@ describe("lockCommand", () => {
       expect(allCalls).toContain("fail2ban");
       expect(allCalls).toContain("banner");
       expect(allCalls).toContain("account");
+      expect(allCalls).toContain("cipher");
       expect(allCalls).toContain("firewall");
       expect(allCalls).toContain("metadata");
       expect(allCalls).toContain("dns");

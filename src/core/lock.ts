@@ -4,7 +4,7 @@ import { buildFirewallSetupCommand } from "./firewall.js";
 import { runAudit } from "./audit/index.js";
 import { raw, type SshCommand } from "../utils/sshCommand.js";
 import type { Platform } from "../types/index.js";
-import { LOCK_FIREWALL_TIMEOUT_MS, LOCK_UPGRADES_TIMEOUT_MS, LOCK_PACKAGES_TIMEOUT_MS } from "../constants.js";
+import { LOCK_FIREWALL_TIMEOUT_MS, LOCK_UPGRADES_TIMEOUT_MS, LOCK_PACKAGES_TIMEOUT_MS, WEAK_CIPHERS, WEAK_MACS, WEAK_KEX } from "../constants.js";
 import { getErrorMessage } from "../utils/errorMapper.js";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -21,6 +21,7 @@ export interface LockStepResult {
   fail2ban: boolean;
   banners: boolean;
   accountLock: boolean;
+  sshCipher: boolean;
   // Group 2: Firewall & Network
   ufw: boolean;
   cloudMeta: boolean;
@@ -308,6 +309,21 @@ export function buildPwqualityCommand(): SshCommand {
   );
 }
 
+export function buildSshCipherCommand(): SshCommand {
+  const cipherBlacklist = WEAK_CIPHERS.map((c) => `-${c}`).join(",");
+  const macBlacklist = WEAK_MACS.map((m) => `-${m}`).join(",");
+  const kexBlacklist = WEAK_KEX.map((k) => `-${k}`).join(",");
+
+  return raw(
+    [
+      "cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak-cipher",
+      "sed -i '/^Ciphers /d; /^MACs /d; /^KexAlgorithms /d' /etc/ssh/sshd_config",
+      `printf '\\nCiphers ${cipherBlacklist}\\nMACs ${macBlacklist}\\nKexAlgorithms ${kexBlacklist}\\n' >> /etc/ssh/sshd_config`,
+      "if sshd -t; then systemctl restart sshd; else cp /etc/ssh/sshd_config.bak-cipher /etc/ssh/sshd_config && echo 'SSH cipher hardening rolled back: sshd -t failed' >&2 && exit 1; fi",
+    ].join(" && "),
+  );
+}
+
 // ─── Helper ──────────────────────────────────────────────────────────────────
 
 async function runLockStep(
@@ -338,6 +354,7 @@ export async function applyLock(
     fail2ban: false,
     banners: false,
     accountLock: false,
+    sshCipher: false,
     ufw: false,
     cloudMeta: false,
     dns: false,
@@ -418,14 +435,19 @@ export async function applyLock(
   steps.accountLock = accountLockResult.ok;
   if (!accountLockResult.ok) stepErrors.accountLock = accountLockResult.error!;
 
+  // Step 5: SSH cipher hardening — with sshd -t rollback
+  const sshCipherResult = await runLockStep(ip, buildSshCipherCommand());
+  steps.sshCipher = sshCipherResult.ok;
+  if (!sshCipherResult.ok) stepErrors.sshCipher = sshCipherResult.error!;
+
   // ── Group 2: Firewall & Network ──────────────────────────────────────────
 
-  // Step 5: UFW firewall, 60s timeout for apt
+  // Step 6: UFW firewall, 60s timeout for apt
   const ufwResult = await runLockStep(ip, buildFirewallSetupCommand(platform), { timeoutMs: LOCK_FIREWALL_TIMEOUT_MS });
   steps.ufw = ufwResult.ok;
   if (!ufwResult.ok) stepErrors.ufw = ufwResult.error!;
 
-  // Step 6: Cloud metadata — conditional on UFW
+  // Step 7: Cloud metadata — conditional on UFW
   if (steps.ufw) {
     const cloudMetaResult = await runLockStep(ip, buildCloudMetaBlockCommand());
     steps.cloudMeta = cloudMetaResult.ok;
@@ -434,7 +456,7 @@ export async function applyLock(
     stepErrors.cloudMeta = "UFW required";
   }
 
-  // Step 7: DNS security — with rollback on failure
+  // Step 8: DNS security — with rollback on failure
   const dnsResult = await runLockStep(ip, buildDnsSecurityCommand(), { timeoutMs: 15_000 });
   steps.dns = dnsResult.ok;
   if (!dnsResult.ok) {
@@ -444,54 +466,54 @@ export async function applyLock(
 
   // ── Group 3: System ──────────────────────────────────────────────────────
 
-  // Step 8: sysctl hardening
+  // Step 9: sysctl hardening
   const sysctlResult = await runLockStep(ip, buildSysctlHardeningCommand());
   steps.sysctl = sysctlResult.ok;
   if (!sysctlResult.ok) stepErrors.sysctl = sysctlResult.error!;
 
-  // Step 9: unattended-upgrades, 120s timeout for apt
+  // Step 10: unattended-upgrades, 120s timeout for apt
   const upgradesResult = await runLockStep(ip, buildUnattendedUpgradesCommand(), { timeoutMs: LOCK_UPGRADES_TIMEOUT_MS });
   steps.unattendedUpgrades = upgradesResult.ok;
   if (!upgradesResult.ok) stepErrors.unattendedUpgrades = upgradesResult.error!;
 
-  // Step 10: APT validation
+  // Step 11: APT validation
   const aptResult = await runLockStep(ip, buildAptValidationCommand());
   steps.aptValidation = aptResult.ok;
   if (!aptResult.ok) stepErrors.aptValidation = aptResult.error!;
 
-  // Step 11: Resource limits
+  // Step 12: Resource limits
   const limitsResult = await runLockStep(ip, buildResourceLimitsCommand());
   steps.resourceLimits = limitsResult.ok;
   if (!limitsResult.ok) stepErrors.resourceLimits = limitsResult.error!;
 
-  // Step 12: Service disabling
+  // Step 13: Service disabling
   const serviceResult = await runLockStep(ip, buildServiceDisableCommand());
   steps.serviceDisable = serviceResult.ok;
   if (!serviceResult.ok) stepErrors.serviceDisable = serviceResult.error!;
 
-  // Step 13: Backup permissions
+  // Step 14: Backup permissions
   const backupResult = await runLockStep(ip, buildBackupPermissionsCommand(), { timeoutMs: LOCK_PACKAGES_TIMEOUT_MS });
   steps.backupPermissions = backupResult.ok;
   if (!backupResult.ok) stepErrors.backupPermissions = backupResult.error!;
 
-  // Step 14: Password quality policy
+  // Step 15: Password quality policy
   const pwqualityResult = await runLockStep(ip, buildPwqualityCommand(), { timeoutMs: LOCK_PACKAGES_TIMEOUT_MS });
   steps.pwquality = pwqualityResult.ok;
   if (!pwqualityResult.ok) stepErrors.pwquality = pwqualityResult.error!;
 
   // ── Group 4: Monitoring ──────────────────────────────────────────────────
 
-  // Step 15: auditd
+  // Step 16: auditd
   const auditdResult = await runLockStep(ip, buildAuditdCommand(), { timeoutMs: LOCK_PACKAGES_TIMEOUT_MS });
   steps.auditd = auditdResult.ok;
   if (!auditdResult.ok) stepErrors.auditd = auditdResult.error!;
 
-  // Step 16: Log retention
+  // Step 17: Log retention
   const logResult = await runLockStep(ip, buildLogRetentionCommand());
   steps.logRetention = logResult.ok;
   if (!logResult.ok) stepErrors.logRetention = logResult.error!;
 
-  // Step 17: AIDE (fire-and-forget)
+  // Step 18: AIDE (fire-and-forget)
   const aideResult = await runLockStep(ip, buildAideInitCommand(), { timeoutMs: LOCK_PACKAGES_TIMEOUT_MS });
   steps.aide = aideResult.ok;
   if (!aideResult.ok) stepErrors.aide = aideResult.error!;
