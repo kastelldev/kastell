@@ -241,7 +241,7 @@ function loggingSection(): string {
 function kernelSection(): string {
   return [
     NAMED_SEP("KERNEL"),
-    `sysctl -a 2>/dev/null | grep -E 'randomize_va_space|accept_redirects|accept_source_route|log_martians|syncookies|core_uses_pid|dmesg_restrict|kptr_restrict|ptrace_scope|perf_event_paranoid|tcp_timestamps|icmp_echo_ignore_broadcasts|rp_filter|ip_forward|modules_disabled|unprivileged_bpf_disabled|send_redirects|secure_redirects|sysrq|exec_shield|core_pattern|unprivileged_userns_clone|panic_on_oops|nmi_watchdog|kernel\\.panic\\b' || echo 'N/A'`,
+    `sysctl -a 2>/dev/null | grep -E 'randomize_va_space|accept_redirects|accept_source_route|log_martians|syncookies|core_uses_pid|dmesg_restrict|kptr_restrict|ptrace_scope|perf_event_paranoid|tcp_timestamps|icmp_echo_ignore_broadcasts|rp_filter|ip_forward|modules_disabled|unprivileged_bpf_disabled|send_redirects|secure_redirects|sysrq|exec_shield|core_pattern|unprivileged_userns_clone|panic_on_oops|nmi_watchdog|kernel\\.panic\\b|bpf_jit_harden|suid_dumpable' || echo 'N/A'`,
     `uname -r 2>/dev/null || echo 'N/A'`,
     `cat /sys/kernel/security/lsm 2>/dev/null || echo 'N/A'`,
     // NEW: blacklisted filesystem modules loaded

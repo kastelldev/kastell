@@ -209,22 +209,23 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
     explain: "IP forwarding should be disabled on servers that are not routers to prevent packet routing abuse.",
   };
 
-  // KRN-11: Reverse path filter (net.ipv4.conf.all.rp_filter = 1)
+  // KRN-11: Reverse path filter (net.ipv4.conf.all.rp_filter >= 1)
+  // Accepts both strict (1) and loose (2) modes — loose mode is required for Docker bridge networking
   const rpFilter = extractSysctlValue(output, "net.ipv4.conf.all.rp_filter");
   const krn11: AuditCheck = {
     id: "KRN-RP-FILTER",
     category: "Kernel",
     name: "Reverse Path Filtering Enabled",
     severity: "warning",
-    passed: isNA ? false : rpFilter === "1",
+    passed: isNA ? false : rpFilter !== null && parseInt(rpFilter, 10) >= 1,
     currentValue: isNA
       ? "Unable to determine"
       : rpFilter !== null
         ? `net.ipv4.conf.all.rp_filter = ${rpFilter}`
         : "Unable to determine",
-    expectedValue: "net.ipv4.conf.all.rp_filter = 1",
-    fixCommand: "sysctl -w net.ipv4.conf.all.rp_filter=1 && echo 'net.ipv4.conf.all.rp_filter=1' >> /etc/sysctl.d/99-kastell.conf",
-    explain: "Reverse path filtering drops packets with a source address that cannot be reached via the incoming interface.",
+    expectedValue: "net.ipv4.conf.all.rp_filter = 1 or 2 (loose mode for Docker compatibility)",
+    fixCommand: "sysctl -w net.ipv4.conf.all.rp_filter=2 && echo 'net.ipv4.conf.all.rp_filter=2' >> /etc/sysctl.d/99-kastell.conf",
+    explain: "Reverse path filtering drops packets with a source address that cannot be reached via the incoming interface. Loose mode (2) is Docker-compatible.",
   };
 
   // KRN-12: TCP timestamps (net.ipv4.tcp_timestamps = 0)
@@ -617,5 +618,23 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
     explain: "Kernel lockdown mode prevents even root from modifying the running kernel, blocking rootkit installation.",
   };
 
-  return [krn01, krn02, krn03, krn04, krn05, krn06, krn07, krn08, krn09, krn10, krn11, krn12, krn13, krn14, krn15, krn16, krn17, krn18, krn19, krn20, krn21, krn22, krn23, krn24, krn25, krn26, krn27, krn28, krn29, krn30];
+  // KRN-31: BPF JIT hardening (net.core.bpf_jit_harden >= 1)
+  const bpfJitHarden = extractSysctlValue(output, "net.core.bpf_jit_harden");
+  const krn31: AuditCheck = {
+    id: "KRN-BPF-JIT-HARDEN",
+    category: "Kernel",
+    name: "BPF JIT Hardening Enabled",
+    severity: "warning",
+    passed: isNA ? false : bpfJitHarden !== null && parseInt(bpfJitHarden, 10) >= 1,
+    currentValue: isNA
+      ? "Unable to determine"
+      : bpfJitHarden !== null
+        ? `net.core.bpf_jit_harden = ${bpfJitHarden}`
+        : "Unable to determine",
+    expectedValue: "net.core.bpf_jit_harden = 1 or 2",
+    fixCommand: "sysctl -w net.core.bpf_jit_harden=1 && echo 'net.core.bpf_jit_harden=1' >> /etc/sysctl.d/99-kastell.conf",
+    explain: "BPF JIT hardening prevents JIT spray attacks by constant-blinding JIT-compiled BPF bytecode.",
+  };
+
+  return [krn01, krn02, krn03, krn04, krn05, krn06, krn07, krn08, krn09, krn10, krn11, krn12, krn13, krn14, krn15, krn16, krn17, krn18, krn19, krn20, krn21, krn22, krn23, krn24, krn25, krn26, krn27, krn28, krn29, krn30, krn31];
 };
