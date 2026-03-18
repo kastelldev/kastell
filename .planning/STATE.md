@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.12
 milestone_name: Lock Advanced + Audit Explain
 status: in-progress
-stopped_at: Completed P58 (both plans — sysctl CIS L2 + auditd depth)
-last_updated: "2026-03-18T14:00:00.000Z"
-last_activity: 2026-03-18 — P58 fully complete (2 plans, 4 commits, 129 tests pass)
+stopped_at: Completed P59-01 (pwquality step in kastell lock)
+last_updated: "2026-03-18T15:30:00.000Z"
+last_activity: 2026-03-18 — P59-01 complete (2 tasks, 2 commits, 4136 tests pass)
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 21
-  completed_plans: 5
-  percent: 24
+  completed_plans: 6
+  percent: 29
 ---
 
 # Project State
@@ -22,16 +22,16 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Brand:** Kastell (kastell.dev | npm: kastell | GitHub: kastelldev)
 **Core value:** Autonomous server security and maintenance across multiple cloud providers
-**Current focus:** v1.12 Lock Advanced + Audit Explain — Phase 58: auditd+sysctl depth
+**Current focus:** v1.12 Lock Advanced + Audit Explain — Phase 59: pwquality lock step (COMPLETE)
 
 ## Current Position
 
-Phase: 58 of 62 (auditd+sysctl depth) — COMPLETE
-Plan: 01 (complete), 02 (complete)
-Status: P58 fully complete — sysctl CIS L2 + auditd depth done
-Last activity: 2026-03-18 — P58 complete (4 commits, build+lint+test clean)
+Phase: 59 of 62 (lock-depth-pwquality) — COMPLETE
+Plan: 01 (complete)
+Status: P59 fully complete — pwquality CIS L1 password policy step added to kastell lock
+Last activity: 2026-03-18 — P59-01 complete (2 commits, build+lint+test clean, 4136 tests)
 
-Progress: [██▌░░░░░░░] 24%
+Progress: [███░░░░░░░] 29%
 
 ## Accumulated Context
 
@@ -46,6 +46,9 @@ Progress: [██▌░░░░░░░] 24%
 - [Phase 58-sysctl]: rp_filter=2 (loose mode) used by lock — Docker bridge requires loose mode; audit KRN-RP-FILTER accepts 1 or 2
 - [Phase 58-sysctl]: 50-kastell-deep.rules sorts before 99-kastell.rules ensuring CIS L2 auditd rules load before -e 2 immutability lock
 - [Phase 58-sysctl]: KRN-BPF-JIT-HARDEN severity=warning — JIT spray is CVE-class attack vector
+- [Phase 59-pwquality]: pwquality step non-fatal with apt-cache availability guard — graceful exit 0 when libpam-pwquality unavailable
+- [Phase 59-pwquality]: CIS L1 values: minlen=14, dcredit/ucredit/lcredit/ocredit=-1, maxrepeat=3
+- [Phase 59-pwquality]: Step placed in Group 3 (System) after backupPermissions, before Group 4 (Monitoring)
 
 ### Pending Todos
 
@@ -60,5 +63,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-18
-Stopped at: Completed 58-01-PLAN.md (sysctl CIS L2 expansion + KRN-BPF-JIT-HARDEN audit check)
+Stopped at: Completed 059-01-PLAN.md (pwquality CIS L1 password policy step in kastell lock)
 Resume file: None
