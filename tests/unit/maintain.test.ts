@@ -620,6 +620,9 @@ describe("pollHealth", () => {
     let callIndex = 0;
     return {
       name: "test",
+      port: 8000,
+      defaultLogService: "test",
+      platformPorts: [80, 443, 8000],
       getCloudInit: jest.fn(() => ""),
       healthCheck: jest.fn(async () => {
         const status = healthResults[callIndex] ?? "not reachable";
@@ -672,6 +675,9 @@ describe("maintainServer - adapter dispatch", () => {
   function createMockAdapter(overrides?: Partial<PlatformAdapter>): PlatformAdapter {
     return {
       name: "dokploy",
+      port: 3000,
+      defaultLogService: "dokploy",
+      platformPorts: [80, 443, 3000],
       getCloudInit: jest.fn(() => ""),
       healthCheck: jest.fn(async () => ({ status: "running" as const })),
       createBackup: jest.fn(async () => ({ success: true })),

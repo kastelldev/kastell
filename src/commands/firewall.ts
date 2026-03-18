@@ -3,10 +3,9 @@ import { resolveServer } from "../utils/serverSelect.js";
 import { checkSshAvailable } from "../utils/ssh.js";
 import { logger, createSpinner } from "../utils/logger.js";
 import { isBareServer } from "../utils/modeGuard.js";
-import { resolvePlatform } from "../adapters/factory.js";
+import { resolvePlatform, getAdapter } from "../adapters/factory.js";
+import { adapterDisplayName } from "../adapters/shared.js";
 import {
-  COOLIFY_PORTS,
-  DOKPLOY_PORTS,
   isValidPort,
   isProtectedPort,
   firewallSetup,
@@ -129,12 +128,11 @@ async function firewallRemove(
     return;
   }
 
-  const isPlatformPort =
-    (platform === "coolify" && COOLIFY_PORTS.includes(port)) ||
-    (platform === "dokploy" && DOKPLOY_PORTS.includes(port));
+  const platformAdapter = platform ? getAdapter(platform) : null;
+  const isPlatformPort = platformAdapter ? platformAdapter.platformPorts.includes(port) : false;
 
   if (isPlatformPort && !force) {
-    const platformName = platform === "coolify" ? "Coolify" : "Dokploy";
+    const platformName = platformAdapter ? adapterDisplayName(platformAdapter) : "platform";
     const { confirm } = await inquirer.prompt([
       {
         type: "confirm",

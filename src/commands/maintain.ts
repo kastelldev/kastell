@@ -13,6 +13,7 @@ import {
   type StepResult,
 } from "../core/maintain.js";
 import { getAdapter, resolvePlatform } from "../adapters/factory.js";
+import { adapterDisplayName } from "../adapters/shared.js";
 
 interface MaintainOptions {
   skipReboot?: boolean;
@@ -24,8 +25,7 @@ interface MaintainOptions {
 
 function showDryRun(server: ServerRecord, skipReboot: boolean): void {
   const platform = resolvePlatform(server);
-  const adapterName = platform ? getAdapter(platform).name : "platform";
-  const displayName = adapterName.charAt(0).toUpperCase() + adapterName.slice(1);
+  const displayName = platform ? adapterDisplayName(getAdapter(platform)) : "Platform";
 
   logger.title("Dry Run: Maintenance Steps");
   logger.step(`Target: ${server.name} (${server.ip})`);

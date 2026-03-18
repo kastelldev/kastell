@@ -152,6 +152,9 @@ describe("maintainServer", () => {
   function createMockPlatformAdapter(overrides?: Record<string, jest.Mock>) {
     return {
       name: "coolify",
+      port: 8000,
+      defaultLogService: "coolify",
+      platformPorts: [80, 443, 8000],
       getCloudInit: jest.fn(() => ""),
       healthCheck: jest.fn(async () => ({ status: "running" as const })),
       createBackup: jest.fn(async () => ({ success: true })),
@@ -343,6 +346,9 @@ describe("handleServerMaintain — update", () => {
     mockedConfig.findServer.mockReturnValue(sampleServer);
     const spy = jest.spyOn(adapterFactory, "getAdapter").mockReturnValue({
       name: "coolify",
+      port: 8000,
+      defaultLogService: "coolify",
+      platformPorts: [80, 443, 8000],
       getCloudInit: jest.fn(() => ""),
       healthCheck: jest.fn(async () => ({ status: "running" as const })),
       createBackup: jest.fn(async () => ({ success: true })),

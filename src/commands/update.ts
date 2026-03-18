@@ -5,6 +5,7 @@ import { checkSshAvailable } from "../utils/ssh.js";
 import { logger, createSpinner } from "../utils/logger.js";
 import { isBareServer, requireManagedMode } from "../utils/modeGuard.js";
 import { getAdapter, resolvePlatform } from "../adapters/factory.js";
+import { adapterDisplayName } from "../adapters/shared.js";
 import { updateServer } from "../core/update.js";
 import type { Platform } from "../types/index.js";
 
@@ -34,7 +35,7 @@ async function updateSingleServer(
   platform: Platform,
 ): Promise<boolean> {
   const adapter = getAdapter(platform);
-  const adapterDisplayName = adapter.name.charAt(0).toUpperCase() + adapter.name.slice(1);
+  const displayName = adapterDisplayName(adapter);
 
   const spinner = createSpinner(`Validating ${serverName}...`);
   spinner.start();
@@ -61,9 +62,9 @@ async function updateSingleServer(
 
   spinner.succeed(`${serverName}: Server verified`);
 
-  logger.info(`Updating ${adapterDisplayName} on ${serverName} (${serverIp})...`);
+  logger.info(`Updating ${displayName} on ${serverName} (${serverIp})...`);
   if (result.output) console.log(result.output);
-  logger.success(`${serverName}: ${adapterDisplayName} update completed!`);
+  logger.success(`${serverName}: ${displayName} update completed!`);
   return true;
 }
 
@@ -95,7 +96,7 @@ async function updateAll(options?: UpdateOptions): Promise<void> {
         continue;
       }
       const adapter = getAdapter(serverPlatform);
-      const displayName = adapter.name.charAt(0).toUpperCase() + adapter.name.slice(1);
+      const displayName = adapterDisplayName(adapter);
       showDryRun(server, displayName);
       console.log();
     }
@@ -179,10 +180,10 @@ export async function updateCommand(query?: string, options?: UpdateOptions): Pr
   }
 
   const adapter = getAdapter(platform);
-  const adapterDisplayName = adapter.name.charAt(0).toUpperCase() + adapter.name.slice(1);
+  const displayName = adapterDisplayName(adapter);
 
   if (options?.dryRun) {
-    showDryRun(server, adapterDisplayName);
+    showDryRun(server, displayName);
     return;
   }
 
@@ -191,7 +192,7 @@ export async function updateCommand(query?: string, options?: UpdateOptions): Pr
       {
         type: "confirm",
         name: "confirm",
-        message: `Update ${adapterDisplayName} on "${server.name}" (${server.ip})? This may cause brief downtime.`,
+        message: `Update ${displayName} on "${server.name}" (${server.ip})? This may cause brief downtime.`,
         default: false,
       },
     ]);
@@ -213,7 +214,7 @@ export async function updateCommand(query?: string, options?: UpdateOptions): Pr
     spinner.succeed("Validating...");
   }
 
-  logger.info(`Running ${adapterDisplayName} update script...`);
+  logger.info(`Running ${displayName} update script...`);
   logger.info("This may take several minutes. Please wait.");
   console.log();
 
@@ -222,7 +223,7 @@ export async function updateCommand(query?: string, options?: UpdateOptions): Pr
   if (result.output) console.log(result.output);
 
   if (result.success) {
-    logger.success(`${adapterDisplayName} update completed successfully!`);
+    logger.success(`${displayName} update completed successfully!`);
   } else {
     logger.error(`Update failed${result.error ? `: ${result.error}` : ""}`);
     if (result.hint) logger.info(result.hint);
