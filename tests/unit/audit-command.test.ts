@@ -96,6 +96,7 @@ describe("auditCommand", () => {
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
     exitSpy = jest.spyOn(process, "exit").mockImplementation(() => undefined as never);
+    process.exitCode = undefined;
     jest.clearAllMocks();
 
     mockedServerSelect.resolveServer.mockResolvedValue({
@@ -201,16 +202,16 @@ describe("auditCommand", () => {
     const { auditCommand } = await import("../../src/commands/audit");
     await auditCommand(undefined, { threshold: "80" });
 
-    // Score is 72, threshold is 80 -> should exit 1
-    expect(exitSpy).toHaveBeenCalledWith(1);
+    // Score is 72, threshold is 80 -> should set exitCode 1
+    expect(process.exitCode).toBe(1);
   });
 
   it("should not exit with code 1 if score >= threshold", async () => {
     const { auditCommand } = await import("../../src/commands/audit");
     await auditCommand(undefined, { threshold: "70" });
 
-    // Score is 72, threshold is 70 -> should NOT exit 1
-    expect(exitSpy).not.toHaveBeenCalledWith(1);
+    // Score is 72, threshold is 70 -> should NOT set exitCode 1
+    expect(process.exitCode).toBeUndefined();
   });
 
   it("should handle audit failure gracefully", async () => {
@@ -235,14 +236,14 @@ describe("auditCommand", () => {
 
     const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("72/100");
-    expect(exitSpy).not.toHaveBeenCalledWith(1);
+    expect(process.exitCode).toBeUndefined();
   });
 
   it("should handle --score-only with --threshold above score", async () => {
     const { auditCommand } = await import("../../src/commands/audit");
     await auditCommand(undefined, { scoreOnly: true, threshold: "80" });
 
-    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(process.exitCode).toBe(1);
   });
 
   it("should pass --category and --severity to filterAuditResult after saveAuditHistory", async () => {

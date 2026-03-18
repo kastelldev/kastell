@@ -58,8 +58,9 @@ export async function handleServerLock(params: {
     }
 
     // Resolve platform from server record (same pattern as serverAudit.ts line 44)
-    const platformStr = server.platform ?? server.mode ?? "bare";
-    const platform = platformStr as Platform | undefined;
+    const platformStr = server.platform ?? server.mode;
+    const platform: Platform | undefined =
+      platformStr === "coolify" || platformStr === "dokploy" ? platformStr : undefined;
 
     const result = await applyLock(server.ip, server.name, platform, {
       production,

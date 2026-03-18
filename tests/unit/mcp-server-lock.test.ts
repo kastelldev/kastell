@@ -91,7 +91,7 @@ describe("MCP server_lock tool", () => {
       expect(mockedLock.applyLock).toHaveBeenCalledWith(
         "1.2.3.4",
         "my-server",
-        expect.anything(),
+        undefined,
         expect.objectContaining({ production: true, dryRun: false }),
       );
       expect(result.isError).toBeUndefined();
@@ -167,7 +167,7 @@ describe("MCP server_lock tool", () => {
       expect(mockedLock.applyLock).toHaveBeenCalledWith(
         "1.2.3.4",
         "my-server",
-        expect.anything(),
+        undefined,
         expect.objectContaining({ dryRun: true }),
       );
       expect(result.isError).toBeUndefined();
@@ -207,7 +207,7 @@ describe("MCP server_lock tool", () => {
       );
     });
 
-    it('falls back to "bare" when neither platform nor mode is set', async () => {
+    it("falls back to undefined when neither platform nor mode is set", async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer] as never);
       mockedConfig.findServer.mockReturnValue(sampleServer as never);
       mockedLock.applyLock.mockResolvedValue(sampleLockResult);
@@ -217,7 +217,7 @@ describe("MCP server_lock tool", () => {
       expect(mockedLock.applyLock).toHaveBeenCalledWith(
         "1.2.3.4",
         "my-server",
-        "bare",
+        undefined,
         expect.anything(),
       );
     });
@@ -268,7 +268,7 @@ describe("MCP server_lock tool", () => {
       expect(mockedLock.applyLock).toHaveBeenCalledWith(
         "1.2.3.4",
         "my-server",
-        "bare",
+        undefined,
         expect.anything(),
       );
     });

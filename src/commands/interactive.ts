@@ -488,6 +488,75 @@ async function promptAudit(): Promise<string[] | null> {
   else if (format === "score-only") args.push("--score-only");
   else if (format === "badge") args.push("--badge");
   else if (format === "trend") args.push("--trend");
+
+  // Optional category/severity filters (AUX-01, AUX-02)
+  const filter = await promptList("Filter results?", [
+    { name: "No filter (show all)", value: "none" },
+    { name: "Filter by category", value: "category" },
+    { name: "Filter by severity", value: "severity" },
+    { name: "Filter by both", value: "both" },
+  ]);
+  if (!filter) return null;
+
+  if (filter === "category" || filter === "both") {
+    const TOP_CATEGORIES = [
+      { name: "SSH", value: "ssh" },
+      { name: "Firewall", value: "firewall" },
+      { name: "Updates", value: "updates" },
+      { name: "Auth", value: "auth" },
+      { name: "Docker", value: "docker" },
+      { name: "Network", value: "network" },
+      { name: "Kernel", value: "kernel" },
+      { name: "Logging", value: "logging" },
+    ];
+    const ALL_CATEGORIES = [
+      ...TOP_CATEGORIES,
+      { name: "Filesystem", value: "filesystem" },
+      { name: "Accounts", value: "accounts" },
+      { name: "Services", value: "services" },
+      { name: "Boot", value: "boot" },
+      { name: "Scheduling", value: "scheduling" },
+      { name: "Time", value: "time" },
+      { name: "Banners", value: "banners" },
+      { name: "Crypto", value: "crypto" },
+      { name: "File Integrity", value: "file integrity" },
+      { name: "Malware", value: "malware" },
+      { name: "MAC", value: "mac" },
+      { name: "Memory", value: "memory" },
+      { name: "Secrets", value: "secrets" },
+      { name: "Cloud Metadata", value: "cloud metadata" },
+      { name: "Supply Chain", value: "supply chain" },
+      { name: "Backup Hygiene", value: "backup hygiene" },
+      { name: "Resource Limits", value: "resource limits" },
+      { name: "Incident Readiness", value: "incident readiness" },
+      { name: "DNS Security", value: "dns security" },
+    ];
+
+    const category = await promptList("Category:", [
+      ...TOP_CATEGORIES,
+      { name: "Show all 27 categories...", value: "__all__" },
+    ]);
+    if (!category) return null;
+
+    if (category === "__all__") {
+      const fullCategory = await promptList("Category:", ALL_CATEGORIES);
+      if (!fullCategory) return null;
+      args.push("--category", fullCategory);
+    } else {
+      args.push("--category", category);
+    }
+  }
+
+  if (filter === "severity" || filter === "both") {
+    const severity = await promptList("Severity:", [
+      { name: "Critical only", value: "critical" },
+      { name: "Warning", value: "warning" },
+      { name: "Info", value: "info" },
+    ]);
+    if (!severity) return null;
+    args.push("--severity", severity);
+  }
+
   return args;
 }
 

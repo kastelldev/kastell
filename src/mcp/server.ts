@@ -196,7 +196,7 @@ export function createMcpServer(): McpServer {
 
   server.registerTool("server_lock", {
     description:
-      "Harden a server to production standard. Applies 5 hardening steps in a single SSH session: SSH key-only auth, fail2ban, UFW firewall, sysctl hardening, and unattended-upgrades. Requires production=true to confirm intent (safety gate). Pass dryRun=true to preview changes without applying. Platform-aware: preserves Coolify port 8000 or Dokploy port 3000 in UFW rules. Shows audit score before and after hardening. Requires SSH access to target server. For fine-grained SSH hardening, firewall port rules, or domain management, use server_secure instead.",
+      "Harden a server to production standard. Applies 16 hardening steps in a single SSH session: SSH key-only auth, fail2ban, UFW firewall, sysctl hardening, unattended-upgrades, login banners, account locking, cloud metadata block, DNS security, APT validation, resource limits, service disabling, backup permissions, auditd, log retention, and AIDE integrity. Requires production=true to confirm intent (safety gate). Pass dryRun=true to preview changes without applying. Platform-aware: preserves Coolify port 8000 or Dokploy port 3000 in UFW rules. Shows audit score before and after hardening. Requires SSH access to target server. For fine-grained SSH hardening, firewall port rules, or domain management, use server_secure instead.",
     inputSchema: serverLockSchema,
     annotations: {
       title: "Server Lock",

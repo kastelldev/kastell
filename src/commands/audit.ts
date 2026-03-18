@@ -65,7 +65,8 @@ export async function auditCommand(
     const filter: { category?: string; severity?: "critical" | "warning" | "info" } = {};
     if (options.category) filter.category = options.category;
     if (options.severity) {
-      filter.severity = options.severity as "critical" | "warning" | "info";
+      const parsed = parseSeverity(options.severity);
+      if (parsed) filter.severity = parsed;
     }
     const checks = listAllChecks(filter);
     if (options.json) {
@@ -355,7 +356,8 @@ export async function auditCommand(
         return;
       }
       if (auditResult.overallScore < threshold) {
-        process.exit(1);
+        process.exitCode = 1;
+        return;
       }
     }
     return;
@@ -388,7 +390,8 @@ export async function auditCommand(
     }
     if (auditResult.overallScore < threshold) {
       logger.error(`Score ${auditResult.overallScore} is below threshold ${threshold}`);
-      process.exit(1);
+      process.exitCode = 1;
+      return;
     }
   }
 }
