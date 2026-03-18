@@ -1,18 +1,8 @@
 import { parseLoggingChecks } from "../../src/core/audit/checks/logging.js";
 
 describe("parseLoggingChecks", () => {
-  // Secure output includes data from all 11 loggingSection() commands:
-  // 1. rsyslog status
-  // 2. journald status
-  // 3. logrotate config
-  // 4. auth log exists
-  // 5. auditctl rules output
-  // 6. systemctl auditd status
-  // 7. /var/log stat
-  // 8. journald.conf Storage
-  // 9. which output for centralized tools
-  // 10. file watch rule count (LOG-AUDIT-WATCH-COUNT)
-  // 11. auditd retention config (LOG-AUDITD-SPACE-ACTION)
+  // Secure output mirrors loggingSection() SSH command order.
+  // auditctl -l | head -50 provides all rule data (time/network/module/watch).
   const secureOutput = [
     // rsyslog status
     "active",
@@ -43,12 +33,6 @@ describe("parseLoggingChecks", () => {
     // auditd space/file action (LOG-AUDITD-SPACE-ACTION)
     "space_left_action = email",
     "max_log_file_action = keep_logs",
-    // time-change rules (LOG-AUDIT-TIME-RULES)
-    "-a always,exit -F arch=b64 -S adjtimex -S settimeofday -k time-change",
-    // network-change rules (LOG-AUDIT-NETWORK-RULES)
-    "-a always,exit -F arch=b64 -S sethostname -S setdomainname -k network-change",
-    // kernel-module rules (LOG-AUDIT-MODULE-RULES)
-    "-a always,exit -F arch=b64 -S init_module -S delete_module -k kernel-module",
   ].join("\n");
 
   const insecureOutput = [

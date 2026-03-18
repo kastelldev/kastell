@@ -209,14 +209,8 @@ function loggingSection(): string {
     `systemctl is-active systemd-journald 2>/dev/null || echo 'N/A'`,
     `cat /etc/logrotate.conf 2>/dev/null | head -10 || echo 'N/A'`,
     `test -f /var/log/auth.log && echo 'EXISTS' || test -f /var/log/secure && echo 'EXISTS' || echo 'MISSING'`,
-    // NEW: auditd rules (all categories including time/network/module)
-    `auditctl -l 2>/dev/null | head -20 || echo 'NO_RULES'`,
-    // NEW: auditd time-change rules
-    `auditctl -l 2>/dev/null | grep -E 'time-change|adjtimex|settimeofday' | head -3 || echo 'NO_TIME_RULES'`,
-    // NEW: auditd network-change rules
-    `auditctl -l 2>/dev/null | grep -E 'network-change|sethostname|setdomainname' | head -3 || echo 'NO_NETWORK_RULES'`,
-    // NEW: auditd kernel-module rules
-    `auditctl -l 2>/dev/null | grep -E 'kernel-module|init_module|delete_module' | head -3 || echo 'NO_MODULE_RULES'`,
+    // auditd rules — single fetch covers all categories (time/network/module/watch)
+    `auditctl -l 2>/dev/null | head -50 || echo 'NO_RULES'`,
     // NEW: auditd active status
     `systemctl is-active auditd 2>/dev/null || echo 'inactive'`,
     // NEW: /var/log permissions

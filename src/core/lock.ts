@@ -32,6 +32,7 @@ export interface LockStepResult {
   resourceLimits: boolean;
   serviceDisable: boolean;
   backupPermissions: boolean;
+  pwquality: boolean;
   // Group 4: Monitoring
   auditd: boolean;
   logRetention: boolean;
@@ -288,6 +289,25 @@ export function buildDnsRollbackCommand(): SshCommand {
   );
 }
 
+export function buildPwqualityCommand(): SshCommand {
+  const conf = [
+    "minlen = 14",
+    "dcredit = -1",
+    "ucredit = -1",
+    "lcredit = -1",
+    "ocredit = -1",
+    "maxrepeat = 3",
+  ].join("\\n");
+
+  return raw(
+    [
+      "apt-cache show libpam-pwquality >/dev/null 2>&1 || { echo 'WARN: libpam-pwquality not available, skipping'; exit 0; }",
+      "DEBIAN_FRONTEND=noninteractive apt-get install -y libpam-pwquality",
+      `printf '${conf}\\n' > /etc/security/pwquality.conf`,
+    ].join(" && "),
+  );
+}
+
 // ─── Helper ──────────────────────────────────────────────────────────────────
 
 async function runLockStep(
@@ -327,6 +347,7 @@ export async function applyLock(
     resourceLimits: false,
     serviceDisable: false,
     backupPermissions: false,
+    pwquality: false,
     auditd: false,
     logRetention: false,
     aide: false,
@@ -453,19 +474,24 @@ export async function applyLock(
   steps.backupPermissions = backupResult.ok;
   if (!backupResult.ok) stepErrors.backupPermissions = backupResult.error!;
 
+  // Step 14: Password quality policy
+  const pwqualityResult = await runLockStep(ip, buildPwqualityCommand(), { timeoutMs: LOCK_PACKAGES_TIMEOUT_MS });
+  steps.pwquality = pwqualityResult.ok;
+  if (!pwqualityResult.ok) stepErrors.pwquality = pwqualityResult.error!;
+
   // ── Group 4: Monitoring ──────────────────────────────────────────────────
 
-  // Step 14: auditd
+  // Step 15: auditd
   const auditdResult = await runLockStep(ip, buildAuditdCommand(), { timeoutMs: LOCK_PACKAGES_TIMEOUT_MS });
   steps.auditd = auditdResult.ok;
   if (!auditdResult.ok) stepErrors.auditd = auditdResult.error!;
 
-  // Step 15: Log retention
+  // Step 16: Log retention
   const logResult = await runLockStep(ip, buildLogRetentionCommand());
   steps.logRetention = logResult.ok;
   if (!logResult.ok) stepErrors.logRetention = logResult.error!;
 
-  // Step 16: AIDE (fire-and-forget)
+  // Step 17: AIDE (fire-and-forget)
   const aideResult = await runLockStep(ip, buildAideInitCommand(), { timeoutMs: LOCK_PACKAGES_TIMEOUT_MS });
   steps.aide = aideResult.ok;
   if (!aideResult.ok) stepErrors.aide = aideResult.error!;

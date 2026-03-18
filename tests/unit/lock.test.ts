@@ -15,6 +15,7 @@ import {
   buildBackupPermissionsCommand,
   buildDnsSecurityCommand,
   buildDnsRollbackCommand,
+  buildPwqualityCommand,
   applyLock,
 } from "../../src/core/lock";
 import type { LockResult } from "../../src/core/lock";
@@ -502,6 +503,60 @@ describe("buildDnsRollbackCommand", () => {
   it("restarts systemd-resolved after rollback", () => {
     const cmd = buildDnsRollbackCommand();
     expect(cmd).toContain("systemctl restart systemd-resolved");
+  });
+});
+
+// ─── buildPwqualityCommand ───────────────────────────────────────────────────
+
+describe("buildPwqualityCommand", () => {
+  it("checks libpam-pwquality availability with apt-cache", () => {
+    const cmd = buildPwqualityCommand();
+    expect(cmd).toContain("apt-cache show libpam-pwquality");
+  });
+
+  it("installs libpam-pwquality via apt-get", () => {
+    const cmd = buildPwqualityCommand();
+    expect(cmd).toContain("apt-get install -y libpam-pwquality");
+  });
+
+  it("writes to /etc/security/pwquality.conf", () => {
+    const cmd = buildPwqualityCommand();
+    expect(cmd).toContain("/etc/security/pwquality.conf");
+  });
+
+  it("sets minlen = 14 (CIS L1 minimum password length)", () => {
+    const cmd = buildPwqualityCommand();
+    expect(cmd).toContain("minlen = 14");
+  });
+
+  it("sets dcredit = -1 (digit required)", () => {
+    const cmd = buildPwqualityCommand();
+    expect(cmd).toContain("dcredit = -1");
+  });
+
+  it("sets ucredit = -1 (uppercase required)", () => {
+    const cmd = buildPwqualityCommand();
+    expect(cmd).toContain("ucredit = -1");
+  });
+
+  it("sets lcredit = -1 (lowercase required)", () => {
+    const cmd = buildPwqualityCommand();
+    expect(cmd).toContain("lcredit = -1");
+  });
+
+  it("sets ocredit = -1 (special char required)", () => {
+    const cmd = buildPwqualityCommand();
+    expect(cmd).toContain("ocredit = -1");
+  });
+
+  it("sets maxrepeat = 3 (no more than 3 consecutive identical chars)", () => {
+    const cmd = buildPwqualityCommand();
+    expect(cmd).toContain("maxrepeat = 3");
+  });
+
+  it("exits 0 gracefully when package is unavailable (non-fatal)", () => {
+    const cmd = buildPwqualityCommand();
+    expect(cmd).toContain("exit 0");
   });
 });
 

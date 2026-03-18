@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.12
 milestone_name: Lock Advanced + Audit Explain
-status: planning
-stopped_at: Completed 57-02-PLAN.md (explain param on MCP server_audit)
-last_updated: "2026-03-18T10:58:12.320Z"
-last_activity: 2026-03-18 — v1.12 roadmap created
+status: in-progress
+stopped_at: Completed P58 (both plans — sysctl CIS L2 + auditd depth)
+last_updated: "2026-03-18T14:00:00.000Z"
+last_activity: 2026-03-18 — P58 fully complete (2 plans, 4 commits, 129 tests pass)
 progress:
   total_phases: 6
-  completed_phases: 0
-  total_plans: 2
-  completed_plans: 2
-  percent: 0
+  completed_phases: 2
+  total_plans: 21
+  completed_plans: 5
+  percent: 24
 ---
 
 # Project State
@@ -22,16 +22,16 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Brand:** Kastell (kastell.dev | npm: kastell | GitHub: kastelldev)
 **Core value:** Autonomous server security and maintenance across multiple cloud providers
-**Current focus:** v1.12 Lock Advanced + Audit Explain — Phase 57: Audit Explain
+**Current focus:** v1.12 Lock Advanced + Audit Explain — Phase 58: auditd+sysctl depth
 
 ## Current Position
 
-Phase: 57 of 62 (Audit Explain) — both plans complete
-Plan: 01 + 02 (complete)
-Status: Phase 57 complete — both plans done
-Last activity: 2026-03-18 — P57 plan 01 SUMMARY created (terminal formatter explain flag)
+Phase: 58 of 62 (auditd+sysctl depth) — COMPLETE
+Plan: 01 (complete), 02 (complete)
+Status: P58 fully complete — sysctl CIS L2 + auditd depth done
+Last activity: 2026-03-18 — P58 complete (4 commits, build+lint+test clean)
 
-Progress: [█████░░░░░] 50%
+Progress: [██▌░░░░░░░] 24%
 
 ## Accumulated Context
 
@@ -43,6 +43,9 @@ Progress: [█████░░░░░] 50%
 - [v1.12 constraint]: SSHC-05 — shared cipher/MAC/KEX constants used by both lock.ts and audit/checks/ssh.ts
 - [v1.12 constraint]: Phase 62 touches GSD tooling (~/.claude/get-shit-done/), not Kastell src/
 - [Phase 57-audit-explain]: explain param only affects summary format; JSON format unchanged since AuditCheck.explain already in type
+- [Phase 58-sysctl]: rp_filter=2 (loose mode) used by lock — Docker bridge requires loose mode; audit KRN-RP-FILTER accepts 1 or 2
+- [Phase 58-sysctl]: 50-kastell-deep.rules sorts before 99-kastell.rules ensuring CIS L2 auditd rules load before -e 2 immutability lock
+- [Phase 58-sysctl]: KRN-BPF-JIT-HARDEN severity=warning — JIT spray is CVE-class attack vector
 
 ### Pending Todos
 
@@ -57,5 +60,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-18
-Stopped at: Completed 57-01-PLAN.md (--explain flag wired through terminal formatter)
+Stopped at: Completed 58-01-PLAN.md (sysctl CIS L2 expansion + KRN-BPF-JIT-HARDEN audit check)
 Resume file: None

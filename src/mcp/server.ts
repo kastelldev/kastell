@@ -136,7 +136,7 @@ export function createMcpServer(): McpServer {
 
   server.registerTool("server_audit", {
     description:
-      "Run a security audit on a Kastell-managed server. Scans 27 categories (SSH, Firewall, Updates, Auth, Docker, Network, Filesystem, Logging, Kernel, Accounts, Services, Boot, Scheduling, Time, Banners, Crypto, File Integrity, Malware, MAC, Memory, Secrets, Cloud Metadata, Supply Chain, Backup Hygiene, Resource Limits, Incident Readiness, DNS Security) with 409 checks. Returns overall score (0-100), per-category scores, and actionable quick wins. Formats: 'summary' (compact text for AI consumption), 'json' (full AuditResult), 'score' (number only). Supports compliance framework filtering: cis-level1, cis-level2, pci-dss, hipaa. Requires SSH access to target server. For predictive health trends (disk trending, swap, stale packages), use server_doctor instead.",
+      "Run a security audit on a Kastell-managed server. Scans 27 categories (SSH, Firewall, Updates, Auth, Docker, Network, Filesystem, Logging, Kernel, Accounts, Services, Boot, Scheduling, Time, Banners, Crypto, File Integrity, Malware, MAC, Memory, Secrets, Cloud Metadata, Supply Chain, Backup Hygiene, Resource Limits, Incident Readiness, DNS Security) with 413 checks. Returns overall score (0-100), per-category scores, and actionable quick wins. Formats: 'summary' (compact text for AI consumption), 'json' (full AuditResult), 'score' (number only). Supports compliance framework filtering: cis-level1, cis-level2, pci-dss, hipaa. Requires SSH access to target server. For predictive health trends (disk trending, swap, stale packages), use server_doctor instead.",
     inputSchema: serverAuditSchema,
     annotations: {
       title: "Server Security Audit",
