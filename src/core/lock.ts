@@ -336,7 +336,7 @@ export function buildDockerHardeningCommand(platform: Platform | undefined): Ssh
       "command -v docker >/dev/null 2>&1 || { echo 'WARN: Docker not installed, skipping Docker hardening'; exit 0; }",
       "[ -f /etc/docker/daemon.json ] || echo '{}' > /etc/docker/daemon.json",
       "cp /etc/docker/daemon.json /etc/docker/daemon.json.bak-docker",
-      `jq '. * ${hardeningJson}' /etc/docker/daemon.json > /tmp/daemon-kastell.json`,
+      `printf '%s' '${hardeningJson}' | jq -s '.[0] * .[1]' /etc/docker/daemon.json - > /tmp/daemon-kastell.json`,
       "jq -e . /tmp/daemon-kastell.json >/dev/null 2>&1 || { cp /etc/docker/daemon.json.bak-docker /etc/docker/daemon.json && echo 'daemon.json merge failed: rolled back' >&2 && exit 1; }",
       "mv /tmp/daemon-kastell.json /etc/docker/daemon.json",
       "systemctl reload docker 2>/dev/null || systemctl restart docker",
@@ -352,7 +352,7 @@ export function buildSshCipherCommand(): SshCommand {
   return raw(
     [
       "cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak-cipher",
-      "sed -i '/^Ciphers /d; /^MACs /d; /^KexAlgorithms /d' /etc/ssh/sshd_config",
+      "sed -i '/^Ciphers[ \\t]/d; /^MACs[ \\t]/d; /^KexAlgorithms[ \\t]/d' /etc/ssh/sshd_config",
       `printf '\\nCiphers ${cipherBlacklist}\\nMACs ${macBlacklist}\\nKexAlgorithms ${kexBlacklist}\\n' >> /etc/ssh/sshd_config`,
       "if sshd -t; then systemctl restart sshd; else cp /etc/ssh/sshd_config.bak-cipher /etc/ssh/sshd_config && echo 'SSH cipher hardening rolled back: sshd -t failed' >&2 && exit 1; fi",
     ].join(" && "),

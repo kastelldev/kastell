@@ -37,7 +37,7 @@ const MENU: MenuCategory[] = [
     actions: [
       { name: "Run security audit", value: "audit", description: "Score server security across 27 categories with compliance mapping" },
       { name: "Harden SSH & fail2ban", value: "secure", description: "Configure SSH security and brute-force protection" },
-      { name: "Lock server (production hardening)", value: "lock", description: "Apply 16-step hardening: SSH, fail2ban, UFW, sysctl, auditd, AIDE, and more" },
+      { name: "Lock server (production hardening)", value: "lock", description: "Apply 19-step hardening: SSH, fail2ban, UFW, sysctl, auditd, AIDE, and more" },
       { name: "Manage firewall (UFW)", value: "firewall", description: "View, add, or remove UFW firewall port rules" },
       { name: "Manage domain & SSL", value: "domain", description: "Set custom domains and configure SSL certificates" },
       { name: "Collect forensic evidence", value: "evidence", description: "Gather logs, ports, firewall rules with SHA256 checksums" },

@@ -17,6 +17,7 @@ import {
   buildDnsRollbackCommand,
   buildPwqualityCommand,
   buildDockerHardeningCommand,
+  buildSshCipherCommand,
   applyLock,
 } from "../../src/core/lock";
 import type { LockResult } from "../../src/core/lock";
@@ -561,6 +562,36 @@ describe("buildPwqualityCommand", () => {
   });
 });
 
+// ─── buildSshCipherCommand ───────────────────────────────────────────────────
+
+describe("buildSshCipherCommand", () => {
+  it("contains sed with tab-aware pattern for Ciphers/MACs/KexAlgorithms", () => {
+    const cmd = buildSshCipherCommand();
+    expect(cmd).toContain("Ciphers[ \\t]");
+    expect(cmd).toContain("MACs[ \\t]");
+    expect(cmd).toContain("KexAlgorithms[ \\t]");
+  });
+
+  it("creates sshd_config backup before changes", () => {
+    const cmd = buildSshCipherCommand();
+    expect(cmd).toContain("cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak-cipher");
+  });
+
+  it("validates with sshd -t and rolls back on failure", () => {
+    const cmd = buildSshCipherCommand();
+    expect(cmd).toContain("sshd -t");
+    expect(cmd).toContain("sshd_config.bak-cipher /etc/ssh/sshd_config");
+    expect(cmd).toContain("exit 1");
+  });
+
+  it("appends cipher blacklist lines with minus prefix", () => {
+    const cmd = buildSshCipherCommand();
+    expect(cmd).toMatch(/Ciphers -/);
+    expect(cmd).toMatch(/MACs -/);
+    expect(cmd).toMatch(/KexAlgorithms -/);
+  });
+});
+
 // ─── buildDockerHardeningCommand ─────────────────────────────────────────────
 
 describe("buildDockerHardeningCommand", () => {
@@ -610,9 +641,10 @@ describe("buildDockerHardeningCommand", () => {
     expect(cmd).toContain("daemon.json.bak-docker");
   });
 
-  it("uses jq deep merge (. * pattern)", () => {
+  it("uses jq deep merge via stdin pipe", () => {
     const cmd = buildDockerHardeningCommand(undefined);
-    expect(cmd).toContain(". *");
+    expect(cmd).toContain("jq -s '.[0] * .[1]'");
+    expect(cmd).toContain("printf '%s'");
   });
 
   it("contains systemctl reload docker before restart", () => {
