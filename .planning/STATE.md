@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.12
 milestone_name: Lock Advanced + Audit Explain
 status: completed
-stopped_at: Phase 60 context gathered
-last_updated: "2026-03-18T12:44:53.940Z"
+stopped_at: Completed 60-01-PLAN.md
+last_updated: "2026-03-18T16:08:30.396Z"
 last_activity: 2026-03-18 — P59-01 complete (2 commits, build+lint+test clean, 4136 tests)
 progress:
   total_phases: 6
-  completed_phases: 3
-  total_plans: 5
-  completed_plans: 5
+  completed_phases: 4
+  total_plans: 6
+  completed_plans: 6
   percent: 29
 ---
 
@@ -49,6 +49,7 @@ Progress: [███░░░░░░░] 29%
 - [Phase 59-pwquality]: pwquality step non-fatal with apt-cache availability guard — graceful exit 0 when libpam-pwquality unavailable
 - [Phase 59-pwquality]: CIS L1 values: minlen=14, dcredit/ucredit/lcredit/ocredit=-1, maxrepeat=3
 - [Phase 59-pwquality]: Step placed in Group 3 (System) after backupPermissions, before Group 4 (Monitoring)
+- [Phase 60-ssh-cipher-hardening]: Minus-prefix blacklist for SSH ciphers/MACs/KEX; sshCipher placed in Group 1 SSH & Auth as Step 5; shared WEAK_* constants in constants.ts used by both lock and audit
 
 ### Pending Todos
 
@@ -62,6 +63,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-18T12:44:53.928Z
-Stopped at: Phase 60 context gathered
-Resume file: .planning/phases/60-ssh-cipher-hardening/60-CONTEXT.md
+Last session: 2026-03-18T16:08:30.386Z
+Stopped at: Completed 60-01-PLAN.md
+Resume file: None

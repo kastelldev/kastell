@@ -16,6 +16,7 @@ import {
   buildDnsSecurityCommand,
   buildDnsRollbackCommand,
   buildPwqualityCommand,
+  buildDockerHardeningCommand,
   applyLock,
 } from "../../src/core/lock";
 import type { LockResult } from "../../src/core/lock";
@@ -560,6 +561,92 @@ describe("buildPwqualityCommand", () => {
   });
 });
 
+// ─── buildDockerHardeningCommand ─────────────────────────────────────────────
+
+describe("buildDockerHardeningCommand", () => {
+  it("bare: contains live-restore:true", () => {
+    const cmd = buildDockerHardeningCommand(undefined);
+    expect(cmd).toContain('"live-restore":true');
+  });
+
+  it("bare: contains no-new-privileges", () => {
+    const cmd = buildDockerHardeningCommand(undefined);
+    expect(cmd).toContain("no-new-privileges");
+  });
+
+  it("bare: contains log-driver json-file", () => {
+    const cmd = buildDockerHardeningCommand(undefined);
+    expect(cmd).toContain('"log-driver":"json-file"');
+  });
+
+  it("bare: contains max-size 10m", () => {
+    const cmd = buildDockerHardeningCommand(undefined);
+    expect(cmd).toContain('"max-size":"10m"');
+  });
+
+  it("bare: contains max-file 3", () => {
+    const cmd = buildDockerHardeningCommand(undefined);
+    expect(cmd).toContain('"max-file":"3"');
+  });
+
+  it("bare: contains icc:false", () => {
+    const cmd = buildDockerHardeningCommand(undefined);
+    expect(cmd).toContain('"icc":false');
+  });
+
+  it("contains command -v jq guard with exit 0", () => {
+    const cmd = buildDockerHardeningCommand(undefined);
+    expect(cmd).toContain("command -v jq");
+    expect(cmd).toContain("exit 0");
+  });
+
+  it("contains command -v docker guard", () => {
+    const cmd = buildDockerHardeningCommand(undefined);
+    expect(cmd).toContain("command -v docker");
+  });
+
+  it("contains daemon.json.bak-docker backup", () => {
+    const cmd = buildDockerHardeningCommand(undefined);
+    expect(cmd).toContain("daemon.json.bak-docker");
+  });
+
+  it("uses jq deep merge (. * pattern)", () => {
+    const cmd = buildDockerHardeningCommand(undefined);
+    expect(cmd).toContain(". *");
+  });
+
+  it("contains systemctl reload docker before restart", () => {
+    const cmd = buildDockerHardeningCommand(undefined);
+    expect(cmd).toContain("systemctl reload docker");
+  });
+
+  it("contains rollback pattern on validation failure", () => {
+    const cmd = buildDockerHardeningCommand(undefined);
+    expect(cmd).toContain(".bak-docker");
+    expect(cmd).toContain("rolled back");
+  });
+
+  it("coolify: does NOT contain icc", () => {
+    const cmd = buildDockerHardeningCommand("coolify");
+    expect(cmd).not.toContain('"icc"');
+  });
+
+  it("coolify: DOES contain live-restore", () => {
+    const cmd = buildDockerHardeningCommand("coolify");
+    expect(cmd).toContain('"live-restore":true');
+  });
+
+  it("dokploy: does NOT contain icc", () => {
+    const cmd = buildDockerHardeningCommand("dokploy");
+    expect(cmd).not.toContain('"icc"');
+  });
+
+  it("dokploy: does NOT contain live-restore", () => {
+    const cmd = buildDockerHardeningCommand("dokploy");
+    expect(cmd).not.toContain('"live-restore"');
+  });
+});
+
 // ─── applyLock ───────────────────────────────────────────────────────────────
 
 describe("applyLock", () => {
@@ -570,7 +657,7 @@ describe("applyLock", () => {
       expect(mockedSsh.sshExec).not.toHaveBeenCalled();
     });
 
-    it("returns LockResult with all 17 step fields", async () => {
+    it("returns LockResult with all 18 step fields", async () => {
       const result = await applyLock("1.2.3.4", "test-server", undefined, { dryRun: true });
       expect(result).toHaveProperty("steps");
       expect(result.steps).toHaveProperty("sshHardening");
@@ -587,6 +674,7 @@ describe("applyLock", () => {
       expect(result.steps).toHaveProperty("serviceDisable");
       expect(result.steps).toHaveProperty("backupPermissions");
       expect(result.steps).toHaveProperty("pwquality");
+      expect(result.steps).toHaveProperty("dockerHardening");
       expect(result.steps).toHaveProperty("auditd");
       expect(result.steps).toHaveProperty("logRetention");
       expect(result.steps).toHaveProperty("aide");
@@ -604,8 +692,8 @@ describe("applyLock", () => {
 
       // key check + SSH hardening + fail2ban + banners + accountLock + sshCipher + UFW + cloudMeta + DNS
       // + sysctl + unattended-upgrades + aptValidation + resourceLimits + serviceDisable
-      // + backupPermissions + pwquality + auditd + logRetention + aide = 19
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(19);
+      // + backupPermissions + pwquality + dockerHardening + auditd + logRetention + aide = 20
+      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(20);
     });
 
     it("captures scoreBefore=45 and scoreAfter=72 from runAudit", async () => {
@@ -640,6 +728,7 @@ describe("applyLock", () => {
       expect(result.steps.serviceDisable).toBe(true);
       expect(result.steps.backupPermissions).toBe(true);
       expect(result.steps.pwquality).toBe(true);
+      expect(result.steps.dockerHardening).toBe(true);
       expect(result.steps.auditd).toBe(true);
       expect(result.steps.logRetention).toBe(true);
       expect(result.steps.aide).toBe(true);
@@ -753,8 +842,8 @@ describe("applyLock", () => {
 
       await applyLock("1.2.3.4", "test-server", undefined, {});
 
-      // All 19 calls were made (key check + 18 steps)
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(19);
+      // All 20 calls were made (key check + 19 steps)
+      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(20);
     });
   });
 
@@ -781,7 +870,7 @@ describe("applyLock", () => {
 
       await applyLock("1.2.3.4", "test-server", undefined, {});
 
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(19);
+      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(20);
     });
   });
 
@@ -805,6 +894,7 @@ describe("applyLock", () => {
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // serviceDisable
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // backupPermissions
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // pwquality
+        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // dockerHardening
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // auditd
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // logRetention
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }); // aide
@@ -815,8 +905,8 @@ describe("applyLock", () => {
       expect(result.steps.cloudMeta).toBe(false);
       expect(result.stepErrors?.ufw).toBeDefined();
       expect(result.stepErrors?.cloudMeta).toBe("UFW required");
-      // 18 calls: no cloudMeta call since UFW failed, but all other steps run
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(18);
+      // 19 calls: no cloudMeta call since UFW failed, but all other steps run
+      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(19);
     });
   });
 
@@ -841,6 +931,7 @@ describe("applyLock", () => {
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // serviceDisable
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // backupPermissions
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // pwquality
+        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // dockerHardening
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // auditd
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // logRetention
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }); // aide
@@ -849,8 +940,8 @@ describe("applyLock", () => {
 
       expect(result.steps.dns).toBe(false);
       expect(result.stepErrors?.dns).toContain("dig timeout");
-      // 20 calls: 19 normal + 1 DNS rollback
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(20);
+      // 21 calls: 20 normal + 1 DNS rollback
+      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(21);
     });
   });
 
@@ -890,8 +981,8 @@ describe("applyLock", () => {
 
       const result = await applyLock("1.2.3.4", "test-server", undefined, {});
 
-      // Should still complete all 19 calls (key check + 18 steps)
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(19);
+      // Should still complete all 20 calls (key check + 19 steps)
+      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(20);
       expect(result.steps.sshHardening).toBe(true);
     });
   });

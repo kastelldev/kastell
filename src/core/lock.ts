@@ -34,6 +34,7 @@ export interface LockStepResult {
   serviceDisable: boolean;
   backupPermissions: boolean;
   pwquality: boolean;
+  dockerHardening: boolean;
   // Group 4: Monitoring
   auditd: boolean;
   logRetention: boolean;
@@ -309,6 +310,40 @@ export function buildPwqualityCommand(): SshCommand {
   );
 }
 
+export function buildDockerHardeningCommand(platform: Platform | undefined): SshCommand {
+  const isCoolify = platform === "coolify";
+  const isDokploy = platform === "dokploy";
+
+  const settings: Record<string, unknown> = {
+    "log-driver": "json-file",
+    "log-opts": { "max-size": "10m", "max-file": "3" },
+    "default-security-opt": ["no-new-privileges"],
+  };
+
+  if (!isDokploy) {
+    settings["live-restore"] = true;
+  }
+
+  if (!isCoolify && !isDokploy) {
+    settings["icc"] = false;
+  }
+
+  const hardeningJson = JSON.stringify(settings);
+
+  return raw(
+    [
+      "command -v jq >/dev/null 2>&1 || { echo 'WARN: jq not found, skipping Docker hardening'; exit 0; }",
+      "command -v docker >/dev/null 2>&1 || { echo 'WARN: Docker not installed, skipping Docker hardening'; exit 0; }",
+      "[ -f /etc/docker/daemon.json ] || echo '{}' > /etc/docker/daemon.json",
+      "cp /etc/docker/daemon.json /etc/docker/daemon.json.bak-docker",
+      `jq '. * ${hardeningJson}' /etc/docker/daemon.json > /tmp/daemon-kastell.json`,
+      "jq -e . /tmp/daemon-kastell.json >/dev/null 2>&1 || { cp /etc/docker/daemon.json.bak-docker /etc/docker/daemon.json && echo 'daemon.json merge failed: rolled back' >&2 && exit 1; }",
+      "mv /tmp/daemon-kastell.json /etc/docker/daemon.json",
+      "systemctl reload docker 2>/dev/null || systemctl restart docker",
+    ].join(" && "),
+  );
+}
+
 export function buildSshCipherCommand(): SshCommand {
   const cipherBlacklist = WEAK_CIPHERS.map((c) => `-${c}`).join(",");
   const macBlacklist = WEAK_MACS.map((m) => `-${m}`).join(",");
@@ -365,6 +400,7 @@ export async function applyLock(
     serviceDisable: false,
     backupPermissions: false,
     pwquality: false,
+    dockerHardening: false,
     auditd: false,
     logRetention: false,
     aide: false,
@@ -501,19 +537,24 @@ export async function applyLock(
   steps.pwquality = pwqualityResult.ok;
   if (!pwqualityResult.ok) stepErrors.pwquality = pwqualityResult.error!;
 
+  // Step 16: Docker runtime hardening
+  const dockerResult = await runLockStep(ip, buildDockerHardeningCommand(platform), { timeoutMs: LOCK_PACKAGES_TIMEOUT_MS });
+  steps.dockerHardening = dockerResult.ok;
+  if (!dockerResult.ok) stepErrors.dockerHardening = dockerResult.error!;
+
   // ── Group 4: Monitoring ──────────────────────────────────────────────────
 
-  // Step 16: auditd
+  // Step 17: auditd
   const auditdResult = await runLockStep(ip, buildAuditdCommand(), { timeoutMs: LOCK_PACKAGES_TIMEOUT_MS });
   steps.auditd = auditdResult.ok;
   if (!auditdResult.ok) stepErrors.auditd = auditdResult.error!;
 
-  // Step 17: Log retention
+  // Step 18: Log retention
   const logResult = await runLockStep(ip, buildLogRetentionCommand());
   steps.logRetention = logResult.ok;
   if (!logResult.ok) stepErrors.logRetention = logResult.error!;
 
-  // Step 18: AIDE (fire-and-forget)
+  // Step 19: AIDE (fire-and-forget)
   const aideResult = await runLockStep(ip, buildAideInitCommand(), { timeoutMs: LOCK_PACKAGES_TIMEOUT_MS });
   steps.aide = aideResult.ok;
   if (!aideResult.ok) stepErrors.aide = aideResult.error!;
