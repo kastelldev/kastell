@@ -10,6 +10,9 @@ describe("PlatformAdapter interface", () => {
   // Type-level test: verify a mock implementation satisfies the interface
   const mockAdapter: PlatformAdapter = {
     name: "test-platform",
+    port: 8000,
+    defaultLogService: "test-platform",
+    platformPorts: [80, 443, 8000],
     getCloudInit(serverName: string): string {
       return `#!/bin/bash\necho ${serverName}`;
     },
