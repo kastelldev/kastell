@@ -52,6 +52,7 @@ export interface LockResult {
 
 export function buildSysctlHardeningCommand(): SshCommand {
   const settings = [
+    // Existing baseline settings
     "net.ipv4.conf.all.accept_redirects=0",
     "net.ipv4.conf.default.accept_redirects=0",
     "net.ipv4.conf.all.accept_source_route=0",
@@ -60,6 +61,24 @@ export function buildSysctlHardeningCommand(): SshCommand {
     "net.ipv4.tcp_syncookies=1",
     "kernel.randomize_va_space=2",
     "net.ipv4.icmp_echo_ignore_broadcasts=1",
+    // Deep kernel hardening (CIS L2)
+    "kernel.dmesg_restrict=1",
+    "kernel.kptr_restrict=1",
+    "fs.suid_dumpable=0",
+    "net.core.bpf_jit_harden=1",
+    "kernel.unprivileged_bpf_disabled=1",
+    // Reverse path filter — loose mode (2) to not break Docker bridge networking
+    "net.ipv4.conf.all.rp_filter=2",
+    "net.ipv4.conf.default.rp_filter=2",
+    // Disable ICMP redirect sending
+    "net.ipv4.conf.all.send_redirects=0",
+    "net.ipv4.conf.default.send_redirects=0",
+    // Disable secure redirects
+    "net.ipv4.conf.all.secure_redirects=0",
+    "net.ipv4.conf.default.secure_redirects=0",
+    // IPv6 redirect hardening
+    "net.ipv6.conf.all.accept_redirects=0",
+    "net.ipv6.conf.default.accept_redirects=0",
   ].join("\\n");
 
   return raw(
@@ -98,21 +117,47 @@ export function buildLoginBannersCommand(): SshCommand {
 }
 
 export function buildAuditdCommand(): SshCommand {
-  const rules = [
+  // Deep rules go in 50-kastell-deep.rules (sorts BEFORE 99-kastell.rules -e 2 immutability)
+  const deepRules = [
+    "# Identity — file integrity",
     "-w /etc/passwd -p wa -k identity",
     "-w /etc/shadow -p wa -k identity",
-    "-w /etc/sudoers -p wa -k sudoers",
-    "-w /etc/sudoers.d/ -p wa -k sudoers",
-    "-a always,exit -F arch=b64 -S setuid -k privilege_escalation",
-    "-a always,exit -F arch=b64 -S setgid -k privilege_escalation",
-    "-e 2",
+    "-w /etc/group -p wa -k identity",
+    "-w /etc/gshadow -p wa -k identity",
+    "# Privilege escalation",
+    "-w /etc/sudoers -p wa -k privilege",
+    "-w /etc/sudoers.d/ -p wa -k privilege",
+    "-a always,exit -F arch=b64 -S setuid -S setgid -S setreuid -S setregid -k privilege",
+    "# Time change",
+    "-a always,exit -F arch=b64 -S adjtimex -S settimeofday -S clock_settime -k time-change",
+    "-w /etc/localtime -p wa -k time-change",
+    "# Login and session",
+    "-w /var/log/lastlog -p wa -k logins",
+    "-w /var/run/faillock/ -p wa -k logins",
+    "-w /var/run/utmp -p wa -k session",
+    "-w /var/log/wtmp -p wa -k session",
+    "-w /var/log/btmp -p wa -k session",
+    "# Network changes",
+    "-a always,exit -F arch=b64 -S sethostname -S setdomainname -k network-change",
+    "-w /etc/hostname -p wa -k network-change",
+    "-w /etc/hosts -p wa -k network-change",
+    "-w /etc/sysconfig/network -p wa -k network-change",
+    "# Kernel modules",
+    "-a always,exit -F arch=b64 -S init_module -S delete_module -S finit_module -k kernel-module",
+    "-w /sbin/insmod -p x -k kernel-module",
+    "-w /sbin/modprobe -p x -k kernel-module",
+    "-w /sbin/rmmod -p x -k kernel-module",
   ].join("\\n");
+
+  // Immutability directive in 99 — sorts AFTER 50
+  const immutableRule = "-e 2";
 
   return raw(
     [
       "DEBIAN_FRONTEND=noninteractive apt-get install -y auditd audispd-plugins",
       "systemctl enable auditd && systemctl start auditd",
-      `printf '${rules}\\n' > /etc/audit/rules.d/99-kastell.rules`,
+      `printf '${deepRules}\\n' > /etc/audit/rules.d/50-kastell-deep.rules`,
+      `printf '${immutableRule}\\n' > /etc/audit/rules.d/99-kastell.rules`,
       "augenrules --load 2>/dev/null || true",
     ].join(" && "),
   );
