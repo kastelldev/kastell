@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.12
 milestone_name: Lock Advanced + Audit Explain
-status: completed
-stopped_at: Completed 60-01-PLAN.md
-last_updated: "2026-03-18T16:08:30.396Z"
-last_activity: 2026-03-18 — P59-01 complete (2 commits, build+lint+test clean, 4136 tests)
+status: in-progress
+stopped_at: Completed 61-02-PLAN.md
+last_updated: "2026-03-18T18:40:00.000Z"
+last_activity: 2026-03-18 — P61-02 complete (MCP descriptions + test fixtures verified, 4152 tests)
 progress:
   total_phases: 6
-  completed_phases: 4
-  total_plans: 6
-  completed_plans: 6
-  percent: 29
+  completed_phases: 5
+  total_plans: 7
+  completed_plans: 7
+  percent: 83
 ---
 
 # Project State
@@ -22,16 +22,16 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Brand:** Kastell (kastell.dev | npm: kastell | GitHub: kastelldev)
 **Core value:** Autonomous server security and maintenance across multiple cloud providers
-**Current focus:** v1.12 Lock Advanced + Audit Explain — Phase 59: pwquality lock step (COMPLETE)
+**Current focus:** v1.12 Lock Advanced + Audit Explain — Phase 61: Docker runtime hardening COMPLETE (both plans done)
 
 ## Current Position
 
-Phase: 59 of 62 (lock-depth-pwquality) — COMPLETE
-Plan: 01 (complete)
-Status: P59 fully complete — pwquality CIS L1 password policy step added to kastell lock
-Last activity: 2026-03-18 — P59-01 complete (2 commits, build+lint+test clean, 4136 tests)
+Phase: 61 of 62 (docker-runtime-hardening) — COMPLETE (both plans done)
+Plan: 02 (complete)
+Status: P61 fully complete — Docker daemon hardened (19 steps), MCP descriptions updated, test fixtures complete, 4152 tests pass
+Last activity: 2026-03-18 — P61-02 complete (MCP descriptions + test fixtures verified, 4152 tests)
 
-Progress: [███░░░░░░░] 29%
+Progress: [█████████░] 83%
 
 ## Accumulated Context
 
@@ -50,6 +50,10 @@ Progress: [███░░░░░░░] 29%
 - [Phase 59-pwquality]: CIS L1 values: minlen=14, dcredit/ucredit/lcredit/ocredit=-1, maxrepeat=3
 - [Phase 59-pwquality]: Step placed in Group 3 (System) after backupPermissions, before Group 4 (Monitoring)
 - [Phase 60-ssh-cipher-hardening]: Minus-prefix blacklist for SSH ciphers/MACs/KEX; sshCipher placed in Group 1 SSH & Auth as Step 5; shared WEAK_* constants in constants.ts used by both lock and audit
+- [Phase 61-docker-hardening]: jq deep merge (* operator) used — preserves existing daemon.json keys; non-fatal guards for jq/docker absence (exit 0); .bak-docker backup before merge with rollback on jq -e validation failure
+- [Phase 61-docker-hardening]: systemctl reload docker preferred over restart — reload avoids container downtime with live-restore
+- [Phase 61-docker-hardening]: Coolify omits icc (inter-container traffic required); Dokploy omits icc+live-restore (platform manages container lifecycle)
+- [Phase 61-docker-hardening]: Step 16 placement in Group 3 System between pwquality and Group 4 Monitoring; lock now has 19 steps total
 
 ### Pending Todos
 
@@ -58,11 +62,9 @@ None.
 ### Blockers/Concerns
 
 - [P57]: explain-field coverage across 409 checks not yet quantified — must inventory before formatter ships (95%+ warning/critical threshold)
-- [P60]: .bak existence guard — cipher step relies on sshHardening step 1's backup; must verify or create own backup
-- [P61]: jq presence on bare servers without Docker — fallback path needed if jq absent
 
 ## Session Continuity
 
-Last session: 2026-03-18T16:08:30.386Z
-Stopped at: Completed 60-01-PLAN.md
-Resume file: None
+Last session: 2026-03-18T18:40:00.000Z
+Stopped at: Completed 61-02-PLAN.md
+Resume file: .planning/phases/61-docker-runtime-hardening/61-02-SUMMARY.md

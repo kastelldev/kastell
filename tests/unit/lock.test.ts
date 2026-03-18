@@ -682,7 +682,7 @@ describe("applyLock", () => {
   });
 
   describe("happy path", () => {
-    it("calls sshExec 19 times: key check + 18 steps", async () => {
+    it("calls sshExec 20 times: key check + 19 steps", async () => {
       mockedAudit.runAudit
         .mockResolvedValueOnce(makeAuditResult(45))
         .mockResolvedValueOnce(makeAuditResult(72));
