@@ -86,6 +86,32 @@ function createMockProcess(code: number = 0, stderrData: string = "") {
   return proc;
 }
 
+const defaultCoolifyAdapter = {
+  name: "coolify",
+  port: 8000,
+  defaultLogService: "coolify",
+  platformPorts: [80, 443, 8000],
+  restoreBackup: jest.fn(),
+  getCloudInit: jest.fn(),
+  healthCheck: jest.fn(),
+  createBackup: jest.fn(),
+  getStatus: jest.fn(),
+  update: jest.fn(),
+};
+
+const defaultDokployAdapter = {
+  name: "dokploy",
+  port: 3000,
+  defaultLogService: "dokploy",
+  platformPorts: [80, 443, 3000],
+  restoreBackup: jest.fn(),
+  getCloudInit: jest.fn(),
+  healthCheck: jest.fn(),
+  createBackup: jest.fn(),
+  getStatus: jest.fn(),
+  update: jest.fn(),
+};
+
 describe("restore", () => {
   let consoleSpy: jest.SpyInstance;
 
@@ -93,6 +119,9 @@ describe("restore", () => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
     jest.clearAllMocks();
     mockedSsh.resolveScpPath.mockReturnValue("scp");
+    mockedAdapterFactory.getAdapter.mockImplementation((platform: string) =>
+      platform === "dokploy" ? defaultDokployAdapter as any : defaultCoolifyAdapter as any,
+    );
   });
 
   afterEach(() => {
@@ -324,15 +353,29 @@ describe("restore", () => {
 
     describe("adapter-delegated restore (actual, non-dry-run)", () => {
       const mockRestoreBackup = jest.fn();
-      const mockAdapter = {
+      const mockCoolifyAdapter = {
         name: "coolify",
+        port: 8000,
+        defaultLogService: "coolify",
+        platformPorts: [80, 443, 8000],
         restoreBackup: mockRestoreBackup,
         getCloudInit: jest.fn(),
         healthCheck: jest.fn(),
         createBackup: jest.fn(),
         getStatus: jest.fn(),
         update: jest.fn(),
-
+      };
+      const mockDokployAdapter = {
+        name: "dokploy",
+        port: 3000,
+        defaultLogService: "dokploy",
+        platformPorts: [80, 443, 3000],
+        restoreBackup: mockRestoreBackup,
+        getCloudInit: jest.fn(),
+        healthCheck: jest.fn(),
+        createBackup: jest.fn(),
+        getStatus: jest.fn(),
+        update: jest.fn(),
       };
 
       function setupActualRestore(manifest = sampleManifest, server = sampleServer) {
@@ -344,7 +387,9 @@ describe("restore", () => {
           .fn()
           .mockResolvedValueOnce({ confirm: true })
           .mockResolvedValueOnce({ confirmName: server.name }) as any;
-        mockedAdapterFactory.getAdapter.mockReturnValue(mockAdapter as any);
+        mockedAdapterFactory.getAdapter.mockImplementation((platform: string) =>
+          platform === "dokploy" ? mockDokployAdapter as any : mockCoolifyAdapter as any,
+        );
       }
 
       beforeEach(() => {

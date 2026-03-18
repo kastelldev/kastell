@@ -224,7 +224,7 @@ describe("logsCommand", () => {
       await logsCommand("10.0.0.1", { service: "coolify" });
 
       const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
-      expect(output).toContain("Coolify logs are not available for Dokploy");
+      expect(output).toContain("not available on Dokploy servers");
       expect(mockedSsh.sshExec).not.toHaveBeenCalled();
     });
 
@@ -235,7 +235,7 @@ describe("logsCommand", () => {
       await logsCommand("1.2.3.4", { service: "dokploy" });
 
       const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
-      expect(output).toContain("Dokploy logs are not available for Coolify");
+      expect(output).toContain("not available on Coolify servers");
       expect(mockedSsh.sshExec).not.toHaveBeenCalled();
     });
   });

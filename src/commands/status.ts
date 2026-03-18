@@ -10,9 +10,9 @@ import {
 } from "../core/status.js";
 import { isBareServer, getServerModeLabel } from "../utils/modeGuard.js";
 import { getAdapter, resolvePlatform } from "../adapters/factory.js";
+import { adapterDisplayName } from "../adapters/shared.js";
 import type { ServerRecord } from "../types/index.js";
 import type { StatusResult } from "../core/status.js";
-import { COOLIFY_PORT, DOKPLOY_PORT } from "../constants.js";
 
 interface StatusOptions {
   all?: boolean;
@@ -132,9 +132,9 @@ export async function statusCommand(query?: string, options?: StatusOptions): Pr
     } else {
       // Platform servers: check and display platform status
       const platform = resolvePlatform(server) ?? "coolify";
-      const platformLabel = platform === "dokploy" ? "Dokploy" : "Coolify";
-      const platformPort = platform === "dokploy" ? DOKPLOY_PORT : COOLIFY_PORT;
       const adapter = getAdapter(platform);
+      const platformLabel = adapterDisplayName(adapter);
+      const platformPort = adapter.port;
       const healthResult = await adapter.healthCheck(server.ip, server.domain);
       const platformStatus = healthResult.status;
       logger.info(`${platformLabel} Status: ${platformStatus}`);

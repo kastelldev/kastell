@@ -2,7 +2,8 @@ import { resolveServer } from "../utils/serverSelect.js";
 import { checkSshAvailable, sshExec, sshStream } from "../utils/ssh.js";
 import { logger } from "../utils/logger.js";
 import { isBareServer } from "../utils/modeGuard.js";
-import { resolvePlatform } from "../adapters/factory.js";
+import { resolvePlatform, getAdapter } from "../adapters/factory.js";
+import { adapterDisplayName } from "../adapters/shared.js";
 import { buildLogCommand } from "../core/logs.js";
 import type { LogService } from "../core/logs.js";
 
@@ -28,11 +29,10 @@ export async function logsCommand(
 
   // Determine default service based on platform
   const platform = resolvePlatform(server);
-  const defaultService: LogService = isBareServer(server)
+  const adapter = platform ? getAdapter(platform) : null;
+  const defaultService: LogService = isBareServer(server) || !adapter
     ? "system"
-    : platform === "dokploy"
-      ? "dokploy"
-      : "coolify";
+    : (adapter.defaultLogService as LogService);
   const service: LogService = (options?.service as LogService) || defaultService;
   const validServices: LogService[] = ["coolify", "dokploy", "docker", "system"];
   if (!validServices.includes(service)) {
@@ -40,24 +40,18 @@ export async function logsCommand(
     return;
   }
 
-  // Cross-platform log validation
-  if (platform === "dokploy" && service === "coolify") {
+  // Cross-platform log validation: reject if service matches another adapter's default log service
+  if (adapter && service !== adapter.defaultLogService && service !== "docker" && service !== "system") {
     logger.error(
-      "Coolify logs are not available for Dokploy servers. Use --service dokploy or --service docker instead.",
-    );
-    return;
-  }
-  if (platform === "coolify" && service === "dokploy") {
-    logger.error(
-      "Dokploy logs are not available for Coolify servers. Use --service coolify or --service docker instead.",
+      `"${service}" logs are not available on ${adapterDisplayName(adapter)} servers. Use --service ${adapter.defaultLogService} or --service docker instead.`,
     );
     return;
   }
 
-  // Bare servers cannot access Coolify logs
-  if (isBareServer(server) && service === "coolify") {
+  // Bare servers cannot access platform logs
+  if (isBareServer(server) && service !== "system" && service !== "docker") {
     logger.error(
-      "Coolify logs are not available for bare servers. Use --service system or --service docker instead.",
+      `${service} logs are not available for bare servers. Use --service system or --service docker instead.`,
     );
     return;
   }

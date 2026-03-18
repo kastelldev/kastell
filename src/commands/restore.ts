@@ -8,7 +8,7 @@ import { logger, createSpinner } from "../utils/logger.js";
 import { getErrorMessage, mapSshError } from "../utils/errorMapper.js";
 import { isSafeMode } from "../core/manage.js";
 import { getAdapter } from "../adapters/factory.js";
-import { COOLIFY_PORT, DOKPLOY_PORT } from "../constants.js";
+import { adapterDisplayName } from "../adapters/shared.js";
 import {
   listBackups,
   getBackupDir,
@@ -121,11 +121,12 @@ export async function restoreCommand(
     logger.title("Dry Run - Restore");
     logger.info(`Server: ${server.name} (${server.ip})`);
     logger.info(`Backup: ${selectedBackup}`);
-    logger.info(`${platform === "dokploy" ? "Dokploy" : "Coolify"} version: ${manifest.coolifyVersion}`);
+    const dryRunAdapter = getAdapter(platform);
+    logger.info(`${adapterDisplayName(dryRunAdapter)} version: ${manifest.coolifyVersion}`);
     console.log();
     logger.info("Steps to execute:");
     logger.step("Upload backup files to server");
-    if (platform === "dokploy") {
+    if (dryRunAdapter.name === "dokploy") {
       logger.step("docker service scale dokploy=0");
       logger.step("docker service scale dokploy-postgres=1 && sleep 5");
       logger.step(
@@ -197,7 +198,7 @@ export async function restoreCommand(
     return;
   }
 
-  const platformLabel = platform === "dokploy" ? "Dokploy" : "Coolify";
+  const platformLabel = adapterDisplayName(adapter);
   const restoreSpinner = createSpinner(`Restoring ${platformLabel}...`);
   restoreSpinner.start();
 
@@ -215,8 +216,7 @@ export async function restoreCommand(
       console.log();
       logger.success(`Restore complete for ${server.name}`);
       logger.info(`Backup: ${selectedBackup} (${platformLabel} ${manifest.coolifyVersion})`);
-      const port = platform === "dokploy" ? DOKPLOY_PORT : COOLIFY_PORT;
-      logger.info(`Access ${platformLabel}: http://${server.ip}:${port}`);
+      logger.info(`Access ${platformLabel}: http://${server.ip}:${adapter.port}`);
     } else {
       restoreSpinner.fail(`${platformLabel} restore failed`);
       // Show step details (successes and failures)

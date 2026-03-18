@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.13
 milestone_name: Foundation + Housekeeping
-status: planning
-stopped_at: Completed 63-01-PLAN.md (update+status extraction)
+status: executing
+stopped_at: Completed 64-01-PLAN.md (adapter interface extension)
 last_updated: "2026-03-19T00:00:00.000Z"
-last_activity: 2026-03-19 — Phase 63 Plan 01 completed (updateServer + restartCoolify extraction)
+last_activity: "2026-03-19 — Plan 01: PlatformAdapter extended with port/defaultLogService/platformPorts; adapterDisplayName helper added"
 progress:
   total_phases: 9
-  completed_phases: 0
-  total_plans: 2
-  completed_plans: 1
-  percent: 11
+  completed_phases: 2
+  total_plans: 3
+  completed_plans: 3
+  percent: 22
 ---
 
 # Project State
@@ -22,16 +22,16 @@ See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Brand:** Kastell (kastell.dev | npm: kastell | GitHub: kastelldev)
 **Core value:** Autonomous server security and maintenance across multiple cloud providers
-**Current focus:** Phase 63 — Command Business Logic Extraction (v1.13 start)
+**Current focus:** Phase 64 — Adapter Dispatch Fix (DEBT-02)
 
 ## Current Position
 
-Phase: 63 of 71 (Command Business Logic Extraction)
-Plan: 01 of 02 in current phase (completed)
+Phase: 64 of 71 (Adapter Dispatch Fix)
+Plan: 01 of 01 in current phase (completed)
 Status: In progress
-Last activity: 2026-03-19 — Plan 01: updateServer() + restartCoolify() extracted to core layer
+Last activity: 2026-03-19 — Plan 01: PlatformAdapter extended with port/defaultLogService/platformPorts; adapterDisplayName helper added
 
-Progress: [█░░░░░░░░░] 11% of v1.13 (9 phases, 25 requirements)
+Progress: [██░░░░░░░░] 22% of v1.13 (9 phases, 25 requirements)
 
 ## Accumulated Context
 
@@ -46,6 +46,8 @@ Progress: [█░░░░░░░░░] 11% of v1.13 (9 phases, 25 requiremen
 - [Phase 63-01]: restartCoolify() core function handles SSH restart + POLL_DELAY_MS wait + health check — no UI deps, returns RestartCoolifyResult
 - [Phase 63-01]: Command tests mock core module instead of low-level deps (providerFactory/sshExec)
 - [Phase 63-02]: backupServer() in core/backup.ts consolidates bare/managed dispatch; command and MCP handler both delegate to core
+- [Phase 64-01]: platformPorts defined inline in each adapter (not imported from core/firewall.ts) to avoid architectural dependency inversion
+- [Phase 64-01]: adapterDisplayName accepts minimal { name: string } shape — avoids circular typing, usable with any adapter-like object
 
 ### Pending Todos
 
@@ -60,5 +62,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-19T00:00:00.000Z
-Stopped at: Completed 63-01-PLAN.md (update+status extraction)
+Stopped at: Completed 64-01-PLAN.md (adapter interface extension)
 Resume file: None
