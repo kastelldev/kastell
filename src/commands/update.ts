@@ -2,11 +2,10 @@ import inquirer from "inquirer";
 import { getServers } from "../utils/config.js";
 import { resolveServer, promptApiToken, collectProviderTokens } from "../utils/serverSelect.js";
 import { checkSshAvailable } from "../utils/ssh.js";
-import { createProviderWithToken } from "../utils/providerFactory.js";
 import { logger, createSpinner } from "../utils/logger.js";
-import { getErrorMessage, mapProviderError } from "../utils/errorMapper.js";
 import { isBareServer, requireManagedMode } from "../utils/modeGuard.js";
 import { getAdapter, resolvePlatform } from "../adapters/factory.js";
+import { updateServer } from "../core/update.js";
 import type { Platform } from "../types/index.js";
 
 interface UpdateOptions {
@@ -40,40 +39,32 @@ async function updateSingleServer(
   const spinner = createSpinner(`Validating ${serverName}...`);
   spinner.start();
 
-  if (serverId.startsWith("manual-")) {
-    spinner.succeed(`${serverName}: Manually added server — skipping API check`);
-  } else {
-    try {
-      const providerInstance = createProviderWithToken(provider, apiToken);
-      const status = await providerInstance.getServerStatus(serverId);
-      if (status !== "running") {
-        spinner.fail(`${serverName}: Server is not running (status: ${status})`);
-        return false;
-      }
-      spinner.succeed(`${serverName}: Server verified`);
-    } catch (error: unknown) {
+  const serverRecord = {
+    id: serverId,
+    name: serverName,
+    ip: serverIp,
+    provider,
+  } as Parameters<typeof updateServer>[0];
+
+  const result = await updateServer(serverRecord, apiToken, platform);
+
+  if (!result.success) {
+    if (result.error?.includes("not running")) {
+      spinner.fail(`${serverName}: ${result.error}`);
+    } else {
       spinner.fail(`${serverName}: Failed to verify server`);
-      logger.error(getErrorMessage(error));
-      const hint = mapProviderError(error, provider);
-      if (hint) logger.info(hint);
-      return false;
+      if (result.error) logger.error(result.error);
+      if (result.hint) logger.info(result.hint);
     }
-  }
-
-  logger.info(`Updating ${adapterDisplayName} on ${serverName} (${serverIp})...`);
-
-  const result = await adapter.update(serverIp);
-
-  if (result.output) console.log(result.output);
-
-  if (result.success) {
-    logger.success(`${serverName}: ${adapterDisplayName} update completed!`);
-    return true;
-  } else {
-    logger.error(`${serverName}: Update failed`);
-    if (result.error) logger.error(result.error);
     return false;
   }
+
+  spinner.succeed(`${serverName}: Server verified`);
+
+  logger.info(`Updating ${adapterDisplayName} on ${serverName} (${serverIp})...`);
+  if (result.output) console.log(result.output);
+  logger.success(`${serverName}: ${adapterDisplayName} update completed!`);
+  return true;
 }
 
 async function updateAll(options?: UpdateOptions): Promise<void> {
@@ -219,28 +210,14 @@ export async function updateCommand(query?: string, options?: UpdateOptions): Pr
   if (server.id.startsWith("manual-")) {
     spinner.succeed("Manually added server — skipping API check");
   } else {
-    try {
-      const provider = createProviderWithToken(server.provider, apiToken);
-      const status = await provider.getServerStatus(server.id);
-      if (status !== "running") {
-        spinner.fail(`Server is not running (status: ${status})`);
-        return;
-      }
-      spinner.succeed("Server verified");
-    } catch (error: unknown) {
-      spinner.fail("Failed to verify server");
-      logger.error(getErrorMessage(error));
-      const hint = mapProviderError(error, server.provider);
-      if (hint) logger.info(hint);
-      return;
-    }
+    spinner.succeed("Validating...");
   }
 
   logger.info(`Running ${adapterDisplayName} update script...`);
   logger.info("This may take several minutes. Please wait.");
   console.log();
 
-  const result = await adapter.update(server.ip);
+  const result = await updateServer(server, apiToken, platform);
 
   if (result.output) console.log(result.output);
 
@@ -248,6 +225,7 @@ export async function updateCommand(query?: string, options?: UpdateOptions): Pr
     logger.success(`${adapterDisplayName} update completed successfully!`);
   } else {
     logger.error(`Update failed${result.error ? `: ${result.error}` : ""}`);
+    if (result.hint) logger.info(result.hint);
     logger.info("Check the output above for details.");
   }
 }

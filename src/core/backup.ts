@@ -4,8 +4,9 @@ import { sshExec, assertValidIp } from "../utils/ssh.js";
 import { BACKUPS_DIR } from "../utils/config.js";
 import { getErrorMessage, mapSshError, sanitizeStderr } from "../utils/errorMapper.js";
 import { raw, type SshCommand } from "../utils/sshCommand.js";
-import type { BackupManifest, Platform } from "../types/index.js";
-import { getAdapter } from "../adapters/factory.js";
+import type { BackupManifest, Platform, ServerRecord } from "../types/index.js";
+import { getAdapter, resolvePlatform } from "../adapters/factory.js";
+import { isBareServer } from "../utils/modeGuard.js";
 import { debugLog } from "../utils/logger.js";
 import { formatTimestamp, getBackupDir } from "../utils/backupPath.js";
 import { scpDownload, scpUpload } from "../utils/scp.js";
@@ -285,6 +286,27 @@ export async function createBackup(
 ): Promise<BackupResult> {
   const adapter = getAdapter(platform);
   return adapter.createBackup(ip, serverName, provider);
+}
+
+/**
+ * Single entry point for backing up any server (bare or managed).
+ * No UI dependencies — returns structured BackupResult.
+ * Used by both CLI command and MCP handler.
+ */
+export async function backupServer(server: ServerRecord): Promise<BackupResult> {
+  if (isBareServer(server)) {
+    return createBareBackup(server.ip, server.name, server.provider);
+  }
+
+  const platform = resolvePlatform(server);
+  if (!platform) {
+    return {
+      success: false,
+      error: `No platform detected for server ${server.name}`,
+    };
+  }
+
+  return createBackup(server.ip, server.name, server.provider, platform);
 }
 
 export async function restoreBackup(
