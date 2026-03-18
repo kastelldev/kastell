@@ -380,3 +380,11 @@ export async function sharedRestoreBackup(
     };
   }
 }
+
+/**
+ * Returns a capitalized display name for a platform adapter.
+ * @example adapterDisplayName(coolifyAdapter) => "Coolify"
+ */
+export function adapterDisplayName(adapter: { readonly name: string }): string {
+  return adapter.name.charAt(0).toUpperCase() + adapter.name.slice(1);
+}

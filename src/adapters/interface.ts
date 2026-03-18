@@ -93,6 +93,26 @@ export interface PlatformAdapter {
   readonly name: string;
 
   /**
+   * Default HTTP port for the platform's web UI.
+   * Used by commands that need the platform port without importing constants directly.
+   * @example 8000 (Coolify) | 3000 (Dokploy)
+   */
+  readonly port: number;
+
+  /**
+   * Default log service name for `kastell logs` when no `--service` is specified.
+   * Matches the platform name (lowercase).
+   * @example "coolify" | "dokploy"
+   */
+  readonly defaultLogService: string;
+
+  /**
+   * Ports required by this platform that should be protected from firewall removal.
+   * Includes HTTP (80), HTTPS (443), the platform port, and any additional service ports.
+   */
+  readonly platformPorts: readonly number[];
+
+  /**
    * Returns a cloud-init bash script that installs the platform on a fresh
    * Ubuntu/Debian server. Executed once during `kastell init`.
    *
