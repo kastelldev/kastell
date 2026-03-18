@@ -12,7 +12,7 @@ import type { Platform } from "../../types/index.js";
 
 export const serverLockSchema = {
   server: z.string().optional().describe("Server name or IP. Auto-selected if only one server exists."),
-  production: z.boolean().default(false).describe("Set to true to confirm hardening intent. Required to apply 16 hardening steps (safety gate). Omit or pass false to preview with dryRun=true."),
+  production: z.boolean().default(false).describe("Set to true to confirm hardening intent. Required to apply 19 hardening steps (safety gate). Omit or pass false to preview with dryRun=true."),
   dryRun: z.boolean().default(false).describe("Preview changes without applying. Returns what would be done. Bypasses the production safety gate."),
   force: z.boolean().default(false).describe("Force lock even if server already appears hardened."),
 };
@@ -52,7 +52,7 @@ export async function handleServerLock(params: {
     // Safety gate: require explicit production=true unless doing a dry run
     if (!production && !dryRun) {
       return mcpError(
-        "Pass production=true to confirm hardening intent. This applies 16 hardening steps in 4 groups: SSH & Auth (SSH config, fail2ban, login banners, account locking), Firewall & Network (UFW, cloud metadata block, DNS security), System (sysctl, unattended-upgrades, APT validation, resource limits, service disabling, backup permissions), Monitoring (auditd, log retention, AIDE integrity).",
+        "Pass production=true to confirm hardening intent. This applies 19 hardening steps in 4 groups: SSH & Auth (SSH config, fail2ban, login banners, account locking, SSH cipher blacklist), Firewall & Network (UFW, cloud metadata block, DNS security), System (sysctl, unattended-upgrades, APT validation, resource limits, service disabling, backup permissions, password quality, Docker hardening), Monitoring (auditd, log retention, AIDE integrity).",
         "Use dryRun=true to preview changes without applying.",
       );
     }
