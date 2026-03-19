@@ -1,15 +1,12 @@
 {
   "name": "kastell",
-  "version": "1.12.0",
+  "version": "1.13.0",
   "description": "Autonomous server security and infrastructure management. Provides 13 MCP tools for cloud server provisioning, security auditing (413 checks), hardening, backup, and fleet management across Hetzner, DigitalOcean, Vultr, and Linode.",
   "author": {
     "name": "kastelldev"
   },
   "homepage": "https://kastell.dev",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/kastelldev/kastell"
-  },
+  "repository": "https://github.com/kastelldev/kastell",
   "keywords": [
     "server",
     "security",
