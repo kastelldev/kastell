@@ -10,6 +10,7 @@ import {
 } from "../../src/core/maintain";
 import * as adapterFactory from "../../src/adapters/factory";
 import type { CloudProvider } from "../../src/providers/base";
+import { createMockAdapter } from "../helpers/mockAdapter";
 
 jest.mock("../../src/utils/config");
 jest.mock("../../src/utils/ssh");
@@ -150,18 +151,7 @@ describe("rebootAndWait", () => {
 
 describe("maintainServer", () => {
   function createMockPlatformAdapter(overrides?: Record<string, jest.Mock>) {
-    return {
-      name: "coolify",
-      port: 8000,
-      defaultLogService: "coolify",
-      platformPorts: [80, 443, 8000],
-      getCloudInit: jest.fn(() => ""),
-      healthCheck: jest.fn(async () => ({ status: "running" as const })),
-      createBackup: jest.fn(async () => ({ success: true })),
-      getStatus: jest.fn(async () => ({ platformVersion: "1.0", status: "running" as const })),
-      update: jest.fn(async () => ({ success: true })),
-      ...overrides,
-    };
+    return createMockAdapter({ name: "coolify", overrides });
   }
 
   it("should complete all 5 steps successfully", async () => {
@@ -344,17 +334,9 @@ describe("handleServerMaintain — update", () => {
   it("should return error on update failure", async () => {
     mockedConfig.getServers.mockReturnValue([sampleServer]);
     mockedConfig.findServer.mockReturnValue(sampleServer);
-    const spy = jest.spyOn(adapterFactory, "getAdapter").mockReturnValue({
-      name: "coolify",
-      port: 8000,
-      defaultLogService: "coolify",
-      platformPorts: [80, 443, 8000],
-      getCloudInit: jest.fn(() => ""),
-      healthCheck: jest.fn(async () => ({ status: "running" as const })),
-      createBackup: jest.fn(async () => ({ success: true })),
-      getStatus: jest.fn(async () => ({ platformVersion: "1.0", status: "running" as const })),
-      update: jest.fn(async () => ({ success: false, error: "Connection refused" })),
-    });
+    const spy = jest.spyOn(adapterFactory, "getAdapter").mockReturnValue(
+      createMockAdapter({ overrides: { update: jest.fn(async () => ({ success: false, error: "Connection refused" })) } }) as any,
+    );
 
     const result = await handleServerMaintain({ action: "update", server: "coolify-test" });
     const data = JSON.parse(result.content[0].text);

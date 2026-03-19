@@ -86,31 +86,10 @@ function createMockProcess(code: number = 0, stderrData: string = "") {
   return proc;
 }
 
-const defaultCoolifyAdapter = {
-  name: "coolify",
-  port: 8000,
-  defaultLogService: "coolify",
-  platformPorts: [80, 443, 8000],
-  restoreBackup: jest.fn(),
-  getCloudInit: jest.fn(),
-  healthCheck: jest.fn(),
-  createBackup: jest.fn(),
-  getStatus: jest.fn(),
-  update: jest.fn(),
-};
+import { createMockAdapter } from "../helpers/mockAdapter.js";
 
-const defaultDokployAdapter = {
-  name: "dokploy",
-  port: 3000,
-  defaultLogService: "dokploy",
-  platformPorts: [80, 443, 3000],
-  restoreBackup: jest.fn(),
-  getCloudInit: jest.fn(),
-  healthCheck: jest.fn(),
-  createBackup: jest.fn(),
-  getStatus: jest.fn(),
-  update: jest.fn(),
-};
+const defaultCoolifyAdapter = createMockAdapter({ name: "coolify" });
+const defaultDokployAdapter = createMockAdapter({ name: "dokploy" });
 
 describe("restore", () => {
   let consoleSpy: jest.SpyInstance;
@@ -353,30 +332,8 @@ describe("restore", () => {
 
     describe("adapter-delegated restore (actual, non-dry-run)", () => {
       const mockRestoreBackup = jest.fn();
-      const mockCoolifyAdapter = {
-        name: "coolify",
-        port: 8000,
-        defaultLogService: "coolify",
-        platformPorts: [80, 443, 8000],
-        restoreBackup: mockRestoreBackup,
-        getCloudInit: jest.fn(),
-        healthCheck: jest.fn(),
-        createBackup: jest.fn(),
-        getStatus: jest.fn(),
-        update: jest.fn(),
-      };
-      const mockDokployAdapter = {
-        name: "dokploy",
-        port: 3000,
-        defaultLogService: "dokploy",
-        platformPorts: [80, 443, 3000],
-        restoreBackup: mockRestoreBackup,
-        getCloudInit: jest.fn(),
-        healthCheck: jest.fn(),
-        createBackup: jest.fn(),
-        getStatus: jest.fn(),
-        update: jest.fn(),
-      };
+      const mockCoolifyAdapter = createMockAdapter({ name: "coolify", overrides: { restoreBackup: mockRestoreBackup } });
+      const mockDokployAdapter = createMockAdapter({ name: "dokploy", overrides: { restoreBackup: mockRestoreBackup } });
 
       function setupActualRestore(manifest = sampleManifest, server = sampleServer) {
         mockedSsh.checkSshAvailable.mockReturnValue(true);

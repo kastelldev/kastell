@@ -5,6 +5,7 @@ import { maintainCommand } from "../../src/commands/maintain";
 import { pollHealth, maintainServer } from "../../src/core/maintain";
 import type { PlatformAdapter } from "../../src/adapters/interface";
 import * as adapterFactory from "../../src/adapters/factory";
+import { createMockAdapter } from "../helpers/mockAdapter";
 
 jest.mock("../../src/utils/config");
 jest.mock("../../src/utils/ssh");
@@ -616,41 +617,37 @@ describe("maintainCommand", () => {
 });
 
 describe("pollHealth", () => {
-  function createMockAdapter(healthResults: Array<"running" | "not reachable">): PlatformAdapter {
+  function createHealthMockAdapter(healthResults: Array<"running" | "not reachable">): PlatformAdapter {
     let callIndex = 0;
-    return {
+    return createMockAdapter({
       name: "test",
-      port: 8000,
       defaultLogService: "test",
-      platformPorts: [80, 443, 8000],
-      getCloudInit: jest.fn(() => ""),
-      healthCheck: jest.fn(async () => {
-        const status = healthResults[callIndex] ?? "not reachable";
-        callIndex++;
-        return { status };
-      }),
-      createBackup: jest.fn(async () => ({ success: true })),
-      getStatus: jest.fn(async () => ({ platformVersion: "1.0", status: "running" as const })),
-      update: jest.fn(async () => ({ success: true })),
-    };
+      overrides: {
+        healthCheck: jest.fn(async () => {
+          const status = healthResults[callIndex] ?? "not reachable";
+          callIndex++;
+          return { status };
+        }),
+      },
+    });
   }
 
   it("should return true when adapter.healthCheck returns 'running' on first attempt", async () => {
-    const adapter = createMockAdapter(["running"]);
+    const adapter = createHealthMockAdapter(["running"]);
     const result = await pollHealth(adapter, "1.2.3.4", 3, 0);
     expect(result).toBe(true);
     expect(adapter.healthCheck).toHaveBeenCalledTimes(1);
   });
 
   it("should return true when adapter.healthCheck returns 'running' on 3rd attempt", async () => {
-    const adapter = createMockAdapter(["not reachable", "not reachable", "running"]);
+    const adapter = createHealthMockAdapter(["not reachable", "not reachable", "running"]);
     const result = await pollHealth(adapter, "1.2.3.4", 5, 0);
     expect(result).toBe(true);
     expect(adapter.healthCheck).toHaveBeenCalledTimes(3);
   });
 
   it("should return false when all attempts return 'not reachable'", async () => {
-    const adapter = createMockAdapter(["not reachable", "not reachable", "not reachable"]);
+    const adapter = createHealthMockAdapter(["not reachable", "not reachable", "not reachable"]);
     const result = await pollHealth(adapter, "1.2.3.4", 3, 0);
     expect(result).toBe(false);
     expect(adapter.healthCheck).toHaveBeenCalledTimes(3);
@@ -672,23 +669,12 @@ describe("maintainServer - adapter dispatch", () => {
     global.setTimeout = originalSetTimeout;
   });
 
-  function createMockAdapter(overrides?: Partial<PlatformAdapter>): PlatformAdapter {
-    return {
-      name: "dokploy",
-      port: 3000,
-      defaultLogService: "dokploy",
-      platformPorts: [80, 443, 3000],
-      getCloudInit: jest.fn(() => ""),
-      healthCheck: jest.fn(async () => ({ status: "running" as const })),
-      createBackup: jest.fn(async () => ({ success: true })),
-      getStatus: jest.fn(async () => ({ platformVersion: "1.0", status: "running" as const })),
-      update: jest.fn(async () => ({ success: true })),
-      ...overrides,
-    };
+  function createDokployMockAdapter(overrides?: Partial<PlatformAdapter>): PlatformAdapter {
+    return createMockAdapter({ name: "dokploy", overrides: overrides as Record<string, jest.Mock> });
   }
 
   it("should complete 5-step cycle for Dokploy server (no skip)", async () => {
-    const mockAdapter = createMockAdapter();
+    const mockAdapter = createDokployMockAdapter();
     jest.spyOn(adapterFactory, "getAdapter").mockReturnValue(mockAdapter);
     jest.spyOn(adapterFactory, "resolvePlatform").mockReturnValue("dokploy");
 
@@ -714,7 +700,7 @@ describe("maintainServer - adapter dispatch", () => {
   });
 
   it("should use adapter.update() in Step 2 (not executeCoolifyUpdate)", async () => {
-    const mockAdapter = createMockAdapter();
+    const mockAdapter = createDokployMockAdapter();
     jest.spyOn(adapterFactory, "getAdapter").mockReturnValue(mockAdapter);
     jest.spyOn(adapterFactory, "resolvePlatform").mockReturnValue("dokploy");
 
@@ -736,7 +722,7 @@ describe("maintainServer - adapter dispatch", () => {
   });
 
   it("should use adapter.name in step names (dynamic, not hardcoded 'Coolify')", async () => {
-    const mockAdapter = createMockAdapter({ name: "dokploy" });
+    const mockAdapter = createDokployMockAdapter();
     jest.spyOn(adapterFactory, "getAdapter").mockReturnValue(mockAdapter);
     jest.spyOn(adapterFactory, "resolvePlatform").mockReturnValue("dokploy");
 
