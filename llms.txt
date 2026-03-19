@@ -1,168 +1,38 @@
 # Kastell
 
 > CLI toolkit for provisioning, securing, and managing self-hosted servers.
+> 413 security checks across 27 categories. CIS/PCI-DSS/HIPAA compliance.
+> 19-step hardening. Supports Coolify, Dokploy, bare VPS. 4 providers (Hetzner, DigitalOcean, Vultr, Linode).
 
-Kastell is an open-source CLI tool that automates the deployment, security, backup, and maintenance of self-hosted platforms on cloud VPS providers. Supports two modes: **Coolify** (self-hosted PaaS) and **Bare** (generic VPS without Coolify).
+Kastell is an open-source CLI that automates server provisioning, hardening, maintenance, and security audit.
+Run `npx kastell` for an interactive menu or use individual commands.
+Includes an MCP server (`npx kastell-mcp`) for AI-native server management via Claude Code, Cursor, VS Code Copilot, and other MCP clients.
 
-## Installation
+Key differentiators: 413-check audit engine, 19-step production hardening (server_lock), fleet management, and CIS/PCI-DSS/HIPAA compliance mapping.
 
-```bash
-npx kastell            # Interactive menu (recommended)
-npx kastell <command>  # Direct command
-# or
-npm install -g kastell
-```
+## MCP Tools
 
-Requires Node.js 20+.
+- [server_info](https://kastell.dev): List servers, check cloud provider status, query available sizes
+- [server_logs](https://kastell.dev): Fetch logs and system metrics via SSH
+- [server_manage](https://kastell.dev): Add, remove, or destroy cloud servers
+- [server_maintain](https://kastell.dev): Update platform, restart servers, full maintenance cycle
+- [server_secure](https://kastell.dev): SSH hardening, UFW firewall, domain/SSL management
+- [server_backup](https://kastell.dev): Backup/restore databases, create VPS snapshots
+- [server_provision](https://kastell.dev): Provision new servers on cloud providers
+- [server_audit](https://kastell.dev): 413-check security audit with compliance framework filtering
+- [server_evidence](https://kastell.dev): Forensic evidence collection with SHA256 checksums
+- [server_guard](https://kastell.dev): Autonomous security monitoring daemon
+- [server_doctor](https://kastell.dev): Proactive health analysis with remediation commands
+- [server_lock](https://kastell.dev): One-shot 19-step production hardening
+- [server_fleet](https://kastell.dev): Fleet-wide health and security posture dashboard
 
-## Server Modes
+## Quick Setup
 
-| Mode | Description | Use Case |
-|------|-------------|----------|
-| `coolify` | Deploys Coolify PaaS (default) | App hosting, CI/CD, databases |
-| `bare` | Generic VPS with hardening only | Custom setups, n8n, Node.js, etc. |
+- [npm package](https://www.npmjs.com/package/kastell): `npx kastell-mcp` (stdio transport)
+- [GitHub](https://github.com/kastelldev/kastell): Source code and issues
+- [Documentation](https://kastell.dev): Full docs
 
-```bash
-kastell init --mode bare --provider hetzner   # Generic VPS
-kastell add --mode bare                       # Register existing VPS
-```
+## Optional
 
-## Commands (23 total)
-
-### Deploy
-- `kastell init` -- Deploy a new server (interactive or non-interactive)
-  - `--provider <name>` -- hetzner, digitalocean, vultr, linode
-  - `--mode <mode>` -- coolify (default), bare
-  - `--token <token>` -- API token (or use env vars: HETZNER_TOKEN, DIGITALOCEAN_TOKEN, etc.)
-  - `--region <region>` -- Server region
-  - `--size <size>` -- Server size
-  - `--name <name>` -- Server name
-  - `--config <path>` -- Load from YAML config file
-  - `--template <name>` -- starter, production, dev
-  - `--full-setup` -- Auto-configure firewall + SSH hardening
-  - `--no-open` -- Do not open browser after deployment
-
-### Server Management
-- `kastell list` -- List all registered servers (shows mode per server)
-- `kastell status [query]` -- Check server status (`--all`, `--autostart`)
-- `kastell ssh [query]` -- SSH into a server (`-c <command>`)
-- `kastell restart [query]` -- Restart a server via provider API
-- `kastell destroy [query]` -- Destroy a cloud server (with confirmation)
-- `kastell add` -- Add an existing server (`--mode bare`, `--skip-verify`)
-- `kastell remove [query]` -- Remove from local config (no cloud action)
-- `kastell config [subcommand]` -- Manage default configuration
-- `kastell export [path]` -- Export server list to JSON
-- `kastell import <path>` -- Import servers from JSON
-
-### Update & Maintain
-- `kastell update [query]` -- Update Coolify (`--all`) -- Coolify mode only
-- `kastell maintain [query]` -- Full maintenance cycle (`--all`, `--skip-reboot`, `--dry-run`) -- Coolify mode only
-
-### Backup & Restore
-- `kastell backup [query]` -- Backup DB + config via SCP (`--all`, `--dry-run`)
-- `kastell restore [query]` -- Restore from backup (`--backup <timestamp>`, `--dry-run`)
-
-### Snapshots
-- `kastell snapshot create [query]` -- Create VPS snapshot with cost estimate
-- `kastell snapshot list [query]` -- List snapshots (`--all`)
-- `kastell snapshot delete [query]` -- Delete a snapshot
-
-### Security
-- `kastell firewall <subcommand> [query]` -- Manage UFW (setup, add, remove, list, status)
-- `kastell domain <subcommand> [query]` -- Manage domain + SSL (add, remove, check, list)
-- `kastell secure <subcommand> [query]` -- SSH hardening + fail2ban (setup, status, audit)
-
-### Diagnostics
-- `kastell monitor [query]` -- CPU, RAM, disk usage (`--containers`)
-- `kastell logs [query]` -- View logs (`-f` follow, `-s` service, `-n` lines)
-- `kastell health` -- Health check all servers
-- `kastell doctor` -- Check local environment (`--check-tokens`)
-
-## Supported Providers
-
-| Provider | Status | Env Variable |
-|----------|--------|-------------|
-| Hetzner Cloud | Stable | `HETZNER_TOKEN` |
-| DigitalOcean | Stable | `DIGITALOCEAN_TOKEN` |
-| Vultr | Stable | `VULTR_TOKEN` |
-| Linode (Akamai) | Beta | `LINODE_TOKEN` |
-
-## MCP Server (AI Integration)
-
-Built-in Model Context Protocol server for AI-powered server management. Works with Claude Code, Cursor, Windsurf, and other MCP-compatible clients.
-
-**Binary**: `kastell-mcp` (stdio transport)
-
-### Available Tools (13)
-
-| Tool | Actions | Description |
-|------|---------|-------------|
-| `server_info` | list, status, health, sizes | Query server info, check status, list available sizes |
-| `server_logs` | logs, monitor | Fetch logs and system metrics via SSH |
-| `server_manage` | add, remove, destroy | Register, unregister, or destroy servers |
-| `server_maintain` | update, restart, maintain | Update platform, restart, full maintenance |
-| `server_secure` | secure-setup, secure-audit, firewall-*, domain-* | Security, firewall, domain management (10 actions) |
-| `server_backup` | backup-*, snapshot-* | Backup/restore + VPS snapshots (6 actions) |
-| `server_provision` | create | Provision new servers (Coolify, Dokploy, or bare mode) |
-| `server_audit` | audit | Security audit with summary/json/score output |
-| `server_evidence` | collect | Forensic evidence package with SHA256 checksums |
-| `server_guard` | start, stop, status | Autonomous security monitoring daemon |
-| `server_doctor` | diagnose | Proactive health analysis with remediation |
-| `server_lock` | harden | Production hardening in one step |
-| `server_fleet` | overview | Fleet-wide health and security posture |
-
-### SAFE_MODE (default: enabled)
-
-Destructive operations blocked by default: `destroy`, `restore`, `snapshot-delete`, `provision`, `restart`, `maintain`, `snapshot-create`. Set `KASTELL_SAFE_MODE=false` to enable.
-
-### MCP Configuration
-
-```json
-{
-  "mcpServers": {
-    "kastell": {
-      "command": "npx",
-      "args": ["-y", "-p", "kastell", "kastell-mcp"],
-      "env": {
-        "HETZNER_TOKEN": "your-token",
-        "DIGITALOCEAN_TOKEN": "your-token",
-        "VULTR_TOKEN": "your-token",
-        "LINODE_TOKEN": "your-token"
-      }
-    }
-  }
-}
-```
-
-## Architecture
-
-- **Runtime**: Node.js 20+ (ESM)
-- **CLI Framework**: Commander.js
-- **Prompts**: Inquirer.js (interactive mode with back navigation)
-- **HTTP**: Axios (provider API calls)
-- **Logging**: Chalk + Ora (spinners)
-- **Config**: YAML (js-yaml) + JSON
-- **MCP**: @modelcontextprotocol/sdk + Zod (input validation)
-- **Config Storage**: `~/.kastell/` (servers.json, config.json, backups/)
-- **Testing**: Jest (3,333 tests, 149 suites, ~95% coverage)
-- **Linting**: ESLint 10 + typescript-eslint + Prettier
-
-## Security Model
-
-- API tokens NEVER stored on disk -- runtime prompt or env vars only
-- SSH: IP validation (`assertValidIp`), env filtering (`sanitizedEnv`), StrictHostKeyChecking
-- Shell injection protection on all inputs (spawn/spawnSync, no execSync)
-- Provider errors sanitized (`stripSensitiveData`) -- no token leakage
-- stderr sanitization (`sanitizeStderr`) -- redacts IPs, paths, tokens, secrets
-- Path traversal protection (`assertSafePath`) on backup/restore paths
-- YAML config: 22+ security key patterns detected and warned
-- Import/export: sensitive field stripping + strict file permissions (0o600)
-- MCP: SAFE_MODE blocks destructive ops, Zod schema validation, path traversal guards
-
-## Links
-
-- Repository: https://github.com/kastelldev/kastell
-- npm: https://www.npmjs.com/package/kastell
-- Website: https://kastell.dev
-- Issues: https://github.com/kastelldev/kastell/issues
-- License: Apache-2.0
+- [SECURITY.md](https://github.com/kastelldev/kastell/blob/main/SECURITY.md): Security policy and architecture
+- [MCP Registry](https://registry.modelcontextprotocol.io): Listed as io.github.kastelldev/kastell

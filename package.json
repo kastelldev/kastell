@@ -28,8 +28,10 @@
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\""
   },
+  "mcpName": "io.github.kastelldev/kastell",
   "keywords": [
     "kastell",
+    "mcp-server",
     "coolify",
     "deployment",
     "hetzner",
