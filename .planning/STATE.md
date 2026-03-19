@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.13
 milestone_name: Foundation + Housekeeping
 status: completed
-stopped_at: Completed 69-01-PLAN.md
-last_updated: "2026-03-19T12:35:48.689Z"
+stopped_at: Completed 70-02-PLAN.md
+last_updated: "2026-03-19T13:30:00.000Z"
 last_activity: 2026-03-19
 progress:
-  total_phases: 13
-  completed_phases: 8
-  total_plans: 11
-  completed_plans: 24
+  total_phases: 14
+  completed_phases: 9
+  total_plans: 13
+  completed_plans: 26
 ---
 
 # Project State
@@ -21,12 +21,12 @@ See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Brand:** Kastell (kastell.dev | npm: kastell | GitHub: kastelldev)
 **Core value:** Autonomous server security and maintenance across multiple cloud providers
-**Current focus:** Phase 69 — hooks
+**Current focus:** Phase 70 — Plugin Validation + Marketplace
 
 ## Current Position
 
-Phase: 69 (hooks) — EXECUTING
-Plan: 1 of 1
+Phase: 70 (Plugin Validation + Marketplace) — COMPLETED
+Plan: 2 of 2
 
 ## Accumulated Context
 
@@ -58,6 +58,10 @@ Plan: 1 of 1
 - [Phase 69-hooks]: session-log.js has no project guard — Bash logging useful across all projects
 - [Phase 69-hooks]: pre-commit-audit-guard.js fails open when audit-history.json missing — no baseline means no comparison possible
 - [Phase 69-hooks]: hooks.json PreToolUse/Bash registers destroy-block (first) + audit-guard (second) — order preserved, existing behavior unchanged
+- [Phase 70]: plugin.json repository field changed from npm object to plain string URL — Claude Code plugin schema requires string
+- [Phase 70]: kastell-plugin README.md documents kastell-fixer as project-scope agent (not in plugin) — isolation:worktree unsupported in plugin context
+- [Phase 70-02]: Marketplace submission deferred to user manual action — form at https://claude.ai/settings/plugins/submit (review async, does not block v1.13 close)
+- [Phase 70-02]: Automated smoke test confirms plugin build integrity; claude --plugin-dir requires live Claude Code session for full UI verification
 
 ### Pending Todos
 
@@ -98,6 +102,6 @@ Last activity: 2026-03-19
 
 ## Session Continuity
 
-Last session: 2026-03-19T12:35:48.679Z
-Stopped at: Completed 69-01-PLAN.md
+Last session: 2026-03-19T13:16:33.632Z
+Stopped at: Completed 70-01-PLAN.md
 Resume file: None
