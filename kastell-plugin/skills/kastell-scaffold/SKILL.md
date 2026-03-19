@@ -39,6 +39,17 @@ These rules apply in every generated file. The forked subagent does not automati
 
 **ESM:** `"type": "module"` — use `import`, not `require`. All imports use `.js` extension.
 
+## Existing Components
+
+**Commands:**
+!`node -e "import('fs').then(f=>console.log(f.readdirSync('src/commands').filter(x=>x.endsWith('.ts')).map(x=>x.replace('.ts','')).join(', '))).catch(()=>console.log('commands dir not found'))"`
+**Providers:**
+!`node -e "import('fs').then(f=>console.log(f.readdirSync('src/providers').filter(x=>x.endsWith('.ts')&&x!=='base.ts').map(x=>x.replace('.ts','')).join(', '))).catch(()=>console.log('providers dir not found'))"`
+**MCP tools:**
+!`node -e "import('fs').then(f=>console.log(f.readdirSync('src/mcp/tools').filter(x=>x.endsWith('.ts')).map(x=>x.replace('.ts','')).join(', '))).catch(()=>console.log('mcp/tools dir not found'))"`
+**Audit categories:**
+!`node -e "import('fs').then(f=>console.log(f.readdirSync('src/core/audit',{withFileTypes:true}).filter(d=>d.isDirectory()).map(d=>d.name).join(', '))).catch(()=>console.log('audit dir not found'))"`
+
 ## Template Dispatch
 
 Read the template file that matches `$ARGUMENTS[0]`:

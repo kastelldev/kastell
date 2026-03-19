@@ -27,6 +27,13 @@ Safety guard that intercepts `kastell destroy` and `kastell restore` commands. R
 
 Invoke `/kastell:careful` before a session that involves server destruction or restoration. The skill-scoped prompt hook activates and monitors all Bash commands until the skill session ends.
 
+## Current State
+
+**Changed files:**
+!`git diff --name-only 2>/dev/null || echo "Not a git repo"`
+**Uncommitted:**
+!`git status --short 2>/dev/null || echo "Not a git repo"`
+
 ## How It Works
 
 Three layers of protection work together:

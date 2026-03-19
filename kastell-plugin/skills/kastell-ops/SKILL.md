@@ -8,6 +8,12 @@ user-invocable: false
 
 Kastell is a CLI toolkit for provisioning, securing, and managing self-hosted servers. TypeScript, ESM, strict mode. 31 CLI commands, 13 MCP tools, 4 cloud providers (hetzner, digitalocean, vultr, linode), 2 platform adapters (coolify, dokploy).
 
+## Live Context
+
+**Version:** !`node -e "import('fs').then(f=>console.log(JSON.parse(f.readFileSync('package.json','utf8')).version)).catch(()=>console.log('unknown'))"`
+**Registered servers:**
+!`kastell list 2>/dev/null || echo "No servers registered"`
+
 ## Architecture File Map
 
 ```

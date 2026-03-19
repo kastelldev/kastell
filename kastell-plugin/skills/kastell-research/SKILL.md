@@ -18,6 +18,13 @@ Explore the Kastell codebase using read-only tools (Read, Grep, Glob). Runs in a
 - **Feature mapping:** Map all callsites of a function, trace the import chain, understand how subsystems connect before making changes.
 - **Architecture question:** Understand how audit categories work, how the adapter dispatch flows, or how lock hardening steps are structured.
 
+## Live Codebase
+
+**Commands:**
+!`node -e "import('fs').then(f=>console.log(f.readdirSync('src/commands').filter(x=>x.endsWith('.ts')).map(x=>x.replace('.ts','')).join(', '))).catch(()=>console.log('commands dir not found'))"`
+**Provider registry:**
+!`node -e "import('fs').then(f=>{const c=f.readFileSync('src/constants.ts','utf8');const m=c.match(/PROVIDER_REGISTRY[\s\S]{0,200}/);console.log(m?m[0].split('\n').slice(0,4).join('\n'):'not found')}).catch(()=>console.log('constants.ts not found'))"`
+
 ## Architecture Map
 
 ```
