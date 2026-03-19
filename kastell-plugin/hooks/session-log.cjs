@@ -34,8 +34,8 @@ process.stdin.on('end', () => {
     const timestamp = new Date().toISOString();
     const entry = `[${timestamp}] CMD: ${cmd}\nOUT: ${out}\n---\n`;
 
-    // Ensure log directory exists, then append
-    fs.mkdirSync(LOG_DIR, { recursive: true });
+    // Ensure log directory exists (guard avoids redundant mkdirSync on hot path)
+    if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR, { recursive: true });
     fs.appendFileSync(LOG_FILE, entry, 'utf8');
   } catch {}
 

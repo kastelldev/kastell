@@ -46,17 +46,19 @@ process.stdin.on('end', () => {
 
     const server = servers[0];
 
-    // Redirect stderr to null — Windows vs Unix
-    const devNull = process.platform === 'win32' ? '2>NUL' : '2>/dev/null';
+    // Validate server name — prevent command injection
+    if (!server.name || !/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/.test(server.name)) {
+      process.exit(0);
+    }
 
-    // Run audit with --score-only flag
+    // Run audit with --score-only flag (stdio: 'pipe' captures both stdout+stderr)
     let output;
     try {
-      output = execSync(`npx kastell audit ${server.name} --score-only ${devNull}`, {
+      output = execSync(`npx kastell audit ${server.name} --score-only`, {
         cwd,
         timeout: 45000,
         encoding: 'utf8',
-        stdio: 'pipe',
+        stdio: ['pipe', 'pipe', 'ignore'],
         windowsHide: true,
       });
     } catch {

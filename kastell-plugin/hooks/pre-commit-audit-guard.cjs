@@ -22,11 +22,15 @@ process.stdin.on('end', () => {
   try {
     const cwd = process.cwd();
 
-    // Kastell project guard
-    try {
-      const pkg = JSON.parse(fs.readFileSync(path.join(cwd, 'package.json'), 'utf8'));
-      if (pkg.name !== 'kastell') process.exit(0);
-    } catch { process.exit(0); }
+    // Kastell project guard (two-phase: directory structure + package.json name)
+    const isKastell = fs.existsSync(path.join(cwd, 'src', 'mcp')) &&
+                      fs.existsSync(path.join(cwd, 'package.json'));
+    if (!isKastell) {
+      try {
+        const pkg = JSON.parse(fs.readFileSync(path.join(cwd, 'package.json'), 'utf8'));
+        if (pkg.name !== 'kastell') process.exit(0);
+      } catch { process.exit(0); }
+    }
 
     // Parse tool input — only act on git commit commands
     const data = JSON.parse(input);
