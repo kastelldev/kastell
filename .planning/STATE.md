@@ -2,16 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.13
 milestone_name: Foundation + Housekeeping
-status: executing
-stopped_at: Completed 65-01-PLAN.md (plugin scaffold - plugin.json, .mcp.json, hooks.json)
-last_updated: "2026-03-19T07:49:09.393Z"
-last_activity: "2026-03-19 — Plan 01: PlatformAdapter extended with port/defaultLogService/platformPorts; adapterDisplayName helper added"
+status: unknown
+stopped_at: Completed 67-01-PLAN.md (kastell-careful + kastell-research skills)
+last_updated: "2026-03-19T10:20:25.688Z"
 progress:
   total_phases: 9
-  completed_phases: 3
-  total_plans: 5
-  completed_plans: 5
-  percent: 22
+  completed_phases: 4
+  total_plans: 8
+  completed_plans: 7
 ---
 
 # Project State
@@ -22,16 +20,12 @@ See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Brand:** Kastell (kastell.dev | npm: kastell | GitHub: kastelldev)
 **Core value:** Autonomous server security and maintenance across multiple cloud providers
-**Current focus:** Phase 64 — Adapter Dispatch Fix (DEBT-02)
+**Current focus:** Phase 67 — remaining-skills
 
 ## Current Position
 
-Phase: 64 of 71 (Adapter Dispatch Fix)
-Plan: 01 of 01 in current phase (completed)
-Status: In progress
-Last activity: 2026-03-19 — Plan 01: PlatformAdapter extended with port/defaultLogService/platformPorts; adapterDisplayName helper added
-
-Progress: [██░░░░░░░░] 22% of v1.13 (9 phases, 25 requirements)
+Phase: 67 (remaining-skills) — EXECUTING
+Plan: 2 of 2
 
 ## Accumulated Context
 
@@ -51,6 +45,11 @@ Progress: [██░░░░░░░░] 22% of v1.13 (9 phases, 25 requiremen
 - [Phase 64-02]: Command layer uses adapter properties (port/defaultLogService/platformPorts) instead of platform string conditionals
 - [Phase 65-01]: Scoped gitignore /.mcp.json to repo root only so kastell-plugin/.mcp.json can be committed as plugin distribution content
 - [Phase 65-01]: hooks.json PreToolUse destroy-block uses Node.js (not bash) for Windows cross-platform compatibility
+- [Phase 66]: SKILL.md kept to 113 lines by delegating all detail to reference files (progressive disclosure)
+- [Phase 66]: user-invocable: false chosen so skill auto-loads as background context without appearing in slash menu
+- [Phase 67-01]: kastell-careful uses type: prompt hook (not command hook) for LLM semantic understanding of destroy/restore
+- [Phase 67-01]: kastell-research inlines architecture map in body instead of skills: field (not supported in SKILL.md frontmatter)
+- [Phase 67-01]: kastell-research has no disable-model-invocation: true so Claude can auto-delegate exploration queries
 
 ### Pending Todos
 
@@ -64,6 +63,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-19T07:49:09.384Z
-Stopped at: Completed 65-01-PLAN.md (plugin scaffold - plugin.json, .mcp.json, hooks.json)
+Last session: 2026-03-19T10:20:25.679Z
+Stopped at: Completed 67-01-PLAN.md (kastell-careful + kastell-research skills)
 Resume file: None
