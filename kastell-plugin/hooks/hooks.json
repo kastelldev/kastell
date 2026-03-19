@@ -10,7 +10,7 @@
           },
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/pre-commit-audit-guard.js"
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/pre-commit-audit-guard.cjs"
           }
         ]
       }
@@ -21,7 +21,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/session-log.js"
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/session-log.cjs"
           }
         ]
       }
@@ -31,7 +31,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/session-audit.js"
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/session-audit.cjs"
           }
         ]
       }
@@ -41,7 +41,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/stop-quality-check.js"
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/stop-quality-check.cjs"
           }
         ]
       }
