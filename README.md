@@ -351,6 +351,10 @@ Install via Claude Code plugin manager or use directly with `claude --plugin-dir
 
 > More platforms (JetBrains, Windsurf, Gemini, and others) coming in v2.0.
 
+### AI Discoverability
+
+Kastell provides [`llms.txt`](llms.txt) for AI crawlers and is listed in the [MCP Registry](https://registry.modelcontextprotocol.io/) as `io.github.kastelldev/kastell`.
+
 ## CI/CD Integration
 
 Use `kastell audit` in your CI pipeline to enforce security baselines:

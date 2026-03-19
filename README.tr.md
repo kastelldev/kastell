@@ -351,6 +351,10 @@ Kurulum için Claude Code eklenti yöneticisini kullanın ya da doğrudan `claud
 
 > Daha fazla platform (JetBrains, Windsurf, Gemini ve diğerleri) v2.0'da eklenecek.
 
+### AI Keşfedilebilirliği
+
+Kastell, AI tarayıcıları için [`llms.txt`](llms.txt) sağlar ve [MCP Registry](https://registry.modelcontextprotocol.io/)'de `io.github.kastelldev/kastell` olarak listelenmiştir.
+
 `kastell audit` komutunu CI pipeline'ınızda güvenlik eşiği zorunluluğu için kullanın:
 
 ```yaml

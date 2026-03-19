@@ -83,6 +83,7 @@ Kullanıcı session'ı kapatacağını belirttiğinde (`gidiyorum`, `kapatıyoru
 3. **Sonraki session önerisi** — Kaldığı yerden devam için somut ilk adım
 4. **Hata/uyarı** — Session'da yapılan hata, tutarsızlık veya risk (varsa dürüstçe söyle, yoksa atlayabilirsin)
 5. **Hafıza** — Session'dan kalıcı bilgi varsa hafızaya yaz (MEMORY.md veya lessons)
+6. **CLAUDE.md review** — Session'da tekrar eden bir düzeltme, yeni kural veya güncelliğini yitirmiş bilgi varsa CLAUDE.md güncellemesi öner
 
 ## Lessons
 
