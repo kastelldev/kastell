@@ -52,7 +52,7 @@ Install kastell-fixer separately inside your Kastell project directory.
 | session-log | PostToolUse (Bash) | Records Bash command outputs to `session.log` for audit trail |
 | session-audit | SessionStart | Runs `kastell audit --silent` on session start and surfaces the current security score |
 | pre-commit-audit-guard | PreToolUse (git commit) | Blocks the commit if the current audit score has dropped below the recorded baseline |
-| destroy-block | PreToolUse (git commit / Bash) | Requires confirmation before any `kastell destroy` or `kastell restore` operations |
+| destroy-block | PreToolUse (Bash) | Blocks `kastell destroy` and `kastell restore` operations through Claude Code |
 
 ## MCP Tools
 
@@ -61,19 +61,19 @@ automatically via the bundled `.mcp.json` configuration.
 
 | Tool | Description |
 |------|-------------|
+| server_info | List servers, check status, health, and available sizes |
+| server_logs | Fetch logs and system metrics from servers via SSH |
+| server_manage | Add, remove, or destroy servers |
+| server_maintain | Update platform, restart, or run full maintenance |
+| server_secure | SSH hardening, firewall management, and domain configuration |
+| server_backup | Create backups and manage cloud snapshots |
 | server_provision | Provision new cloud servers on Hetzner, DigitalOcean, Vultr, or Linode |
-| server_destroy | Destroy servers with confirmation guard |
-| server_status | Check server status, health, and uptime |
-| server_list | List all servers managed by Kastell |
-| server_info | Detailed server information including provider metadata |
-| server_secure | Apply security hardening to a server |
 | server_audit | Run the full 413-check security audit across 27 categories |
-| server_lock | Apply the 19-step server hardening sequence |
-| server_backup | Create and manage server backups |
-| server_maintain | Run maintenance tasks (updates, cleanup, health checks) |
-| server_fleet | Fleet-wide operations across multiple servers |
-| server_doctor | Diagnose server issues and surface actionable recommendations |
-| server_guard | Manage the Kastell guard daemon for continuous monitoring |
+| server_evidence | Collect forensic evidence packages from servers |
+| server_guard | Manage the autonomous security monitoring daemon |
+| server_doctor | Proactive health analysis with remediation recommendations |
+| server_lock | Apply the 19-step production hardening sequence |
+| server_fleet | Fleet-wide health and security posture overview |
 
 ## Quick Start
 
