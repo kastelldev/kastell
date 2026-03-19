@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.13
 milestone_name: Foundation + Housekeeping
 status: unknown
-stopped_at: Completed 67-01-PLAN.md (kastell-careful + kastell-research skills)
-last_updated: "2026-03-19T10:20:25.688Z"
+stopped_at: Completed 67-02-PLAN.md (kastell-scaffold skill + 4 templates)
+last_updated: "2026-03-19T10:29:48.319Z"
 progress:
   total_phases: 9
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 8
-  completed_plans: 7
+  completed_plans: 8
 ---
 
 # Project State
@@ -50,6 +50,8 @@ Plan: 2 of 2
 - [Phase 67-01]: kastell-careful uses type: prompt hook (not command hook) for LLM semantic understanding of destroy/restore
 - [Phase 67-01]: kastell-research inlines architecture map in body instead of skills: field (not supported in SKILL.md frontmatter)
 - [Phase 67-01]: kastell-research has no disable-model-invocation: true so Claude can auto-delegate exploration queries
+- [Phase 67-02]: context: fork + disable-model-invocation: true for kastell-scaffold — manual invocation only, isolated subagent execution
+- [Phase 67-02]: Architecture Rules inlined in kastell-scaffold SKILL.md body (forked subagent does not inherit kastell-ops context)
 
 ### Pending Todos
 
@@ -61,8 +63,34 @@ None.
 - kastell-fixer worktree isolation behavior should be live-tested before writing agent content (Phase 68)
 - Marketplace review timeline unknown — do not block v1.13 milestone close on approval
 
+## v1.14 Test Excellence (Planning)
+
+Phase: Not started (roadmap defined 2026-03-19)
+Status: Roadmap complete — awaiting v1.13 completion before execution
+Last activity: 2026-03-19 — Roadmap created (8 phases, P72-P79, 25/25 requirements mapped)
+
+### v1.14 Phase Structure
+
+| Phase | Name | Requirements |
+|-------|------|--------------|
+| 72 | Stryker Setup + Baseline | MUT-01, MUT-02 |
+| 73 | Coverage Gap — Formatters + SSH | COV-01, COV-02, COV-04 |
+| 74 | Coverage Gap — Bare Mode + Threshold | COV-03, COV-05 |
+| 75 | MCP Tool Testing | MCP-01, MCP-02, MCP-03 |
+| 76 | Integration Testing | INT-01, INT-02, INT-03, INT-04 |
+| 77 | Contract Testing | CTR-01, CTR-02, CTR-03 |
+| 78 | Snapshot Testing | SNP-01, SNP-02, SNP-03 |
+| 79 | CI Hardening + Mutation Gate | INF-01, INF-02, INF-03, MUT-03, MUT-04, MUT-05, MUT-06 |
+
+### v1.14 Decisions
+- Stryker: kademeli gate (önce rapor P72, sonra CI gate P79)
+- Integration: mock-based CI (her zaman) + staging sunucu (manual trigger / haftalık)
+- Sequencing: baseline measurement first (P72) → coverage gaps (P73-74) → test deepening (P75-77) → snapshot (P78) → CI hardening + gate (P79)
+- P79 groups all CI and mutation gate requirements — these only make sense after all tests are written
+- Planlama v1.13 ile paralel yapıldı
+
 ## Session Continuity
 
-Last session: 2026-03-19T10:20:25.679Z
-Stopped at: Completed 67-01-PLAN.md (kastell-careful + kastell-research skills)
+Last session: 2026-03-19T10:26:01.572Z
+Stopped at: Completed 67-02-PLAN.md (kastell-scaffold skill + 4 templates)
 Resume file: None
