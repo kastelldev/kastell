@@ -2,6 +2,7 @@ import { z } from "zod";
 import { getServers } from "../../utils/config.js";
 import { fetchServerLogs, fetchServerMetrics } from "../../core/logs.js";
 import { isBareServer } from "../../utils/modeGuard.js";
+import { getAdapter, resolvePlatform } from "../../adapters/factory.js";
 import {
   resolveServerForMcp,
   mcpSuccess,
@@ -65,13 +66,19 @@ export async function handleServerLogs(params: {
 
     switch (params.action) {
       case "logs": {
-        const service: LogService = params.service ?? "coolify";
+        // Resolve default service from adapter (coolify→"coolify", dokploy→"dokploy", bare→"system")
+        const platform = resolvePlatform(server);
+        const adapter = platform ? getAdapter(platform) : null;
+        const defaultService: LogService = isBareServer(server) || !adapter
+          ? "system"
+          : adapter.defaultLogService;
+        const service: LogService = params.service ?? defaultService;
         const lines = params.lines ?? 50;
 
-        // Guard: bare servers cannot read coolify service logs
-        if (isBareServer(server) && service === "coolify") {
+        // Guard: bare servers cannot read platform service logs
+        if (isBareServer(server) && service !== "system" && service !== "docker") {
           return mcpError(
-            "Coolify logs not available on bare servers",
+            `'${service}' logs not available on bare servers`,
             "Use service: 'system' or 'docker' for bare servers",
             [
               {

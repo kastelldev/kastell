@@ -5,7 +5,7 @@ import { getAdapter, resolvePlatform } from "../../adapters/factory.js";
 import { getProviderToken, collectProviderTokensFromEnv } from "../../core/tokens.js";
 import { getErrorMessage } from "../../utils/errorMapper.js";
 import { isBareServer } from "../../utils/modeGuard.js";
-import { sshExec } from "../../utils/ssh.js";
+import { sshExec, isHostKeyMismatch } from "../../utils/ssh.js";
 import { createProviderWithToken } from "../../utils/providerFactory.js";
 import { mcpSuccess, mcpError } from "../utils.js";
 import type { ServerRecord, ServerMode } from "../../types/index.js";
@@ -121,12 +121,23 @@ function formatStatusResults(results: StatusResult[]): Record<string, unknown> {
   };
 }
 
-async function checkBareServerSsh(server: ServerRecord): Promise<boolean> {
+interface BareServerSshResult {
+  reachable: boolean;
+  hostKeyMismatch: boolean;
+}
+
+async function checkBareServerSsh(server: ServerRecord): Promise<BareServerSshResult> {
   try {
     const result = await sshExec(server.ip, "echo ok");
-    return result.code === 0;
+    if (result.code === 0) {
+      return { reachable: true, hostKeyMismatch: false };
+    }
+    if (isHostKeyMismatch(result.stderr)) {
+      return { reachable: false, hostKeyMismatch: true };
+    }
+    return { reachable: false, hostKeyMismatch: false };
   } catch {
-    return false;
+    return { reachable: false, hostKeyMismatch: false };
   }
 }
 
@@ -230,16 +241,26 @@ export async function handleServerInfo(params: {
 
           // Bare server: check SSH reachability
           if (isBareServer(server)) {
-            const sshReachable = await checkBareServerSsh(server);
-            const suggestedActions: SuggestedAction[] = sshReachable
-              ? [{ command: `ssh root@${server.ip}`, reason: "Connect to your bare server" }]
-              : [{ command: `kastell status ${server.name}`, reason: "Check server cloud status" }];
+            const sshResult = await checkBareServerSsh(server);
+            const suggestedActions: SuggestedAction[] = [];
+
+            if (sshResult.hostKeyMismatch) {
+              suggestedActions.push({
+                command: `ssh-keygen -R ${server.ip}`,
+                reason: "Remove stale host key to fix SSH connection",
+              });
+            } else if (sshResult.reachable) {
+              suggestedActions.push({ command: `ssh root@${server.ip}`, reason: "Connect to your bare server" });
+            } else {
+              suggestedActions.push({ command: `kastell status ${server.name}`, reason: "Check server cloud status" });
+            }
 
             return mcpSuccess({
               server: server.name,
               ip: server.ip,
               mode: "bare",
-              sshReachable,
+              sshReachable: sshResult.reachable,
+              ...(sshResult.hostKeyMismatch ? { hostKeyMismatch: true } : {}),
               suggested_actions: suggestedActions,
             });
           }
@@ -269,12 +290,13 @@ export async function handleServerInfo(params: {
         const healthResults = await Promise.all(
           servers.map(async (s) => {
             if (isBareServer(s)) {
-              const sshReachable = await checkBareServerSsh(s);
+              const sshResult = await checkBareServerSsh(s);
               return {
                 name: s.name,
                 ip: s.ip,
                 mode: "bare" as const,
-                sshReachable,
+                sshReachable: sshResult.reachable,
+                ...(sshResult.hostKeyMismatch ? { hostKeyMismatch: true } : {}),
               };
             }
             const plat = resolvePlatform(s);

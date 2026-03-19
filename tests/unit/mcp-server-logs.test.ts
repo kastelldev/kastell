@@ -513,7 +513,7 @@ describe("handleServerLogs — bare mode", () => {
     const data = JSON.parse(result.content[0].text);
 
     expect(result.isError).toBe(true);
-    expect(data.error).toContain("Coolify logs not available on bare servers");
+    expect(data.error).toContain("logs not available on bare servers");
     expect(data.hint).toBeDefined();
     expect(data.hint).toContain("system");
   });

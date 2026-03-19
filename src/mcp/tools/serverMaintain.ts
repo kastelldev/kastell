@@ -6,8 +6,8 @@ import {
   rebootAndWait,
   maintainServer,
 } from "../../core/maintain.js";
-import { getAdapter, resolvePlatform } from "../../adapters/factory.js";
-import { adapterDisplayName } from "../../adapters/shared.js";
+import { updateServer } from "../../core/update.js";
+import { resolvePlatform } from "../../adapters/factory.js";
 import { requireManagedMode } from "../../utils/modeGuard.js";
 import {
   resolveServerForMcp,
@@ -58,18 +58,20 @@ export async function handleServerMaintain(params: {
 
     switch (params.action) {
       case "update": {
-        // Guard: update requires Coolify
+        // Guard: update requires managed platform (Coolify/Dokploy)
         const modeError = requireManagedMode(server, "update");
         if (modeError) {
           return mcpError(modeError, "Use SSH to manage bare servers directly");
         }
 
         const platform = resolvePlatform(server);
-        const adapter = platform ? getAdapter(platform) : null;
-        if (!adapter) {
+        if (!platform) {
           return mcpError("No platform adapter available for this server");
         }
-        const result = await adapter.update(server.ip);
+
+        // Use core updateServer which validates via provider API before updating
+        const apiToken = server.id.startsWith("manual-") ? "" : (getProviderToken(server.provider) ?? "");
+        const result = await updateServer(server, apiToken, platform);
 
         if (!result.success) {
           return {
@@ -86,11 +88,12 @@ export async function handleServerMaintain(params: {
           };
         }
 
+        const displayName = result.displayName ?? "Platform";
         return mcpSuccess({
           success: true,
           server: server.name,
           ip: server.ip,
-          message: `${adapterDisplayName(adapter)} update completed successfully`,
+          message: `${displayName} update completed successfully`,
           suggested_actions: [
             { command: `server_info { action: 'health', server: '${server.name}' }`, reason: "Verify platform is running after update" },
             { command: `server_logs { action: 'logs', server: '${server.name}' }`, reason: "Check logs after update" },
