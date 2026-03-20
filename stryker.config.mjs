@@ -4,9 +4,9 @@ export default {
   testRunner: 'jest',
   jest: {
     projectType: 'custom',
-    configFile: 'jest.config.cjs',
+    configFile: 'jest.stryker.cjs',
   },
-  testRunnerNodeArgs: ['--experimental-vm-modules'],
+  testRunnerNodeArgs: ['--experimental-vm-modules', '--max-old-space-size=2048'],
   checkers: ['typescript'],
   tsconfigFile: 'tsconfig.json',
   mutate: [
@@ -23,6 +23,7 @@ export default {
     fileName: 'reports/mutation/mutation.json',
   },
   coverageAnalysis: 'perTest',
+  concurrency: 2,
   timeoutMS: 60000,
   timeoutFactor: 1.5,
   logLevel: 'info',
