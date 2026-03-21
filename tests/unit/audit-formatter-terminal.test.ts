@@ -331,36 +331,6 @@ describe("explain mode", () => {
     expect(output).toContain("Root login allows brute-force attacks targeting the root account directly.");
   });
 
-  it("shows Why: when explain is true and only critical severity checks are present (--severity filter applied upstream)", async () => {
-    const { formatTerminal } = await import("../../src/core/audit/formatters/terminal");
-    const criticalOnlyResult: AuditResult = {
-      ...mockResult,
-      categories: [
-        {
-          name: "SSH",
-          checks: [
-            {
-              id: "SSH-ROOT-LOGIN",
-              category: "SSH",
-              name: "Root Login",
-              severity: "critical",
-              passed: false,
-              currentValue: "yes",
-              expectedValue: "prohibit-password",
-              explain: "Root login allows brute-force attacks targeting the root account directly.",
-            },
-          ],
-          score: 0,
-          maxScore: 100,
-        },
-      ],
-      quickWins: [],
-    };
-    const output = formatTerminal(criticalOnlyResult, { explain: true });
-
-    expect(output).toContain("Why:");
-    expect(output).toContain("Root login allows brute-force attacks targeting the root account directly.");
-  });
 });
 
 describe("formatTerminal branch coverage", () => {

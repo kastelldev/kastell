@@ -582,8 +582,13 @@ describe("ssh utils", () => {
   });
 
   describe("sanitizedEnv", () => {
+    const originalEnv = process.env;
+
+    afterEach(() => {
+      process.env = originalEnv;
+    });
+
     it("should remove sensitive environment variables", () => {
-      const originalEnv = process.env;
       process.env = {
         ...originalEnv,
         PATH: "/usr/bin",
@@ -604,20 +609,15 @@ describe("ssh utils", () => {
       expect(env.MY_SECRET).toBeUndefined();
       expect(env.DB_PASSWORD).toBeUndefined();
       expect(env.API_CREDENTIAL).toBeUndefined();
-
-      process.env = originalEnv;
     });
 
     it("should return a copy of process.env without modifying original", () => {
-      const originalEnv = process.env;
       process.env = { ...originalEnv, TEST_TOKEN: "value" };
 
       const env = sanitizedEnv();
 
       expect(env.TEST_TOKEN).toBeUndefined();
       expect(process.env.TEST_TOKEN).toBe("value");
-
-      process.env = originalEnv;
     });
   });
 

@@ -29,15 +29,20 @@ const baseResult: AuditResult = {
 };
 
 describe("selectFormatter", () => {
+  let selectFormatter: (opts: Record<string, unknown>) => Promise<(r: AuditResult) => string>;
+
+  beforeAll(async () => {
+    const mod = await import("../../src/core/audit/formatters/index");
+    selectFormatter = mod.selectFormatter;
+  });
+
   it("json branch: returns formatter that produces valid JSON", async () => {
-    const { selectFormatter } = await import("../../src/core/audit/formatters/index");
     const formatter = await selectFormatter({ json: true });
     const output = formatter(baseResult);
     expect(() => JSON.parse(output)).not.toThrow();
   });
 
   it("badge branch: returns formatter that produces badge-like SVG string", async () => {
-    const { selectFormatter } = await import("../../src/core/audit/formatters/index");
     const formatter = await selectFormatter({ badge: true });
     const output = formatter(baseResult);
     expect(typeof output).toBe("string");
@@ -45,35 +50,32 @@ describe("selectFormatter", () => {
   });
 
   it("html branch: returns formatter that produces HTML string", async () => {
-    const { selectFormatter } = await import("../../src/core/audit/formatters/index");
     const formatter = await selectFormatter({ report: "html" });
     const output = formatter(baseResult);
     expect(output).toContain("<");
+    expect(output).toContain("test-server");
   });
 
   it("md branch: returns formatter that produces markdown string", async () => {
-    const { selectFormatter } = await import("../../src/core/audit/formatters/index");
     const formatter = await selectFormatter({ report: "md" });
     const output = formatter(baseResult);
     expect(output).toContain("#");
+    expect(output).toContain("test-server");
   });
 
   it("summary branch: returns formatter that produces summary with server name", async () => {
-    const { selectFormatter } = await import("../../src/core/audit/formatters/index");
     const formatter = await selectFormatter({ summary: true });
     const output = formatter(baseResult);
     expect(output).toContain("test-server");
   });
 
   it("default branch (no options): returns terminal formatter with server name", async () => {
-    const { selectFormatter } = await import("../../src/core/audit/formatters/index");
     const formatter = await selectFormatter({});
     const output = formatter(baseResult);
     expect(output).toContain("test-server");
   });
 
   it("json takes precedence over badge when both are set", async () => {
-    const { selectFormatter } = await import("../../src/core/audit/formatters/index");
     const formatter = await selectFormatter({ json: true, badge: true });
     const output = formatter(baseResult);
     // json branch hits first — output must be valid JSON
@@ -81,7 +83,6 @@ describe("selectFormatter", () => {
   });
 
   it("unknown report value falls through to default terminal formatter", async () => {
-    const { selectFormatter } = await import("../../src/core/audit/formatters/index");
     const formatter = await selectFormatter({ report: "unknown" });
     const output = formatter(baseResult);
     // Default terminal formatter includes server name
