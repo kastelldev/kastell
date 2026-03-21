@@ -12,7 +12,10 @@ jest.mock("fs", () => ({
 import { spawn, spawnSync } from "child_process";
 import { existsSync } from "fs";
 import {
+  assertValidIp,
   checkSshAvailable,
+  clearKnownHostKey,
+  getHostKeyPolicy,
   removeStaleHostKey,
   resolveSshPath,
   resolveScpPath,
@@ -615,6 +618,204 @@ describe("ssh utils", () => {
       expect(process.env.TEST_TOKEN).toBe("value");
 
       process.env = originalEnv;
+    });
+  });
+
+  describe("getHostKeyPolicy", () => {
+    afterEach(() => {
+      delete process.env.KASTELL_STRICT_HOST_KEY;
+    });
+
+    it("returns 'accept-new' by default", () => {
+      delete process.env.KASTELL_STRICT_HOST_KEY;
+      expect(getHostKeyPolicy()).toBe("accept-new");
+    });
+
+    it("returns 'yes' when KASTELL_STRICT_HOST_KEY=true", () => {
+      process.env.KASTELL_STRICT_HOST_KEY = "true";
+      expect(getHostKeyPolicy()).toBe("yes");
+    });
+
+    it("returns 'accept-new' when KASTELL_STRICT_HOST_KEY=false", () => {
+      process.env.KASTELL_STRICT_HOST_KEY = "false";
+      expect(getHostKeyPolicy()).toBe("accept-new");
+    });
+  });
+
+  describe("clearKnownHostKey", () => {
+    it("calls spawnSync with ssh-keygen -R and the given IP", () => {
+      mockedSpawnSync.mockReturnValue({
+        status: 0,
+        stdout: Buffer.from(""),
+        stderr: Buffer.from(""),
+        pid: 1,
+        output: [],
+        signal: null,
+      });
+      clearKnownHostKey("203.0.113.1");
+      expect(mockedSpawnSync).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.arrayContaining(["-R", "203.0.113.1"]),
+        expect.objectContaining({ stdio: "ignore" }),
+      );
+    });
+
+    it("does not throw when ssh-keygen fails", () => {
+      mockedSpawnSync.mockReturnValue({
+        status: 1,
+        stdout: Buffer.from(""),
+        stderr: Buffer.from("error"),
+        pid: 1,
+        output: [],
+        signal: null,
+      });
+      expect(() => clearKnownHostKey("203.0.113.1")).not.toThrow();
+    });
+  });
+
+  describe("assertValidIp — full branch coverage", () => {
+    // NOTE: jest.config.cjs sets KASTELL_ALLOW_PRIVATE_IPS=true globally.
+    // Tests that need private-IP rejection must temporarily unset it.
+    const withPrivateIpBlocked = (fn: () => void) => {
+      const orig = process.env.KASTELL_ALLOW_PRIVATE_IPS;
+      delete process.env.KASTELL_ALLOW_PRIVATE_IPS;
+      try {
+        fn();
+      } finally {
+        if (orig !== undefined) {
+          process.env.KASTELL_ALLOW_PRIVATE_IPS = orig;
+        }
+      }
+    };
+
+    it("throws for leading zeros in octet", () => {
+      expect(() => assertValidIp("1.01.0.1")).toThrow();
+    });
+
+    it("throws for octet > 255", () => {
+      expect(() => assertValidIp("1.2.3.256")).toThrow();
+    });
+
+    it("throws for 0.0.0.0", () => {
+      expect(() => assertValidIp("0.0.0.0")).toThrow();
+    });
+
+    it("throws for 127.x.x.x loopback", () => {
+      expect(() => assertValidIp("127.0.0.1")).toThrow();
+    });
+
+    it("throws for 172.16-31 RFC 1918 range", () => {
+      withPrivateIpBlocked(() => {
+        expect(() => assertValidIp("172.16.0.1")).toThrow();
+        expect(() => assertValidIp("172.31.255.255")).toThrow();
+      });
+    });
+
+    it("does NOT throw for 172.15.x.x (below RFC 1918 range)", () => {
+      expect(() => assertValidIp("172.15.0.1")).not.toThrow();
+    });
+
+    it("does NOT throw for 172.32.x.x (above RFC 1918 range)", () => {
+      expect(() => assertValidIp("172.32.0.1")).not.toThrow();
+    });
+
+    it("throws for 169.254 link-local", () => {
+      withPrivateIpBlocked(() => {
+        expect(() => assertValidIp("169.254.1.1")).toThrow();
+      });
+    });
+
+    it("throws for multicast 224.x.x.x", () => {
+      withPrivateIpBlocked(() => {
+        expect(() => assertValidIp("224.0.0.1")).toThrow();
+      });
+    });
+
+    it("throws for reserved 240.x.x.x", () => {
+      withPrivateIpBlocked(() => {
+        expect(() => assertValidIp("240.0.0.1")).toThrow();
+      });
+    });
+
+    it("allows private IP when KASTELL_ALLOW_PRIVATE_IPS=true", () => {
+      process.env.KASTELL_ALLOW_PRIVATE_IPS = "true";
+      expect(() => assertValidIp("192.168.1.1")).not.toThrow();
+    });
+
+    it("throws for non-numeric octets", () => {
+      expect(() => assertValidIp("abc.def.ghi.jkl")).toThrow();
+    });
+
+    it("throws for too few octets", () => {
+      expect(() => assertValidIp("1.2.3")).toThrow();
+    });
+
+    it("throws for empty string", () => {
+      expect(() => assertValidIp("")).toThrow();
+    });
+  });
+
+  describe("sshExec timeout", () => {
+    it("returns code 1 when command times out", async () => {
+      jest.useFakeTimers();
+      const hangingCp = new EventEmitter() as any;
+      hangingCp.stdout = new EventEmitter();
+      hangingCp.stderr = new EventEmitter();
+      hangingCp.stdin = { write: jest.fn(), end: jest.fn() };
+      hangingCp.kill = jest.fn();
+      mockedSpawn.mockReturnValue(hangingCp);
+
+      const promise = sshExec("203.0.113.1", "sleep 999", { timeoutMs: 5000 });
+      jest.advanceTimersByTime(5001);
+
+      const result = await promise;
+      expect(result.code).toBe(1);
+      expect(result.stderr.toLowerCase()).toContain("timed out");
+      jest.useRealTimers();
+    });
+  });
+
+  describe("sshExec useStdin", () => {
+    it("writes command to stdin when useStdin is true", async () => {
+      const mockCp = new EventEmitter() as any;
+      mockCp.stdout = new EventEmitter();
+      mockCp.stderr = new EventEmitter();
+      mockCp.stdin = { write: jest.fn(), end: jest.fn() };
+      mockedSpawn.mockReturnValue(mockCp);
+
+      const promise = sshExec("203.0.113.1", "echo hello", { useStdin: true });
+      process.nextTick(() => {
+        mockCp.stdout.emit("data", Buffer.from("hello"));
+        mockCp.emit("close", 0);
+      });
+
+      const result = await promise;
+      expect(result.code).toBe(0);
+      expect(mockCp.stdin.write).toHaveBeenCalledWith("echo hello");
+      expect(mockedSpawn).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.arrayContaining(["bash", "-s"]),
+        expect.anything(),
+      );
+    });
+  });
+
+  describe("sshExec error event", () => {
+    it("resolves with code 1 and error message when spawn emits error", async () => {
+      const mockCp = new EventEmitter() as any;
+      mockCp.stdout = new EventEmitter();
+      mockCp.stderr = new EventEmitter();
+      mockCp.stdin = { write: jest.fn(), end: jest.fn() };
+      mockedSpawn.mockReturnValue(mockCp);
+
+      const promise = sshExec("203.0.113.1", "test");
+      process.nextTick(() => {
+        mockCp.emit("error", new Error("spawn ENOENT"));
+      });
+
+      const result = await promise;
+      expect(result.code).toBe(1);
+      expect(result.stderr).toContain("ENOENT");
     });
   });
 });
