@@ -27,5 +27,7 @@ export default {
   timeoutMS: 60000,
   timeoutFactor: 1.5,
   logLevel: 'info',
-  thresholds: { high: 80, low: 60, break: null },
+  incremental: true,
+  incrementalFile: '.stryker-tmp/incremental.json',
+  thresholds: { high: 80, low: 60, break: 40 },
 };

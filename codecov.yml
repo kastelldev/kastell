@@ -2,12 +2,20 @@ coverage:
   status:
     project:
       default:
-        target: 85%
+        target: 90%
         threshold: 2%
     patch:
       default:
-        target: 80%
+        target: 85%
         threshold: 5%
+
+comment:
+  layout: "diff, flags, files"
+  behavior: default
+  require_changes: false
+  require_base: false
+  require_head: true
+  after_n_builds: 1
 
 ignore:
   - "src/index.ts"

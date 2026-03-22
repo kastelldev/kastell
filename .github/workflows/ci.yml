@@ -46,5 +46,28 @@ jobs:
           directory: ./coverage
           fail_ci_if_error: false
 
+      - name: Cache Stryker incremental
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == 22
+        uses: actions/cache@v4
+        with:
+          path: .stryker-tmp/incremental.json
+          key: stryker-${{ github.ref }}-${{ hashFiles('src/core/**/*.ts', 'tests/**/*.ts') }}
+          restore-keys: |
+            stryker-${{ github.ref }}-
+            stryker-refs/heads/main-
+
+      - name: Run mutation tests
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == 22
+        run: npm run test:mutate
+        continue-on-error: true
+
+      - name: Upload mutation report
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == 22 && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report
+          path: reports/mutation/
+          retention-days: 30
+
       - name: Build
         run: npx tsc
