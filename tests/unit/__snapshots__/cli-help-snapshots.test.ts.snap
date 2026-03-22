@@ -1,0 +1,142 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`CLI help text snapshots kastell --help matches snapshot 1`] = `
+"Usage: kastell [options] [command]
+
+Automate Coolify deployment on cloud providers
+
+Options:
+  -V, --version                            output the version number
+  -h, --help                               display help for command
+
+Commands:
+  init [options]                           Deploy a new Coolify instance on a cloud provider
+  list                                     List all registered servers
+  status [options] [query]                 Check server and Coolify status
+  destroy [options] [query]                Destroy a registered server
+  config [subcommand] [args...]            Manage default configuration
+  ssh [options] [query]                    SSH into a registered server
+  update [options] [query]                 Update Coolify on a registered server
+  restart [options] [query]                Restart a registered server
+  logs [options] [query]                   View server logs (Coolify, Docker, or system)
+  monitor [options] [query]                Show server resource usage (CPU, RAM, Disk)
+  health [query]                           Check health of all registered servers
+  doctor [options] [server]                Check local environment, or run proactive health analysis on a server
+  firewall [options] [subcommand] [query]  Manage server firewall (UFW)
+  domain [options] [subcommand] [query]    Manage server domain and SSL
+  lock [options] [query]                   Harden a server to production security standard
+  guard                                    Manage autonomous security monitoring daemon on a server
+  secure [options] [subcommand] [query]    Manage server security (SSH hardening, fail2ban)
+  backup [options] [query]                 Backup server data, or manage backup schedule (use 'list' or 'cleanup' as query)
+  restore [options] [query]                Restore Coolify from a backup
+  export [path]                            Export server list to a JSON file
+  import <path>                            Import servers from a JSON file
+  add [options]                            Add an existing server to Kastell management
+  remove [options] [query]                 Remove a server from local config (does not destroy the cloud server)
+  maintain [options] [query]               Run full maintenance cycle (status, update, health, reboot)
+  snapshot [options] [subcommand] [query]  Manage server snapshots (create, list, delete)
+  completions [shell]                      Generate shell completion scripts (bash, zsh, fish)
+  audit [options] [server-name]            Run a security audit on a server
+  evidence [options] [server]              Collect forensic evidence package from a server
+  notify                                   Manage notification channels
+  fleet [options]                          Show health and security posture of all registered servers
+  auth                                     Manage provider API tokens (OS keychain)
+  help [command]                           display help for command"
+`;
+
+exports[`CLI help text snapshots kastell audit --help matches snapshot 1`] = `
+"Usage: kastell audit [options] [server-name]
+
+Run a security audit on a server
+
+Options:
+  --json                       Output results as JSON
+  --badge                      Output an SVG badge with score
+  --report <format>            Generate a report (html or md)
+  --summary                    Show compact dashboard summary
+  --score-only                 Output only the score (e.g. 72/100)
+  --fix                        Interactive fix mode
+  --dry-run                    Show fix commands without executing
+  --watch [interval]           Watch mode with optional interval in seconds
+  --host <user@ip>             Audit an unregistered server by IP
+  --threshold <score>          Exit with code 1 if score is below threshold
+  --category <list>            Comma-separated list of categories to audit
+  --snapshot [name]            Save audit result as snapshot (optionally named)
+  --snapshots                  List saved snapshots for the server
+  --diff <before:after>        Compare two snapshots (e.g. pre-upgrade:latest)
+  --compare <server1:server2>  Compare latest snapshots from two servers
+  --trend                      Show audit score trend over time
+  --days <n>                   Limit trend to last N days
+  --list-checks                List all audit checks without running audit
+  --severity <level>           Filter by severity (critical, warning, info)
+  --profile <name>             Compliance profile filter (cis-level1,
+                               cis-level2, pci-dss, hipaa)
+  --compliance <frameworks>    Compliance report by framework (cis, pci-dss,
+                               hipaa — comma-separated)
+  --explain                    Show why each failing check matters and how to
+                               fix it
+  -h, --help                   display help for command"
+`;
+
+exports[`CLI help text snapshots kastell guard --help matches snapshot 1`] = `
+"Usage: kastell guard [options] [command]
+
+Manage autonomous security monitoring daemon on a server
+
+Options:
+  -h, --help               display help for command
+
+Commands:
+  start [options] [query]  Install guard daemon (checks disk, RAM, CPU every 5
+                           minutes)
+  status [query]           Show guard daemon status and recent alerts
+  stop [options] [query]   Remove guard daemon from server
+  help [command]           display help for command"
+`;
+
+exports[`CLI help text snapshots kastell init --help matches snapshot 1`] = `
+"Usage: kastell init [options]
+
+Deploy a new Coolify instance on a cloud provider
+
+Options:
+  --provider <provider>  Cloud provider (hetzner, digitalocean, vultr, linode)
+  --token <token>        API token (or set HETZNER_TOKEN / DIGITALOCEAN_TOKEN /
+                         VULTR_TOKEN / LINODE_TOKEN env var)
+  --token-stdin          Read API token from stdin (pipe-friendly, avoids shell
+                         history)
+  --region <region>      Server region
+  --size <size>          Server size
+  --name <name>          Server name
+  --full-setup           Auto-configure firewall and SSH hardening after deploy
+  --config <path>        Load deployment config from a YAML file (kastell.yml)
+  --template <template>  Use a predefined template (starter, production, dev)
+  --no-open              Do not open browser after deployment
+  --mode <mode>          Server mode: coolify (default), dokploy, or bare
+  -h, --help             display help for command"
+`;
+
+exports[`CLI help text snapshots kastell lock --help matches snapshot 1`] = `
+"Usage: kastell lock [options] [query]
+
+Harden a server to production security standard
+
+Options:
+  --production  Apply all hardening measures (SSH, fail2ban, UFW, sysctl,
+                auto-updates)
+  --dry-run     Preview changes without applying
+  --force       Skip confirmation prompt
+  -h, --help    display help for command"
+`;
+
+exports[`CLI help text snapshots kastell secure --help matches snapshot 1`] = `
+"Usage: kastell secure [options] [subcommand] [query]
+
+Manage server security (SSH hardening, fail2ban)
+
+Options:
+  --port <port>  Change SSH port
+  --dry-run      Show commands without executing
+  --force        Skip confirmation prompts
+  -h, --help     display help for command"
+`;
