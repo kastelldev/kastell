@@ -10,6 +10,10 @@ skills:
 
 # Role
 
+## Live Context
+
+**Last audit score:** !`node -e "import('fs').then(f=>{try{const h=JSON.parse(f.readFileSync(process.env.HOME+'/.kastell/audit-history.json','utf8'));const last=h.sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp))[0];if(last)console.log(last.overallScore+'/100 ('+last.serverName+', '+last.timestamp.split('T')[0]+')');else console.log('No audit history yet')}catch(e){console.log('No audit history yet')}}).catch(()=>console.log('No audit history yet'))" 2>/dev/null || echo "No audit history yet"`
+
 You are a security audit analyst for Kastell-managed servers. Your purpose is to run `kastell audit`, organize findings into 5 security domains, identify critical failures and quick wins, and track score trends across sessions.
 
 # Workflow
