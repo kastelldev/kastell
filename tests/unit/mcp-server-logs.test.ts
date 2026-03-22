@@ -570,3 +570,69 @@ describe("handleServerLogs — bare mode", () => {
     expect(data.metrics.cpu).not.toBe("N/A");
   });
 });
+
+// ─── MCP Handler: malformed params ────────────────────────────────────────────
+
+describe("handleServerLogs — malformed params", () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+    mockedSsh.assertValidIp.mockImplementation(() => {});
+  });
+
+  it("returns mcpError when server param is empty string", async () => {
+    // Arrange
+    mockedConfig.getServers.mockReturnValue([sampleServer]);
+    mockedConfig.findServer.mockReturnValue(undefined as never);
+
+    // Act
+    const result = await handleServerLogs({ action: "logs", server: "" });
+
+    // Assert
+    expect(result.isError).toBe(true);
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.error).toBeTruthy();
+  });
+
+  it("returns mcpError when server param is null (as any)", async () => {
+    // Arrange
+    mockedConfig.getServers.mockReturnValue([sampleServer]);
+    mockedConfig.findServer.mockReturnValue(undefined as never);
+
+    // Act
+    const result = await handleServerLogs({ action: "logs", server: null as any });
+
+    // Assert
+    expect(result.isError).toBe(true);
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.error).toBeTruthy();
+  });
+
+  it("returns mcpError for unmatched server string", async () => {
+    // Arrange
+    mockedConfig.getServers.mockReturnValue([sampleServer]);
+    mockedConfig.findServer.mockReturnValue(undefined as never);
+
+    // Act
+    const result = await handleServerLogs({ action: "logs", server: "999.999.999.999" });
+
+    // Assert
+    expect(result.isError).toBe(true);
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.error).toBeTruthy();
+  });
+
+  it("returns mcpError when SSH core rejects with timeout", async () => {
+    // Arrange
+    mockedConfig.getServers.mockReturnValue([sampleServer]);
+    mockedConfig.findServer.mockReturnValue(sampleServer as never);
+    mockedSsh.sshExec.mockRejectedValue(new Error("SSH operation timed out after 30000ms"));
+
+    // Act
+    const result = await handleServerLogs({ action: "logs", server: "coolify-test" });
+
+    // Assert
+    expect(result.isError).toBe(true);
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.error).toContain("timed out");
+  });
+});
