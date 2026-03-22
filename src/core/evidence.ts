@@ -179,7 +179,16 @@ export async function collectEvidence(
   const sectionFilenames = getEvidenceSectionFilenames(platform, buildOpts);
 
   // Execute SSH (exactly one call)
-  const sshResult = await sshExec(ip, batchCommand, { timeoutMs: EVIDENCE_TIMEOUT_MS });
+  let sshResult: Awaited<ReturnType<typeof sshExec>>;
+  try {
+    sshResult = await sshExec(ip, batchCommand, { timeoutMs: EVIDENCE_TIMEOUT_MS });
+  } catch (sshErr: unknown) {
+    rmSync(evidenceDir, { recursive: true, force: true });
+    return {
+      success: false,
+      error: `SSH error: ${getErrorMessage(sshErr)}`,
+    };
+  }
   if (sshResult.code !== 0) {
     rmSync(evidenceDir, { recursive: true, force: true });
     return {
