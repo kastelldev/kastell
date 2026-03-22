@@ -11,7 +11,7 @@ import * as sshKey from "../../src/utils/sshKey";
 import * as cloudInit from "../../src/utils/cloudInit";
 import * as templates from "../../src/utils/templates";
 import * as adapterFactory from "../../src/adapters/factory";
-import { provisionServer } from "../../src/core/provision";
+import { provisionServer, uploadSshKeyBestEffort } from "../../src/core/provision";
 import type { CloudProvider } from "../../src/providers/base";
 
 jest.mock("../../src/utils/config");
@@ -157,5 +157,209 @@ describe("provisionServer — bare mode saves mode:'bare' to ServerRecord", () =
 
     expect(result.success).toBe(true);
     expect(result.server?.mode).toBe("coolify");
+  });
+});
+
+// ─── Phase 74: Error paths ──────────────────────────────────────────────────
+
+describe("provisionServer - error paths", () => {
+  it("should fail for invalid provider", async () => {
+    // Arrange — isValidProvider is real (not mocked), rejects unknown providers
+    // Act
+    const result = await provisionServer({
+      provider: "unknown-cloud",
+      name: "test-srv",
+      mode: "bare",
+    });
+    // Assert
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("unknown-cloud");
+  });
+
+  it("should fail for invalid server name", async () => {
+    // Arrange — validateServerName is real, rejects single char
+    // Act
+    const result = await provisionServer({
+      provider: "hetzner",
+      name: "A",
+      mode: "bare",
+    });
+    // Assert
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/Server name/i);
+  });
+
+  it("should fail when region/size cannot be resolved", async () => {
+    // Arrange
+    mockedTemplates.getTemplateDefaults.mockReturnValue(null as never);
+    // Act
+    const result = await provisionServer({
+      provider: "hetzner",
+      name: "test-srv",
+      mode: "bare",
+    });
+    // Assert
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("Could not resolve region/size");
+  });
+
+  it("should fail when no API token found", async () => {
+    // Arrange
+    mockedTokens.getProviderToken.mockReturnValue(null as never);
+    // Act
+    const result = await provisionServer({
+      provider: "hetzner",
+      name: "test-srv",
+      mode: "bare",
+    });
+    // Assert
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("No API token found");
+  });
+
+  it("should fail when token validation returns false", async () => {
+    // Arrange
+    mockProvider.validateToken.mockResolvedValueOnce(false);
+    // Act
+    const result = await provisionServer({
+      provider: "hetzner",
+      name: "test-srv",
+      mode: "bare",
+    });
+    // Assert
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("Invalid API token");
+  });
+
+  it("should fail when token validation throws", async () => {
+    // Arrange
+    mockProvider.validateToken.mockRejectedValueOnce(new Error("Network timeout"));
+    // Act
+    const result = await provisionServer({
+      provider: "hetzner",
+      name: "test-srv",
+      mode: "bare",
+    });
+    // Assert
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("Token validation failed");
+  });
+
+  it("should fail when server creation throws", async () => {
+    // Arrange
+    mockProvider.createServer.mockRejectedValueOnce(new Error("Insufficient quota"));
+    // Act
+    const result = await provisionServer({
+      provider: "hetzner",
+      name: "test-srv",
+      mode: "bare",
+    });
+    // Assert
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("Server creation failed");
+  });
+});
+
+describe("provisionServer - boot and IP edge cases", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it("should fail when boot times out", async () => {
+    // Arrange — server never reaches running state
+    mockProvider.getServerStatus.mockResolvedValue("initializing");
+    // Act
+    const promise = provisionServer({
+      provider: "hetzner",
+      name: "test-srv",
+      mode: "bare",
+    });
+    // Advance enough time for all boot polling attempts
+    for (let i = 0; i < 40; i++) {
+      await jest.advanceTimersByTimeAsync(5000);
+    }
+    const result = await promise;
+    // Assert
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/did not reach running state/);
+    expect(mockedConfig.saveServer).toHaveBeenCalled();
+  });
+
+  it("should mark IP as pending when assertValidIp throws on immediate IP", async () => {
+    // Arrange
+    mockProvider.createServer.mockResolvedValueOnce({
+      id: "srv-1",
+      ip: "999.999.999.999",
+      status: "running",
+    });
+    mockedSsh.assertValidIp.mockImplementationOnce(() => {
+      throw new Error("Invalid IP");
+    });
+    // Act
+    const promise = provisionServer({
+      provider: "hetzner",
+      name: "test-srv",
+      mode: "bare",
+    });
+    for (let i = 0; i < 40; i++) {
+      await jest.advanceTimersByTimeAsync(5000);
+    }
+    const result = await promise;
+    // Assert
+    expect(result.success).toBe(true);
+    expect(result.hint).toContain("IP address not yet assigned");
+  });
+
+  it("should return hint when IP is still pending after polling", async () => {
+    // Arrange
+    mockProvider.createServer.mockResolvedValueOnce({
+      id: "srv-1",
+      ip: "pending",
+      status: "running",
+    });
+    mockProvider.getServerDetails.mockResolvedValue({
+      id: "srv-1",
+      ip: "pending",
+      status: "running",
+    });
+    // Act
+    const promise = provisionServer({
+      provider: "hetzner",
+      name: "test-srv",
+      mode: "bare",
+    });
+    for (let i = 0; i < 80; i++) {
+      await jest.advanceTimersByTimeAsync(5000);
+    }
+    const result = await promise;
+    // Assert
+    expect(result.success).toBe(true);
+    expect(result.hint).toContain("IP address not yet assigned");
+  });
+});
+
+describe("uploadSshKeyBestEffort - edge cases", () => {
+  it("should return empty array when SSH key generation fails", async () => {
+    // Arrange
+    mockedSshKey.findLocalSshKey.mockReturnValue(null as never);
+    mockedSshKey.generateSshKey.mockReturnValue(null as never);
+    // Act
+    const result = await uploadSshKeyBestEffort(mockProvider);
+    // Assert
+    expect(result).toEqual([]);
+  });
+
+  it("should return empty array when SSH key upload fails", async () => {
+    // Arrange
+    mockedSshKey.findLocalSshKey.mockReturnValue("ssh-ed25519 AAAA test@host");
+    mockProvider.uploadSshKey.mockRejectedValueOnce(new Error("Upload failed"));
+    // Act
+    const result = await uploadSshKeyBestEffort(mockProvider);
+    // Assert
+    expect(result).toEqual([]);
   });
 });
