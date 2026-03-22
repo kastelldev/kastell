@@ -256,6 +256,7 @@ describe("MCP→Core Integration", () => {
           auditd: true,
           logRetention: true,
           aide: true,
+          cronAccess: true,
           dockerHardening: true,
         },
       });

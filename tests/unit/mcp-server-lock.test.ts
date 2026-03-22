@@ -40,6 +40,7 @@ const sampleLockResult = {
     auditd: true,
     logRetention: true,
     aide: true,
+    cronAccess: true,
   },
   scoreBefore: 55,
   scoreAfter: 88,
@@ -129,6 +130,7 @@ describe("MCP server_lock tool", () => {
           auditd: false,
           logRetention: false,
           aide: false,
+          cronAccess: false,
         },
         error: "No SSH keys found",
         hint: "Add an SSH key first",
@@ -168,6 +170,7 @@ describe("MCP server_lock tool", () => {
           auditd: false,
           logRetention: false,
           aide: false,
+          cronAccess: false,
         },
       });
 

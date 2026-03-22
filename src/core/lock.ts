@@ -39,6 +39,7 @@ export interface LockStepResult {
   auditd: boolean;
   logRetention: boolean;
   aide: boolean;
+  cronAccess: boolean;
 }
 
 export interface LockResult {
@@ -162,6 +163,7 @@ export function buildAuditdCommand(): SshCommand {
       `printf '${deepRules}\\n' > /etc/audit/rules.d/50-kastell-deep.rules`,
       `printf '${immutableRule}\\n' > /etc/audit/rules.d/99-kastell.rules`,
       "augenrules --load 2>/dev/null || true",
+      "service auditd restart 2>/dev/null || systemctl restart auditd 2>/dev/null || true",
     ].join(" && "),
   );
 }
@@ -218,9 +220,11 @@ export function buildLogRetentionCommand(): SshCommand {
 
   return raw(
     [
+      "DEBIAN_FRONTEND=noninteractive apt-get install -y logrotate",
       "systemctl enable rsyslog 2>/dev/null || true",
       "systemctl start rsyslog 2>/dev/null || true",
       `printf '${logrotateConf}\\n' > /etc/logrotate.d/99-kastell-syslog`,
+      "systemctl enable logrotate.timer 2>/dev/null || true",
     ].join(" && "),
   );
 }
@@ -247,12 +251,25 @@ export function buildAccountLockCommand(): SshCommand {
 }
 
 export function buildAideInitCommand(): SshCommand {
-  const cronLine = "0 5 * * * root aide --check 2>/dev/null | mail -s 'AIDE check' root";
+  const cronScript = "#!/bin/bash\\n/usr/sbin/aide --check 2>/dev/null || true";
   return raw(
     [
       "DEBIAN_FRONTEND=noninteractive apt-get install -y aide",
+      "rm -f /etc/cron.d/kastell-aide",
+      `printf '${cronScript}\\n' > /etc/cron.daily/aide-check`,
+      "chmod 755 /etc/cron.daily/aide-check",
       "nohup aide --init > /var/log/aide-init.log 2>&1 &",
-      `echo '${cronLine}' > /etc/cron.d/kastell-aide`,
+    ].join(" && "),
+  );
+}
+
+export function buildCronAccessCommand(): SshCommand {
+  return raw(
+    [
+      "echo root > /etc/cron.allow",
+      "chmod 600 /etc/cron.allow",
+      "touch /etc/at.deny",
+      "chmod 600 /etc/at.deny",
     ].join(" && "),
   );
 }
@@ -334,7 +351,7 @@ export function buildDockerHardeningCommand(platform: Platform | undefined): Ssh
     [
       "command -v jq >/dev/null 2>&1 || { echo 'WARN: jq not found, skipping Docker hardening'; exit 0; }",
       "command -v docker >/dev/null 2>&1 || { echo 'WARN: Docker not installed, skipping Docker hardening'; exit 0; }",
-      "[ -f /etc/docker/daemon.json ] || echo '{}' > /etc/docker/daemon.json",
+      "mkdir -p /etc/docker && ([ -f /etc/docker/daemon.json ] || echo '{}' > /etc/docker/daemon.json)",
       "cp /etc/docker/daemon.json /etc/docker/daemon.json.bak-docker",
       `printf '%s' '${hardeningJson}' | jq -s '.[0] * .[1]' /etc/docker/daemon.json - > /tmp/daemon-kastell.json`,
       "jq -e . /tmp/daemon-kastell.json >/dev/null 2>&1 || { cp /etc/docker/daemon.json.bak-docker /etc/docker/daemon.json && echo 'daemon.json merge failed: rolled back' >&2 && exit 1; }",
@@ -404,6 +421,7 @@ export async function applyLock(
     auditd: false,
     logRetention: false,
     aide: false,
+    cronAccess: false,
   };
 
   const stepErrors: Partial<Record<keyof LockStepResult, string>> = {};
@@ -558,6 +576,11 @@ export async function applyLock(
   const aideResult = await runLockStep(ip, buildAideInitCommand(), { timeoutMs: LOCK_PACKAGES_TIMEOUT_MS });
   steps.aide = aideResult.ok;
   if (!aideResult.ok) stepErrors.aide = aideResult.error!;
+
+  // Step 20: Cron access control
+  const cronAccessResult = await runLockStep(ip, buildCronAccessCommand());
+  steps.cronAccess = cronAccessResult.ok;
+  if (!cronAccessResult.ok) stepErrors.cronAccess = cronAccessResult.error!;
 
   // Post-audit (non-fatal)
   let scoreAfter: number | undefined;

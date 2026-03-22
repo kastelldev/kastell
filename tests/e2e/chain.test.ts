@@ -176,6 +176,7 @@ describe("Command→Core Chain Tests", () => {
           auditd: true,
           logRetention: true,
           aide: true,
+          cronAccess: true,
           dockerHardening: true,
         },
       });

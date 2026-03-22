@@ -359,7 +359,7 @@ function fileIntegritySection(): string {
     `dpkg -l aide 2>/dev/null | grep '^ii' || echo 'NOT_INSTALLED'`,
     `dpkg -l tripwire 2>/dev/null | grep '^ii' || echo 'NOT_INSTALLED'`,
     `test -f /var/lib/aide/aide.db.gz && echo 'AIDE_DB_EXISTS' || test -f /var/lib/aide/aide.db && echo 'AIDE_DB_EXISTS' || echo 'AIDE_DB_MISSING'`,
-    `grep -r 'aide' /etc/cron.daily /etc/cron.weekly /var/spool/cron/crontabs/ 2>/dev/null | head -5 || echo 'NO_AIDE_CRON'`,
+    `grep -r 'aide' /etc/cron.daily /etc/cron.weekly /etc/cron.d/ /var/spool/cron/crontabs/ 2>/dev/null | head -5 || echo 'NO_AIDE_CRON'`,
     `dpkg -l auditd 2>/dev/null | grep '^ii' || echo 'NOT_INSTALLED'`,
     `systemctl is-active auditd 2>/dev/null || echo 'inactive'`,
     `auditctl -l 2>/dev/null | grep -E '/etc/passwd|/etc/shadow|/etc/sudoers' | head -5 || echo 'NO_RULES'`,

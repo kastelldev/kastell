@@ -18,6 +18,7 @@ import {
   buildPwqualityCommand,
   buildDockerHardeningCommand,
   buildSshCipherCommand,
+  buildCronAccessCommand,
   applyLock,
 } from "../../src/core/lock";
 import type { LockResult } from "../../src/core/lock";
@@ -439,14 +440,14 @@ describe("buildAideInitCommand", () => {
     expect(cmd).toContain("nohup aide --init");
   });
 
-  it("creates kastell-aide cron file", () => {
+  it("cleans up old kastell-aide cron.d entry", () => {
     const cmd = buildAideInitCommand();
     expect(cmd).toContain("kastell-aide");
   });
 
-  it("schedules daily cron at 05:00", () => {
+  it("writes cron.daily script for daily aide checks", () => {
     const cmd = buildAideInitCommand();
-    expect(cmd).toContain("0 5 * * *");
+    expect(cmd).toContain("/etc/cron.daily/aide-check");
   });
 });
 
@@ -710,11 +711,12 @@ describe("applyLock", () => {
       expect(result.steps).toHaveProperty("auditd");
       expect(result.steps).toHaveProperty("logRetention");
       expect(result.steps).toHaveProperty("aide");
+      expect(result.steps).toHaveProperty("cronAccess");
     });
   });
 
   describe("happy path", () => {
-    it("calls sshExec 20 times: key check + 19 steps", async () => {
+    it("calls sshExec 21 times: key check + 20 steps", async () => {
       mockedAudit.runAudit
         .mockResolvedValueOnce(makeAuditResult(45))
         .mockResolvedValueOnce(makeAuditResult(72));
@@ -724,8 +726,8 @@ describe("applyLock", () => {
 
       // key check + SSH hardening + fail2ban + banners + accountLock + sshCipher + UFW + cloudMeta + DNS
       // + sysctl + unattended-upgrades + aptValidation + resourceLimits + serviceDisable
-      // + backupPermissions + pwquality + dockerHardening + auditd + logRetention + aide = 20
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(20);
+      // + backupPermissions + pwquality + dockerHardening + auditd + logRetention + aide + cronAccess = 21
+      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(21);
     });
 
     it("captures scoreBefore=45 and scoreAfter=72 from runAudit", async () => {
@@ -764,6 +766,7 @@ describe("applyLock", () => {
       expect(result.steps.auditd).toBe(true);
       expect(result.steps.logRetention).toBe(true);
       expect(result.steps.aide).toBe(true);
+      expect(result.steps.cronAccess).toBe(true);
     });
 
     it("stepErrors is absent on full success", async () => {
@@ -874,8 +877,8 @@ describe("applyLock", () => {
 
       await applyLock("1.2.3.4", "test-server", undefined, {});
 
-      // All 20 calls were made (key check + 19 steps)
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(20);
+      // All 21 calls were made (key check + 20 steps)
+      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(21);
     });
   });
 
@@ -902,7 +905,7 @@ describe("applyLock", () => {
 
       await applyLock("1.2.3.4", "test-server", undefined, {});
 
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(20);
+      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(21);
     });
   });
 
@@ -929,7 +932,8 @@ describe("applyLock", () => {
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // dockerHardening
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // auditd
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // logRetention
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }); // aide
+        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // aide
+        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }); // cronAccess
 
       const result = await applyLock("1.2.3.4", "test-server", undefined, {});
 
@@ -937,8 +941,8 @@ describe("applyLock", () => {
       expect(result.steps.cloudMeta).toBe(false);
       expect(result.stepErrors?.ufw).toBeDefined();
       expect(result.stepErrors?.cloudMeta).toBe("UFW required");
-      // 19 calls: no cloudMeta call since UFW failed, but all other steps run
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(19);
+      // 20 calls: no cloudMeta call since UFW failed, but all other steps run (including cronAccess)
+      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(20);
     });
   });
 
@@ -966,14 +970,15 @@ describe("applyLock", () => {
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // dockerHardening
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // auditd
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // logRetention
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }); // aide
+        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // aide
+        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }); // cronAccess
 
       const result = await applyLock("1.2.3.4", "test-server", undefined, {});
 
       expect(result.steps.dns).toBe(false);
       expect(result.stepErrors?.dns).toContain("dig timeout");
-      // 21 calls: 20 normal + 1 DNS rollback
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(21);
+      // 22 calls: 21 normal + 1 DNS rollback
+      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(22);
     });
   });
 
@@ -1013,9 +1018,163 @@ describe("applyLock", () => {
 
       const result = await applyLock("1.2.3.4", "test-server", undefined, {});
 
-      // Should still complete all 20 calls (key check + 19 steps)
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(20);
+      // Should still complete all 21 calls (key check + 20 steps)
+      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(21);
       expect(result.steps.sshHardening).toBe(true);
     });
+  });
+});
+
+describe("buildAideInitCommand (P82 fix)", () => {
+  it("writes executable script to /etc/cron.daily/aide-check", () => {
+    const cmd = buildAideInitCommand();
+    expect(cmd).toContain("/etc/cron.daily/aide-check");
+  });
+
+  it("makes cron.daily script executable with chmod 755", () => {
+    const cmd = buildAideInitCommand();
+    expect(cmd).toContain("chmod 755 /etc/cron.daily/aide-check");
+  });
+
+  it("cron.daily script contains aide --check", () => {
+    const cmd = buildAideInitCommand();
+    expect(cmd).toContain("aide --check");
+  });
+
+  it("still installs aide via apt-get", () => {
+    const cmd = buildAideInitCommand();
+    expect(cmd).toContain("apt-get install -y aide");
+  });
+
+  it("still initializes aide database in background", () => {
+    const cmd = buildAideInitCommand();
+    expect(cmd).toContain("aide --init");
+  });
+
+  it("cleans up old /etc/cron.d/kastell-aide", () => {
+    const cmd = buildAideInitCommand();
+    expect(cmd).toContain("rm -f /etc/cron.d/kastell-aide");
+  });
+});
+
+describe("buildAuditdCommand (P82 fix)", () => {
+  it("restarts auditd service after loading rules", () => {
+    const cmd = buildAuditdCommand();
+    expect(cmd).toContain("restart auditd");
+  });
+
+  it("still loads rules with augenrules", () => {
+    const cmd = buildAuditdCommand();
+    expect(cmd).toContain("augenrules --load");
+  });
+
+  it("restart comes after augenrules --load", () => {
+    const cmd = buildAuditdCommand();
+    const augenrulesIdx = cmd.indexOf("augenrules --load");
+    const restartIdx = cmd.indexOf("restart auditd");
+    expect(restartIdx).toBeGreaterThan(augenrulesIdx);
+  });
+
+  it("contains file access watch rules for /etc/passwd (SC-2)", () => {
+    const cmd = buildAuditdCommand();
+    expect(cmd).toContain("/etc/passwd");
+    expect(cmd).toContain("-k identity");
+  });
+
+  it("contains file access watch rules for /etc/shadow (SC-2)", () => {
+    const cmd = buildAuditdCommand();
+    expect(cmd).toContain("/etc/shadow");
+  });
+
+  it("contains privilege escalation syscall rules (SC-2)", () => {
+    const cmd = buildAuditdCommand();
+    expect(cmd).toContain("-k privilege");
+    // setuid/setgid/setreuid/setregid syscall monitoring
+    expect(cmd).toMatch(/set(re)?uid/);
+  });
+});
+
+describe("buildLogRetentionCommand (P82 fix)", () => {
+  it("installs logrotate package", () => {
+    const cmd = buildLogRetentionCommand();
+    expect(cmd).toContain("apt-get install -y logrotate");
+  });
+
+  it("enables logrotate.timer", () => {
+    const cmd = buildLogRetentionCommand();
+    expect(cmd).toContain("logrotate.timer");
+  });
+
+  it("still enables and starts rsyslog", () => {
+    const cmd = buildLogRetentionCommand();
+    expect(cmd).toContain("rsyslog");
+  });
+
+  it("still writes logrotate config to /etc/logrotate.d/", () => {
+    const cmd = buildLogRetentionCommand();
+    expect(cmd).toContain("/etc/logrotate.d/99-kastell-syslog");
+  });
+});
+
+describe("buildCronAccessCommand", () => {
+  it("creates /etc/cron.allow with root only", () => {
+    const cmd = buildCronAccessCommand();
+    expect(cmd).toContain("/etc/cron.allow");
+    expect(cmd).toContain("root");
+  });
+
+  it("creates /etc/at.deny", () => {
+    const cmd = buildCronAccessCommand();
+    expect(cmd).toContain("/etc/at.deny");
+  });
+
+  it("sets 600 permissions on cron.allow", () => {
+    const cmd = buildCronAccessCommand();
+    expect(cmd).toContain("chmod 600 /etc/cron.allow");
+  });
+
+  it("sets 600 permissions on at.deny", () => {
+    const cmd = buildCronAccessCommand();
+    expect(cmd).toContain("chmod 600 /etc/at.deny");
+  });
+});
+
+describe("buildDockerHardeningCommand (P82 fix)", () => {
+  it("creates /etc/docker directory before daemon.json check", () => {
+    const cmd = buildDockerHardeningCommand(undefined);
+    expect(cmd).toContain("mkdir -p /etc/docker");
+  });
+
+  it("mkdir comes before daemon.json file check", () => {
+    const cmd = buildDockerHardeningCommand("dokploy");
+    const mkdirIdx = cmd.indexOf("mkdir -p /etc/docker");
+    const fileCheckIdx = cmd.indexOf("daemon.json");
+    expect(mkdirIdx).toBeLessThan(fileCheckIdx);
+  });
+});
+
+describe("applyLock cronAccess step (P82)", () => {
+  it("includes cronAccess in lock result steps", async () => {
+    // Arrange
+    mockedSsh.sshExec.mockResolvedValue({ code: 0, stdout: "2", stderr: "" });
+    mockedAudit.runAudit.mockResolvedValue(makeAuditResult(80));
+
+    // Act
+    const result: LockResult = await applyLock("1.2.3.4", "test", undefined, {});
+
+    // Assert
+    expect(result.steps).toHaveProperty("cronAccess");
+  });
+
+  it("sets cronAccess to true on successful execution", async () => {
+    // Arrange
+    mockedSsh.sshExec.mockResolvedValue({ code: 0, stdout: "2", stderr: "" });
+    mockedAudit.runAudit.mockResolvedValue(makeAuditResult(80));
+
+    // Act
+    const result: LockResult = await applyLock("1.2.3.4", "test", undefined, {});
+
+    // Assert
+    expect(result.steps.cronAccess).toBe(true);
   });
 });

@@ -49,6 +49,7 @@ const successResult: LockResult = {
     auditd: true,
     logRetention: true,
     aide: true,
+    cronAccess: true,
   },
   scoreBefore: 45,
   scoreAfter: 72,
@@ -76,6 +77,7 @@ const failedResult: LockResult = {
     auditd: true,
     logRetention: true,
     aide: true,
+    cronAccess: true,
   },
   stepErrors: {
     sshHardening: "connection refused",
