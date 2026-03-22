@@ -201,7 +201,7 @@ describe("malformed params", () => {
   });
 
   it("returns mcpError when server param is null", async () => {
-    const result = await handleServerGuard({ server: null as any, action: "status" });
+    const result = await handleServerGuard({ server: null as unknown as string, action: "status" });
     expect(result.isError).toBe(true);
   });
 
@@ -212,7 +212,7 @@ describe("malformed params", () => {
 
   it("returns mcpError when action is null", async () => {
     mockedConfig.findServer.mockReturnValue(sampleServer as never);
-    const result = await handleServerGuard({ server: "my-server", action: null as any });
+    const result = await handleServerGuard({ server: "my-server", action: null as unknown as Parameters<typeof handleServerGuard>[0]["action"] });
     expect(result.isError).toBe(true);
   });
 });

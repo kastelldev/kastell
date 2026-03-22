@@ -311,7 +311,7 @@ describe("malformed params", () => {
   });
 
   it("returns mcpError when server param is null", async () => {
-    const result = await handleServerLock({ server: null as any, production: true });
+    const result = await handleServerLock({ server: null as unknown as string, production: true });
     expect(result.isError).toBe(true);
   });
 

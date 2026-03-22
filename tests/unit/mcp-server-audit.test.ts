@@ -274,7 +274,7 @@ describe("malformed params", () => {
   });
 
   it("returns mcpError when server param is null", async () => {
-    const result = await handleServerAudit({ server: null as any });
+    const result = await handleServerAudit({ server: null as unknown as string });
     expect(result.isError).toBe(true);
   });
 

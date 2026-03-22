@@ -727,7 +727,7 @@ describe("handleServerProvision — malformed params", () => {
 
     // Act
     const result = await handleServerProvision({
-      provider: "" as any,
+      provider: "" as unknown as Parameters<typeof handleServerProvision>[0]["provider"],
       region: "nbg1",
       size: "cax11",
       name: "test-srv",
@@ -739,13 +739,13 @@ describe("handleServerProvision — malformed params", () => {
     expect(parsed.error).toBeTruthy();
   });
 
-  it("returns mcpError when provider param is null (as any)", async () => {
+  it("returns mcpError when provider param is null (as unknown)", async () => {
     // Arrange
     mockedTokens.getProviderToken.mockReturnValue("test-token");
 
     // Act
     const result = await handleServerProvision({
-      provider: null as any,
+      provider: null as unknown as Parameters<typeof handleServerProvision>[0]["provider"],
       region: "nbg1",
       size: "cax11",
       name: "test-srv",
@@ -757,7 +757,7 @@ describe("handleServerProvision — malformed params", () => {
     expect(parsed.error).toBeTruthy();
   });
 
-  it("returns mcpError when name param is null (as any)", async () => {
+  it("returns mcpError when name param is null (as unknown)", async () => {
     // Arrange
     mockedTokens.getProviderToken.mockReturnValue("test-token");
     mockProvider = createMockProvider();
@@ -768,7 +768,7 @@ describe("handleServerProvision — malformed params", () => {
       provider: "hetzner",
       region: "nbg1",
       size: "cax11",
-      name: null as any,
+      name: null as unknown as string,
     });
 
     // Assert

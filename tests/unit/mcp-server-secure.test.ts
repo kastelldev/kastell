@@ -1027,13 +1027,13 @@ describe("handleServerSecure — malformed params", () => {
     expect(parsed.error).toBeTruthy();
   });
 
-  it("returns mcpError when server param is null (as any)", async () => {
+  it("returns mcpError when server param is null (as unknown)", async () => {
     // Arrange
     mockedConfig.getServers.mockReturnValue([sampleServer]);
     mockedConfig.findServer.mockReturnValue(undefined as never);
 
     // Act
-    const result = await handleServerSecure({ action: "secure-audit", server: null as any });
+    const result = await handleServerSecure({ action: "secure-audit", server: null as unknown as string });
 
     // Assert
     expect(result.isError).toBe(true);
@@ -1041,13 +1041,13 @@ describe("handleServerSecure — malformed params", () => {
     expect(parsed.error).toBeTruthy();
   });
 
-  it("returns mcpError when action param is invalid (as any)", async () => {
+  it("returns mcpError when action param is invalid (as unknown)", async () => {
     // Arrange
     mockedConfig.getServers.mockReturnValue([sampleServer]);
     mockedConfig.findServer.mockReturnValue(sampleServer as never);
 
     // Act
-    const result = await handleServerSecure({ action: "nonexistent" as any });
+    const result = await handleServerSecure({ action: "nonexistent" as unknown as Parameters<typeof handleServerSecure>[0]["action"] });
 
     // Assert
     expect(result.isError).toBe(true);

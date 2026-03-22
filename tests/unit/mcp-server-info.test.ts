@@ -551,12 +551,12 @@ describe("malformed params", () => {
   });
 
   it("returns mcpError when action is null", async () => {
-    const result = await handleServerInfo({ action: null as any });
+    const result = await handleServerInfo({ action: null as unknown as Parameters<typeof handleServerInfo>[0]["action"] });
     expect(result.isError).toBe(true);
   });
 
   it("returns mcpError when action is empty string", async () => {
-    const result = await handleServerInfo({ action: "" as any });
+    const result = await handleServerInfo({ action: "" as unknown as Parameters<typeof handleServerInfo>[0]["action"] });
     expect(result.isError).toBe(true);
   });
 

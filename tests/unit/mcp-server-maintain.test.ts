@@ -335,7 +335,7 @@ describe("handleServerMaintain — update", () => {
     mockedConfig.getServers.mockReturnValue([sampleServer]);
     mockedConfig.findServer.mockReturnValue(sampleServer);
     const spy = jest.spyOn(adapterFactory, "getAdapter").mockReturnValue(
-      createMockAdapter({ overrides: { update: jest.fn(async () => ({ success: false, error: "Connection refused" })) } }) as any,
+      createMockAdapter({ overrides: { update: jest.fn(async () => ({ success: false, error: "Connection refused" })) } }),
     );
 
     const result = await handleServerMaintain({ action: "update", server: "coolify-test" });
@@ -670,13 +670,13 @@ describe("handleServerMaintain — malformed params", () => {
     expect(parsed.error).toBeTruthy();
   });
 
-  it("returns mcpError when server param is null (as any)", async () => {
+  it("returns mcpError when server param is null (as unknown)", async () => {
     // Arrange
     mockedConfig.getServers.mockReturnValue([sampleServer]);
     mockedConfig.findServer.mockReturnValue(undefined as never);
 
     // Act
-    const result = await handleServerMaintain({ action: "update", server: null as any });
+    const result = await handleServerMaintain({ action: "update", server: null as unknown as string });
 
     // Assert
     expect(result.isError).toBe(true);
@@ -684,14 +684,14 @@ describe("handleServerMaintain — malformed params", () => {
     expect(parsed.error).toBeTruthy();
   });
 
-  it("returns mcpError when action param is null (as any)", async () => {
+  it("returns mcpError when action param is null (as unknown)", async () => {
     // Arrange
     mockedConfig.getServers.mockReturnValue([sampleServer]);
     mockedConfig.findServer.mockReturnValue(sampleServer as never);
     mockedSsh.sshExec.mockResolvedValue({ code: 0, stdout: "OK", stderr: "" });
 
     // Act
-    const result = await handleServerMaintain({ action: null as any, server: "coolify-test" });
+    const result = await handleServerMaintain({ action: null as unknown as Parameters<typeof handleServerMaintain>[0]["action"], server: "coolify-test" });
 
     // Assert — handler should either catch or return mcpError, never throw uncaught
     expect(result.isError).toBe(true);

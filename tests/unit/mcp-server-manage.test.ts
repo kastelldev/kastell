@@ -840,13 +840,13 @@ describe("handleServerManage — malformed params", () => {
     expect(parsed.error).toBeTruthy();
   });
 
-  it("returns mcpError when server param is null (as any)", async () => {
+  it("returns mcpError when server param is null (as unknown)", async () => {
     // Arrange
     mockedConfig.getServers.mockReturnValue([sampleServer]);
     mockedConfig.findServer.mockReturnValue(undefined as never);
 
     // Act
-    const result = await handleServerManage({ action: "remove", server: null as any });
+    const result = await handleServerManage({ action: "remove", server: null as unknown as string });
 
     // Assert
     expect(result.isError).toBe(true);
@@ -854,13 +854,13 @@ describe("handleServerManage — malformed params", () => {
     expect(parsed.error).toBeTruthy();
   });
 
-  it("returns mcpError when action param is invalid (as any)", async () => {
+  it("returns mcpError when action param is invalid (as unknown)", async () => {
     // Arrange
     mockedConfig.getServers.mockReturnValue([sampleServer]);
     mockedConfig.findServer.mockReturnValue(sampleServer as never);
 
     // Act — invalid action falls through switch, handler should return mcpError
-    const result = await handleServerManage({ action: "nonexistent" as any, server: "coolify-test" });
+    const result = await handleServerManage({ action: "nonexistent" as unknown as Parameters<typeof handleServerManage>[0]["action"], server: "coolify-test" });
 
     // Assert
     expect(result.isError).toBe(true);

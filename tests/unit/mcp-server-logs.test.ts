@@ -593,13 +593,13 @@ describe("handleServerLogs — malformed params", () => {
     expect(parsed.error).toBeTruthy();
   });
 
-  it("returns mcpError when server param is null (as any)", async () => {
+  it("returns mcpError when server param is null (as unknown)", async () => {
     // Arrange
     mockedConfig.getServers.mockReturnValue([sampleServer]);
     mockedConfig.findServer.mockReturnValue(undefined as never);
 
     // Act
-    const result = await handleServerLogs({ action: "logs", server: null as any });
+    const result = await handleServerLogs({ action: "logs", server: null as unknown as string });
 
     // Assert
     expect(result.isError).toBe(true);
