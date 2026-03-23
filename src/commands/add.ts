@@ -127,6 +127,9 @@ export async function addCommand(options: AddOptions = {}): Promise<void> {
   console.log(`  Name: ${server.name}`);
   console.log(`  IP: ${server.ip}`);
   console.log(`  Provider: ${server.provider}`);
+  if (!server.id.startsWith("manual-")) {
+    console.log(`  Cloud ID: ${server.id}`);
+  }
   console.log();
   console.log("All commands now work for this server (status, update, backup, etc.)");
 }

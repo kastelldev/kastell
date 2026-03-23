@@ -7,7 +7,7 @@ import * as config from "../../src/utils/config";
 import * as ssh from "../../src/utils/ssh";
 import * as providerFactory from "../../src/utils/providerFactory";
 import * as tokens from "../../src/core/tokens";
-import { addServerRecord } from "../../src/core/manage";
+import { addServerRecord, destroyCloudServer } from "../../src/core/manage";
 import type { CloudProvider } from "../../src/providers/base";
 
 jest.mock("../../src/utils/config");
@@ -115,5 +115,74 @@ describe("addServerRecord — default mode (backward compat)", () => {
     expect(mockedConfig.saveServer).toHaveBeenCalledWith(
       expect.objectContaining({ mode: "coolify" }),
     );
+  });
+});
+
+describe("addServerRecord — cloud ID lookup", () => {
+  it("stores real cloud ID when findServerByIp resolves a string", async () => {
+    mockProvider.findServerByIp.mockResolvedValue("12345");
+
+    const result = await addServerRecord({
+      provider: "hetzner",
+      ip: "5.6.7.8",
+      name: "cloud-server",
+      mode: "bare",
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.server?.id).toBe("12345");
+  });
+
+  it("falls back to manual-{timestamp} when findServerByIp returns null", async () => {
+    mockProvider.findServerByIp.mockResolvedValue(null);
+
+    const result = await addServerRecord({
+      provider: "hetzner",
+      ip: "5.6.7.8",
+      name: "bare-server",
+      mode: "bare",
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.server?.id).toMatch(/^manual-\d+$/);
+  });
+
+  it("falls back to manual-{timestamp} when findServerByIp throws", async () => {
+    mockProvider.findServerByIp.mockRejectedValue(new Error("API error"));
+
+    const result = await addServerRecord({
+      provider: "hetzner",
+      ip: "5.6.7.8",
+      name: "bare-server",
+      mode: "bare",
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.server?.id).toMatch(/^manual-\d+$/);
+  });
+
+  it("destroyCloudServer does not return the manually-added error for a cloud-ID server", async () => {
+    mockProvider.findServerByIp.mockResolvedValue("12345");
+
+    const addResult = await addServerRecord({
+      provider: "hetzner",
+      ip: "5.6.7.8",
+      name: "cloud-server",
+      mode: "bare",
+    });
+
+    expect(addResult.success).toBe(true);
+    const cloudServer = addResult.server!;
+
+    // Set up config mock so findServer returns the cloud-ID server
+    mockedConfig.findServer.mockReturnValue(cloudServer);
+    mockedConfig.removeServer.mockResolvedValue(true);
+    mockProvider.destroyServer.mockResolvedValue(undefined);
+
+    const destroyResult = await destroyCloudServer("cloud-server");
+
+    // Should NOT fail with the "manually added" error — cloud-ID servers can be destroyed
+    expect(destroyResult.error ?? "").not.toMatch(/manually added/);
+    expect(destroyResult.cloudDeleted).toBe(true);
   });
 });

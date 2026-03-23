@@ -135,6 +135,15 @@ export async function addServerRecord(params: AddServerParams): Promise<AddServe
     };
   }
 
+  // Cloud ID lookup — resolve real provider ID from IP
+  let cloudId: string | null = null;
+  try {
+    const lookupProvider = createProviderWithToken(params.provider, token);
+    cloudId = await lookupProvider.findServerByIp(params.ip);
+  } catch {
+    // Non-fatal: API lookup failure keeps manual-{timestamp} id
+  }
+
   // Resolve mode and platform — auto-detect if no explicit mode provided
   let modeStr = params.mode;
   if (!modeStr && !params.skipVerify && checkSshAvailable()) {
@@ -189,7 +198,7 @@ export async function addServerRecord(params: AddServerParams): Promise<AddServe
 
   // Save to config
   const record: ServerRecord = {
-    id: `manual-${Date.now()}`,
+    id: cloudId ?? `manual-${Date.now()}`,
     name: params.name,
     provider: params.provider,
     ip: params.ip,
