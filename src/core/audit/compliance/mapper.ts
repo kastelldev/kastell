@@ -726,4 +726,30 @@ export const COMPLIANCE_MAP: Record<string, ComplianceRef[]> = {
   ],
   "INCID-FORENSIC-TOOLS": [pci("10.2.1", "Implement audit logs", "partial")],
   "INCID-LOG-ARCHIVE-EXISTS": [pci("10.3.3", "Protect audit logs from modification", "partial")],
+
+  // --- TLS Hardening (Phase 85) ---
+  "TLS-MIN-VERSION": [
+    pci("4.2.1", "Strong cryptography for data in transit — TLS 1.2 minimum", "full"),
+    cis("5.1", "Ensure only approved TLS protocols are used", "partial"),
+  ],
+  "TLS-WEAK-CIPHERS": [
+    pci("4.2.1", "Strong cryptography — no weak ciphers (RC4, DES, 3DES, NULL)", "full"),
+  ],
+  "TLS-HSTS": [
+    cis("4.1", "Ensure web server HSTS is enabled", "partial"),
+  ],
+  "TLS-OCSP": [],
+  "TLS-CERT-EXPIRY": [
+    pci("4.2.1", "Maintain valid TLS certificates — expiry monitoring", "partial"),
+  ],
+  "TLS-DH-PARAM": [
+    pci("4.2.1", "Strong cryptography — DH parameters >= 2048 bits", "partial"),
+    cis("5.1", "Ensure only strong DH parameters are used", "partial"),
+  ],
+  "TLS-COMPRESSION": [
+    pci("4.2.1", "Disable TLS compression to prevent CRIME attack", "partial"),
+  ],
+  "TLS-CERT-CHAIN": [
+    pci("4.2.1", "Ensure certificate chain is complete and valid", "partial"),
+  ],
 };

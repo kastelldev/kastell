@@ -110,5 +110,9 @@ exports[`audit report category structure CHECK_REGISTRY category names and order
     "name": "DNS Security",
     "sectionName": "DNS",
   },
+  {
+    "name": "TLS Hardening",
+    "sectionName": "TLSHARDENING",
+  },
 ]
 `;
