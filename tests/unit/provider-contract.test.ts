@@ -52,6 +52,55 @@ const STATUS_MOCK_DATA: Record<string, unknown> = {
   linode: { status: "running" },
 };
 
+// Per-provider mock responses for findServerByIp (IP found case).
+// Each shape mirrors the real API list response for that provider.
+const FIND_BY_IP_FOUND: Record<string, { response: unknown; ip: string; id: string }> = {
+  hetzner: {
+    ip: "10.0.0.1",
+    id: "1001",
+    response: { servers: [{ id: 1001, public_net: { ipv4: { ip: "10.0.0.1" } } }] },
+  },
+  digitalocean: {
+    ip: "10.0.0.2",
+    id: "2002",
+    response: {
+      droplets: [
+        { id: 2002, networks: { v4: [{ type: "public", ip_address: "10.0.0.2" }] } },
+      ],
+    },
+  },
+  vultr: {
+    ip: "10.0.0.3",
+    id: "uuid-3003",
+    response: { instances: [{ id: "uuid-3003", main_ip: "10.0.0.3" }] },
+  },
+  linode: {
+    ip: "10.0.0.4",
+    id: "4004",
+    response: { data: [{ id: 4004, ipv4: ["10.0.0.4"] }] },
+  },
+};
+
+// Per-provider mock responses for findServerByIp (IP not found case — different IP in list).
+const FIND_BY_IP_MISMATCH: Record<string, unknown> = {
+  hetzner: { servers: [{ id: 9999, public_net: { ipv4: { ip: "99.99.99.99" } } }] },
+  digitalocean: {
+    droplets: [
+      { id: 9999, networks: { v4: [{ type: "public", ip_address: "99.99.99.99" }] } },
+    ],
+  },
+  vultr: { instances: [{ id: "uuid-9999", main_ip: "99.99.99.99" }] },
+  linode: { data: [{ id: 9999, ipv4: ["99.99.99.99"] }] },
+};
+
+// Per-provider mock responses for findServerByIp (empty list case).
+const FIND_BY_IP_EMPTY: Record<string, unknown> = {
+  hetzner: { servers: [] },
+  digitalocean: { droplets: [] },
+  vultr: { instances: [] },
+  linode: { data: [] },
+};
+
 // --- Shared server config for createServer calls ---
 
 const SAMPLE_CONFIG = {
@@ -154,5 +203,31 @@ describe.each(PROVIDERS)("CloudProvider contract — $providerName", ({ factory 
   it("rebootServer resolves without throwing on success", async () => {
     mockedAxios.post.mockResolvedValueOnce({});
     await expect(provider.rebootServer("123")).resolves.toBeUndefined();
+  });
+
+  // ─── findServerByIp contract ────────────────────────────────────────────────
+
+  describe("findServerByIp contract", () => {
+    it("returns server ID string when IP matches a server in the list", async () => {
+      const fixture = FIND_BY_IP_FOUND[provider.name];
+      mockedAxios.get.mockResolvedValueOnce({ data: fixture.response });
+      const result = await provider.findServerByIp(fixture.ip);
+      expect(typeof result).toBe("string");
+      expect(result).toBe(fixture.id);
+    });
+
+    it("returns null when IP is not in the server list", async () => {
+      const fixture = FIND_BY_IP_FOUND[provider.name];
+      mockedAxios.get.mockResolvedValueOnce({ data: FIND_BY_IP_MISMATCH[provider.name] });
+      const result = await provider.findServerByIp(fixture.ip);
+      expect(result).toBeNull();
+    });
+
+    it("returns null when server list is empty", async () => {
+      const fixture = FIND_BY_IP_FOUND[provider.name];
+      mockedAxios.get.mockResolvedValueOnce({ data: FIND_BY_IP_EMPTY[provider.name] });
+      const result = await provider.findServerByIp(fixture.ip);
+      expect(result).toBeNull();
+    });
   });
 });
