@@ -305,4 +305,15 @@ export class VultrProvider implements CloudProvider {
       }),
     extractVultrError);
   }
+
+  async findServerByIp(ip: string): Promise<string | null> {
+    return withProviderErrorHandling("find server by IP", async () => {
+      const response = await apiClient.get(`${this.baseUrl}/instances?per_page=100`, {
+        headers: { Authorization: `Bearer ${this.apiToken}` },
+      });
+      const instances = response.data.instances as { id: string; main_ip: string }[];
+      const found = instances.find((instance) => instance.main_ip === ip);
+      return found ? found.id : null;
+    }, extractVultrError);
+  }
 }

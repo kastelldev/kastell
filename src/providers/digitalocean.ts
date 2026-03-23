@@ -314,4 +314,17 @@ export class DigitalOceanProvider implements CloudProvider {
       }),
     extractDOError);
   }
+
+  async findServerByIp(ip: string): Promise<string | null> {
+    return withProviderErrorHandling("find server by IP", async () => {
+      const response = await apiClient.get(`${this.baseUrl}/droplets?per_page=100`, {
+        headers: { Authorization: `Bearer ${this.apiToken}` },
+      });
+      const droplets = response.data.droplets as { id: number; networks?: { v4?: { type: string; ip_address: string }[] } }[];
+      const found = droplets.find(
+        (droplet) => droplet.networks?.v4?.find((n) => n.type === "public")?.ip_address === ip,
+      );
+      return found ? found.id.toString() : null;
+    }, extractDOError);
+  }
 }

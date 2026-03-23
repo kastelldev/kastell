@@ -35,6 +35,7 @@ export interface CloudProvider {
   deleteSnapshot(snapshotId: string): Promise<void>;
   restoreSnapshot(serverId: string, snapshotId: string): Promise<void>;
   getSnapshotCostEstimate(serverId: string): Promise<string>;
+  findServerByIp(ip: string): Promise<string | null>;
 }
 
 /**

@@ -334,4 +334,15 @@ export class HetznerProvider implements CloudProvider {
       }),
     extractHetznerError);
   }
+
+  async findServerByIp(ip: string): Promise<string | null> {
+    return withProviderErrorHandling("find server by IP", async () => {
+      const response = await apiClient.get(`${this.baseUrl}/servers?per_page=50`, {
+        headers: { Authorization: `Bearer ${this.apiToken}` },
+      });
+      const servers = response.data.servers as { id: number; public_net?: { ipv4?: { ip?: string } } }[];
+      const found = servers.find((server) => server.public_net?.ipv4?.ip === ip);
+      return found ? found.id.toString() : null;
+    }, extractHetznerError);
+  }
 }

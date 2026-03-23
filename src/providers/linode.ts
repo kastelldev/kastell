@@ -332,4 +332,15 @@ export class LinodeProvider implements CloudProvider {
       }),
     extractLinodeError);
   }
+
+  async findServerByIp(ip: string): Promise<string | null> {
+    return withProviderErrorHandling("find server by IP", async () => {
+      const response = await apiClient.get(`${this.baseUrl}/linode/instances?page_size=100`, {
+        headers: { Authorization: `Bearer ${this.apiToken}` },
+      });
+      const instances = response.data.data as { id: number; ipv4?: string[] }[];
+      const found = instances.find((instance) => instance.ipv4?.includes(ip));
+      return found ? found.id.toString() : null;
+    }, extractLinodeError);
+  }
 }
