@@ -31,6 +31,9 @@ jobs:
       - name: TypeScript type check
         run: npx tsc --noEmit
 
+      - name: Build
+        run: npx tsc
+
       - name: Run tests
         run: npm test
 
@@ -68,6 +71,3 @@ jobs:
           name: mutation-report
           path: reports/mutation/
           retention-days: 30
-
-      - name: Build
-        run: npx tsc
