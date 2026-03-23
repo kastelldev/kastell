@@ -122,8 +122,8 @@ export async function addServerRecord(params: AddServerParams): Promise<AddServe
   }
 
   // Validate API token
+  const provider = createProviderWithToken(params.provider, token);
   try {
-    const provider = createProviderWithToken(params.provider, token);
     const valid = await provider.validateToken(token);
     if (!valid) {
       return { success: false, error: `Invalid API token for ${params.provider}` };
@@ -135,11 +135,9 @@ export async function addServerRecord(params: AddServerParams): Promise<AddServe
     };
   }
 
-  // Cloud ID lookup — resolve real provider ID from IP
   let cloudId: string | null = null;
   try {
-    const lookupProvider = createProviderWithToken(params.provider, token);
-    cloudId = await lookupProvider.findServerByIp(params.ip);
+    cloudId = await provider.findServerByIp(params.ip);
   } catch {
     // Non-fatal: API lookup failure keeps manual-{timestamp} id
   }
