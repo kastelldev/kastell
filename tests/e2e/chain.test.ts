@@ -178,6 +178,10 @@ describe("Command→Core Chain Tests", () => {
           aide: true,
           cronAccess: true,
           dockerHardening: true,
+          sshFineTuning: true,
+          loginDefs: true,
+          faillock: true,
+          sudoHardening: true,
         },
       });
 

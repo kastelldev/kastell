@@ -19,6 +19,10 @@ import {
   buildDockerHardeningCommand,
   buildSshCipherCommand,
   buildCronAccessCommand,
+  buildSshFineTuningCommand,
+  buildLoginDefsCommand,
+  buildFaillockCommand,
+  buildSudoHardeningCommand,
   applyLock,
 } from "../../src/core/lock";
 import type { LockResult } from "../../src/core/lock";
@@ -690,7 +694,7 @@ describe("applyLock", () => {
       expect(mockedSsh.sshExec).not.toHaveBeenCalled();
     });
 
-    it("returns LockResult with all 18 step fields", async () => {
+    it("returns LockResult with all 24 step fields", async () => {
       const result = await applyLock("1.2.3.4", "test-server", undefined, { dryRun: true });
       expect(result).toHaveProperty("steps");
       expect(result.steps).toHaveProperty("sshHardening");
@@ -712,11 +716,15 @@ describe("applyLock", () => {
       expect(result.steps).toHaveProperty("logRetention");
       expect(result.steps).toHaveProperty("aide");
       expect(result.steps).toHaveProperty("cronAccess");
+      expect(result.steps).toHaveProperty("sshFineTuning");
+      expect(result.steps).toHaveProperty("loginDefs");
+      expect(result.steps).toHaveProperty("faillock");
+      expect(result.steps).toHaveProperty("sudoHardening");
     });
   });
 
   describe("happy path", () => {
-    it("calls sshExec 21 times: key check + 20 steps", async () => {
+    it("calls sshExec 25 times: key check + 24 steps", async () => {
       mockedAudit.runAudit
         .mockResolvedValueOnce(makeAuditResult(45))
         .mockResolvedValueOnce(makeAuditResult(72));
@@ -726,8 +734,9 @@ describe("applyLock", () => {
 
       // key check + SSH hardening + fail2ban + banners + accountLock + sshCipher + UFW + cloudMeta + DNS
       // + sysctl + unattended-upgrades + aptValidation + resourceLimits + serviceDisable
-      // + backupPermissions + pwquality + dockerHardening + auditd + logRetention + aide + cronAccess = 21
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(21);
+      // + backupPermissions + pwquality + dockerHardening + auditd + logRetention + aide + cronAccess
+      // + sshFineTuning + loginDefs + faillock + sudoHardening = 25
+      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(25);
     });
 
     it("captures scoreBefore=45 and scoreAfter=72 from runAudit", async () => {
@@ -767,6 +776,10 @@ describe("applyLock", () => {
       expect(result.steps.logRetention).toBe(true);
       expect(result.steps.aide).toBe(true);
       expect(result.steps.cronAccess).toBe(true);
+      expect(result.steps.sshFineTuning).toBe(true);
+      expect(result.steps.loginDefs).toBe(true);
+      expect(result.steps.faillock).toBe(true);
+      expect(result.steps.sudoHardening).toBe(true);
     });
 
     it("stepErrors is absent on full success", async () => {
@@ -877,8 +890,8 @@ describe("applyLock", () => {
 
       await applyLock("1.2.3.4", "test-server", undefined, {});
 
-      // All 21 calls were made (key check + 20 steps)
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(21);
+      // All 25 calls were made (key check + 24 steps)
+      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(25);
     });
   });
 
@@ -905,7 +918,7 @@ describe("applyLock", () => {
 
       await applyLock("1.2.3.4", "test-server", undefined, {});
 
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(21);
+      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(25);
     });
   });
 
@@ -933,7 +946,11 @@ describe("applyLock", () => {
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // auditd
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // logRetention
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // aide
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }); // cronAccess
+        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // cronAccess
+        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // sshFineTuning
+        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // loginDefs
+        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // faillock
+        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }); // sudoHardening
 
       const result = await applyLock("1.2.3.4", "test-server", undefined, {});
 
@@ -941,8 +958,8 @@ describe("applyLock", () => {
       expect(result.steps.cloudMeta).toBe(false);
       expect(result.stepErrors?.ufw).toBeDefined();
       expect(result.stepErrors?.cloudMeta).toBe("UFW required");
-      // 20 calls: no cloudMeta call since UFW failed, but all other steps run (including cronAccess)
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(20);
+      // 24 calls: no cloudMeta call since UFW failed, but all other steps run (including P87 steps)
+      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(24);
     });
   });
 
@@ -971,14 +988,18 @@ describe("applyLock", () => {
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // auditd
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // logRetention
         .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // aide
-        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }); // cronAccess
+        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // cronAccess
+        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // sshFineTuning
+        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // loginDefs
+        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // faillock
+        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }); // sudoHardening
 
       const result = await applyLock("1.2.3.4", "test-server", undefined, {});
 
       expect(result.steps.dns).toBe(false);
       expect(result.stepErrors?.dns).toContain("dig timeout");
-      // 22 calls: 21 normal + 1 DNS rollback
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(22);
+      // 26 calls: 25 normal + 1 DNS rollback
+      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(26);
     });
   });
 
@@ -1018,8 +1039,8 @@ describe("applyLock", () => {
 
       const result = await applyLock("1.2.3.4", "test-server", undefined, {});
 
-      // Should still complete all 21 calls (key check + 20 steps)
-      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(21);
+      // Should still complete all 25 calls (key check + 24 steps)
+      expect(mockedSsh.sshExec).toHaveBeenCalledTimes(25);
       expect(result.steps.sshHardening).toBe(true);
     });
   });
@@ -1176,5 +1197,288 @@ describe("applyLock cronAccess step (P82)", () => {
 
     // Assert
     expect(result.steps.cronAccess).toBe(true);
+  });
+});
+
+// ─── buildSshFineTuningCommand (P87) ─────────────────────────────────────────
+
+describe("buildSshFineTuningCommand (P87)", () => {
+  it("backs up sshd_config to bak-finetune", () => {
+    const cmd = buildSshFineTuningCommand();
+    expect(cmd).toContain("sshd_config.bak-finetune");
+  });
+
+  it("sets ClientAliveInterval 300", () => {
+    const cmd = buildSshFineTuningCommand();
+    expect(cmd).toContain("ClientAliveInterval");
+    expect(cmd).toContain("300");
+  });
+
+  it("sets ClientAliveCountMax 3", () => {
+    const cmd = buildSshFineTuningCommand();
+    expect(cmd).toContain("ClientAliveCountMax");
+    expect(cmd).toContain("3");
+  });
+
+  it("sets LoginGraceTime 60", () => {
+    const cmd = buildSshFineTuningCommand();
+    expect(cmd).toContain("LoginGraceTime");
+    expect(cmd).toContain("60");
+  });
+
+  it("sets AllowAgentForwarding no", () => {
+    const cmd = buildSshFineTuningCommand();
+    expect(cmd).toContain("AllowAgentForwarding");
+  });
+
+  it("sets X11Forwarding no", () => {
+    const cmd = buildSshFineTuningCommand();
+    expect(cmd).toContain("X11Forwarding");
+  });
+
+  it("sets MaxStartups 10:30:60", () => {
+    const cmd = buildSshFineTuningCommand();
+    expect(cmd).toContain("MaxStartups");
+    expect(cmd).toContain("10:30:60");
+  });
+
+  it("sets StrictModes yes", () => {
+    const cmd = buildSshFineTuningCommand();
+    expect(cmd).toContain("StrictModes");
+  });
+
+  it("sets PermitUserEnvironment no", () => {
+    const cmd = buildSshFineTuningCommand();
+    expect(cmd).toContain("PermitUserEnvironment");
+  });
+
+  it("sets LogLevel VERBOSE", () => {
+    const cmd = buildSshFineTuningCommand();
+    expect(cmd).toContain("LogLevel");
+    expect(cmd).toContain("VERBOSE");
+  });
+
+  it("sets UseDNS no", () => {
+    const cmd = buildSshFineTuningCommand();
+    expect(cmd).toContain("UseDNS");
+  });
+
+  it("sets PrintMotd no", () => {
+    const cmd = buildSshFineTuningCommand();
+    expect(cmd).toContain("PrintMotd");
+  });
+
+  it("sets IgnoreRhosts yes", () => {
+    const cmd = buildSshFineTuningCommand();
+    expect(cmd).toContain("IgnoreRhosts");
+  });
+
+  it("sets HostbasedAuthentication no", () => {
+    const cmd = buildSshFineTuningCommand();
+    expect(cmd).toContain("HostbasedAuthentication");
+  });
+
+  it("sets MaxSessions 10", () => {
+    const cmd = buildSshFineTuningCommand();
+    expect(cmd).toContain("MaxSessions");
+    expect(cmd).toContain("10");
+  });
+
+  it("sets PermitEmptyPasswords no", () => {
+    const cmd = buildSshFineTuningCommand();
+    expect(cmd).toContain("PermitEmptyPasswords");
+  });
+
+  it("includes sshd -t rollback gate", () => {
+    const cmd = buildSshFineTuningCommand();
+    expect(cmd).toContain("sshd -t");
+  });
+
+  it("restarts sshd on success", () => {
+    const cmd = buildSshFineTuningCommand();
+    expect(cmd).toMatch(/systemctl restart ssh/);
+  });
+
+  it("uses grep-sed-or-append for idempotency", () => {
+    const cmd = buildSshFineTuningCommand();
+    expect(cmd).toContain("grep -qE");
+  });
+});
+
+// ─── buildLoginBannersCommand /etc/motd (P87) ────────────────────────────────
+
+describe("buildLoginBannersCommand /etc/motd (P87)", () => {
+  it("writes to /etc/motd", () => {
+    const cmd = buildLoginBannersCommand();
+    expect(cmd).toContain("/etc/motd");
+  });
+});
+
+// ─── buildCronAccessCommand at.allow (P87) ───────────────────────────────────
+
+describe("buildCronAccessCommand at.allow (P87)", () => {
+  it("creates /etc/at.allow with root", () => {
+    const cmd = buildCronAccessCommand();
+    expect(cmd).toContain("at.allow");
+    expect(cmd).toContain("root");
+  });
+
+  it("sets 600 permissions on at.allow", () => {
+    const cmd = buildCronAccessCommand();
+    expect(cmd).toContain("chmod 600 /etc/at.allow");
+  });
+});
+
+// ─── buildLoginDefsCommand (P87) ─────────────────────────────────────────────
+
+describe("buildLoginDefsCommand (P87)", () => {
+  it("sets PASS_MIN_DAYS 1 in login.defs", () => {
+    const cmd = buildLoginDefsCommand();
+    expect(cmd).toContain("PASS_MIN_DAYS");
+    expect(cmd).toContain("1");
+  });
+
+  it("sets PASS_WARN_AGE 7 in login.defs", () => {
+    const cmd = buildLoginDefsCommand();
+    expect(cmd).toContain("PASS_WARN_AGE");
+    expect(cmd).toContain("7");
+  });
+
+  it("sets ENCRYPT_METHOD SHA512", () => {
+    const cmd = buildLoginDefsCommand();
+    expect(cmd).toContain("ENCRYPT_METHOD");
+    expect(cmd).toContain("SHA512");
+  });
+
+  it("sets UMASK 027", () => {
+    const cmd = buildLoginDefsCommand();
+    expect(cmd).toContain("UMASK");
+    expect(cmd).toContain("027");
+  });
+
+  it("sets INACTIVE=30 in /etc/default/useradd", () => {
+    const cmd = buildLoginDefsCommand();
+    expect(cmd).toContain("INACTIVE");
+    expect(cmd).toContain("/etc/default/useradd");
+  });
+
+  it("uses idempotent grep-sed-or-append", () => {
+    const cmd = buildLoginDefsCommand();
+    expect(cmd).toContain("grep -qE");
+  });
+});
+
+// ─── buildFaillockCommand (P87) ──────────────────────────────────────────────
+
+describe("buildFaillockCommand (P87)", () => {
+  it("writes deny = 5 to faillock.conf", () => {
+    const cmd = buildFaillockCommand();
+    expect(cmd).toContain("deny = 5");
+  });
+
+  it("writes unlock_time = 900", () => {
+    const cmd = buildFaillockCommand();
+    expect(cmd).toContain("unlock_time = 900");
+  });
+
+  it("writes fail_interval = 900", () => {
+    const cmd = buildFaillockCommand();
+    expect(cmd).toContain("fail_interval = 900");
+  });
+
+  it("creates /etc/security directory", () => {
+    const cmd = buildFaillockCommand();
+    expect(cmd).toContain("mkdir -p /etc/security");
+  });
+
+  it("calls pam-auth-update with faillock", () => {
+    const cmd = buildFaillockCommand();
+    expect(cmd).toContain("pam-auth-update");
+  });
+});
+
+// ─── buildSudoHardeningCommand (P87) ─────────────────────────────────────────
+
+describe("buildSudoHardeningCommand (P87)", () => {
+  it("creates kastell-logging in sudoers.d", () => {
+    const cmd = buildSudoHardeningCommand();
+    expect(cmd).toContain("kastell-logging");
+  });
+
+  it("sets Defaults log_output", () => {
+    const cmd = buildSudoHardeningCommand();
+    expect(cmd).toContain("log_output");
+  });
+
+  it("creates kastell-requiretty", () => {
+    const cmd = buildSudoHardeningCommand();
+    expect(cmd).toContain("kastell-requiretty");
+  });
+
+  it("sets Defaults requiretty", () => {
+    const cmd = buildSudoHardeningCommand();
+    expect(cmd).toContain("requiretty");
+  });
+
+  it("sets chmod 440 on sudoers.d files", () => {
+    const cmd = buildSudoHardeningCommand();
+    expect(cmd).toContain("chmod 440");
+  });
+
+  it("skips if already present via grep", () => {
+    const cmd = buildSudoHardeningCommand();
+    expect(cmd).toContain("grep -qr");
+  });
+});
+
+// ─── applyLock P87 steps ─────────────────────────────────────────────────────
+
+describe("applyLock P87 steps", () => {
+  it("includes sshFineTuning in lock result steps", async () => {
+    // Arrange
+    mockedSsh.sshExec.mockResolvedValue({ code: 0, stdout: "2", stderr: "" });
+    mockedAudit.runAudit.mockResolvedValue(makeAuditResult(80));
+
+    // Act
+    const result: LockResult = await applyLock("1.2.3.4", "test", undefined, {});
+
+    // Assert
+    expect(result.steps).toHaveProperty("sshFineTuning");
+  });
+
+  it("includes loginDefs in lock result steps", async () => {
+    // Arrange
+    mockedSsh.sshExec.mockResolvedValue({ code: 0, stdout: "2", stderr: "" });
+    mockedAudit.runAudit.mockResolvedValue(makeAuditResult(80));
+
+    // Act
+    const result: LockResult = await applyLock("1.2.3.4", "test", undefined, {});
+
+    // Assert
+    expect(result.steps).toHaveProperty("loginDefs");
+  });
+
+  it("includes faillock in lock result steps", async () => {
+    // Arrange
+    mockedSsh.sshExec.mockResolvedValue({ code: 0, stdout: "2", stderr: "" });
+    mockedAudit.runAudit.mockResolvedValue(makeAuditResult(80));
+
+    // Act
+    const result: LockResult = await applyLock("1.2.3.4", "test", undefined, {});
+
+    // Assert
+    expect(result.steps).toHaveProperty("faillock");
+  });
+
+  it("includes sudoHardening in lock result steps", async () => {
+    // Arrange
+    mockedSsh.sshExec.mockResolvedValue({ code: 0, stdout: "2", stderr: "" });
+    mockedAudit.runAudit.mockResolvedValue(makeAuditResult(80));
+
+    // Act
+    const result: LockResult = await applyLock("1.2.3.4", "test", undefined, {});
+
+    // Assert
+    expect(result.steps).toHaveProperty("sudoHardening");
   });
 });

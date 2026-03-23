@@ -58,6 +58,6 @@ jobs:
               --title "Staging server destroy failed (run ${{ github.run_id }})" \
               --body "Server $SERVER_NAME may still be running. Check Hetzner dashboard and destroy manually." \
               --label "ops,urgent"
-          # NOTE: Telegram notification via @kastelltestbot — activate when P91 ships
+          # NOTE: Telegram notification via @kastelltestbot — activate when P92 ships
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

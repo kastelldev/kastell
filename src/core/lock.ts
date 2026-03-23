@@ -40,6 +40,11 @@ export interface LockStepResult {
   logRetention: boolean;
   aide: boolean;
   cronAccess: boolean;
+  // Group 5: Score Boost (P87)
+  sshFineTuning: boolean;
+  loginDefs: boolean;
+  faillock: boolean;
+  sudoHardening: boolean;
 }
 
 export interface LockResult {
@@ -114,6 +119,7 @@ export function buildLoginBannersCommand(): SshCommand {
     [
       `printf '${bannerText}\\n' > /etc/issue`,
       `printf '${bannerText}\\n' > /etc/issue.net`,
+      `printf '${bannerText}\\n' > /etc/motd`,
       `grep -qE '^Banner' /etc/ssh/sshd_config || echo 'Banner /etc/issue.net' >> /etc/ssh/sshd_config`,
       "systemctl restart ssh 2>/dev/null || systemctl restart sshd",
     ].join(" && "),
@@ -268,6 +274,8 @@ export function buildCronAccessCommand(): SshCommand {
     [
       "echo root > /etc/cron.allow",
       "chmod 600 /etc/cron.allow",
+      "echo root > /etc/at.allow",
+      "chmod 600 /etc/at.allow",
       "touch /etc/at.deny",
       "chmod 600 /etc/at.deny",
     ].join(" && "),
@@ -376,6 +384,74 @@ export function buildSshCipherCommand(): SshCommand {
   );
 }
 
+export function buildSshFineTuningCommand(): SshCommand {
+  const directives: [string, string][] = [
+    ["ClientAliveInterval", "300"],
+    ["ClientAliveCountMax", "3"],
+    ["LoginGraceTime", "60"],
+    ["AllowAgentForwarding", "no"],
+    ["X11Forwarding", "no"],
+    ["MaxStartups", "10:30:60"],
+    ["StrictModes", "yes"],
+    ["PermitUserEnvironment", "no"],
+    ["LogLevel", "VERBOSE"],
+    ["UseDNS", "no"],
+    ["PrintMotd", "no"],
+    ["IgnoreRhosts", "yes"],
+    ["HostbasedAuthentication", "no"],
+    ["MaxSessions", "10"],
+    ["PermitEmptyPasswords", "no"],
+  ];
+  const sedLines = directives.map(
+    ([key, val]) =>
+      `grep -qE '^#?${key}' /etc/ssh/sshd_config && sed -i 's/^#\\?${key}.*/${key} ${val}/' /etc/ssh/sshd_config || echo '${key} ${val}' >> /etc/ssh/sshd_config`,
+  );
+  return raw(
+    [
+      "cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak-finetune",
+      ...sedLines,
+      "if sshd -t; then systemctl restart sshd 2>/dev/null || systemctl restart ssh; else cp /etc/ssh/sshd_config.bak-finetune /etc/ssh/sshd_config && echo 'SSH fine-tuning rolled back' >&2 && exit 1; fi",
+    ].join(" && "),
+  );
+}
+
+export function buildLoginDefsCommand(): SshCommand {
+  const entries: [string, string, string][] = [
+    ["PASS_MIN_DAYS", "1", "/etc/login.defs"],
+    ["PASS_WARN_AGE", "7", "/etc/login.defs"],
+    ["ENCRYPT_METHOD", "SHA512", "/etc/login.defs"],
+    ["UMASK", "027", "/etc/login.defs"],
+  ];
+  const lines = entries.map(
+    ([key, val, file]) =>
+      `grep -qE '^${key}' ${file} && sed -i 's/^${key}.*/${key} ${val}/' ${file} || echo '${key} ${val}' >> ${file}`,
+  );
+  const useradd = `grep -qE '^INACTIVE' /etc/default/useradd && sed -i 's/^INACTIVE.*/INACTIVE=30/' /etc/default/useradd || echo 'INACTIVE=30' >> /etc/default/useradd`;
+  return raw([...lines, useradd].join(" && "));
+}
+
+export function buildFaillockCommand(): SshCommand {
+  return raw(
+    [
+      "mkdir -p /etc/security",
+      `grep -qE '^deny' /etc/security/faillock.conf 2>/dev/null && sed -i 's/^deny.*/deny = 5/' /etc/security/faillock.conf || printf 'deny = 5\\nunlock_time = 900\\nfail_interval = 900\\n' >> /etc/security/faillock.conf`,
+      "pam-auth-update --enable faillock 2>/dev/null || true",
+    ].join(" && "),
+  );
+}
+
+export function buildSudoHardeningCommand(): SshCommand {
+  return raw(
+    [
+      "mkdir -p /etc/sudoers.d",
+      `grep -qr 'log_output\\|syslog' /etc/sudoers /etc/sudoers.d/ 2>/dev/null || echo 'Defaults log_output' > /etc/sudoers.d/kastell-logging`,
+      "chmod 440 /etc/sudoers.d/kastell-logging 2>/dev/null || true",
+      `grep -qr 'requiretty' /etc/sudoers /etc/sudoers.d/ 2>/dev/null || echo 'Defaults requiretty' > /etc/sudoers.d/kastell-requiretty`,
+      "chmod 440 /etc/sudoers.d/kastell-requiretty 2>/dev/null || true",
+    ].join(" && "),
+  );
+}
+
 // ─── Helper ──────────────────────────────────────────────────────────────────
 
 async function runLockStep(
@@ -422,6 +498,10 @@ export async function applyLock(
     logRetention: false,
     aide: false,
     cronAccess: false,
+    sshFineTuning: false,
+    loginDefs: false,
+    faillock: false,
+    sudoHardening: false,
   };
 
   const stepErrors: Partial<Record<keyof LockStepResult, string>> = {};
@@ -581,6 +661,28 @@ export async function applyLock(
   const cronAccessResult = await runLockStep(ip, buildCronAccessCommand());
   steps.cronAccess = cronAccessResult.ok;
   if (!cronAccessResult.ok) stepErrors.cronAccess = cronAccessResult.error!;
+
+  // ── Group 5: Score Boost (P87) ─────────────────────────────────────────────
+
+  // Step 21: SSH fine-tuning — with sshd -t rollback
+  const sshFineTuneResult = await runLockStep(ip, buildSshFineTuningCommand());
+  steps.sshFineTuning = sshFineTuneResult.ok;
+  if (!sshFineTuneResult.ok) stepErrors.sshFineTuning = sshFineTuneResult.error!;
+
+  // Step 22: Login definitions
+  const loginDefsResult = await runLockStep(ip, buildLoginDefsCommand());
+  steps.loginDefs = loginDefsResult.ok;
+  if (!loginDefsResult.ok) stepErrors.loginDefs = loginDefsResult.error!;
+
+  // Step 23: Faillock
+  const faillockResult = await runLockStep(ip, buildFaillockCommand());
+  steps.faillock = faillockResult.ok;
+  if (!faillockResult.ok) stepErrors.faillock = faillockResult.error!;
+
+  // Step 24: Sudo hardening
+  const sudoHardeningResult = await runLockStep(ip, buildSudoHardeningCommand());
+  steps.sudoHardening = sudoHardeningResult.ok;
+  if (!sudoHardeningResult.ok) stepErrors.sudoHardening = sudoHardeningResult.error!;
 
   // Post-audit (non-fatal)
   let scoreAfter: number | undefined;
