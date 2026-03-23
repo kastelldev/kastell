@@ -313,7 +313,7 @@ export class LinodeProvider implements CloudProvider {
     return withProviderErrorHandling("restore snapshot", async () => {
       await apiClient.post(
         `${this.baseUrl}/linode/instances/${serverId}/rebuild`,
-        { image: snapshotId, root_pass: crypto.randomUUID() + crypto.randomUUID() },
+        { image: snapshotId, root_pass: crypto.randomUUID() },
         { headers: { Authorization: `Bearer ${this.apiToken}`, "Content-Type": "application/json" } },
       );
     }, extractLinodeError);
