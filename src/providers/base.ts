@@ -33,6 +33,7 @@ export interface CloudProvider {
   createSnapshot(serverId: string, name: string): Promise<SnapshotInfo>;
   listSnapshots(serverId: string): Promise<SnapshotInfo[]>;
   deleteSnapshot(snapshotId: string): Promise<void>;
+  restoreSnapshot(serverId: string, snapshotId: string): Promise<void>;
   getSnapshotCostEstimate(serverId: string): Promise<string>;
 }
 

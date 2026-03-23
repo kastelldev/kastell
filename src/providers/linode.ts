@@ -308,6 +308,17 @@ export class LinodeProvider implements CloudProvider {
     }, extractLinodeError);
   }
 
+  async restoreSnapshot(serverId: string, snapshotId: string): Promise<void> {
+    assertValidServerId(serverId);
+    return withProviderErrorHandling("restore snapshot", async () => {
+      await apiClient.post(
+        `${this.baseUrl}/linode/instances/${serverId}/rebuild`,
+        { image: snapshotId, root_pass: crypto.randomUUID() + crypto.randomUUID() },
+        { headers: { Authorization: `Bearer ${this.apiToken}`, "Content-Type": "application/json" } },
+      );
+    }, extractLinodeError);
+  }
+
   async getSnapshotCostEstimate(serverId: string): Promise<string> {
     assertValidServerId(serverId);
     return withProviderErrorHandling("get snapshot cost", () =>

@@ -310,6 +310,18 @@ export class HetznerProvider implements CloudProvider {
     }, extractHetznerError);
   }
 
+  async restoreSnapshot(serverId: string, snapshotId: string): Promise<void> {
+    assertValidServerId(serverId);
+    assertValidServerId(snapshotId);
+    return withProviderErrorHandling("restore snapshot", async () => {
+      await apiClient.post(
+        `${this.baseUrl}/servers/${serverId}/actions/rebuild`,
+        { image: Number(snapshotId) },
+        { headers: { Authorization: `Bearer ${this.apiToken}`, "Content-Type": "application/json" } },
+      );
+    }, extractHetznerError);
+  }
+
   async getSnapshotCostEstimate(serverId: string): Promise<string> {
     assertValidServerId(serverId);
     return withProviderErrorHandling("get snapshot cost", () =>

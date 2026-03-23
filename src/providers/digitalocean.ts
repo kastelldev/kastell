@@ -290,6 +290,18 @@ export class DigitalOceanProvider implements CloudProvider {
     }, extractDOError);
   }
 
+  async restoreSnapshot(serverId: string, snapshotId: string): Promise<void> {
+    assertValidServerId(serverId);
+    assertValidServerId(snapshotId);
+    return withProviderErrorHandling("restore snapshot", async () => {
+      await apiClient.post(
+        `${this.baseUrl}/droplets/${serverId}/actions`,
+        { type: "restore", image: Number(snapshotId) },
+        { headers: { Authorization: `Bearer ${this.apiToken}`, "Content-Type": "application/json" } },
+      );
+    }, extractDOError);
+  }
+
   async getSnapshotCostEstimate(serverId: string): Promise<string> {
     assertValidServerId(serverId);
     return withProviderErrorHandling("get snapshot cost", () =>

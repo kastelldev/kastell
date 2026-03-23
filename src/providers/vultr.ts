@@ -282,6 +282,17 @@ export class VultrProvider implements CloudProvider {
     }, extractVultrError);
   }
 
+  async restoreSnapshot(serverId: string, snapshotId: string): Promise<void> {
+    assertValidServerId(serverId);
+    return withProviderErrorHandling("restore snapshot", async () => {
+      await apiClient.post(
+        `${this.baseUrl}/instances/${serverId}/restore`,
+        { snapshot_id: snapshotId },
+        { headers: { Authorization: `Bearer ${this.apiToken}`, "Content-Type": "application/json" } },
+      );
+    }, extractVultrError);
+  }
+
   async getSnapshotCostEstimate(serverId: string): Promise<string> {
     assertValidServerId(serverId);
     return withProviderErrorHandling("get snapshot cost", () =>
