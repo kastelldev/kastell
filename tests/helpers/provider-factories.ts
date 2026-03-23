@@ -46,6 +46,7 @@ export function createMockProvider(
     deleteSnapshot: jest.fn().mockResolvedValue(undefined),
     restoreSnapshot: jest.fn().mockResolvedValue(undefined),
     getSnapshotCostEstimate: jest.fn().mockResolvedValue("$0.01/GB/month"),
+    findServerByIp: jest.fn().mockResolvedValue(null),
   };
 
   return { ...base, ...overrides };

@@ -95,6 +95,7 @@ function createMockProvider(overrides: Partial<CloudProvider> = {}): CloudProvid
     validateToken: jest.fn().mockResolvedValue(true),
     getAvailableLocations: jest.fn().mockResolvedValue([]),
     getAvailableServerTypes: jest.fn().mockResolvedValue([]),
+    findServerByIp: jest.fn().mockResolvedValue(null),
     ...overrides,
   } as CloudProvider;
 }
