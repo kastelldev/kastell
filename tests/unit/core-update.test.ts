@@ -46,6 +46,7 @@ const mockProvider: CloudProvider = {
   createSnapshot: jest.fn(),
   listSnapshots: jest.fn(),
   deleteSnapshot: jest.fn(),
+  restoreSnapshot: jest.fn(),
   getSnapshotCostEstimate: jest.fn(),
 };
 

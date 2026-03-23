@@ -49,6 +49,7 @@ const createMockProvider = (): jest.Mocked<CloudProvider> => ({
   createSnapshot: jest.fn().mockResolvedValue({ id: "snap-1", name: "test", status: "available", sizeGb: 20, createdAt: "", serverId: "", costPerMonth: "$0" }),
   listSnapshots: jest.fn().mockResolvedValue([]),
   deleteSnapshot: jest.fn().mockResolvedValue(undefined),
+  restoreSnapshot: jest.fn().mockResolvedValue(undefined),
   getSnapshotCostEstimate: jest.fn().mockReturnValue("$0.01/GB/month"),
 });
 
