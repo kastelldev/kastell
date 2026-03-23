@@ -114,5 +114,9 @@ exports[`audit report category structure CHECK_REGISTRY category names and order
     "name": "TLS Hardening",
     "sectionName": "TLSHARDENING",
   },
+  {
+    "name": "HTTP Security Headers",
+    "sectionName": "HTTPHEADERS",
+  },
 ]
 `;

@@ -13,6 +13,6 @@ describe("audit report category structure", () => {
   });
 
   it("CHECK_REGISTRY has expected category count", () => {
-    expect(CHECK_REGISTRY.length).toMatchInlineSnapshot(`28`);
+    expect(CHECK_REGISTRY.length).toMatchInlineSnapshot(`29`);
   });
 });

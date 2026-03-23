@@ -752,4 +752,20 @@ export const COMPLIANCE_MAP: Record<string, ComplianceRef[]> = {
   "TLS-CERT-CHAIN": [
     pci("4.2.1", "Ensure certificate chain is complete and valid", "partial"),
   ],
+
+  // --- HTTP Security Headers (Phase 86) ---
+  "HDR-001": [
+    pci("6.4.1", "Protect against clickjacking (X-Frame-Options or CSP frame-ancestors)", "partial"),
+  ],
+  "HDR-002": [
+    pci("6.4.1", "Prevent MIME type sniffing (X-Content-Type-Options: nosniff)", "partial"),
+  ],
+  "HDR-003": [],   // Referrer-Policy — no direct CIS/PCI mapping; best practice
+  "HDR-004": [],   // Permissions-Policy — no direct CIS/PCI mapping; best practice
+  "HDR-005": [
+    pci("6.5.9", "Protect against cross-site request forgery (CORS wildcard)", "partial"),
+  ],
+  "HDR-006": [
+    pci("6.4.1", "Content Security Policy — defense against XSS injection", "partial"),
+  ],
 };

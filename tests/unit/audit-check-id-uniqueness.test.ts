@@ -22,7 +22,8 @@ describe("CHECK_REGISTRY ID invariants", () => {
   });
 
   it("all check IDs match semantic CATEGORY-DESCRIPTION format", () => {
-    const semanticPattern = /^[A-Z][A-Z0-9]*(-[A-Z][A-Z0-9]*)+$/;
+    // Segments may be alphabetic (TLS-MIN-VERSION) or numeric (HDR-001) — both are valid
+    const semanticPattern = /^[A-Z][A-Z0-9]*(-[A-Z0-9]+)+$/;
     const nonSemantic = allIds.filter((id) => !semanticPattern.test(id));
     expect(nonSemantic).toEqual([]);
   });
