@@ -29,7 +29,7 @@ export const serverBackupSchema = {
   backupId: z.string().regex(/^[\w-]+$/, "Invalid backupId: only alphanumeric, hyphens, underscores allowed").optional().describe(
     "Backup timestamp folder name (required for backup-restore).",
   ),
-  snapshotId: z.string().optional().describe(
+  snapshotId: z.string().regex(/^[\w./-]+$/, "Invalid snapshotId: only alphanumeric, hyphens, dots, slashes allowed").optional().describe(
     "Cloud snapshot ID (required for snapshot-delete and snapshot-restore).",
   ),
 };

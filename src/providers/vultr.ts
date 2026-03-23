@@ -284,6 +284,7 @@ export class VultrProvider implements CloudProvider {
 
   async restoreSnapshot(serverId: string, snapshotId: string): Promise<void> {
     assertValidServerId(serverId);
+    assertValidServerId(snapshotId);
     return withProviderErrorHandling("restore snapshot", async () => {
       await apiClient.post(
         `${this.baseUrl}/instances/${serverId}/restore`,

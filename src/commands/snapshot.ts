@@ -16,6 +16,11 @@ async function snapshotCreate(
   query?: string,
   options?: SnapshotOptions,
 ): Promise<void> {
+  if (isSafeMode()) {
+    logger.error("Snapshot creation is blocked in SAFE_MODE (billable operation). Set KASTELL_SAFE_MODE=false to allow.");
+    return;
+  }
+
   const server = await resolveServer(query, "Select a server to snapshot:");
   if (!server) return;
 

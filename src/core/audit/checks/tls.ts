@@ -53,7 +53,7 @@ const TLS_CHECKS: TlsCheckDef[] = [
       }
       // Split on ':' and check each token — skip tokens starting with '!' (exclusion)
       // Use word-boundary-like check: cipher name appears at start, end, or surrounded by '-'
-      const weakPattern = /(^|-)(RC4|DES|3DES|MD5|EXPORT|NULL|aNULL)(-|$)/i;
+      const weakPattern = /(^|-)(RC4|DES|3DES|MD5|EXPORT|NULL|aNULL|SEED|IDEA)(-|$)/i;
       const tokens = cipherLine.split(":").map((t) => t.trim());
       const weakFound = tokens.filter((t) => !t.startsWith("!") && weakPattern.test(t));
       if (weakFound.length > 0) {
@@ -61,7 +61,7 @@ const TLS_CHECKS: TlsCheckDef[] = [
       }
       return { passed: true, currentValue: `Ciphers: ${cipherLine.trim()}` };
     },
-    expectedValue: "No RC4, DES, 3DES, MD5, EXPORT, NULL, or aNULL ciphers in ssl_ciphers",
+    expectedValue: "No RC4, DES, 3DES, MD5, EXPORT, NULL, aNULL, SEED, or IDEA ciphers in ssl_ciphers",
     fixCommand:
       "# In /etc/nginx/nginx.conf or site config:\nssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:!aNULL:!MD5;\nnginx -t && systemctl reload nginx",
     explain:
@@ -73,6 +73,10 @@ const TLS_CHECKS: TlsCheckDef[] = [
     severity: "warning",
     check: (output) => {
       if (output.includes("Strict-Transport-Security")) {
+        const maxAgeMatch = output.match(/max-age\s*=\s*(\d+)/i);
+        if (maxAgeMatch && parseInt(maxAgeMatch[1], 10) < 31536000) {
+          return { passed: false, currentValue: `HSTS max-age too low: ${maxAgeMatch[1]} (need >= 31536000)` };
+        }
         return { passed: true, currentValue: "HSTS header configured in Nginx" };
       }
       return { passed: false, currentValue: "Strict-Transport-Security header not configured" };
@@ -192,10 +196,12 @@ const TLS_CHECKS: TlsCheckDef[] = [
   },
 ];
 
+const CATEGORY = "TLS Hardening";
+
 function makeNginxSkippedChecks(): AuditCheck[] {
   return TLS_CHECKS.map((def) => ({
     id: def.id,
-    category: "TLS Hardening",
+    category: CATEGORY,
     name: def.name,
     severity: "info" as const,
     passed: true,
@@ -224,7 +230,7 @@ export const parseTlsChecks: CheckParser = (
     const { passed, currentValue } = def.check(sectionOutput);
     return {
       id: def.id,
-      category: "TLS Hardening",
+      category: CATEGORY,
       name: def.name,
       severity: def.severity,
       passed,

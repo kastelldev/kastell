@@ -294,7 +294,7 @@ export class HetznerProvider implements CloudProvider {
             status: img.status,
             sizeGb: img.image_size || 0,
             createdAt: img.created,
-            costPerMonth: `€${((img.image_size || 0) * 0.006).toFixed(2)}/mo`,
+            costPerMonth: formatSnapshotCost("hetzner", img.image_size || 0),
           }),
         );
       }),
@@ -337,7 +337,7 @@ export class HetznerProvider implements CloudProvider {
 
   async findServerByIp(ip: string): Promise<string | null> {
     return withProviderErrorHandling("find server by IP", async () => {
-      const response = await apiClient.get(`${this.baseUrl}/servers?per_page=50`, {
+      const response = await apiClient.get(`${this.baseUrl}/servers?per_page=100`, {
         headers: { Authorization: `Bearer ${this.apiToken}` },
       });
       const servers = response.data.servers as { id: number; public_net?: { ipv4?: { ip?: string } } }[];

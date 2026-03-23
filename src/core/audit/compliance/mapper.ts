@@ -731,9 +731,11 @@ export const COMPLIANCE_MAP: Record<string, ComplianceRef[]> = {
   "TLS-MIN-VERSION": [
     pci("4.2.1", "Strong cryptography for data in transit — TLS 1.2 minimum", "full"),
     cis("5.1", "Ensure only approved TLS protocols are used", "partial"),
+    hipaa("§164.312(e)(1)", "Transmission security — TLS 1.2 minimum", "partial"),
   ],
   "TLS-WEAK-CIPHERS": [
-    pci("4.2.1", "Strong cryptography — no weak ciphers (RC4, DES, 3DES, NULL)", "full"),
+    pci("4.2.1", "Strong cryptography — no weak ciphers (RC4, DES, 3DES, NULL, SEED, IDEA)", "full"),
+    hipaa("§164.312(e)(1)", "Transmission security — strong cipher suites", "partial"),
   ],
   "TLS-HSTS": [
     cis("4.1", "Ensure web server HSTS is enabled", "partial"),
@@ -763,7 +765,7 @@ export const COMPLIANCE_MAP: Record<string, ComplianceRef[]> = {
   "HDR-003": [],   // Referrer-Policy — no direct CIS/PCI mapping; best practice
   "HDR-004": [],   // Permissions-Policy — no direct CIS/PCI mapping; best practice
   "HDR-005": [
-    pci("6.5.9", "Protect against cross-site request forgery (CORS wildcard)", "partial"),
+    pci("6.2.4", "Protect against cross-site request forgery (CORS wildcard)", "partial"),
   ],
   "HDR-006": [
     pci("6.4.1", "Content Security Policy — defense against XSS injection", "partial"),

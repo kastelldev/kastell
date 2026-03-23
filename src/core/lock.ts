@@ -431,10 +431,19 @@ export function buildLoginDefsCommand(): SshCommand {
 }
 
 export function buildFaillockCommand(): SshCommand {
+  const directives: [string, string][] = [
+    ["deny", "5"],
+    ["unlock_time", "900"],
+    ["fail_interval", "900"],
+  ];
+  const lines = directives.map(
+    ([key, val]) =>
+      `grep -qE '^${key}' /etc/security/faillock.conf 2>/dev/null && sed -i 's/^${key}.*/${key} = ${val}/' /etc/security/faillock.conf || echo '${key} = ${val}' >> /etc/security/faillock.conf`,
+  );
   return raw(
     [
       "mkdir -p /etc/security",
-      `grep -qE '^deny' /etc/security/faillock.conf 2>/dev/null && sed -i 's/^deny.*/deny = 5/' /etc/security/faillock.conf || printf 'deny = 5\\nunlock_time = 900\\nfail_interval = 900\\n' >> /etc/security/faillock.conf`,
+      ...lines,
       "pam-auth-update --enable faillock 2>/dev/null || true",
     ].join(" && "),
   );

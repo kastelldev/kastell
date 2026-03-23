@@ -43,7 +43,7 @@ describe("HetznerProvider.findServerByIp", () => {
 
     expect(result).toBe("12345");
     expect(mockedAxios.get).toHaveBeenCalledWith(
-      expect.stringContaining("/servers?per_page=50"),
+      expect.stringContaining("/servers?per_page=100"),
       expect.objectContaining({ headers: expect.objectContaining({ Authorization: "Bearer test-token" }) }),
     );
   });

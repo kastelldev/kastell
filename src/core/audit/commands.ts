@@ -629,7 +629,7 @@ function tlsSection(): string {
     `echo "$_NGX" | grep -iE 'ssl_ciphers' | head -5 || echo 'N/A'`,
     `echo "$_NGX" | grep -iE 'Strict-Transport-Security' | head -5 || echo 'N/A'`,
     `echo "$_NGX" | grep -iE 'ssl_stapling[^_]' | head -5 || echo 'N/A'`,
-    `CERT=$(echo "$_NGX" | grep -iE '^\\s*ssl_certificate\\s' | head -1 | awk '{print $2}' | tr -d ';'); [ -n "$CERT" ] && [ -f "$CERT" ] && openssl x509 -checkend 2592000 -noout -in "$CERT" 2>/dev/null && echo 'CERT_VALID_30DAYS' || echo 'CERT_EXPIRING_SOON'`,
+    `CERT=$(echo "$_NGX" | grep -iE '^\\s*ssl_certificate\\s' | head -1 | awk '{print $2}' | tr -d ';'); if [ -z "$CERT" ] || [ ! -f "$CERT" ]; then echo 'CERT_NOT_FOUND'; elif openssl x509 -checkend 2592000 -noout -in "$CERT" 2>/dev/null; then echo 'CERT_VALID_30DAYS'; else echo 'CERT_EXPIRING_SOON'; fi`,
     `DHPEM=$(echo "$_NGX" | grep -iE 'ssl_dhparam' | head -1 | awk '{print $2}' | tr -d ';'); [ -n "$DHPEM" ] && [ -f "$DHPEM" ] && openssl dhparam -check -text -in "$DHPEM" 2>/dev/null | grep -E 'DH Parameters|bits' | head -3 || echo 'NO_DH_PARAM'`,
     `echo "$_NGX" | grep -iE 'ssl_compression' | head -3 || echo 'SSL_COMPRESSION_NOT_SET'`,
     `CERT=$(echo "$_NGX" | grep -iE '^\\s*ssl_certificate\\s' | head -1 | awk '{print $2}' | tr -d ';'); [ -n "$CERT" ] && [ -f "$CERT" ] && openssl verify -CApath /etc/ssl/certs "$CERT" 2>/dev/null || echo 'CERT_VERIFY_NOT_POSSIBLE'`,
@@ -640,7 +640,7 @@ function httpHeadersSection(): string {
   return [
     NAMED_SEP("HTTPHEADERS"),
     `command -v nginx >/dev/null 2>&1 || echo 'NGINX_NOT_INSTALLED'`,
-    `curl -sI --max-time 5 http://localhost 2>/dev/null || echo 'HTTP_NOT_RESPONDING'`,
+    `curl -skI --max-time 5 https://localhost 2>/dev/null || curl -sI --max-time 5 http://localhost 2>/dev/null || echo 'HTTP_NOT_RESPONDING'`,
   ].join("\n");
 }
 
