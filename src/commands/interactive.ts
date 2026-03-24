@@ -452,7 +452,12 @@ async function promptAudit(): Promise<string[] | null> {
         type: "input",
         name: "diffRef",
         message: "Diff reference (e.g. pre-upgrade:latest or pre-upgrade:post-upgrade):",
-        validate: (v: string) => (v.includes(":") ? true : "Format: before:after"),
+        validate: (v: string) => {
+          const parts = v.split(":");
+          return parts.length === 2 && parts[0].length > 0 && parts[1].length > 0
+            ? true
+            : "Format: before:after (e.g. pre-upgrade:latest)";
+        },
       },
     ]);
     return ["audit", "--diff", diffRef];
