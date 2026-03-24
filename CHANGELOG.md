@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.14.0] - 2026-03-23
+## [1.14.0] - 2026-03-24
 
 ### Added
 - **Snapshot Restore** — `kastell snapshot restore` CLI + MCP `snapshot-restore` action with SAFE_MODE guard, double confirmation, and 4-provider support (Hetzner, DigitalOcean, Vultr, Linode)
@@ -10,7 +10,8 @@ All notable changes to this project will be documented in this file.
 - **TLS Hardening Audit** — 8 checks (min version, weak ciphers, HSTS with max-age validation, OCSP stapling, cert expiry, DH params, compression, cert chain) with PCI-DSS/CIS/HIPAA compliance mappings
 - **HTTP Security Headers Audit** — 6 checks (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, CORS wildcard, CSP) with PCI-DSS v4.0 mappings
 - **Lock Score Boost** — 4 new lock steps (SSH fine-tuning with 15 directives, login.defs hardening, pam_faillock, sudo logging/requiretty) + 2 extended steps (banners +/etc/motd, cronAccess +at.allow); 24-step orchestrator
-- **Stryker Mutation Testing** — Baseline 40.74%, CI gate `break:40`, incremental mode with GH Actions cache
+- **Interactive menu** — Added snapshot restore, audit --explain/--diff/--fix, doctor --fix options
+- **Stryker Mutation Testing** — Baseline 40.74% across 19,726 mutants
 
 ### Fixed
 - **Lock-audit alignment** — 5 misalignments fixed (AIDE cron path, auditd restart, logrotate install+timer, cronAccess step, Docker mkdir)
@@ -21,18 +22,25 @@ All notable changes to this project will be documented in this file.
 - **Vultr/Linode snapshotId validation** — Added `assertValidServerId` for defense-in-depth
 - **Hetzner findServerByIp pagination** — Changed `per_page` from 50 to 100 for consistency
 - **Faillock idempotency** — Each directive independently checked/updated instead of batch
+- **fileLock ENOENT** — Ensure parent directory exists before creating lock file
 
 ### Changed
-- **Test suite** — 4178→4754 tests (576 new), 196 suites, 11 snapshots; coverage threshold raised to 90% global + per-module (audit 95%, provider/MCP 90%)
+- **Test suite** — 4178→5087 tests (909 new), 197 suites, 11 snapshots; branch coverage: global 93.25%, audit 95.96%, providers 91.22%, MCP 90.25%
 - **Audit categories** — 27→29 (TLS Hardening + HTTP Security Headers); 421+ total checks
-- **CI hardening** — Codecov integration, Stryker CI gate, 4 typed test factory helpers, zero `as any` casts (231→0)
+- **CI hardening** — Codecov integration, 4 typed test factory helpers, zero `as any` casts (231→0)
+- **CI release gate** — `release.yml` now depends on CI success via `workflow_run` (prevents releasing when CI fails)
+- **CI tag support** — CI workflow now runs on tag pushes for release/publish chain
 - **TLS weak cipher detection** — Added SEED and IDEA to pattern
 - **HSTS validation** — Now checks max-age >= 31536000
 - **Compliance mappings** — Added HIPAA for TLS, updated PCI-DSS HDR-005 to v4.0 (6.2.4)
 - **Skill consolidation** — 5 global security skills delegated to single `kastell-security-check.md`
 
+### Removed
+- **Stryker from CI** — Mutation testing removed from GitHub Actions (exceeds 6h limit); moved to dedicated infrastructure with scheduled nightly incremental runs
+
 ### Security
 - **Comprehensive v1.14 review** — 5-agent parallel audit (OWASP, token/secret, audit system, code quality, test coverage); 13 findings resolved (3 MEDIUM + 10 LOW)
+- **Release workflow injection fix** — Prevented shell injection via `head_branch` interpolation; added strict semver validation before checkout
 - **Zero token leakage** — 5-layer sanitization verified across all new code paths
 
 ## [1.13.0] - 2026-03-19
