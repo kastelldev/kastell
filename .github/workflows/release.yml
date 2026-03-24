@@ -1,9 +1,10 @@
 name: Create GitHub Release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
 
 permissions:
   contents: write
@@ -11,14 +12,22 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' && startsWith(github.event.workflow_run.head_branch, 'v') }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+
+      - name: Extract tag name
+        id: tag
+        run: echo "name=${{ github.event.workflow_run.head_branch }}" >> "$GITHUB_OUTPUT"
 
       - name: Extract release notes from CHANGELOG
         id: notes
         run: |
           # Strip 'v' prefix to get version number
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${{ steps.tag.outputs.name }}"
+          VERSION="${VERSION#v}"
 
           # Extract notes between this version's header and the next
           NOTES=$(awk -v ver="$VERSION" '
@@ -31,13 +40,14 @@ jobs:
           if [ -n "$NOTES" ]; then
             echo "$NOTES" > release-notes.md
           else
-            echo "Release $GITHUB_REF_NAME" > release-notes.md
+            echo "Release ${{ steps.tag.outputs.name }}" > release-notes.md
           fi
 
       - name: Determine pre-release
         id: prerelease
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${{ steps.tag.outputs.name }}"
+          VERSION="${VERSION#v}"
           if [[ "$VERSION" == 0.* ]]; then
             echo "flag=--prerelease" >> "$GITHUB_OUTPUT"
           else
@@ -46,8 +56,8 @@ jobs:
 
       - name: Create GitHub Release
         run: |
-          gh release create "$GITHUB_REF_NAME" \
-            --title "$GITHUB_REF_NAME" \
+          gh release create "${{ steps.tag.outputs.name }}" \
+            --title "${{ steps.tag.outputs.name }}" \
             --notes-file release-notes.md \
             ${{ steps.prerelease.outputs.flag }}
         env:
@@ -56,7 +66,8 @@ jobs:
       - name: Notify website to sync CLI data
         continue-on-error: true
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${{ steps.tag.outputs.name }}"
+          VERSION="${VERSION#v}"
           CHANGELOG=$(jq -Rs . < release-notes.md)
           jq -n --arg v "$VERSION" --argjson cl "$CHANGELOG" \
             '{"event_type":"cli-release","client_payload":{"version":$v,"changelog":$cl}}' \
