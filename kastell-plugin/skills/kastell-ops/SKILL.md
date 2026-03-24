@@ -2,7 +2,9 @@
 name: kastell-ops
 description: Kastell CLI patterns, architecture, anti-patterns, and decision trees. Use automatically when working in Kastell codebase or when asked about Kastell server infrastructure, security audit, hardening, lock, provision, or provider management.
 user-invocable: false
-allowed-tools: Bash
+allowed-tools: Bash, Read, Glob, Grep
+effort: medium
+memory: project
 ---
 
 # Kastell Architecture
@@ -111,6 +113,21 @@ interface PlatformAdapter {
 - `PROVIDER_REGISTRY` = single source of truth for providers
 - `withProviderErrorHandling` HOF for consistent provider error handling
 - `describe.each` with `jest.resetAllMocks()` (not `clearAllMocks()`)
+
+## Scripts (Deterministic)
+
+Run without LLM — pipe audit/fleet JSON output for instant analysis:
+
+```bash
+# Parse audit JSON into 5 security domain summaries
+kastell audit --server <name> --json | bash scripts/parse_audit.sh
+
+# Generate fleet-wide server score table
+kastell fleet --json | bash scripts/fleet_report.sh
+
+# Compare audit check count vs test coverage
+bash scripts/check_coverage.sh
+```
 
 ## Reference Files
 

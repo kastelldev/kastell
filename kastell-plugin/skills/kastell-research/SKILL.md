@@ -4,6 +4,8 @@ description: Read-only Kastell codebase exploration. Use when tracing a bug acro
 context: fork
 agent: Explore
 allowed-tools: Read, Grep, Glob
+effort: medium
+memory: project
 ---
 
 # Kastell Research
