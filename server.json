@@ -1,17 +1,17 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.kastelldev/kastell",
-  "description": "CLI toolkit for provisioning, securing, and managing self-hosted servers. 413-check security audit, 19-step hardening, CIS/PCI-DSS/HIPAA compliance.",
+  "description": "Server security audit (413 checks), hardening, and fleet management across 4 cloud providers.",
   "repository": {
     "url": "https://github.com/kastelldev/kastell",
     "source": "github"
   },
-  "version": "1.13.0",
+  "version": "1.14.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "kastell",
-      "version": "1.13.0",
+      "version": "1.14.0",
       "transport": {
         "type": "stdio"
       },
