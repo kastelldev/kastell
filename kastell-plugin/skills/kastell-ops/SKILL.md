@@ -109,24 +109,26 @@ interface PlatformAdapter {
 - `assertValidIp()` before every SSH operation
 - `sanitizedEnv` for subprocess calls
 - `sanitizeResponseData()` whitelist approach for API error responses
-- Config dir: `~/.kastell/` (auto-migrated from `~/.quicklify/`)
+- Config dir: user home `kastell/` directory (auto-migrated from legacy name)
 - `PROVIDER_REGISTRY` = single source of truth for providers
 - `withProviderErrorHandling` HOF for consistent provider error handling
 - `describe.each` with `jest.resetAllMocks()` (not `clearAllMocks()`)
 
 ## Scripts (Deterministic)
 
-Run without LLM — pipe audit/fleet JSON output for instant analysis:
+Run without LLM — deterministic analysis scripts:
 
 ```bash
 # Parse audit JSON into 5 security domain summaries
-kastell audit --server <name> --json | bash scripts/parse_audit.sh
+kastell audit --server myserver --json > /tmp/audit.json
+scripts/parse_audit.sh /tmp/audit.json
 
 # Generate fleet-wide server score table
-kastell fleet --json | bash scripts/fleet_report.sh
+kastell fleet --json > /tmp/fleet.json
+scripts/fleet_report.sh /tmp/fleet.json
 
 # Compare audit check count vs test coverage
-bash scripts/check_coverage.sh
+scripts/check_coverage.sh
 ```
 
 ## Reference Files
