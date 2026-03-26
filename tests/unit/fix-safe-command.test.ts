@@ -18,7 +18,7 @@ import { fixSafeCommand } from "../../src/commands/fix.js";
 import { resolveServer } from "../../src/utils/serverSelect.js";
 import { checkSshAvailable, sshExec } from "../../src/utils/ssh.js";
 import { runAudit } from "../../src/core/audit/index.js";
-import { previewSafeFixes, runScoreCheck, KNOWN_AUDIT_FIX_PREFIXES } from "../../src/core/audit/fix.js";
+import { previewSafeFixes, runScoreCheck, isFixCommandAllowed } from "../../src/core/audit/fix.js";
 import { backupServer } from "../../src/core/backup.js";
 import { logger, createSpinner } from "../../src/utils/logger.js";
 import inquirer from "inquirer";
@@ -87,10 +87,9 @@ beforeEach(() => {
     stop: jest.fn(),
   });
 
-  // Default KNOWN_AUDIT_FIX_PREFIXES mock
-  (KNOWN_AUDIT_FIX_PREFIXES as unknown as string[]).length = 0;
-  (KNOWN_AUDIT_FIX_PREFIXES as unknown as string[]).push(
-    "sysctl", "echo ", "sed ", "chmod", "systemctl",
+  // Default isFixCommandAllowed mock — allow common fix prefixes
+  (isFixCommandAllowed as jest.MockedFunction<typeof isFixCommandAllowed>).mockImplementation(
+    (cmd: string) => ["sysctl", "echo ", "sed ", "chmod", "systemctl"].some((p) => cmd.startsWith(p)),
   );
 });
 

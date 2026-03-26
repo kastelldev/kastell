@@ -38,6 +38,15 @@ export const KNOWN_AUDIT_FIX_PREFIXES = [
   "DEBIAN_FRONTEND", "curl",
 ];
 
+/** Shell metacharacter guard — rejects commands with injection-prone characters */
+const SHELL_METACHAR = /[;&|`$()><]/;
+
+/** Check if a fix command passes whitelist + metachar validation */
+export function isFixCommandAllowed(command: string): boolean {
+  const isKnown = KNOWN_AUDIT_FIX_PREFIXES.some((p) => command.startsWith(p));
+  return isKnown && !SHELL_METACHAR.test(command);
+}
+
 /** Categories where auto-fix is NEVER allowed regardless of check-level tier (D-02) */
 export const FORBIDDEN_CATEGORIES = new Set(["SSH", "Firewall", "Docker"]);
 
@@ -277,9 +286,7 @@ export async function runFix(
           }
         }
         // Validate fixCommand against known safe prefixes + reject shell metacharacters
-        const SHELL_METACHAR = /[;&|`$()><]/;
-        const isKnown = KNOWN_AUDIT_FIX_PREFIXES.some((p) => check.fixCommand.startsWith(p));
-        if (!isKnown || SHELL_METACHAR.test(check.fixCommand)) {
+        if (!isFixCommandAllowed(check.fixCommand)) {
           errors.push(`${check.id}: fix command rejected — ${check.fixCommand.slice(0, 60)}`);
           continue;
         }

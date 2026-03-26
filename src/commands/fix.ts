@@ -8,7 +8,7 @@ import { runAudit } from "../core/audit/index.js";
 import {
   previewSafeFixes,
   runScoreCheck,
-  KNOWN_AUDIT_FIX_PREFIXES,
+  isFixCommandAllowed,
 } from "../core/audit/fix.js";
 import { backupServer } from "../core/backup.js";
 
@@ -182,12 +182,8 @@ export async function fixSafeCommand(
             continue;
           }
         }
-        // Shell metachar guard (existing pattern from fix.ts)
-        const SHELL_METACHAR = /[;&|`$()><]/;
-        const isKnown = KNOWN_AUDIT_FIX_PREFIXES.some((p) =>
-          check.fixCommand.startsWith(p),
-        );
-        if (!isKnown || SHELL_METACHAR.test(check.fixCommand)) {
+        // Whitelist + shell metachar guard
+        if (!isFixCommandAllowed(check.fixCommand)) {
           errors.push(`${check.id}: fix command rejected`);
           continue;
         }
