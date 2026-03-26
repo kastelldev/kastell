@@ -38,7 +38,7 @@ export async function fixSafeCommand(
   const server = await resolveServer(query, "Select a server to fix:");
   if (!server) return;
 
-  const { ip, name, provider } = server;
+  const { ip, name } = server;
   const platform = server.platform ?? server.mode ?? "bare";
 
   // Pre-flight SSH check
