@@ -38,6 +38,7 @@ Commands:
   completions [shell]                      Generate shell completion scripts (bash, zsh, fish)
   audit [options] [server-name]            Run a security audit on a server
   evidence [options] [server]              Collect forensic evidence package from a server
+  fix [options] [server]                   Apply safe auto-fixes from security audit (SAFE tier only)
   notify                                   Manage notification channels
   fleet [options]                          Show health and security posture of all registered servers
   auth                                     Manage provider API tokens (OS keychain)
