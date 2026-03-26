@@ -5,6 +5,7 @@
  */
 
 import type { AuditCheck, CheckParser, Severity } from "../types.js";
+import { makeSkippedChecks } from "./shared/skipChecks.js";
 
 interface TlsCheckDef {
   id: string;
@@ -198,20 +199,6 @@ const TLS_CHECKS: TlsCheckDef[] = [
 
 const CATEGORY = "TLS Hardening";
 
-function makeNginxSkippedChecks(): AuditCheck[] {
-  return TLS_CHECKS.map((def) => ({
-    id: def.id,
-    category: CATEGORY,
-    name: def.name,
-    severity: "info" as const,
-    passed: true,
-    currentValue: "Nginx not installed",
-    expectedValue: def.expectedValue,
-    fixCommand: def.fixCommand,
-    explain: def.explain,
-  }));
-}
-
 export const parseTlsChecks: CheckParser = (
   sectionOutput: string,
   _platform: string,
@@ -223,7 +210,7 @@ export const parseTlsChecks: CheckParser = (
     sectionOutput.includes("NGINX_NOT_INSTALLED");
 
   if (isSkipped) {
-    return makeNginxSkippedChecks();
+    return makeSkippedChecks(TLS_CHECKS, CATEGORY, "Nginx not installed");
   }
 
   return TLS_CHECKS.map((def) => {

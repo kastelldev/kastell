@@ -5,6 +5,7 @@
  */
 
 import type { AuditCheck, CheckParser, Severity } from "../types.js";
+import { makeSkippedChecks } from "./shared/skipChecks.js";
 
 interface HttpHeaderCheckDef {
   id: string;
@@ -114,20 +115,6 @@ const HTTP_HEADER_CHECKS: HttpHeaderCheckDef[] = [
   },
 ];
 
-function makeNginxSkippedChecks(): AuditCheck[] {
-  return HTTP_HEADER_CHECKS.map((def) => ({
-    id: def.id,
-    category: CATEGORY,
-    name: def.name,
-    severity: "info" as const,
-    passed: true,
-    currentValue: "Nginx not installed or HTTP not responding",
-    expectedValue: def.expectedValue,
-    fixCommand: def.fixCommand,
-    explain: def.explain,
-  }));
-}
-
 export const parseHttpHeadersChecks: CheckParser = (
   sectionOutput: string,
   _platform: string,
@@ -140,7 +127,7 @@ export const parseHttpHeadersChecks: CheckParser = (
     sectionOutput.includes("HTTP_NOT_RESPONDING");
 
   if (isSkipped) {
-    return makeNginxSkippedChecks();
+    return makeSkippedChecks(HTTP_HEADER_CHECKS, CATEGORY, "Nginx not installed or HTTP not responding");
   }
 
   return HTTP_HEADER_CHECKS.map((def) => {
