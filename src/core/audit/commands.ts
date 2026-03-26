@@ -644,10 +644,31 @@ function httpHeadersSection(): string {
   ].join("\n");
 }
 
+function nginxSection(): string {
+  return [
+    NAMED_SEP("NGINX"),
+    // Detect Nginx; if absent, check for Caddy/Traefik alternatives (per D-05)
+    `command -v nginx >/dev/null 2>&1 || { which caddy >/dev/null 2>&1 && echo 'ALT_RP:caddy'; which traefik >/dev/null 2>&1 && echo 'ALT_RP:traefik'; echo 'NGINX_NOT_INSTALLED'; }`,
+    // Cache nginx -T output once
+    `_NGX=$(nginx -T 2>/dev/null || true)`,
+    // 8 config checks
+    `echo "$_NGX" | grep -iE 'server_tokens' | head -3 || echo 'N/A'`,
+    `echo "$_NGX" | grep -iE 'ssl_protocols' | head -5 || echo 'N/A'`,
+    `echo "$_NGX" | grep -iE 'limit_req_zone|limit_req[[:space:]]' | head -5 || echo 'N/A'`,
+    `echo "$_NGX" | grep -iE 'gzip' | head -5 || echo 'N/A'`,
+    `echo "$_NGX" | grep -iE 'client_max_body_size' | head -3 || echo 'N/A'`,
+    `echo "$_NGX" | grep -iE 'more_clear_headers|proxy_hide_header[[:space:]]+Server' | head -3 || echo 'N/A'`,
+    `echo "$_NGX" | grep -iE 'access_log' | head -3 || echo 'N/A'`,
+    `echo "$_NGX" | grep -iE 'error_log' | head -3 || echo 'N/A'`,
+    // WAF detection (per D-02: ModSecurity + Coraza only)
+    `echo "$_NGX" | grep -iE 'modsecurity[[:space:]]+on|modsecurityenabled|coraza' | head -3 || echo 'NO_WAF'`,
+  ].join("\n");
+}
+
 /**
  * Build 3 tiered SSH batch commands for server auditing.
  *
- * Batch 1 (fast):   SSH, Firewall, Updates, Auth, Accounts, Boot, Scheduling, Banners, TLS Hardening, HTTP Security Headers — config reads (30s timeout)
+ * Batch 1 (fast):   SSH, Firewall, Updates, Auth, Accounts, Boot, Scheduling, Banners, TLS Hardening, HTTP Security Headers, WAF & Reverse Proxy — config reads (30s timeout)
  * Batch 2 (medium): Docker, Network, Logging, Kernel, Services, Time, MAC, Memory,
  *                   CloudMeta, Backup, ResourceLimits, IncidentReady, DNS — active probes (60s timeout)
  * Batch 3 (slow):   Filesystem, Crypto, FileIntegrity, Malware, Secrets, SupplyChain — find commands (120s timeout)
@@ -669,6 +690,7 @@ export function buildAuditBatchCommands(platform: string): BatchDef[] {
       bannersSection(),
       tlsSection(),
       httpHeadersSection(),
+      nginxSection(),
     ].join("\n"),
   };
 
