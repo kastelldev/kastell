@@ -160,7 +160,7 @@ Bare servers: use service 'system' or 'docker' for logs (not 'coolify'). server_
 
   server.registerTool("server_audit", {
     description:
-      "Run a security audit on a Kastell-managed server. Scans 27 categories (SSH, Firewall, Updates, Auth, Docker, Network, Filesystem, Logging, Kernel, Accounts, Services, Boot, Scheduling, Time, Banners, Crypto, File Integrity, Malware, MAC, Memory, Secrets, Cloud Metadata, Supply Chain, Backup Hygiene, Resource Limits, Incident Readiness, DNS Security) with 448 checks. Returns overall score (0-100), per-category scores, and actionable quick wins. Formats: 'summary' (compact text for AI consumption), 'json' (full AuditResult), 'score' (number only). Supports compliance framework filtering: cis-level1, cis-level2, pci-dss, hipaa. Requires SSH access to target server. For predictive health trends (disk trending, swap, stale packages), use server_doctor instead.",
+      "Run a security audit on a server. Scans 29 categories with 448 checks. Returns score (0-100), per-category scores, and quick wins. Formats: 'summary' (compact text), 'json' (full AuditResult), 'score' (number only). Supports compliance filtering: cis-level1, cis-level2, pci-dss, hipaa. Requires SSH access. For health trends use server_doctor instead.",
     inputSchema: serverAuditSchema,
     annotations: {
       title: "Server Security Audit",
@@ -220,7 +220,7 @@ Bare servers: use service 'system' or 'docker' for logs (not 'coolify'). server_
 
   server.registerTool("server_lock", {
     description:
-      "Harden a server to production standard. Applies 19 hardening steps in a single SSH session: SSH key-only auth, fail2ban, UFW firewall, SSH cipher blacklist, sysctl hardening, unattended-upgrades, login banners, account locking, cloud metadata block, DNS security, APT validation, resource limits, service disabling, backup permissions, password quality policy, Docker daemon hardening (no-new-privileges, log rotation, live-restore, icc), auditd, log retention, and AIDE integrity. Requires production=true to confirm intent (safety gate). Pass dryRun=true to preview changes without applying. Platform-aware: preserves Coolify port 8000 or Dokploy port 3000 in UFW rules. Shows audit score before and after hardening. Requires SSH access to target server. For fine-grained SSH hardening, firewall port rules, or domain management, use server_secure instead.",
+      "Harden a server to production standard. Applies 24 hardening steps in a single SSH session covering SSH, fail2ban, UFW, sysctl, unattended-upgrades, Docker daemon, auditd, AIDE, and more. Requires production=true (safety gate). Pass dryRun=true to preview. Platform-aware: preserves Coolify/Dokploy ports. Shows audit score before and after. Requires SSH access. For fine-grained SSH/firewall/domain changes use server_secure instead.",
     inputSchema: serverLockSchema,
     annotations: {
       title: "Server Lock",
