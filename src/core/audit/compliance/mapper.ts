@@ -228,13 +228,13 @@ export const COMPLIANCE_MAP: Record<string, ComplianceRef[]> = {
   "NET-MARTIAN-LOGGING": [cis("3.3.6", "Ensure suspicious packets are logged", "full")],
   "NET-NO-EXPOSED-MGMT-PORTS": [cis("3.5.1.4", "Ensure ufw default deny firewall policy", "partial")],
   "NET-RP-FILTER": [cis("3.3.7", "Ensure Reverse Path Filtering is enabled", "full")],
-  "NET-TCP-SYN-RETRIES": [cis("3.3.8", "Ensure TCP backlog queue is configured", "partial")],
+  "DDOS-SYN-RETRIES": [cis("3.3.8", "Ensure TCP backlog queue is configured", "partial")],
   "NET-NO-MAIL-PORTS": [cis("2.1.12", "Ensure mail transfer agent is configured for local-only mode", "partial")],
   "NET-LISTENING-SERVICES-AUDIT": [cis("2.4", "Ensure nonessential services are removed or masked", "partial")],
   "NET-NO-PROMISCUOUS-INTERFACES": [cis("3.5.2.1", "Ensure nftables is installed", "partial")],
   "NET-ARP-ANNOUNCE": [cis("3.3.7", "Ensure Reverse Path Filtering is enabled", "partial")],
   "NET-ARP-IGNORE": [cis("3.3.7", "Ensure Reverse Path Filtering is enabled", "partial")],
-  "NET-BOGUS-ICMP-IGNORE": [cis("3.3.5", "Ensure broadcast ICMP requests are ignored", "partial")],
+  "DDOS-ICMP-BOGUS": [cis("3.3.5", "Ensure broadcast ICMP requests are ignored", "partial")],
   "NET-TCP-WRAPPERS-CONFIGURED": [cis("3.4.1", "Ensure DCCP is disabled", "partial")],
   "NET-LISTENING-PORT-COUNT": [cis("2.4", "Ensure nonessential services are removed or masked", "partial")],
 
@@ -797,4 +797,27 @@ export const COMPLIANCE_MAP: Record<string, ComplianceRef[]> = {
     pci("6.4.2", "An automated technical solution is deployed to detect and prevent web-based attacks", "full"),
   ],
   // NGX-GZIP-CONFIG and NGX-SERVER-HEADER intentionally excluded — no direct CIS/PCI-DSS control
+
+  // --- DDoS Hardening (DDOS) --- Phase 89 ---
+  "DDOS-SYN-BACKLOG": [
+    cis("3.3.8", "Ensure TCP backlog queue is configured", "partial"),
+    pci("6.3.3", "All system components protected from known vulnerabilities", "partial"),
+  ],
+  "DDOS-SYNACK-RETRIES": [
+    cis("3.3.8", "Ensure TCP SYN cookies and retry limits configured", "partial"),
+    pci("6.3.3", "System components protected from known vulnerabilities", "partial"),
+  ],
+  "DDOS-FIN-TIMEOUT": [
+    cis("3.3.8", "Ensure TCP hardening parameters configured", "partial"),
+  ],
+  "DDOS-TW-REUSE": [
+    pci("6.3.3", "System components protected from known vulnerabilities", "partial"),
+  ],
+  "DDOS-ICMP-RATELIMIT": [
+    cis("3.3.5", "Ensure broadcast ICMP requests are ignored", "partial"),
+  ],
+  "DDOS-SOMAXCONN": [
+    cis("3.3.8", "Ensure TCP backlog queue is configured", "partial"),
+    pci("6.3.3", "System components protected from known vulnerabilities", "partial"),
+  ],
 };
