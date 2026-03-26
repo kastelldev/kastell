@@ -275,15 +275,19 @@ export const parseNetworkChecks: CheckParser = (sectionOutput: string, platform:
     category: "Network",
     name: "Reverse Path Filtering Enabled",
     severity: "warning",
-    passed: isNA ? false : rpFilterNet === "1",
+    passed: isNA ? false : isPlatform ? rpFilterNet === "1" || rpFilterNet === "2" : rpFilterNet === "1",
     currentValue: isNA
       ? "Unable to determine"
       : rpFilterNet !== null
         ? `net.ipv4.conf.all.rp_filter = ${rpFilterNet}`
         : "Unable to determine",
-    expectedValue: "net.ipv4.conf.all.rp_filter = 1",
-    fixCommand: "sysctl -w net.ipv4.conf.all.rp_filter=1 && echo 'net.ipv4.conf.all.rp_filter=1' >> /etc/sysctl.conf",
-    explain: "Reverse path filtering drops packets with spoofed source addresses, preventing IP spoofing attacks.",
+    expectedValue: isPlatform ? "net.ipv4.conf.all.rp_filter = 1 or 2 (loose mode ok for Docker)" : "net.ipv4.conf.all.rp_filter = 1",
+    fixCommand: isPlatform
+      ? "sysctl -w net.ipv4.conf.all.rp_filter=2 && echo 'net.ipv4.conf.all.rp_filter=2' >> /etc/sysctl.conf"
+      : "sysctl -w net.ipv4.conf.all.rp_filter=1 && echo 'net.ipv4.conf.all.rp_filter=1' >> /etc/sysctl.conf",
+    explain: isPlatform
+      ? "Reverse path filtering validates source addresses. Loose mode (2) is required for Docker Swarm IPVS ingress mesh."
+      : "Reverse path filtering drops packets with spoofed source addresses, preventing IP spoofing attacks.",
   };
 
   // NET-16: No unnecessary mail ports open

@@ -500,6 +500,46 @@ describe("parseNetworkChecks", () => {
     });
   });
 
+  describe("Platform awareness — NET-RP-FILTER", () => {
+    it("passes on coolify with rp_filter=2 (loose mode for Docker Swarm)", () => {
+      const checks = parseNetworkChecks("net.ipv4.conf.all.rp_filter = 2", "coolify");
+      const c = checks.find((c) => c.id === "NET-RP-FILTER")!;
+      expect(c.passed).toBe(true);
+      expect(c.expectedValue).toContain("loose mode ok for Docker");
+      expect(c.explain).toContain("Docker Swarm");
+    });
+
+    it("passes on dokploy with rp_filter=2 (loose mode for Docker Swarm)", () => {
+      const checks = parseNetworkChecks("net.ipv4.conf.all.rp_filter = 2", "dokploy");
+      const c = checks.find((c) => c.id === "NET-RP-FILTER")!;
+      expect(c.passed).toBe(true);
+    });
+
+    it("passes on coolify with rp_filter=1 (strict also valid)", () => {
+      const checks = parseNetworkChecks("net.ipv4.conf.all.rp_filter = 1", "coolify");
+      const c = checks.find((c) => c.id === "NET-RP-FILTER")!;
+      expect(c.passed).toBe(true);
+    });
+
+    it("fails on bare with rp_filter=2 (strict required)", () => {
+      const checks = parseNetworkChecks("net.ipv4.conf.all.rp_filter = 2", "bare");
+      const c = checks.find((c) => c.id === "NET-RP-FILTER")!;
+      expect(c.passed).toBe(false);
+    });
+
+    it("fails on bare with rp_filter=0 (disabled)", () => {
+      const checks = parseNetworkChecks("net.ipv4.conf.all.rp_filter = 0", "bare");
+      const c = checks.find((c) => c.id === "NET-RP-FILTER")!;
+      expect(c.passed).toBe(false);
+    });
+
+    it("fails on coolify with rp_filter=0 (disabled not acceptable)", () => {
+      const checks = parseNetworkChecks("net.ipv4.conf.all.rp_filter = 0", "coolify");
+      const c = checks.find((c) => c.id === "NET-RP-FILTER")!;
+      expect(c.passed).toBe(false);
+    });
+  });
+
   describe("Dangerous ports — currentValue and fixCommand mutation killers", () => {
     it("lists specific dangerous port names in currentValue", () => {
       const output = "LISTEN 0.0.0.0:3306 0.0.0.0:*\nLISTEN 0.0.0.0:6379 0.0.0.0:*";
