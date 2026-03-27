@@ -3,11 +3,18 @@
     "PreToolUse": [
       {
         "matcher": "Bash",
+        "if": "Bash(*kastell*)",
         "hooks": [
           {
             "type": "command",
             "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/destroy-block.cjs"
-          },
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "if": "Bash(*git commit*)",
+        "hooks": [
           {
             "type": "command",
             "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/pre-commit-audit-guard.cjs"
@@ -30,7 +37,13 @@
           {
             "type": "command",
             "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/session-log.cjs"
-          },
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "if": "Bash(*git commit*)",
+        "hooks": [
           {
             "type": "command",
             "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/simplify-reset.cjs"
