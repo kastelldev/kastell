@@ -4,7 +4,7 @@
  * All data comes from local snapshots/config — zero SSH (D-07).
  */
 
-import type { SnapshotFile, AuditCategory, SnapshotListEntry } from "../audit/types.js";
+import type { SnapshotFile, SnapshotListEntry } from "../audit/types.js";
 import type { DoctorFinding } from "../doctor.js";
 import type { ServerRecord } from "../../types/index.js";
 import type { GuardStateEntry } from "../guard.js";
