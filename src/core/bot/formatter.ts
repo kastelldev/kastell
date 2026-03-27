@@ -25,8 +25,8 @@ export function formatAuditMessage(snapshot: SnapshotFile, ageHours: number): st
   const { overallScore, categories, serverName } = snapshot.audit;
 
   const ageLine = ageHours > 24
-    ? `Son audit: ${ageHours} saat once (stale -- run: kastell audit ${serverName})`
-    : `Son audit: ${ageHours} saat once`;
+    ? `Last audit: ${ageHours}h ago (stale -- run: kastell audit ${serverName})`
+    : `Last audit: ${ageHours}h ago`;
 
   const sorted = [...categories].sort(
     (a, b) => (a.score / (a.maxScore || 1)) - (b.score / (b.maxScore || 1)),
@@ -34,13 +34,13 @@ export function formatAuditMessage(snapshot: SnapshotFile, ageHours: number): st
   const worst5 = sorted.slice(0, 5);
 
   const lines = [
-    `Audit: ${serverName} -- Skor: ${overallScore}/100`,
+    `Audit: ${serverName} -- Score: ${overallScore}/100`,
     ageLine,
     "",
-    "En kotu 5 kategori:",
+    "Worst 5 categories:",
     ...worst5.map((c) => `  ${c.name}: ${c.score}/${c.maxScore}`),
     "",
-    `Detay: kastell audit ${serverName}`,
+    `Details: kastell audit ${serverName}`,
   ];
 
   return truncate(lines.join("\n"));
@@ -56,16 +56,16 @@ export function formatStatusMessage(
   latestSnapshot: SnapshotListEntry | undefined,
 ): string {
   const guardLine = guardState
-    ? `Guard: aktif (son kontrol: ${guardState.installedAt ?? "bilinmiyor"})`
-    : "Guard: kurulu degil";
+    ? `Guard: active (last check: ${guardState.installedAt ?? "unknown"})`
+    : "Guard: not installed";
 
   let auditLine: string;
   if (latestSnapshot) {
     const ageMs = Date.now() - new Date(latestSnapshot.savedAt).getTime();
     const ageHours = Math.floor(ageMs / 3600000);
-    auditLine = `Son audit: skor ${latestSnapshot.overallScore}, ${ageHours} saat once`;
+    auditLine = `Last audit: score ${latestSnapshot.overallScore}, ${ageHours}h ago`;
   } else {
-    auditLine = "Audit: snapshot yok";
+    auditLine = "Audit: no snapshot";
   }
 
   const lines = [
@@ -88,16 +88,16 @@ export function formatHealthMessage(
   snapshots: Map<string, SnapshotListEntry>,
 ): string {
   if (servers.length === 0) {
-    return "Kayitli sunucu yok. Eklemek icin: kastell add";
+    return "No servers registered. Add one with: kastell add";
   }
 
-  const lines = [`Sunucu Durumu (${servers.length} sunucu)`, ""];
+  const lines = [`Server Status (${servers.length} servers)`, ""];
 
   for (const s of servers) {
-    const guard = guardStates[s.name] ? "aktif" : "yok";
+    const guard = guardStates[s.name] ? "active" : "none";
     const snap = snapshots.get(s.ip);
     const score = snap ? String(snap.overallScore) : "-";
-    lines.push(`${s.name} | ${s.platform ?? s.mode} | Guard: ${guard} | Skor: ${score}`);
+    lines.push(`${s.name} | ${s.platform ?? s.mode} | Guard: ${guard} | Score: ${score}`);
   }
 
   return truncate(lines.join("\n"));
@@ -109,7 +109,7 @@ export function formatHealthMessage(
  */
 export function formatDoctorMessage(serverName: string, findings: DoctorFinding[]): string {
   if (findings.length === 0) {
-    return `${serverName}: Doctor verisi yok. Calistir: kastell doctor ${serverName}`;
+    return `${serverName}: No doctor data. Run: kastell doctor ${serverName}`;
   }
 
   const severityOrder: Record<string, number> = { critical: 0, warning: 1, info: 2 };
@@ -119,11 +119,11 @@ export function formatDoctorMessage(serverName: string, findings: DoctorFinding[
   const top5 = sorted.slice(0, 5);
 
   const lines = [
-    `Doctor: ${serverName} -- ${findings.length} bulgu`,
+    `Doctor: ${serverName} -- ${findings.length} finding(s)`,
     "",
     ...top5.map((f) => `  [${f.severity}] ${f.description}`),
     "",
-    `Detay: kastell doctor ${serverName}`,
+    `Details: kastell doctor ${serverName}`,
   ];
 
   return truncate(lines.join("\n"));

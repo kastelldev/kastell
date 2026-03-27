@@ -40,14 +40,14 @@ export function registerHandlers(bot: Bot): void {
   bot.command("audit", async (ctx) => {
     const serverName = ctx.match?.trim();
     if (!serverName) {
-      await ctx.reply("Kullanim: /audit <server>\nOrnek: /audit my-server");
+      await ctx.reply("Usage: /audit <server>\nExample: /audit my-server");
       return;
     }
 
     const server = findServer(serverName);
     if (!server) {
       await ctx.reply(
-        `Sunucu bulunamadi: ${serverName}\nKayitli sunucular: kastell list`,
+        `Server not found: ${serverName}\nRegistered servers: kastell list`,
       );
       return;
     }
@@ -55,7 +55,7 @@ export function registerHandlers(bot: Bot): void {
     const entries = await listSnapshots(server.ip);
     if (entries.length === 0) {
       await ctx.reply(
-        `Henuz audit snapshot yok. Calistir: kastell audit ${serverName}`,
+        `No audit snapshot yet. Run: kastell audit ${serverName}`,
       );
       return;
     }
@@ -63,7 +63,7 @@ export function registerHandlers(bot: Bot): void {
     const latest = entries[entries.length - 1];
     const snapshot = await loadSnapshot(server.ip, latest.filename);
     if (!snapshot) {
-      await ctx.reply("Snapshot okunamadi. Yeniden calistir: kastell audit " + serverName);
+      await ctx.reply("Failed to read snapshot. Re-run: kastell audit " + serverName);
       return;
     }
 
@@ -77,14 +77,14 @@ export function registerHandlers(bot: Bot): void {
   bot.command("status", async (ctx) => {
     const serverName = ctx.match?.trim();
     if (!serverName) {
-      await ctx.reply("Kullanim: /status <server>\nOrnek: /status my-server");
+      await ctx.reply("Usage: /status <server>\nExample: /status my-server");
       return;
     }
 
     const server = findServer(serverName);
     if (!server) {
       await ctx.reply(
-        `Sunucu bulunamadi: ${serverName}\nKayitli sunucular: kastell list`,
+        `Server not found: ${serverName}\nRegistered servers: kastell list`,
       );
       return;
     }
@@ -108,7 +108,7 @@ export function registerHandlers(bot: Bot): void {
       const server = findServer(arg);
       if (!server) {
         await ctx.reply(
-          `Sunucu bulunamadi: ${arg}\nKayitli sunucular: kastell list`,
+          `Server not found: ${arg}\nRegistered servers: kastell list`,
         );
         return;
       }
@@ -142,14 +142,14 @@ export function registerHandlers(bot: Bot): void {
   bot.command("doctor", async (ctx) => {
     const serverName = ctx.match?.trim();
     if (!serverName) {
-      await ctx.reply("Kullanim: /doctor <server>\nOrnek: /doctor my-server");
+      await ctx.reply("Usage: /doctor <server>\nExample: /doctor my-server");
       return;
     }
 
     const server = findServer(serverName);
     if (!server) {
       await ctx.reply(
-        `Sunucu bulunamadi: ${serverName}\nKayitli sunucular: kastell list`,
+        `Server not found: ${serverName}\nRegistered servers: kastell list`,
       );
       return;
     }
@@ -157,7 +157,7 @@ export function registerHandlers(bot: Bot): void {
     const history = loadMetricsHistory(server.ip);
     if (history.length === 0) {
       await ctx.reply(
-        `Doctor verisi yok. Calistir: kastell doctor ${serverName}`,
+        `No doctor data. Run: kastell doctor ${serverName}`,
       );
       return;
     }
@@ -170,14 +170,14 @@ export function registerHandlers(bot: Bot): void {
       findings.push({
         id: "DISK-HIGH",
         severity: "critical",
-        description: `Disk kullanimi yuksek: %${latest.diskPct}`,
+        description: `Disk usage high: ${latest.diskPct}%`,
         command: "df -h /",
       });
     } else if (latest.diskPct >= 80) {
       findings.push({
         id: "DISK-WARN",
         severity: "warning",
-        description: `Disk kullanimi: %${latest.diskPct}`,
+        description: `Disk usage: ${latest.diskPct}%`,
         command: "df -h /",
       });
     }
@@ -186,14 +186,14 @@ export function registerHandlers(bot: Bot): void {
       findings.push({
         id: "RAM-HIGH",
         severity: "critical",
-        description: `RAM kullanimi yuksek: %${latest.ramPct}`,
+        description: `RAM usage high: ${latest.ramPct}%`,
         command: "free -h",
       });
     } else if (latest.ramPct >= 80) {
       findings.push({
         id: "RAM-WARN",
         severity: "warning",
-        description: `RAM kullanimi: %${latest.ramPct}`,
+        description: `RAM usage: ${latest.ramPct}%`,
         command: "free -h",
       });
     }
@@ -203,14 +203,14 @@ export function registerHandlers(bot: Bot): void {
       findings.push({
         id: "CPU-HIGH",
         severity: "critical",
-        description: `CPU load yuksek: ${latest.cpuLoad1} (${latest.ncpu} core)`,
+        description: `CPU load high: ${latest.cpuLoad1} (${latest.ncpu} cores)`,
         command: "uptime",
       });
     } else if (loadPerCpu >= 1) {
       findings.push({
         id: "CPU-WARN",
         severity: "warning",
-        description: `CPU load: ${latest.cpuLoad1} (${latest.ncpu} core)`,
+        description: `CPU load: ${latest.cpuLoad1} (${latest.ncpu} cores)`,
         command: "uptime",
       });
     }
@@ -221,21 +221,21 @@ export function registerHandlers(bot: Bot): void {
   // /help — command list with version footer (D-05)
   bot.command("help", async (ctx) => {
     const lines = [
-      "Kastell Bot Komutlari:",
+      "Kastell Bot Commands:",
       "",
-      "/audit <server> -- Audit skoru + en kotu 5 kategori",
-      "/status <server> -- Sunucu durumu (lokal veri)",
-      "/health -- Tum sunucularin durumu",
-      "/doctor <server> -- Doctor bulgulari (cached)",
-      "/help -- Bu mesaj",
+      "/audit <server> -- Audit score + worst 5 categories",
+      "/status <server> -- Server status (local data)",
+      "/health -- All servers overview",
+      "/doctor <server> -- Doctor findings (cached)",
+      "/help -- This message",
       "",
-      `Kastell v${getVersion()} | 4 komut`,
+      `Kastell v${getVersion()} | 4 commands`,
     ];
     await ctx.reply(lines.join("\n"));
   });
 
   // /start — Telegram auto-sends this when user opens chat
   bot.command("start", async (ctx) => {
-    await ctx.reply("Bot zaten calisiyor!");
+    await ctx.reply("Bot is already running!");
   });
 }

@@ -66,7 +66,6 @@ describe("formatAuditMessage", () => {
 
   it("shows worst 5 categories sorted by score ratio", () => {
     const msg = formatAuditMessage(makeSnapshot(), 5);
-    // Auth (40/100=0.4) should be first, Docker (50/100=0.5) second, SSH (60/100=0.6) third
     const authIdx = msg.indexOf("Auth:");
     const dockerIdx = msg.indexOf("Docker:");
     const sshIdx = msg.indexOf("SSH:");
@@ -76,7 +75,7 @@ describe("formatAuditMessage", () => {
 
   it("includes age in hours", () => {
     const msg = formatAuditMessage(makeSnapshot(), 12);
-    expect(msg).toContain("12 saat once");
+    expect(msg).toContain("12h ago");
   });
 
   it("adds stale warning when age > 24h", () => {
@@ -91,13 +90,12 @@ describe("formatAuditMessage", () => {
   });
 
   it("truncates to max 4000 chars", () => {
-    // Create categories with very long names to exceed 4000 chars
     const longCategories = Array.from({ length: 100 }, (_, i) =>
       makeCategory("A".repeat(80) + String(i), 10, 100),
     );
     const snapshot = makeSnapshot({ categories: longCategories });
     const msg = formatAuditMessage(snapshot, 5);
-    expect(msg.length).toBeLessThanOrEqual(4004); // 4000 + "\n..."
+    expect(msg.length).toBeLessThanOrEqual(4004);
   });
 });
 
@@ -118,17 +116,17 @@ describe("formatStatusMessage", () => {
     expect(msg).toContain("test-server");
     expect(msg).toContain("1.2.3.4");
     expect(msg).toContain("bare");
-    expect(msg).toContain("Guard: aktif");
+    expect(msg).toContain("Guard: active");
   });
 
-  it("shows 'kurulu degil' when no guard state", () => {
+  it("shows 'not installed' when no guard state", () => {
     const msg = formatStatusMessage(makeServer(), undefined, undefined);
-    expect(msg).toContain("Guard: kurulu degil");
+    expect(msg).toContain("Guard: not installed");
   });
 
-  it("shows 'snapshot yok' when no snapshot", () => {
+  it("shows 'no snapshot' when no snapshot", () => {
     const msg = formatStatusMessage(makeServer(), undefined, undefined);
-    expect(msg).toContain("Audit: snapshot yok");
+    expect(msg).toContain("Audit: no snapshot");
   });
 });
 
@@ -147,16 +145,16 @@ describe("formatHealthMessage", () => {
     snaps.set("1.1.1.1", { filename: "a.json", savedAt: "2026-03-27", overallScore: 80 });
 
     const msg = formatHealthMessage(servers, guards, snaps);
-    expect(msg).toContain("2 sunucu");
+    expect(msg).toContain("2 servers");
     expect(msg).toContain("srv-a");
     expect(msg).toContain("srv-b");
-    expect(msg).toContain("Skor: 80");
-    expect(msg).toContain("Skor: -");
+    expect(msg).toContain("Score: 80");
+    expect(msg).toContain("Score: -");
   });
 
   it("shows empty message when no servers", () => {
     const msg = formatHealthMessage([], {}, new Map());
-    expect(msg).toContain("Kayitli sunucu yok");
+    expect(msg).toContain("No servers registered");
   });
 });
 
@@ -165,20 +163,20 @@ describe("formatHealthMessage", () => {
 describe("formatDoctorMessage", () => {
   it("shows findings grouped by severity (critical first)", () => {
     const findings: DoctorFinding[] = [
-      { id: "RAM-WARN", severity: "warning", description: "RAM %82", command: "free -h" },
-      { id: "DISK-HIGH", severity: "critical", description: "Disk %95", command: "df -h" },
+      { id: "RAM-WARN", severity: "warning", description: "RAM 82%", command: "free -h" },
+      { id: "DISK-HIGH", severity: "critical", description: "Disk 95%", command: "df -h" },
       { id: "CPU-INFO", severity: "info", description: "CPU normal", command: "uptime" },
     ];
     const msg = formatDoctorMessage("my-server", findings);
-    expect(msg).toContain("3 bulgu");
-    const diskIdx = msg.indexOf("Disk %95");
-    const ramIdx = msg.indexOf("RAM %82");
+    expect(msg).toContain("3 finding");
+    const diskIdx = msg.indexOf("Disk 95%");
+    const ramIdx = msg.indexOf("RAM 82%");
     expect(diskIdx).toBeLessThan(ramIdx);
   });
 
   it("shows no-data message when findings is empty", () => {
     const msg = formatDoctorMessage("my-server", []);
-    expect(msg).toContain("Doctor verisi yok");
+    expect(msg).toContain("No doctor data");
     expect(msg).toContain("kastell doctor my-server");
   });
 });

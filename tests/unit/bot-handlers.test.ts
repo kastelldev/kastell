@@ -85,7 +85,7 @@ describe("/audit handler", () => {
     const { bot, sentMessages } = createTestBot();
     await bot.handleUpdate(makeCommandUpdate("audit", ""));
     expect(sentMessages).toHaveLength(1);
-    expect(sentMessages[0].text).toContain("Kullanim: /audit");
+    expect(sentMessages[0].text).toContain("Usage: /audit");
   });
 
   it("replies with not-found when server unknown", async () => {
@@ -93,7 +93,7 @@ describe("/audit handler", () => {
     const { bot, sentMessages } = createTestBot();
     await bot.handleUpdate(makeCommandUpdate("audit", "unknown-srv"));
     expect(sentMessages).toHaveLength(1);
-    expect(sentMessages[0].text).toContain("Sunucu bulunamadi: unknown-srv");
+    expect(sentMessages[0].text).toContain("Server not found: unknown-srv");
   });
 
   it("replies with formatted audit when server and snapshot exist", async () => {
@@ -145,7 +145,7 @@ describe("/status handler", () => {
     const { bot, sentMessages } = createTestBot();
     await bot.handleUpdate(makeCommandUpdate("status", ""));
     expect(sentMessages).toHaveLength(1);
-    expect(sentMessages[0].text).toContain("Kullanim: /status");
+    expect(sentMessages[0].text).toContain("Usage: /status");
   });
 });
 
@@ -156,7 +156,7 @@ describe("/doctor handler", () => {
     const { bot, sentMessages } = createTestBot();
     await bot.handleUpdate(makeCommandUpdate("doctor", ""));
     expect(sentMessages).toHaveLength(1);
-    expect(sentMessages[0].text).toContain("Kullanim: /doctor");
+    expect(sentMessages[0].text).toContain("Usage: /doctor");
   });
 });
 
@@ -172,7 +172,7 @@ describe("/help handler", () => {
     expect(sentMessages[0].text).toContain("/health");
     expect(sentMessages[0].text).toContain("/doctor");
     expect(sentMessages[0].text).toMatch(/Kastell v\d+\.\d+\.\d+/);
-    expect(sentMessages[0].text).toContain("4 komut");
+    expect(sentMessages[0].text).toContain("4 commands");
   });
 });
 
@@ -184,6 +184,6 @@ describe("/health handler", () => {
     const { bot, sentMessages } = createTestBot();
     await bot.handleUpdate(makeCommandUpdate("health", ""));
     expect(sentMessages).toHaveLength(1);
-    expect(sentMessages[0].text).toContain("Kayitli sunucu yok");
+    expect(sentMessages[0].text).toContain("No servers registered");
   });
 });
