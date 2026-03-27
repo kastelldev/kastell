@@ -41,6 +41,7 @@ Commands:
   fix [options] [server]                   Apply safe auto-fixes from security audit (SAFE tier only)
   notify                                   Manage notification channels
   fleet [options]                          Show health and security posture of all registered servers
+  bot                                      Telegram bot management
   auth                                     Manage provider API tokens (OS keychain)
   help [command]                           display help for command"
 `;
