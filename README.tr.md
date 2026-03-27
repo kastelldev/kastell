@@ -246,7 +246,7 @@ kastell init --template production --provider hetzner
 
 ## Güvenlik
 
-Kastell güvenlik öncelikli olarak geliştirilmektedir -- 206 test suite'inde **5.499 test**, özel güvenlik test suite'leri dahil.
+Kastell güvenlik öncelikli olarak geliştirilmektedir -- 206 test suite'inde **5.506 test**, özel güvenlik test suite'leri dahil.
 
 - API token'ları asla diske kaydedilmez -- çalışma zamanında sorulur veya ortam değişkenlerinden alınır
 - SSH anahtarları gerekirse otomatik oluşturulur (Ed25519)

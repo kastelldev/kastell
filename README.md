@@ -246,7 +246,7 @@ kastell init --template production --provider hetzner
 
 ## Security
 
-Kastell is built with security as a priority -- **5,499 tests** across 206 suites, including dedicated security test suites.
+Kastell is built with security as a priority -- **5,506 tests** across 206 suites, including dedicated security test suites.
 
 - API tokens are never stored on disk -- prompted at runtime or via environment variables
 - SSH keys are auto-generated if needed (Ed25519)
@@ -288,7 +288,7 @@ Use `kastell status my-server --autostart` to check platform status and auto-res
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing, and contribution guidelines.
 
-Kastell uses **5,499 tests** across 206 suites. Run `npm test` before submitting PRs.
+Kastell uses **5,506 tests** across 206 suites. Run `npm test` before submitting PRs.
 
 ## MCP Server (AI Integration)
 
