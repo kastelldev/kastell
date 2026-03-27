@@ -580,7 +580,7 @@ async function promptAudit(): Promise<string[] | null> {
 
     const category = await promptList("Category:", [
       ...TOP_CATEGORIES,
-      { name: "Show all 27 categories...", value: "__all__" },
+      { name: "Show all 31 categories...", value: "__all__" },
     ]);
     if (!category) return null;
 
