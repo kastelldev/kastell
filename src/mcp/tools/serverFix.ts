@@ -6,7 +6,6 @@ import {
   runScoreCheck,
   isFixCommandAllowed,
   resolveTier,
-  FORBIDDEN_CATEGORIES,
 } from "../../core/audit/fix.js";
 import { backupServer } from "../../core/backup.js";
 import { isSafeMode } from "../../core/manage.js";
@@ -103,30 +102,35 @@ export async function handleServerFix(
     }
     const auditResult = result.data;
 
+    // ── Build check index for O(1) lookups (used by FORBIDDEN rejection + affectedCats) ──
+    const checkIndex = new Map<string, { categoryName: string }>();
+    for (const cat of auditResult.categories) {
+      for (const ch of cat.checks) {
+        checkIndex.set(ch.id, { categoryName: cat.name });
+      }
+    }
+
     // ── FORBIDDEN rejection for user-supplied check IDs (FIX-08) ─────────
     const rejectedChecks: Array<{ id: string; reason: string }> = [];
     if (params.checks && params.checks.length > 0) {
       for (const checkId of params.checks) {
-        let found = false;
-        for (const cat of auditResult.categories) {
-          const check = cat.checks.find((ch) => ch.id === checkId);
-          if (check) {
-            found = true;
-            const tier = resolveTier(check, cat.name);
-            if (tier === "FORBIDDEN") {
-              rejectedChecks.push({
-                id: checkId,
-                reason:
-                  "FORBIDDEN tier — SSH/Firewall/Docker categories never auto-fixed",
-              });
-            }
-            break;
-          }
-        }
-        if (!found) {
+        const entry = checkIndex.get(checkId);
+        if (!entry) {
           rejectedChecks.push({
             id: checkId,
             reason: "Check ID not found in audit results",
+          });
+          continue;
+        }
+        const check = auditResult.categories
+          .find((c) => c.name === entry.categoryName)!
+          .checks.find((ch) => ch.id === checkId)!;
+        const tier = resolveTier(check, entry.categoryName);
+        if (tier === "FORBIDDEN") {
+          rejectedChecks.push({
+            id: checkId,
+            reason:
+              "FORBIDDEN tier — SSH/Firewall/Docker categories never auto-fixed",
           });
         }
       }
@@ -144,10 +148,12 @@ export async function handleServerFix(
     }
     if (params.checks && params.checks.length > 0) {
       // Remove rejected IDs from the working set
-      const allowedIds = params.checks.filter(
-        (id) => !rejectedChecks.some((r) => r.id === id),
+      const allowedIdSet = new Set(
+        params.checks.filter(
+          (id) => !rejectedChecks.some((r) => r.id === id),
+        ),
       );
-      filteredChecks = filteredChecks.filter((c) => allowedIds.includes(c.id));
+      filteredChecks = filteredChecks.filter((c) => allowedIdSet.has(c.id));
     }
 
     // ── Early exit if no SAFE fixes after filter ──────────────────────────
@@ -166,7 +172,6 @@ export async function handleServerFix(
 
     // ── DRY RUN response ──────────────────────────────────────────────────
     if (effectiveDryRun) {
-      // Rebuild groups from filteredChecks (maintaining severity ordering)
       const previewGroups = SEVERITY_ORDER.map((sev) => ({
         severity: sev,
         checks: filteredChecks.filter((c) => c.severity === sev),
@@ -196,7 +201,6 @@ export async function handleServerFix(
     // ── LIVE FIX — execute ────────────────────────────────────────────────
     await mcpLog(mcpServer, `Applying ${filteredChecks.length} safe fix(es)...`);
     const applied: string[] = [];
-    const skipped: string[] = [];
     const errors: string[] = [];
 
     for (const check of filteredChecks) {
@@ -230,13 +234,7 @@ export async function handleServerFix(
       const affectedCats = [
         ...new Set(
           applied
-            .map((checkId) => {
-              for (const cat of auditResult.categories) {
-                if (cat.checks.some((ch) => ch.id === checkId))
-                  return cat.name;
-              }
-              return undefined;
-            })
+            .map((id) => checkIndex.get(id)?.categoryName)
             .filter((n): n is string => n !== undefined),
         ),
       ];
@@ -251,7 +249,6 @@ export async function handleServerFix(
     return mcpSuccess({
       dryRun: false,
       applied,
-      skipped,
       errors,
       rejectedChecks,
       scoreBefore: auditResult.overallScore,
@@ -262,5 +259,3 @@ export async function handleServerFix(
   }
 }
 
-// Re-export FORBIDDEN_CATEGORIES for reference (used by plan key_links)
-export { FORBIDDEN_CATEGORIES };
