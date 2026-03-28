@@ -76,6 +76,18 @@ export interface AuditHistoryEntry {
   auditVersion?: string;    // Optional for backward compat with legacy on-disk files
 }
 
+export interface FixHistoryEntry {
+  fixId: string;           // "fix-2026-03-29-001"
+  serverIp: string;
+  serverName: string;
+  timestamp: string;       // ISO 8601
+  checks: string[];        // check IDs applied/rolled-back
+  scoreBefore: number;
+  scoreAfter: number | null;
+  status: "applied" | "rolled-back" | "failed";
+  backupPath: string;      // remote path: "/root/.kastell/fix-backups/fix-2026-03-29-001"
+}
+
 /** Check parser function signature — each category module exports this */
 export type CheckParser = (sectionOutput: string, platform: string) => AuditCheck[];
 
