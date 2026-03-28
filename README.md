@@ -169,7 +169,7 @@ kastell domain add my-server --domain example.com  # Set domain + SSL
 
 ### Security Audit
 ```bash
-kastell audit my-server                  # Full security audit (30 categories, 457+ checks)
+kastell audit my-server                  # Full security audit (31 categories, 457+ checks)
 kastell audit my-server --json           # JSON output for automation
 kastell audit my-server --threshold 70   # Exit code 1 if score below threshold
 kastell audit my-server --fix            # Interactive fix mode (prompts per severity)
@@ -262,7 +262,7 @@ kastell init --template production --provider hetzner
 
 ## Security
 
-Kastell is built with security as a priority -- **5,522 tests** across 206 suites, including dedicated security test suites.
+Kastell is built with security as a priority -- **6,441 tests** across 207 suites, including dedicated security test suites.
 
 - API tokens are never stored on disk -- prompted at runtime or via environment variables
 - SSH keys are auto-generated if needed (Ed25519)
@@ -305,7 +305,7 @@ Use `kastell status my-server --autostart` to check platform status and auto-res
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing, and contribution guidelines.
 
-Kastell uses **5,522 tests** across 206 suites. Run `npm test` before submitting PRs.
+Kastell uses **6,441 tests** across 207 suites. Run `npm test` before submitting PRs.
 
 ## MCP Server (AI Integration)
 
@@ -339,7 +339,7 @@ Available tools:
 | `server_secure` | secure, firewall, domain | SSH hardening, firewall rules, domain/SSL management (10 subcommands) |
 | `server_backup` | backup, snapshot | Backup/restore databases and create/manage VPS snapshots |
 | `server_provision` | create | Provision new servers on cloud providers |
-| `server_audit` | audit | 442+-check security audit with compliance framework filtering; use `--explain` for remediation guidance |
+| `server_audit` | audit | 457+-check security audit with compliance framework filtering; use `--explain` for remediation guidance |
 | `server_evidence` | collect | Collect forensic evidence package with checksums |
 | `server_guard` | start, stop, status | Manage autonomous security monitoring daemon |
 | `server_doctor` | diagnose | Proactive health analysis with remediation commands |

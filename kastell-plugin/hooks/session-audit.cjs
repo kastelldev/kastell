@@ -1,12 +1,11 @@
 #!/usr/bin/env node
-// SessionStart hook: Run kastell audit --score-only on first configured server, inject score
+// SessionStart hook: Show last audit score from cache (no SSH, instant)
 
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { execSync } = require('child_process');
 
-const SERVERS_FILE = path.join(os.homedir(), '.kastell', 'servers.json');
+const HISTORY_FILE = path.join(os.homedir(), '.kastell', 'audit-history.json');
 
 // MANDATORY stdin guard — exit silently if stdin unavailable (e.g. after /clear)
 if (!process.stdin || process.stdin.destroyed || !process.stdin.readable) {
@@ -33,44 +32,51 @@ process.stdin.on('end', () => {
       } catch { process.exit(0); }
     }
 
-    // Read servers list — exit silently if unavailable or empty
-    let servers;
+    // Read audit history from cache — no SSH needed
+    let history;
     try {
-      servers = JSON.parse(fs.readFileSync(SERVERS_FILE, 'utf8'));
+      history = JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf8'));
     } catch {
-      process.exit(0);
-    }
-    if (!Array.isArray(servers) || servers.length === 0) {
-      process.exit(0);
-    }
-
-    const server = servers[0];
-
-    // Validate server name — prevent command injection
-    if (!server.name || !/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/.test(server.name)) {
+      // No history file — exit silently
       process.exit(0);
     }
 
-    // Run audit with --score-only flag (stdio: 'pipe' captures both stdout+stderr)
-    let output;
-    try {
-      output = execSync(`npx --no-install kastell audit ${server.name} --score-only`, {
-        cwd,
-        timeout: 45000,
-        encoding: 'utf8',
-        stdio: ['pipe', 'pipe', 'ignore'],
-        windowsHide: true,
-      });
-    } catch {
-      // Timeout or audit failure — exit silently, never block SessionStart
-      process.exit(0);
+    // Find the most recent audit entry across all servers
+    let latest = null;
+    let latestTime = 0;
+
+    if (typeof history === 'object' && !Array.isArray(history)) {
+      // Format: { "ip": [ { overallScore, serverName, timestamp } ] }
+      for (const entries of Object.values(history)) {
+        if (!Array.isArray(entries)) continue;
+        for (const entry of entries) {
+          const ts = new Date(entry.timestamp || entry.date || 0).getTime();
+          if (ts > latestTime) {
+            latestTime = ts;
+            latest = entry;
+          }
+        }
+      }
+    } else if (Array.isArray(history)) {
+      // Format: [ { overallScore, serverName, timestamp } ]
+      for (const entry of history) {
+        const ts = new Date(entry.timestamp || entry.date || 0).getTime();
+        if (ts > latestTime) {
+          latestTime = ts;
+          latest = entry;
+        }
+      }
     }
 
-    // Parse score from output — expected format: "72/100"
-    const match = (output || '').trim().match(/^(\d+)\/100$/);
-    if (match) {
+    if (latest && typeof latest.overallScore === 'number') {
+      const serverName = latest.serverName || latest.server || 'unknown';
+      const date = (latest.timestamp || latest.date || '').split('T')[0];
+      const ageMs = Date.now() - latestTime;
+      const ageDays = Math.floor(ageMs / (1000 * 60 * 60 * 24));
+      const stale = ageDays > 7 ? ` (${ageDays} days ago — consider re-running)` : '';
+
       process.stdout.write(JSON.stringify({
-        hookSpecificOutput: `[Kastell Audit] Score: ${match[1]}/100 (${server.name})`,
+        hookSpecificOutput: `[Kastell Audit] Last score: ${latest.overallScore}/100 (${serverName}, ${date})${stale}`,
       }));
     }
   } catch {}

@@ -34,7 +34,7 @@ process.stdin.on('end', () => {
 
     // Check 1: TypeScript build
     try {
-      execSync('npx tsc --noEmit 2>&1', { cwd, timeout: 30000, stdio: 'pipe', windowsHide: true });
+      execSync('npx tsc --noEmit 2>&1', { cwd, timeout: 10000, stdio: 'pipe', windowsHide: true });
     } catch {
       warnings.push('TypeScript errors detected - run `npm run build` to see details');
     }

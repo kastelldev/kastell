@@ -169,7 +169,7 @@ kastell domain add sunucum --domain ornek.com  # Domain + SSL ayarla
 
 ### Güvenlik Denetimi
 ```bash
-kastell audit sunucum                    # Tam güvenlik denetimi (30 kategori, 457+ kontrol)
+kastell audit sunucum                    # Tam güvenlik denetimi (31 kategori, 457+ kontrol)
 kastell audit sunucum --json             # Otomasyon için JSON çıktısı
 kastell audit sunucum --threshold 70     # Skor eşiğin altındaysa exit code 1
 kastell audit sunucum --fix              # İnteraktif düzeltme modu (önem derecesine göre)
@@ -262,7 +262,7 @@ kastell init --template production --provider hetzner
 
 ## Güvenlik
 
-Kastell güvenlik öncelikli olarak geliştirilmektedir -- 206 test suite'inde **5.522 test**, özel güvenlik test suite'leri dahil.
+Kastell güvenlik öncelikli olarak geliştirilmektedir -- 207 test suite'inde **6.441 test**, özel güvenlik test suite'leri dahil.
 
 - API token'ları asla diske kaydedilmez -- çalışma zamanında sorulur veya ortam değişkenlerinden alınır
 - SSH anahtarları gerekirse otomatik oluşturulur (Ed25519)
@@ -305,7 +305,7 @@ Platform durumunu kontrol edip gerekirse otomatik yeniden başlatmak için `kast
 
 Geliştirme ortamı kurulumu, test ve katkı rehberi için [CONTRIBUTING.md](CONTRIBUTING.md) dosyasına bakın.
 
-Kastell, 183 suite'te **4.178 test** kullanmaktadır. PR göndermeden önce `npm test` çalıştırın.
+Kastell, 207 suite'te **6.441 test** kullanmaktadır. PR göndermeden önce `npm test` çalıştırın.
 
 ## MCP Sunucusu (Yapay Zeka Entegrasyonu)
 
@@ -339,7 +339,7 @@ Mevcut araçlar:
 | `server_secure` | secure, firewall, domain | SSH sıkılaştırma, güvenlik duvarı kuralları, domain/SSL yönetimi (10 alt komut) |
 | `server_backup` | backup, snapshot | Veritabanı yedekle/geri yükle ve VPS snapshot oluştur/yönet |
 | `server_provision` | create | Bulut sağlayıcılarda yeni sunucu oluştur |
-| `server_audit` | audit | 442+ kontrollü güvenlik denetimi, uyumluluk çerçevesi filtresiyle; iyileştirme rehberi için `--explain` kullanın |
+| `server_audit` | audit | 457+ kontrollü güvenlik denetimi, uyumluluk çerçevesi filtresiyle; iyileştirme rehberi için `--explain` kullanın |
 | `server_evidence` | collect | Adli kanıt paketi topla (SHA256 checksum ile) |
 | `server_guard` | start, stop, status | Otonom güvenlik izleme daemon'u yönet |
 | `server_doctor` | diagnose | Proaktif sağlık analizi ve iyileştirme komutları |

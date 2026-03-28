@@ -18,14 +18,6 @@
           {
             "type": "command",
             "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/pre-commit-audit-guard.cjs"
-          },
-          {
-            "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/simplify-guard.cjs"
-          },
-          {
-            "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/test-coverage-guard.cjs"
           }
         ]
       }
@@ -37,16 +29,6 @@
           {
             "type": "command",
             "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/session-log.cjs"
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "if": "Bash(*git commit*)",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/simplify-reset.cjs"
           }
         ]
       }

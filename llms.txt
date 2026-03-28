@@ -1,14 +1,14 @@
 # Kastell
 
 > CLI toolkit for provisioning, securing, and managing self-hosted servers.
-> 442+ security checks across 31 categories. CIS/PCI-DSS/HIPAA compliance.
-> 19-step hardening. Supports Coolify, Dokploy, bare VPS. 4 providers (Hetzner, DigitalOcean, Vultr, Linode).
+> 457+ security checks across 31 categories. CIS/PCI-DSS/HIPAA compliance.
+> 24-step hardening. Supports Coolify, Dokploy, bare VPS. 4 providers (Hetzner, DigitalOcean, Vultr, Linode).
 
 Kastell is an open-source CLI that automates server provisioning, hardening, maintenance, and security audit.
 Run `npx kastell` for an interactive menu or use individual commands.
 Includes an MCP server (`npx kastell-mcp`) for AI-native server management via Claude Code, Cursor, VS Code Copilot, and other MCP clients.
 
-Key differentiators: 442+-check audit engine, 24-step production hardening (server_lock), fleet management, and CIS/PCI-DSS/HIPAA compliance mapping.
+Key differentiators: 457+-check audit engine, 24-step production hardening (server_lock), fleet management, and CIS/PCI-DSS/HIPAA compliance mapping.
 
 ## MCP Tools
 
@@ -19,7 +19,7 @@ Key differentiators: 442+-check audit engine, 24-step production hardening (serv
 - [server_secure](https://kastell.dev): SSH hardening, UFW firewall, domain/SSL management
 - [server_backup](https://kastell.dev): Backup/restore databases, create VPS snapshots
 - [server_provision](https://kastell.dev): Provision new servers on cloud providers
-- [server_audit](https://kastell.dev): 442+-check security audit with compliance framework filtering
+- [server_audit](https://kastell.dev): 457+-check security audit with compliance framework filtering
 - [server_evidence](https://kastell.dev): Forensic evidence collection with SHA256 checksums
 - [server_guard](https://kastell.dev): Autonomous security monitoring daemon
 - [server_doctor](https://kastell.dev): Proactive health analysis with remediation commands
