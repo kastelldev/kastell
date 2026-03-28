@@ -1405,4 +1405,57 @@ describe("parseAuthChecks", () => {
       expect(findById("AUTH-UMASK-LOGIN-DEFS").severity).toBe("info");
     });
   });
+
+  describe("[MUTATION-KILLER] Auth check metadata completeness", () => {
+    const checks = parseAuthChecks(secureOutput, "bare");
+    const findById = (id: string) => checks.find((c) => c.id === id)!;
+
+    const expectedMeta: Array<[string, string, string]> = [
+      ["AUTH-NO-NOPASSWD-ALL", "critical", "SAFE"],
+      ["AUTH-PASSWORD-AGING", "info", "SAFE"],
+      ["AUTH-NO-EMPTY-PASSWORDS", "critical", ""],
+      ["AUTH-ROOT-LOGIN-RESTRICTED", "warning", "SAFE"],
+      ["AUTH-PWD-QUALITY", "info", "SAFE"],
+      ["AUTH-FAILLOCK-CONFIGURED", "warning", "SAFE"],
+      ["AUTH-SHADOW-PERMISSIONS", "critical", "SAFE"],
+      ["AUTH-SUDO-LOG", "warning", "SAFE"],
+      ["AUTH-SUDO-REQUIRETTY", "info", "SAFE"],
+      ["AUTH-NO-UID0-DUPS", "critical", "SAFE"],
+      ["AUTH-PASS-MIN-DAYS", "info", "SAFE"],
+      ["AUTH-PASS-WARN-AGE", "info", "SAFE"],
+      ["AUTH-INACTIVE-LOCK", "info", "SAFE"],
+      ["AUTH-SUDO-WHEEL-ONLY", "info", "SAFE"],
+      ["AUTH-MFA-PRESENT", "info", "SAFE"],
+      ["AUTH-SU-RESTRICTED", "info", "SAFE"],
+      ["AUTH-PASS-MAX-DAYS-SET", "info", "SAFE"],
+      ["AUTH-GSHADOW-PERMISSIONS", "warning", "SAFE"],
+      ["AUTH-PWQUALITY-CONFIGURED", "warning", "SAFE"],
+      ["AUTH-UMASK-LOGIN-DEFS", "info", "SAFE"],
+      ["AUTH-SHA512-HASH", "warning", "SAFE"],
+      ["AUTH-PWQUALITY-MINLEN", "warning", "SAFE"],
+    ];
+
+    it.each(expectedMeta)("[MUTATION-KILLER] %s has severity=%s, safeToAutoFix=%s", (id, severity, safe) => {
+      const c = findById(id);
+      expect(c).toBeDefined();
+      expect(c.category).toBe("Auth");
+      expect(c.severity).toBe(severity);
+      if (safe) expect(c.safeToAutoFix).toBe(safe);
+    });
+
+    it("[MUTATION-KILLER] every check has non-empty fixCommand and explain", () => {
+      checks.forEach((c) => {
+        expect(c.fixCommand).toBeDefined();
+        expect(c.fixCommand!.length).toBeGreaterThan(0);
+        expect(c.explain).toBeDefined();
+        expect(c.explain!.length).toBeGreaterThan(10);
+        expect(c.expectedValue).toBeDefined();
+        expect(c.expectedValue!.length).toBeGreaterThan(0);
+      });
+    });
+
+    it("[MUTATION-KILLER] all IDs start with AUTH-", () => {
+      checks.forEach((c) => expect(c.id).toMatch(/^AUTH-/));
+    });
+  });
 });

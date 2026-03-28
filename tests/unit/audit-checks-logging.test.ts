@@ -847,4 +847,58 @@ describe("parseLoggingChecks", () => {
       });
     });
   });
+
+  describe("[MUTATION-KILLER] Logging check metadata completeness", () => {
+    const checks = parseLoggingChecks(secureOutput, "bare");
+
+    const expectedMeta: Array<[string, string, string]> = [
+      ["LOG-SYSLOG-ACTIVE", "critical", "GUARDED"],
+      ["LOG-AUTH-LOG-PRESENT", "warning", "GUARDED"],
+      ["LOG-ROTATION-CONFIGURED", "info", "SAFE"],
+      ["LOG-REMOTE-LOGGING", "info", "GUARDED"],
+      ["LOG-AUDIT-DAEMON", "info", "GUARDED"],
+      ["LOG-AUDITD-ACTIVE", "warning", "GUARDED"],
+      ["LOG-AUDIT-LOGIN-RULES", "warning", "SAFE"],
+      ["LOG-AUDIT-SUDO-RULES", "warning", "SAFE"],
+      ["LOG-AUDIT-FILE-RULES", "warning", "SAFE"],
+      ["LOG-VARLOG-PERMISSIONS", "info", "SAFE"],
+      ["LOG-CENTRAL-LOGGING", "info", "SAFE"],
+      ["LOG-SECURE-JOURNAL", "info", "GUARDED"],
+      ["LOG-NO-WORLD-READABLE-LOGS", "info", "SAFE"],
+      ["LOG-SYSLOG-REMOTE", "info", "GUARDED"],
+      ["LOG-LOGROTATE-ACTIVE", "warning", "SAFE"],
+    ];
+
+    it.each(expectedMeta)("[MUTATION-KILLER] %s has severity=%s, safeToAutoFix=%s", (id, severity, safe) => {
+      const c = checks.find((c) => c.id === id);
+      expect(c).toBeDefined();
+      expect(c!.category).toBe("Logging");
+      expect(c!.severity).toBe(severity);
+      expect(c!.safeToAutoFix).toBe(safe);
+    });
+
+    it("[MUTATION-KILLER] every check has non-empty fixCommand and explain", () => {
+      checks.forEach((c) => {
+        expect(c.fixCommand).toBeDefined();
+        expect(c.fixCommand!.length).toBeGreaterThan(0);
+        expect(c.explain).toBeDefined();
+        expect(c.explain!.length).toBeGreaterThan(10);
+      });
+    });
+
+    it("[MUTATION-KILLER] all IDs start with LOG-", () => {
+      checks.forEach((c) => expect(c.id).toMatch(/^LOG-/));
+    });
+
+    it("[MUTATION-KILLER] N/A output preserves all metadata", () => {
+      const naChecks = parseLoggingChecks("N/A", "bare");
+      naChecks.forEach((c) => {
+        expect(c.category).toBe("Logging");
+        expect(c.currentValue).toBe("Unable to determine");
+        expect(c.fixCommand).toBeDefined();
+        expect(c.explain).toBeDefined();
+        expect(c.safeToAutoFix).toBeDefined();
+      });
+    });
+  });
 });

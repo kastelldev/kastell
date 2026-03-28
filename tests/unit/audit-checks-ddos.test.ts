@@ -384,4 +384,40 @@ describe("parseDdosChecks -- missing sysctl keys return Unable to determine", ()
     expect(c.passed).toBe(false);
     expect(c.currentValue).toBe("Unable to determine");
   });
+
+  describe("[MUTATION-KILLER] DDoS check metadata", () => {
+    const checks = parseDdosChecks(VALID_DDOS_OUTPUT, "bare");
+
+    const expectedMeta: Array<[string, string]> = [
+      ["DDOS-SYN-BACKLOG", "warning"],
+      ["DDOS-SYNACK-RETRIES", "warning"],
+      ["DDOS-FIN-TIMEOUT", "warning"],
+      ["DDOS-TW-REUSE", "info"],
+      ["DDOS-ICMP-RATELIMIT", "info"],
+      ["DDOS-ICMP-BOGUS", "info"],
+      ["DDOS-SOMAXCONN", "warning"],
+      ["DDOS-SYN-RETRIES", "info"],
+    ];
+
+    it.each(expectedMeta)("[MUTATION-KILLER] %s has severity=%s, safeToAutoFix=SAFE", (id, severity) => {
+      const c = checks.find((c) => c.id === id);
+      expect(c).toBeDefined();
+      expect(c!.category).toBe("DDoS Hardening");
+      expect(c!.severity).toBe(severity);
+      expect(c!.safeToAutoFix).toBe("SAFE");
+    });
+
+    it("[MUTATION-KILLER] every check has non-empty fixCommand and explain", () => {
+      checks.forEach((c) => {
+        expect(c.fixCommand).toBeDefined();
+        expect(c.fixCommand!.length).toBeGreaterThan(0);
+        expect(c.explain).toBeDefined();
+        expect(c.explain!.length).toBeGreaterThan(10);
+      });
+    });
+
+    it("[MUTATION-KILLER] all IDs start with DDOS-", () => {
+      checks.forEach((c) => expect(c.id).toMatch(/^DDOS-/));
+    });
+  });
 });

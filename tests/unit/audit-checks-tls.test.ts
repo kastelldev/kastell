@@ -424,4 +424,45 @@ describe("parseTlsChecks", () => {
       expect(check!.passed).toBe(true);
     });
   });
+
+  describe("[MUTATION-KILLER] TLS check metadata", () => {
+    const output = [
+      "ssl_protocols TLSv1.2;",
+      'add_header Strict-Transport-Security "max-age=31536000" always;',
+      "CERT_VALID_30DAYS",
+    ].join("\n");
+    const checks = parseTlsChecks(output, "bare");
+
+    const expectedMeta: Array<[string, string, string]> = [
+      ["TLS-MIN-VERSION", "critical", "GUARDED"],
+      ["TLS-WEAK-CIPHERS", "critical", "GUARDED"],
+      ["TLS-HSTS", "warning", "GUARDED"],
+      ["TLS-OCSP", "warning", "GUARDED"],
+      ["TLS-CERT-EXPIRY", "warning", "GUARDED"],
+      ["TLS-DH-PARAM", "warning", "GUARDED"],
+      ["TLS-COMPRESSION", "warning", "GUARDED"],
+      ["TLS-CERT-CHAIN", "warning", "GUARDED"],
+    ];
+
+    it.each(expectedMeta)("[MUTATION-KILLER] %s has severity=%s, safeToAutoFix=%s", (id, severity, safe) => {
+      const c = checks.find((c) => c.id === id);
+      expect(c).toBeDefined();
+      expect(c!.category).toBe("TLS Hardening");
+      expect(c!.severity).toBe(severity);
+      expect(c!.safeToAutoFix).toBe(safe);
+    });
+
+    it("[MUTATION-KILLER] every check has non-empty fixCommand and explain", () => {
+      checks.forEach((c) => {
+        expect(c.fixCommand).toBeDefined();
+        expect(c.fixCommand!.length).toBeGreaterThan(0);
+        expect(c.explain).toBeDefined();
+        expect(c.explain!.length).toBeGreaterThan(10);
+      });
+    });
+
+    it("[MUTATION-KILLER] all IDs start with TLS-", () => {
+      checks.forEach((c) => expect(c.id).toMatch(/^TLS-/));
+    });
+  });
 });

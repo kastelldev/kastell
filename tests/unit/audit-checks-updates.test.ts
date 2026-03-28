@@ -524,4 +524,43 @@ describe("parseUpdatesChecks", () => {
       expect(c.passed).toBe(false);
     });
   });
+
+  describe("[MUTATION-KILLER] Updates check metadata", () => {
+    const checks = parseUpdatesChecks(secureOutput, "bare");
+
+    const expectedMeta: Array<[string, string, string]> = [
+      ["UPD-SECURITY-PATCHES", "critical", "SAFE"],
+      ["UPD-AUTO-UPDATES", "warning", "SAFE"],
+      ["UPD-CACHE-FRESH", "info", "SAFE"],
+      ["UPD-REBOOT-REQUIRED", "warning", "SAFE"],
+      ["UPD-LAST-UPGRADE-RECENT", "warning", "SAFE"],
+      ["UPD-CVE-SCANNER-PRESENT", "info", "SAFE"],
+      ["UPD-DPKG-NO-PARTIAL", "warning", "SAFE"],
+      ["UPD-KERNEL-CURRENT", "info", "SAFE"],
+      ["UPD-UNATTENDED-ENABLED", "warning", "SAFE"],
+      ["UPD-APT-HTTPS", "info", "GUARDED"],
+      ["UPD-SECURITY-REPO-PRIORITY", "info", "GUARDED"],
+    ];
+
+    it.each(expectedMeta)("[MUTATION-KILLER] %s has severity=%s, safeToAutoFix=%s", (id, severity, safe) => {
+      const c = checks.find((c) => c.id === id);
+      expect(c).toBeDefined();
+      expect(c!.category).toBe("Updates");
+      expect(c!.severity).toBe(severity);
+      expect(c!.safeToAutoFix).toBe(safe);
+    });
+
+    it("[MUTATION-KILLER] every check has non-empty fixCommand and explain", () => {
+      checks.forEach((c) => {
+        expect(c.fixCommand).toBeDefined();
+        expect(c.fixCommand!.length).toBeGreaterThan(0);
+        expect(c.explain).toBeDefined();
+        expect(c.explain!.length).toBeGreaterThan(10);
+      });
+    });
+
+    it("[MUTATION-KILLER] all IDs start with UPD-", () => {
+      checks.forEach((c) => expect(c.id).toMatch(/^UPD-/));
+    });
+  });
 });

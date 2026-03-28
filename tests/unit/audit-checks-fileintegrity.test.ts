@@ -185,4 +185,42 @@ describe("parseFileIntegrityChecks", () => {
     expect(check).toBeDefined();
     expect(check!.passed).toBe(false);
   });
+
+  describe("[MUTATION-KILLER] FileIntegrity check metadata", () => {
+    const checks = parseFileIntegrityChecks(validOutput, "bare");
+
+    const expectedMeta: Array<[string, string, string]> = [
+      ["FINT-AIDE-INSTALLED", "warning", "SAFE"],
+      ["FINT-TRIPWIRE-INSTALLED", "info", "SAFE"],
+      ["FINT-AIDE-DB-EXISTS", "warning", "SAFE"],
+      ["FINT-AIDE-CRON", "warning", "SAFE"],
+      ["FINT-AUDITD-INSTALLED", "warning", "SAFE"],
+      ["FINT-AUDITD-RUNNING", "warning", "SAFE"],
+      ["FINT-AUDIT-PASSWD-RULE", "warning", "SAFE"],
+      ["FINT-AUDIT-SHADOW-RULE", "warning", "SAFE"],
+      ["FINT-AIDE-DB-RECENT", "warning", "SAFE"],
+      ["FINT-CRITICAL-FILE-MONITORING", "warning", "SAFE"],
+    ];
+
+    it.each(expectedMeta)("[MUTATION-KILLER] %s has severity=%s, safeToAutoFix=%s", (id, severity, safe) => {
+      const c = checks.find((c) => c.id === id);
+      expect(c).toBeDefined();
+      expect(c!.category).toBe("File Integrity");
+      expect(c!.severity).toBe(severity);
+      expect(c!.safeToAutoFix).toBe(safe);
+    });
+
+    it("[MUTATION-KILLER] every check has non-empty fixCommand and explain", () => {
+      checks.forEach((c) => {
+        expect(c.fixCommand).toBeDefined();
+        expect(c.fixCommand!.length).toBeGreaterThan(0);
+        expect(c.explain).toBeDefined();
+        expect(c.explain!.length).toBeGreaterThan(10);
+      });
+    });
+
+    it("[MUTATION-KILLER] all IDs start with FINT-", () => {
+      checks.forEach((c) => expect(c.id).toMatch(/^FINT-/));
+    });
+  });
 });

@@ -652,4 +652,41 @@ describe("parseFilesystemChecks", () => {
       expect(check!.passed).toBe(false);
     });
   });
+
+  describe("[MUTATION-KILLER] Filesystem check metadata completeness", () => {
+    const checks = parseFilesystemChecks(secureOutput, "bare");
+
+    const expectedMeta: Array<[string, string, string]> = [
+      ["FS-TMP-STICKY-BIT", "warning", "SAFE"],
+      ["FS-NO-WORLD-WRITABLE", "warning", "SAFE"],
+      ["FS-SUID-THRESHOLD", "info", "SAFE"],
+      ["FS-HOME-PERMISSIONS", "warning", "SAFE"],
+      ["FS-DISK-USAGE", "warning", "SAFE"],
+      ["FS-UMASK-RESTRICTIVE", "info", "SAFE"],
+      ["FS-NO-UNOWNED-FILES", "info", "SAFE"],
+      ["FS-VAR-LOG-SEPARATE", "info", "GUARDED"],
+      ["FS-SUID-SYSTEM-COUNT", "info", "SAFE"],
+    ];
+
+    it.each(expectedMeta)("[MUTATION-KILLER] %s has severity=%s, safeToAutoFix=%s", (id, severity, safe) => {
+      const c = checks.find((c) => c.id === id);
+      expect(c).toBeDefined();
+      expect(c!.category).toBe("Filesystem");
+      expect(c!.severity).toBe(severity);
+      expect(c!.safeToAutoFix).toBe(safe);
+    });
+
+    it("[MUTATION-KILLER] every check has non-empty fixCommand and explain", () => {
+      checks.forEach((c) => {
+        expect(c.fixCommand).toBeDefined();
+        expect(c.fixCommand!.length).toBeGreaterThan(0);
+        expect(c.explain).toBeDefined();
+        expect(c.explain!.length).toBeGreaterThan(10);
+      });
+    });
+
+    it("[MUTATION-KILLER] all IDs start with FS-", () => {
+      checks.forEach((c) => expect(c.id).toMatch(/^FS-/));
+    });
+  });
 });

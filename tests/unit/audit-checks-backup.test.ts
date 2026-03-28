@@ -211,4 +211,40 @@ describe("parseBackupChecks", () => {
       expect(check!.passed).toBe(false);
     });
   });
+
+  describe("[MUTATION-KILLER] Backup check metadata", () => {
+    const checks = parseBackupChecks(validOutput, "bare");
+
+    const expectedMeta: Array<[string, string, string]> = [
+      ["BACKUP-RECENT-BACKUP", "warning", "SAFE"],
+      ["BACKUP-ENCRYPTION-PRESENT", "warning", "SAFE"],
+      ["BACKUP-SCRIPT-PERMS", "warning", "SAFE"],
+      ["BACKUP-TOOL-INSTALLED", "info", "SAFE"],
+      ["BACKUP-CRON-JOB", "info", "SAFE"],
+      ["BACKUP-VAR-BACKUPS", "info", "SAFE"],
+      ["BKUP-ENCRYPTED-BACKUPS", "info", "GUARDED"],
+      ["BKUP-BACKUP-TOOL-INSTALLED", "info", "SAFE"],
+    ];
+
+    it.each(expectedMeta)("[MUTATION-KILLER] %s has severity=%s, safeToAutoFix=%s", (id, severity, safe) => {
+      const c = checks.find((c) => c.id === id);
+      expect(c).toBeDefined();
+      expect(c!.category).toBe("Backup Hygiene");
+      expect(c!.severity).toBe(severity);
+      expect(c!.safeToAutoFix).toBe(safe);
+    });
+
+    it("[MUTATION-KILLER] every check has non-empty fixCommand and explain", () => {
+      checks.forEach((c) => {
+        expect(c.fixCommand).toBeDefined();
+        expect(c.fixCommand!.length).toBeGreaterThan(0);
+        expect(c.explain).toBeDefined();
+        expect(c.explain!.length).toBeGreaterThan(10);
+      });
+    });
+
+    it("[MUTATION-KILLER] all IDs start with BACKUP- or BKUP-", () => {
+      checks.forEach((c) => expect(c.id).toMatch(/^(BACKUP|BKUP)-/));
+    });
+  });
 });

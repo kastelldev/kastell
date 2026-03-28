@@ -228,4 +228,41 @@ describe("parseTimeChecks", () => {
       expect(check!.passed).toBe(true);
     });
   });
+
+  describe("[MUTATION-KILLER] Time check metadata", () => {
+    const checks = parseTimeChecks(syncedOutput, "bare");
+
+    const expectedMeta: Array<[string, string, string]> = [
+      ["TIME-NTP-ACTIVE", "warning", "GUARDED"],
+      ["TIME-SYNCHRONIZED", "warning", "GUARDED"],
+      ["TIME-TIMEZONE-SET", "info", "SAFE"],
+      ["TIME-HWCLOCK-SYNC", "info", "SAFE"],
+      ["TIME-CHRONY-SOURCES", "info", "GUARDED"],
+      ["TIME-DRIFT-CHECK", "warning", "SAFE"],
+      ["TIME-NTP-PEERS-CONFIGURED", "info", "GUARDED"],
+      ["TIME-NO-DRIFT", "warning", "GUARDED"],
+      ["TIME-NTP-SYNCHRONIZED", "warning", "SAFE"],
+    ];
+
+    it.each(expectedMeta)("[MUTATION-KILLER] %s has severity=%s, safeToAutoFix=%s", (id, severity, safe) => {
+      const c = checks.find((c) => c.id === id);
+      expect(c).toBeDefined();
+      expect(c!.category).toBe("Time");
+      expect(c!.severity).toBe(severity);
+      expect(c!.safeToAutoFix).toBe(safe);
+    });
+
+    it("[MUTATION-KILLER] every check has non-empty fixCommand and explain", () => {
+      checks.forEach((c) => {
+        expect(c.fixCommand).toBeDefined();
+        expect(c.fixCommand!.length).toBeGreaterThan(0);
+        expect(c.explain).toBeDefined();
+        expect(c.explain!.length).toBeGreaterThan(10);
+      });
+    });
+
+    it("[MUTATION-KILLER] all IDs start with TIME-", () => {
+      checks.forEach((c) => expect(c.id).toMatch(/^TIME-/));
+    });
+  });
 });

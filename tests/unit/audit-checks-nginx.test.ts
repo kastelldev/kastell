@@ -342,4 +342,41 @@ describe("parseNginxChecks — check metadata", () => {
     expect(passed).toBeGreaterThan(0);
     expect(failed).toBeGreaterThan(0);
   });
+
+  describe("[MUTATION-KILLER] Nginx check metadata", () => {
+    const checks = parseNginxChecks(VALID_NGINX_OUTPUT, "bare");
+
+    const expectedMeta: Array<[string, string, string]> = [
+      ["NGX-SERVER-TOKENS", "warning", "GUARDED"],
+      ["NGX-SSL-PROTOCOLS", "warning", "GUARDED"],
+      ["NGX-RATE-LIMIT", "warning", "GUARDED"],
+      ["NGX-GZIP-CONFIG", "info", "GUARDED"],
+      ["NGX-CLIENT-BODY-SIZE", "warning", "GUARDED"],
+      ["NGX-SERVER-HEADER", "info", "SAFE"],
+      ["NGX-ACCESS-LOG", "warning", "GUARDED"],
+      ["NGX-ERROR-LOG", "warning", "GUARDED"],
+      ["NGX-WAF-DETECTED", "info", "GUARDED"],
+    ];
+
+    it.each(expectedMeta)("[MUTATION-KILLER] %s has severity=%s, safeToAutoFix=%s", (id, severity, safe) => {
+      const c = checks.find((c) => c.id === id);
+      expect(c).toBeDefined();
+      expect(c!.category).toBe("WAF & Reverse Proxy");
+      expect(c!.severity).toBe(severity);
+      expect(c!.safeToAutoFix).toBe(safe);
+    });
+
+    it("[MUTATION-KILLER] every check has non-empty fixCommand and explain", () => {
+      checks.forEach((c) => {
+        expect(c.fixCommand).toBeDefined();
+        expect(c.fixCommand!.length).toBeGreaterThan(0);
+        expect(c.explain).toBeDefined();
+        expect(c.explain!.length).toBeGreaterThan(10);
+      });
+    });
+
+    it("[MUTATION-KILLER] all IDs start with NGX-", () => {
+      checks.forEach((c) => expect(c.id).toMatch(/^NGX-/));
+    });
+  });
 });

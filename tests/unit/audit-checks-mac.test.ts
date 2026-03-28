@@ -447,4 +447,42 @@ describe("parseMACChecks", () => {
       expect(check!.currentValue).toContain("not found");
     });
   });
+
+  describe("[MUTATION-KILLER] MAC check metadata", () => {
+    const checks = parseMACChecks(appArmorOutput, "bare");
+
+    const expectedMeta: Array<[string, string, string]> = [
+      ["MAC-LSM-ACTIVE", "warning", "SAFE"],
+      ["MAC-APPARMOR-ACTIVE", "warning", "SAFE"],
+      ["MAC-APPARMOR-PROFILES", "info", "SAFE"],
+      ["MAC-APPARMOR-NO-UNCONFINED", "info", "SAFE"],
+      ["MAC-SELINUX-ENFORCING", "warning", "SAFE"],
+      ["MAC-SELINUX-CONFIG", "info", "SAFE"],
+      ["MAC-SECCOMP-ENABLED", "info", "GUARDED"],
+      ["MAC-APPARMOR-ENFORCE-COUNT", "warning", "SAFE"],
+      ["MAC-NO-UNCONFINED-PROCS", "info", "SAFE"],
+      ["MAC-SECCOMP-STRICT", "info", "GUARDED"],
+    ];
+
+    it.each(expectedMeta)("[MUTATION-KILLER] %s has severity=%s, safeToAutoFix=%s", (id, severity, safe) => {
+      const c = checks.find((c) => c.id === id);
+      expect(c).toBeDefined();
+      expect(c!.category).toBe("MAC");
+      expect(c!.severity).toBe(severity);
+      expect(c!.safeToAutoFix).toBe(safe);
+    });
+
+    it("[MUTATION-KILLER] every check has non-empty fixCommand and explain", () => {
+      checks.forEach((c) => {
+        expect(c.fixCommand).toBeDefined();
+        expect(c.fixCommand!.length).toBeGreaterThan(0);
+        expect(c.explain).toBeDefined();
+        expect(c.explain!.length).toBeGreaterThan(10);
+      });
+    });
+
+    it("[MUTATION-KILLER] all IDs start with MAC-", () => {
+      checks.forEach((c) => expect(c.id).toMatch(/^MAC-/));
+    });
+  });
 });

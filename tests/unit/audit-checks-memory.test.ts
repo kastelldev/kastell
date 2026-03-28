@@ -394,4 +394,43 @@ describe("parseMemoryChecks", () => {
       expect(check!.currentValue).toBe("vm.max_map_count not determinable");
     });
   });
+
+  describe("[MUTATION-KILLER] Memory check metadata", () => {
+    const checks = parseMemoryChecks(validOutput, "bare");
+
+    const expectedMeta: Array<[string, string, string]> = [
+      ["MEM-OVERCOMMIT-POLICY", "info", "SAFE"],
+      ["MEM-NO-ZOMBIE-EXCESS", "warning", "GUARDED"],
+      ["MEM-CORE-DUMP-RESTRICTED", "warning", "SAFE"],
+      ["MEM-OOM-KILL-POLICY", "info", "SAFE"],
+      ["MEM-HUGEPAGES-CONFIG", "info", "SAFE"],
+      ["MEM-PID-MAX-REASONABLE", "info", "SAFE"],
+      ["MEM-ULIMIT-NOFILE", "warning", "SAFE"],
+      ["MEM-SWAP-ENCRYPTED", "info", "GUARDED"],
+      ["MEM-SWAPPINESS-REASONABLE", "info", "SAFE"],
+      ["MEM-HUGEPAGES-NOT-EXCESSIVE", "info", "SAFE"],
+      ["MEM-MAX-MAP-COUNT", "info", "SAFE"],
+    ];
+
+    it.each(expectedMeta)("[MUTATION-KILLER] %s has severity=%s, safeToAutoFix=%s", (id, severity, safe) => {
+      const c = checks.find((c) => c.id === id);
+      expect(c).toBeDefined();
+      expect(c!.category).toBe("Memory");
+      expect(c!.severity).toBe(severity);
+      expect(c!.safeToAutoFix).toBe(safe);
+    });
+
+    it("[MUTATION-KILLER] every check has non-empty fixCommand and explain", () => {
+      checks.forEach((c) => {
+        expect(c.fixCommand).toBeDefined();
+        expect(c.fixCommand!.length).toBeGreaterThan(0);
+        expect(c.explain).toBeDefined();
+        expect(c.explain!.length).toBeGreaterThan(10);
+      });
+    });
+
+    it("[MUTATION-KILLER] all IDs start with MEM-", () => {
+      checks.forEach((c) => expect(c.id).toMatch(/^MEM-/));
+    });
+  });
 });

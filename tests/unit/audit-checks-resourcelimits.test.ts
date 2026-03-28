@@ -209,4 +209,40 @@ describe("parseResourceLimitsChecks", () => {
       expect(check!.passed).toBe(false);
     });
   });
+
+  describe("[MUTATION-KILLER] ResourceLimits check metadata", () => {
+    const checks = parseResourceLimitsChecks(validOutput, "bare");
+
+    const expectedMeta: Array<[string, string, string]> = [
+      ["RLIMIT-CGROUPS-V2", "warning", "GUARDED"],
+      ["RLIMIT-NPROC-SOFT", "warning", "SAFE"],
+      ["RLIMIT-NPROC-HARD", "info", "SAFE"],
+      ["RLIMIT-THREADS-MAX", "info", "SAFE"],
+      ["RLIMIT-LIMITS-CONF-NPROC", "info", "SAFE"],
+      ["RLIMIT-MAXLOGINS", "info", "SAFE"],
+      ["RLIMIT-LIMITS-CONF-CONFIGURED", "info", "SAFE"],
+      ["RLIMIT-NPROC-LIMITED", "warning", "SAFE"],
+    ];
+
+    it.each(expectedMeta)("[MUTATION-KILLER] %s has severity=%s, safeToAutoFix=%s", (id, severity, safe) => {
+      const c = checks.find((c) => c.id === id);
+      expect(c).toBeDefined();
+      expect(c!.category).toBe("Resource Limits");
+      expect(c!.severity).toBe(severity);
+      expect(c!.safeToAutoFix).toBe(safe);
+    });
+
+    it("[MUTATION-KILLER] every check has non-empty fixCommand and explain", () => {
+      checks.forEach((c) => {
+        expect(c.fixCommand).toBeDefined();
+        expect(c.fixCommand!.length).toBeGreaterThan(0);
+        expect(c.explain).toBeDefined();
+        expect(c.explain!.length).toBeGreaterThan(10);
+      });
+    });
+
+    it("[MUTATION-KILLER] all IDs start with RLIMIT-", () => {
+      checks.forEach((c) => expect(c.id).toMatch(/^RLIMIT-/));
+    });
+  });
 });

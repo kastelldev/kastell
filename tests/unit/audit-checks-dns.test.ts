@@ -310,4 +310,40 @@ describe("parseDnsChecks", () => {
       expect(check!.currentValue).toContain("inactive");
     });
   });
+
+  describe("[MUTATION-KILLER] DNS check metadata", () => {
+    const checks = parseDnsChecks(validOutput, "bare");
+
+    const expectedMeta: Array<[string, string, string]> = [
+      ["DNS-DNSSEC-ENABLED", "warning", "GUARDED"],
+      ["DNS-DOH-DOT-AVAILABLE", "info", "SAFE"],
+      ["DNS-RESOLV-IMMUTABLE", "warning", "GUARDED"],
+      ["DNS-NAMESERVER-CONFIGURED", "warning", "SAFE"],
+      ["DNS-MULTIPLE-NAMESERVERS", "info", "SAFE"],
+      ["DNS-RESOLV-NOT-LOCALHOST-ONLY", "info", "SAFE"],
+      ["DNS-LOCAL-RESOLVER-ACTIVE", "info", "GUARDED"],
+      ["DNS-SEARCH-DOMAIN-SET", "info", "SAFE"],
+    ];
+
+    it.each(expectedMeta)("[MUTATION-KILLER] %s has severity=%s, safeToAutoFix=%s", (id, severity, safe) => {
+      const c = checks.find((c) => c.id === id);
+      expect(c).toBeDefined();
+      expect(c!.category).toBe("DNS Security");
+      expect(c!.severity).toBe(severity);
+      expect(c!.safeToAutoFix).toBe(safe);
+    });
+
+    it("[MUTATION-KILLER] every check has non-empty fixCommand and explain", () => {
+      checks.forEach((c) => {
+        expect(c.fixCommand).toBeDefined();
+        expect(c.fixCommand!.length).toBeGreaterThan(0);
+        expect(c.explain).toBeDefined();
+        expect(c.explain!.length).toBeGreaterThan(10);
+      });
+    });
+
+    it("[MUTATION-KILLER] all IDs start with DNS-", () => {
+      checks.forEach((c) => expect(c.id).toMatch(/^DNS-/));
+    });
+  });
 });
