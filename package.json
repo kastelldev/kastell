@@ -14,7 +14,8 @@
     "README.md",
     "LICENSE",
     "NOTICE",
-    "SECURITY.md"
+    "SECURITY.md",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "dev": "tsx src/index.ts",

@@ -39,6 +39,7 @@ import { notifyCommand } from "./commands/notify.js";
 import { fleetCommand } from "./commands/fleet.js";
 import { botCommand } from "./commands/bot.js";
 import { fixSafeCommand } from "./commands/fix.js";
+import { changelogCommand } from "./commands/changelog.js";
 import { printHeader, printQuickHelp } from "./cli/header.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -382,6 +383,14 @@ program
 notifyCommand(program);
 fleetCommand(program);
 botCommand(program);
+
+program
+  .command("changelog [version]")
+  .description("Show release notes from CHANGELOG.md")
+  .option("--all", "Show full changelog")
+  .action((version?: string, options?: { all?: boolean }) =>
+    changelogCommand(version, options),
+  );
 
 registerAuthCommands(program);
 

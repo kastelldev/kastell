@@ -91,6 +91,7 @@ const MENU: MenuCategory[] = [
       { name: "Import server list", value: "import", description: "Import servers from a previously exported JSON file" },
       { name: "Shell completions", value: "completions", description: "Generate bash, zsh, or fish completion scripts" },
       { name: "Check version", value: "version", description: "Show current Kastell version and check for updates" },
+      { name: "View changelog", value: "changelog", description: "Show release notes for the latest or a specific version" },
     ],
   },
 ];
@@ -712,7 +713,7 @@ const SUB_PROMPTS: Record<string, () => Promise<string[] | null>> = {
 
 const DIRECT_COMMANDS = new Set([
   "list", "add", "destroy", "restart", "remove", "restore", "export", "config",
-  "health", "fleet", "backup-list", "version",
+  "health", "fleet", "backup-list", "version", "changelog",
 ]);
 
 export async function interactiveMenu(): Promise<string[] | null> {

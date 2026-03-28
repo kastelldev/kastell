@@ -16,18 +16,17 @@
 [![Socket Badge](https://socket.dev/api/badge/npm/package/kastell)](https://socket.dev/npm/package/kastell)
 [![Snyk](https://snyk.io/test/github/kastelldev/kastell/badge.svg)](https://snyk.io/test/github/kastelldev/kastell)
 [![Website](https://img.shields.io/badge/website-kastell.dev-blue?style=flat-square)](https://kastell.dev)
+![Zero Telemetry](https://img.shields.io/badge/telemetry-zero-brightgreen)
 
-## Kastell Neden Var?
+## Neden Kastell?
 
-Self-hosted sunucuların çoğu şu nedenlerle çöker:
+Sunucu guvenligi parcali. Lynis tarar ama duzeltmez. OpenSCAP guclu ama karmasik. Ozel script'ler bir sure calisir, sonra kimse bakmaz. Her aracin ayri cikti formati, ayri guncelleme dongusu, ayri ogrenme egrisi var.
 
-- Yedekleme disiplini yok
-- Güncelleme stratejisi yok
-- Güvenlik sıkılaştırması yok
-- İzleme yok
-- Snapshot rutini yok
+**Kastell farkli bir yaklasim benimser:** tek CLI ile denetle, duzelt, kilitle ve izle. Sunucunu tara, guvenli fix'leri uygula, uretim standartlarina kilitle ve izlemeye devam et -- hepsi ayni aracla.
 
-Sunucularınıza çocuk bakıcılığı yapmayı bırakın. Kastell bunu çözmek için yapıldı.
+**Ilk gunden yapay zeka uyumlu.** Kastell yerlesik MCP sunucusuyla gelir; Claude, Cursor veya herhangi bir MCP uyumlu yapay zeka ajanı sunucularinizi dogrudan yonetebilir. Bir prompt'tan uretim siklastirmasina saniyeler icinde gecin.
+
+Bir sunucuyu guvenli hale getirmek icin dort ayri araca ihtiyaciniz yok.
 
 ## Hızlı Başlangıç
 
@@ -88,6 +87,23 @@ Kastell sunucu oluşturma, SSH anahtar kurulumu, güvenlik duvarı yapılandırm
 | Birden fazla sunucu mu yönetiyorsunuz? | Yedekleme, bakım, durum ve sağlıkta `--all` desteği |
 | Mevcut sunucu takip dışı mı? | `kastell add` ile her sunucuyu yönetime alın |
 | Komutları ezberlemek mi? | `kastell` yazın -- interaktif menü sizi yönlendirir |
+
+## Kastell vs Alternatifler
+
+| Ozellik | Kastell | Lynis | OpenSCAP |
+|---------|---------|-------|----------|
+| Kurulum | `npm i -g kastell` | Paket yoneticisi | Paket yoneticisi |
+| Dil | TypeScript | Shell | C/Python |
+| Guvenlik Kontrolleri | 457+ | 300+ | Profile gore degisir |
+| Otomatik Duzeltme | Guvenli katman | Sadece oneri | Sadece oneri |
+| MCP (AI Ajan) | 14 arac | -- | -- |
+| Uyumluluk | CIS, PCI-DSS, HIPAA | CIS, HIPAA | CIS, STIG, PCI-DSS |
+| Bulut Saglama | 4 saglayici | -- | -- |
+| Siklastirma (Lock) | 24 adim | -- | -- |
+| Uzaktan Izleme | Guard daemon | -- | -- |
+| Telegram Bot | Yerlesik | -- | -- |
+| Platform Destegi | Linux (SSH) | Linux/macOS/BSD | Linux |
+| Lisans | Apache 2.0 | GPL-3.0 | LGPL-2.1 |
 
 ## Neler Yapabilirsiniz?
 
@@ -246,7 +262,7 @@ kastell init --template production --provider hetzner
 
 ## Güvenlik
 
-Kastell güvenlik öncelikli olarak geliştirilmektedir -- 206 test suite'inde **5.506 test**, özel güvenlik test suite'leri dahil.
+Kastell güvenlik öncelikli olarak geliştirilmektedir -- 206 test suite'inde **5.522 test**, özel güvenlik test suite'leri dahil.
 
 - API token'ları asla diske kaydedilmez -- çalışma zamanında sorulur veya ortam değişkenlerinden alınır
 - SSH anahtarları gerekirse otomatik oluşturulur (Ed25519)
@@ -259,6 +275,7 @@ Kastell güvenlik öncelikli olarak geliştirilmektedir -- 206 test suite'inde *
 - `--full-setup` güvenlik duvarı ve SSH sıkılaştırmasını otomatik etkinleştirir
 - MCP: SAFE_MODE (varsayılan: açık) tüm yıkıcı işlemleri engeller, tüm girdilerde Zod şema doğrulaması, yedek geri yüklemede path traversal koruması
 - Claude Code hook'ları: destroy-block, `--force` olmadan `kastell destroy` komutunu engeller; pre-commit audit guard skor düşüşünde uyarır
+- **Sıfır Telemetri** — Kastell hiçbir kullanım verisi, analitik veya telemetri toplamaz. Sunucu verileriniz makinenizden asla çıkmaz.
 
 ## Kurulum
 

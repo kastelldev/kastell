@@ -16,18 +16,17 @@
 [![Socket Badge](https://socket.dev/api/badge/npm/package/kastell)](https://socket.dev/npm/package/kastell)
 [![Snyk](https://snyk.io/test/github/kastelldev/kastell/badge.svg)](https://snyk.io/test/github/kastelldev/kastell)
 [![Website](https://img.shields.io/badge/website-kastell.dev-blue?style=flat-square)](https://kastell.dev)
+![Zero Telemetry](https://img.shields.io/badge/telemetry-zero-brightgreen)
 
-## Why Kastell Exists
+## Why Kastell?
 
-Most self-hosted servers break because:
+Server security is fragmented. Lynis scans but doesn't fix. OpenSCAP is powerful but complex. Custom scripts work until they don't -- and nobody maintains them. Each tool has its own output format, its own update cycle, its own learning curve.
 
-- No backup discipline
-- No update strategy
-- No security hardening
-- No monitoring
-- No snapshot routine
+**Kastell takes a different approach:** one CLI that audits, fixes, hardens, and monitors. Scan your server, apply safe fixes, lock it down to production standards, and keep watching -- all with the same tool.
 
-Stop babysitting your servers. Kastell was built to fix that.
+**AI-native from day one.** Kastell ships with a built-in MCP server, so Claude, Cursor, or any MCP-compatible AI agent can manage your servers directly. Go from a prompt to production hardening in seconds.
+
+You don't need four separate tools to secure a server.
 
 ## Quick Start
 
@@ -88,6 +87,23 @@ Kastell handles server provisioning, SSH key setup, firewall configuration, and 
 | Managing multiple servers? | `--all` flag across backup, maintain, status, and health |
 | Existing server not tracked? | `kastell add` brings any server under management |
 | Don't want to memorize commands? | Just run `kastell` -- interactive menu guides you |
+
+## Kastell vs Alternatives
+
+| Feature | Kastell | Lynis | OpenSCAP |
+|---------|---------|-------|----------|
+| Installation | `npm i -g kastell` | Package manager | Package manager |
+| Language | TypeScript | Shell | C/Python |
+| Security Checks | 457+ | 300+ | Varies by profile |
+| Auto-Fix | Safe tier | Suggest only | Suggest only |
+| MCP (AI Agent) | 14 tools | -- | -- |
+| Compliance | CIS, PCI-DSS, HIPAA | CIS, HIPAA | CIS, STIG, PCI-DSS |
+| Cloud Provision | 4 providers | -- | -- |
+| Hardening (Lock) | 24-step | -- | -- |
+| Remote Monitoring | Guard daemon | -- | -- |
+| Telegram Bot | Built-in | -- | -- |
+| Platform Support | Linux (SSH) | Linux/macOS/BSD | Linux |
+| License | Apache 2.0 | GPL-3.0 | LGPL-2.1 |
 
 ## What Can You Do?
 
@@ -246,7 +262,7 @@ kastell init --template production --provider hetzner
 
 ## Security
 
-Kastell is built with security as a priority -- **5,506 tests** across 206 suites, including dedicated security test suites.
+Kastell is built with security as a priority -- **5,522 tests** across 206 suites, including dedicated security test suites.
 
 - API tokens are never stored on disk -- prompted at runtime or via environment variables
 - SSH keys are auto-generated if needed (Ed25519)
@@ -259,6 +275,7 @@ Kastell is built with security as a priority -- **5,506 tests** across 206 suite
 - `--full-setup` enables UFW firewall and SSH hardening automatically
 - MCP: SAFE_MODE (default: on) blocks all destructive operations, Zod schema validation on all inputs, path traversal protection on backup restore
 - Claude Code hooks: destroy-block prevents accidental `kastell destroy` without `--force`, pre-commit audit guard warns on score drops
+- **Zero Telemetry** — Kastell collects no usage data, analytics, or telemetry. Your server data never leaves your machine.
 
 ## Installation
 
@@ -288,7 +305,7 @@ Use `kastell status my-server --autostart` to check platform status and auto-res
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing, and contribution guidelines.
 
-Kastell uses **5,506 tests** across 206 suites. Run `npm test` before submitting PRs.
+Kastell uses **5,522 tests** across 206 suites. Run `npm test` before submitting PRs.
 
 ## MCP Server (AI Integration)
 
