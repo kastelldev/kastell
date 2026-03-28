@@ -205,7 +205,7 @@ export const parseUpdatesChecks: CheckParser = (sectionOutput: string, _platform
   };
 
   // UPD-10: APT repos use HTTPS (informational)
-  const hasHttpRepos = !isNA && /http:///.test(sectionOutput) && !/apt list|upgradable/.test(sectionOutput);
+  const hasHttpRepos = !isNA && /http:\/\//.test(sectionOutput) && !/apt list|upgradable/.test(sectionOutput);
   const upd10: AuditCheck = {
     id: "UPD-APT-HTTPS",
     category: "Updates",

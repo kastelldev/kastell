@@ -2061,3 +2061,870 @@ describe("parseDockerChecks — mutation killer: currentValue exact strings (ins
     expect(check!.currentValue).toBe("No default ulimits in daemon.json");
   });
 });
+
+// ─── Mutation-killer tests ──────────────────────────────────────────────────
+// Targets: 140 non-string survived mutants across docker.ts
+
+describe("mutation-killer tests", () => {
+  // ── Helper: minimal Docker-available output builder ──
+  const mkOutput = (...lines: string[]): string => [
+    '{"Hosts":["unix:///var/run/docker.sock"],"ServerVersion":"24.0.7","SecurityOptions":[],"LoggingDriver":"json-file"}',
+    "---DAEMON_JSON---",
+    "{}",
+    "---END_DAEMON_JSON---",
+    ...lines,
+  ].join("\n");
+
+  const find = (checks: ReturnType<typeof parseDockerChecks>, id: string) =>
+    checks.find((c) => c.id === id)!;
+
+  // ── L11: isDockerAvailable — ConditionalExpression, MethodExpression, LogicalOperator ──
+
+  it("[DCK-ALL] whitespace-only input triggers skipped checks (isDockerAvailable trim branch)", () => {
+    const checks = parseDockerChecks("   \t\n  ", "bare");
+    expect(checks).toHaveLength(32);
+    checks.forEach((c) => {
+      expect(c.passed).toBe(true);
+      expect(c.currentValue).toBe("Docker not installed");
+    });
+  });
+
+  it("[DCK-ALL] N/A with leading/trailing whitespace triggers skipped checks", () => {
+    const checks = parseDockerChecks("  N/A  ", "bare");
+    expect(checks).toHaveLength(32);
+    checks.forEach((c) => expect(c.passed).toBe(true));
+  });
+
+  it("[DCK-ALL] 'ServerVersion' without JSON still makes docker available (L13 return branch)", () => {
+    const checks = parseDockerChecks("ServerVersion is present", "bare");
+    expect(checks).toHaveLength(32);
+    // NOT skipped — should have real check values
+    expect(find(checks, "DCK-NO-TCP-SOCKET").currentValue).not.toBe("Docker not installed");
+  });
+
+  // ── L80-88: JSON depth tracking — ConditionalExpression, UnaryOperator, EqualityOperator ──
+
+  it("[DCK-VERSION-CURRENT] nested JSON braces are tracked correctly (depth counting L80-88)", () => {
+    const nestedJson = '{"ServerVersion":"26.0.0","RegistryConfig":{"Mirrors":[],"InsecureRegistryCIDRs":["127.0.0.0/8"]},"SecurityOptions":[],"LoggingDriver":"json-file"}';
+    const checks = parseDockerChecks(nestedJson + "\n---DAEMON_JSON---\n{}\n---END_DAEMON_JSON---", "bare");
+    expect(find(checks, "DCK-VERSION-CURRENT").passed).toBe(true);
+    expect(find(checks, "DCK-VERSION-CURRENT").currentValue).toBe("Docker 26.0.0");
+  });
+
+  it("[DCK-VERSION-CURRENT] deeply nested JSON still parses (3 levels)", () => {
+    const deep = '{"ServerVersion":"25.0.1","A":{"B":{"C":"d"}},"SecurityOptions":[],"LoggingDriver":"json-file"}';
+    const checks = parseDockerChecks(deep + "\n---DAEMON_JSON---\n{}\n---END_DAEMON_JSON---", "bare");
+    expect(find(checks, "DCK-VERSION-CURRENT").passed).toBe(true);
+    expect(find(checks, "DCK-VERSION-CURRENT").currentValue).toBe("Docker 25.0.1");
+  });
+
+  // ── L97: ArrayDeclaration — hosts = dockerInfo.Hosts ?? [] ──
+
+  it("[DCK-NO-TCP-SOCKET] no Hosts field in JSON uses empty array fallback (L97)", () => {
+    const noHosts = '{"ServerVersion":"24.0.7","SecurityOptions":[],"LoggingDriver":"json-file"}';
+    const checks = parseDockerChecks(noHosts + "\n---DAEMON_JSON---\n{}\n---END_DAEMON_JSON---", "bare");
+    expect(find(checks, "DCK-NO-TCP-SOCKET").passed).toBe(true);
+    expect(find(checks, "DCK-NO-TCP-SOCKET").currentValue).toBe("Unix socket only");
+  });
+
+  // ── L105: MethodExpression, ArrowFunction — hosts.some, h.startsWith ──
+
+  it("[DCK-NO-TCP-SOCKET] tcp:// at non-zero index in Hosts array still detected", () => {
+    const multiHost = '{"Hosts":["unix:///var/run/docker.sock","tcp://127.0.0.1:2376"],"ServerVersion":"24.0.7","SecurityOptions":[],"LoggingDriver":"json-file"}';
+    const checks = parseDockerChecks(multiHost + "\n---DAEMON_JSON---\n{}\n---END_DAEMON_JSON---", "bare");
+    expect(find(checks, "DCK-NO-TCP-SOCKET").passed).toBe(false);
+    expect(find(checks, "DCK-NO-TCP-SOCKET").currentValue).toContain("tcp://127.0.0.1:2376");
+  });
+
+  it("[DCK-NO-TCP-SOCKET] hosts with only unix:// entries pass", () => {
+    const unixOnly = '{"Hosts":["unix:///var/run/docker.sock","unix:///tmp/docker.sock"],"ServerVersion":"24.0.7","SecurityOptions":[],"LoggingDriver":"json-file"}';
+    const checks = parseDockerChecks(unixOnly + "\n---DAEMON_JSON---\n{}\n---END_DAEMON_JSON---", "bare");
+    expect(find(checks, "DCK-NO-TCP-SOCKET").passed).toBe(true);
+  });
+
+  // ── L113: Regex — --privileged pattern ──
+
+  it("[DCK-NO-PRIVILEGED] --PRIVILEGED (uppercase) still detected (case-insensitive regex L113)", () => {
+    const output = mkOutput(
+      "myapp nginx:latest --PRIVILEGED Up 2 hours",
+      "N/A",
+      "/myapp SecurityOpt=[] ReadonlyRootfs=false User=appuser Privileged=false",
+    );
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-NO-PRIVILEGED").passed).toBe(false);
+  });
+
+  it("[DCK-NO-PRIVILEGED] Privileged JSON format detected (L113 second regex)", () => {
+    const output = mkOutput(
+      'myapp "Privileged": true something',
+      "N/A",
+      "/myapp SecurityOpt=[] ReadonlyRootfs=false User=appuser Privileged=false",
+    );
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-NO-PRIVILEGED").passed).toBe(false);
+    expect(find(checks, "DCK-NO-PRIVILEGED").currentValue).toBe("Privileged container(s) detected");
+  });
+
+  it("[DCK-NO-PRIVILEGED] no --privileged and no Privileged:true passes", () => {
+    const output = mkOutput(
+      "myapp nginx:latest Up 2 hours",
+      "N/A",
+      "/myapp SecurityOpt=[seccomp:default] ReadonlyRootfs=true User=appuser Privileged=false",
+    );
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-NO-PRIVILEGED").passed).toBe(true);
+    expect(find(checks, "DCK-NO-PRIVILEGED").currentValue).toBe("No privileged containers");
+  });
+
+  // ── L145-146: ArrayDeclaration, ArrowFunction — securityOpts.some ──
+
+  it("[DCK-USER-NAMESPACE] SecurityOptions null fallback uses empty array (L145)", () => {
+    const noSecOpts = '{"Hosts":["unix:///var/run/docker.sock"],"ServerVersion":"24.0.7","LoggingDriver":"json-file"}';
+    const checks = parseDockerChecks(noSecOpts + "\n---DAEMON_JSON---\n{}\n---END_DAEMON_JSON---\nN/A", "bare");
+    expect(find(checks, "DCK-USER-NAMESPACE").passed).toBe(false);
+    expect(find(checks, "DCK-USER-NAMESPACE").currentValue).toBe("User namespace not configured");
+  });
+
+  it("[DCK-USER-NAMESPACE] SecurityOptions with userns passes (L146 arrow)", () => {
+    const withUserns = '{"Hosts":["unix:///var/run/docker.sock"],"ServerVersion":"24.0.7","SecurityOptions":["name=userns"],"LoggingDriver":"json-file"}';
+    const checks = parseDockerChecks(withUserns + "\n---DAEMON_JSON---\n{}\n---END_DAEMON_JSON---\nN/A", "bare");
+    expect(find(checks, "DCK-USER-NAMESPACE").passed).toBe(true);
+    expect(find(checks, "DCK-USER-NAMESPACE").currentValue).toBe("User namespace remapping enabled");
+  });
+
+  // ── L162: Regex — --network\s*host ──
+
+  it("[DCK-NO-HOST-NETWORK] --network  host (extra space) detected (L162 regex)", () => {
+    const output = mkOutput(
+      "myapp nginx:latest --network  host Up 2 hours",
+      "N/A",
+      "/myapp SecurityOpt=[] ReadonlyRootfs=false User=appuser Privileged=false",
+    );
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-NO-HOST-NETWORK").passed).toBe(false);
+    expect(find(checks, "DCK-NO-HOST-NETWORK").currentValue).toBe("Host network container(s) detected");
+  });
+
+  it("[DCK-NO-HOST-NETWORK] --networkhost (no space) detected (L162 zero-width match)", () => {
+    const output = mkOutput(
+      "myapp nginx:latest --networkhost Up 2 hours",
+      "N/A",
+      "/myapp SecurityOpt=[] ReadonlyRootfs=false User=appuser Privileged=false",
+    );
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-NO-HOST-NETWORK").passed).toBe(false);
+  });
+
+  // ── L178: ConditionalExpression — hasLogging ──
+
+  it("[DCK-LOGGING-DRIVER] LoggingDriver='none' fails (L178 first condition)", () => {
+    const noneLog = '{"Hosts":["unix:///var/run/docker.sock"],"ServerVersion":"24.0.7","SecurityOptions":[],"LoggingDriver":"none"}';
+    const checks = parseDockerChecks(noneLog + "\n---DAEMON_JSON---\n{}\n---END_DAEMON_JSON---", "bare");
+    expect(find(checks, "DCK-LOGGING-DRIVER").passed).toBe(false);
+    expect(find(checks, "DCK-LOGGING-DRIVER").currentValue).toBe("Logging driver: none");
+  });
+
+  it("[DCK-LOGGING-DRIVER] missing LoggingDriver defaults to 'unknown' and fails (L178 second condition)", () => {
+    const noLog = '{"Hosts":["unix:///var/run/docker.sock"],"ServerVersion":"24.0.7","SecurityOptions":[]}';
+    const checks = parseDockerChecks(noLog + "\n---DAEMON_JSON---\n{}\n---END_DAEMON_JSON---", "bare");
+    expect(find(checks, "DCK-LOGGING-DRIVER").passed).toBe(false);
+    expect(find(checks, "DCK-LOGGING-DRIVER").currentValue).toBe("Logging driver: unknown");
+  });
+
+  it("[DCK-LOGGING-DRIVER] LoggingDriver='syslog' passes (not none/unknown)", () => {
+    const syslog = '{"Hosts":["unix:///var/run/docker.sock"],"ServerVersion":"24.0.7","SecurityOptions":[],"LoggingDriver":"syslog"}';
+    const checks = parseDockerChecks(syslog + "\n---DAEMON_JSON---\n{}\n---END_DAEMON_JSON---", "bare");
+    expect(find(checks, "DCK-LOGGING-DRIVER").passed).toBe(true);
+    expect(find(checks, "DCK-LOGGING-DRIVER").currentValue).toBe("Logging driver: syslog");
+  });
+
+  // ── L200: ConditionalExpression, LogicalOperator, UnaryOperator — hasRunningContainers ──
+
+  it("[DCK-NO-ROOT-CONTAINERS] SecurityOpt= present without N/A means running containers (L200)", () => {
+    const output = mkOutput(
+      "myapp nginx:latest Up 2 hours",
+      "N/A",
+      "/myapp SecurityOpt=[seccomp:default] ReadonlyRootfs=true User=appuser Privileged=false",
+      "660 root docker",
+    );
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-NO-ROOT-CONTAINERS").passed).toBe(true);
+    expect(find(checks, "DCK-NO-ROOT-CONTAINERS").currentValue).toBe("Containers running as non-root");
+  });
+
+  it("[DCK-NO-ROOT-CONTAINERS] no SecurityOpt= lines means no running containers (L200)", () => {
+    const output = mkOutput("N/A", "N/A", "N/A");
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-NO-ROOT-CONTAINERS").passed).toBe(true);
+    expect(find(checks, "DCK-NO-ROOT-CONTAINERS").currentValue).toBe("No running containers");
+  });
+
+  // ── L210: ConditionalExpression, BooleanLiteral — liveRestoreEnabled ──
+
+  it("[DCK-LIVE-RESTORE] daemon.json live-restore=true passes (L210 daemonJson branch)", () => {
+    const output = [
+      '{"Hosts":["unix:///var/run/docker.sock"],"ServerVersion":"24.0.7","SecurityOptions":[],"LoggingDriver":"json-file"}',
+      "---DAEMON_JSON---",
+      '{"live-restore":true}',
+      "---END_DAEMON_JSON---",
+      "N/A",
+    ].join("\n");
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-LIVE-RESTORE").passed).toBe(true);
+    expect(find(checks, "DCK-LIVE-RESTORE").currentValue).toBe("live-restore: true");
+  });
+
+  it("[DCK-LIVE-RESTORE] daemon.json live-restore=false and dockerInfo=false fails (L210)", () => {
+    const output = [
+      '{"Hosts":["unix:///var/run/docker.sock"],"ServerVersion":"24.0.7","SecurityOptions":[],"LoggingDriver":"json-file","LiveRestoreEnabled":false}',
+      "---DAEMON_JSON---",
+      '{"live-restore":false}',
+      "---END_DAEMON_JSON---",
+      "N/A",
+    ].join("\n");
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-LIVE-RESTORE").passed).toBe(false);
+    expect(find(checks, "DCK-LIVE-RESTORE").currentValue).toBe("live-restore not configured");
+  });
+
+  // ── L261: LogicalOperator — hasTcpExposed ──
+
+  it("[DCK-TLS-VERIFY] single TCP host triggers TLS check failure (L261)", () => {
+    const output = [
+      '{"Hosts":["tcp://0.0.0.0:2375"],"ServerVersion":"24.0.7","SecurityOptions":[],"LoggingDriver":"json-file"}',
+      "---DAEMON_JSON---",
+      "{}",
+      "---END_DAEMON_JSON---",
+      "N/A",
+    ].join("\n");
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-TLS-VERIFY").passed).toBe(false);
+    expect(find(checks, "DCK-TLS-VERIFY").currentValue).toBe("TCP socket exposed without TLS verification");
+  });
+
+  it("[DCK-TLS-VERIFY] empty Hosts array means no TCP exposed (L261 length===0)", () => {
+    const output = [
+      '{"Hosts":[],"ServerVersion":"24.0.7","SecurityOptions":[],"LoggingDriver":"json-file"}',
+      "---DAEMON_JSON---",
+      "{}",
+      "---END_DAEMON_JSON---",
+      "N/A",
+    ].join("\n");
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-TLS-VERIFY").passed).toBe(true);
+    expect(find(checks, "DCK-TLS-VERIFY").currentValue).toBe("No TCP socket exposed");
+  });
+
+  // ── L278-279: Regex — sockStatLine pattern, sockPermOk ──
+
+  it("[DCK-SOCKET-PERMS] 770 root docker fails (permission not 660, L279 regex)", () => {
+    const output = mkOutput("N/A", "N/A", "N/A", "770 root docker");
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-SOCKET-PERMS").passed).toBe(false);
+    expect(find(checks, "DCK-SOCKET-PERMS").currentValue).toBe("770 root docker");
+  });
+
+  it("[DCK-SOCKET-PERMS] 660 root staff fails (group not docker, L279)", () => {
+    const output = mkOutput("N/A", "N/A", "N/A", "660 root staff");
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-SOCKET-PERMS").passed).toBe(false);
+    expect(find(checks, "DCK-SOCKET-PERMS").currentValue).toBe("660 root staff");
+  });
+
+  it("[DCK-SOCKET-PERMS] 660 docker docker fails (owner not root, L279)", () => {
+    const output = mkOutput("N/A", "N/A", "N/A", "660 docker docker");
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-SOCKET-PERMS").passed).toBe(false);
+  });
+
+  // ── L286-296: MethodExpression — containerUserLines, hasRootContainers ──
+
+  it("[DCK-NO-ROOT-CONTAINERS] User= at end of line (empty) triggers root detection (L296)", () => {
+    const output = mkOutput(
+      "myapp nginx:latest Up 2 hours",
+      "N/A",
+      "/myapp SecurityOpt=[] ReadonlyRootfs=false User=",
+      "660 root docker",
+    );
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-NO-ROOT-CONTAINERS").passed).toBe(false);
+    expect(find(checks, "DCK-NO-ROOT-CONTAINERS").currentValue).toContain("root");
+  });
+
+  it('[DCK-NO-ROOT-CONTAINERS] User="" triggers root detection (L296 second regex)', () => {
+    const output = mkOutput(
+      "myapp nginx:latest Up 2 hours",
+      "N/A",
+      '/myapp SecurityOpt=[] ReadonlyRootfs=false User="" Privileged=false',
+      "660 root docker",
+    );
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-NO-ROOT-CONTAINERS").passed).toBe(false);
+  });
+
+  it("[DCK-NO-ROOT-CONTAINERS] User=myuser does not trigger root detection", () => {
+    const output = mkOutput(
+      "myapp nginx:latest Up 2 hours",
+      "N/A",
+      "/myapp SecurityOpt=[] ReadonlyRootfs=true User=myuser Privileged=false",
+      "660 root docker",
+    );
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-NO-ROOT-CONTAINERS").passed).toBe(true);
+    expect(find(checks, "DCK-NO-ROOT-CONTAINERS").currentValue).toBe("Containers running as non-root");
+  });
+
+  // ── L316: ConditionalExpression, LogicalOperator, EqualityOperator — allReadOnly ──
+
+  it("[DCK-READ-ONLY-ROOTFS] all ReadonlyRootfs=true passes (L316)", () => {
+    const output = mkOutput(
+      "myapp nginx:latest Up 2 hours",
+      "N/A",
+      "/myapp SecurityOpt=[] ReadonlyRootfs=true User=app Privileged=false",
+      "/db SecurityOpt=[] ReadonlyRootfs=true User=pg Privileged=false",
+      "660 root docker",
+    );
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-READ-ONLY-ROOTFS").passed).toBe(true);
+    expect(find(checks, "DCK-READ-ONLY-ROOTFS").currentValue).toBe("Containers use read-only root filesystem");
+  });
+
+  it("[DCK-READ-ONLY-ROOTFS] mixed ReadonlyRootfs fails (L316 every check)", () => {
+    const output = mkOutput(
+      "myapp nginx:latest Up 2 hours",
+      "N/A",
+      "/myapp SecurityOpt=[] ReadonlyRootfs=true User=app Privileged=false",
+      "/db SecurityOpt=[] ReadonlyRootfs=false User=pg Privileged=false",
+      "660 root docker",
+    );
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-READ-ONLY-ROOTFS").passed).toBe(false);
+    expect(find(checks, "DCK-READ-ONLY-ROOTFS").currentValue).toContain("writable");
+  });
+
+  it("[DCK-READ-ONLY-ROOTFS] no ReadonlyRootfs lines with running containers fails (L316 length>0)", () => {
+    const output = mkOutput(
+      "myapp nginx:latest Up 2 hours",
+      "N/A",
+      "/myapp SecurityOpt=[] User=app Privileged=false",
+      "660 root docker",
+    );
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-READ-ONLY-ROOTFS").passed).toBe(false);
+  });
+
+  // ── L338: ConditionalExpression — logMaxSize ──
+
+  it("[DCK-LOG-MAX-SIZE] no max-size in output and no log-opts in daemon.json fails (L338)", () => {
+    const output = mkOutput("N/A", "N/A", "N/A");
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-LOG-MAX-SIZE").passed).toBe(false);
+    expect(find(checks, "DCK-LOG-MAX-SIZE").currentValue).toBe("No log max-size configured");
+  });
+
+  // ── L368-370: MethodExpression, ConditionalExpression — seccompLines, hasSeccomp ──
+
+  it("[DCK-SECCOMP-ENABLED] containers with seccomp in SecurityOpt passes (L368-370)", () => {
+    const output = mkOutput(
+      "myapp nginx:latest Up 2 hours",
+      "N/A",
+      "/myapp SecurityOpt=[seccomp:default] ReadonlyRootfs=true User=app Privileged=false",
+      "660 root docker",
+    );
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-SECCOMP-ENABLED").passed).toBe(true);
+    expect(find(checks, "DCK-SECCOMP-ENABLED").currentValue).toBe("seccomp profile applied");
+  });
+
+  it("[DCK-SECCOMP-ENABLED] containers without seccomp in SecurityOpt fails", () => {
+    const output = mkOutput(
+      "myapp nginx:latest Up 2 hours",
+      "N/A",
+      "/myapp SecurityOpt=[apparmor:docker-default] ReadonlyRootfs=true User=app Privileged=false",
+      "660 root docker",
+    );
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-SECCOMP-ENABLED").passed).toBe(false);
+    expect(find(checks, "DCK-SECCOMP-ENABLED").currentValue).toContain("No seccomp");
+  });
+
+  // ── L404-406: MethodExpression — privilegedInspectLines ──
+
+  it("[DCK-NO-SENSITIVE-MOUNTS] Privileged=true in inspect output fails (L404-406)", () => {
+    const output = mkOutput(
+      "myapp nginx:latest Up 2 hours",
+      "N/A",
+      "/myapp SecurityOpt=[] ReadonlyRootfs=false User=app Privileged=true",
+      "660 root docker",
+    );
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-NO-SENSITIVE-MOUNTS").passed).toBe(false);
+    expect(find(checks, "DCK-NO-SENSITIVE-MOUNTS").currentValue).toContain("Privileged=true");
+  });
+
+  it("[DCK-NO-SENSITIVE-MOUNTS] Privileged=false in inspect output passes", () => {
+    const output = mkOutput(
+      "myapp nginx:latest Up 2 hours",
+      "N/A",
+      "/myapp SecurityOpt=[] ReadonlyRootfs=false User=app Privileged=false",
+      "660 root docker",
+    );
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-NO-SENSITIVE-MOUNTS").passed).toBe(true);
+    expect(find(checks, "DCK-NO-SENSITIVE-MOUNTS").currentValue).toBe("No privileged containers detected");
+  });
+
+  // ── L426: ConditionalExpression, EqualityOperator, MethodExpression — hasApparmor ──
+
+  it("[DCK-APPARMOR-PROFILE] containers with apparmor in SecurityOpt passes (L426)", () => {
+    const output = mkOutput(
+      "myapp nginx:latest Up 2 hours",
+      "N/A",
+      "/myapp SecurityOpt=[seccomp:default apparmor:docker-default] ReadonlyRootfs=true User=app Privileged=false",
+      "660 root docker",
+    );
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-APPARMOR-PROFILE").passed).toBe(true);
+    expect(find(checks, "DCK-APPARMOR-PROFILE").currentValue).toBe("AppArmor profile applied");
+  });
+
+  it("[DCK-APPARMOR-PROFILE] containers without apparmor in SecurityOpt fails (L426)", () => {
+    const output = mkOutput(
+      "myapp nginx:latest Up 2 hours",
+      "N/A",
+      "/myapp SecurityOpt=[seccomp:default] ReadonlyRootfs=true User=app Privileged=false",
+      "660 root docker",
+    );
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-APPARMOR-PROFILE").passed).toBe(false);
+    expect(find(checks, "DCK-APPARMOR-PROFILE").currentValue).toBe("No AppArmor profile in container SecurityOpt");
+  });
+
+  // ── L445-451: MethodExpression, EqualityOperator — privilegedPorts ──
+
+  it("[DCK-NO-PRIVILEGED-PORTS] port 25 (< 1024, not 80/443) fails (L445-451)", () => {
+    const output = mkOutput(
+      "mail postfix 0.0.0.0:25->25/tcp Up 1h",
+      "N/A",
+      "/mail SecurityOpt=[] ReadonlyRootfs=true User=mail Privileged=false",
+      "660 root docker",
+    );
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-NO-PRIVILEGED-PORTS").passed).toBe(false);
+    expect(find(checks, "DCK-NO-PRIVILEGED-PORTS").currentValue).toContain("25");
+  });
+
+  it("[DCK-NO-PRIVILEGED-PORTS] port 1023 fails, port 1024 passes (boundary L451)", () => {
+    const output1023 = mkOutput(
+      "app test 0.0.0.0:1023->1023/tcp Up 1h",
+      "N/A",
+      "/app SecurityOpt=[] ReadonlyRootfs=true User=user Privileged=false",
+      "660 root docker",
+    );
+    expect(find(parseDockerChecks(output1023, "bare"), "DCK-NO-PRIVILEGED-PORTS").passed).toBe(false);
+
+    const output1024 = mkOutput(
+      "app test 0.0.0.0:1024->1024/tcp Up 1h",
+      "N/A",
+      "/app SecurityOpt=[] ReadonlyRootfs=true User=user Privileged=false",
+      "660 root docker",
+    );
+    expect(find(parseDockerChecks(output1024, "bare"), "DCK-NO-PRIVILEGED-PORTS").passed).toBe(true);
+  });
+
+  // ── L460: ConditionalExpression — privilegedPorts.length === 0 ──
+
+  it("[DCK-NO-PRIVILEGED-PORTS] zero privileged ports with running containers passes (L460)", () => {
+    const output = mkOutput(
+      "app test 0.0.0.0:8080->8080/tcp Up 1h",
+      "N/A",
+      "/app SecurityOpt=[] ReadonlyRootfs=true User=user Privileged=false",
+      "660 root docker",
+    );
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-NO-PRIVILEGED-PORTS").passed).toBe(true);
+    expect(find(checks, "DCK-NO-PRIVILEGED-PORTS").currentValue).toBe("No privileged port bindings");
+  });
+
+  // ── L472-479: BlockStatement, MethodExpression, etc — network lines ──
+
+  it("[DCK-NETWORK-DISABLED] custom network 'mynet overlay' passes (L472-479)", () => {
+    const output = mkOutput("N/A", "N/A", "N/A", "mynet overlay");
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-NETWORK-DISABLED").passed).toBe(true);
+    expect(find(checks, "DCK-NETWORK-DISABLED").currentValue).toBe("Custom user-defined network(s) found");
+  });
+
+  it("[DCK-NETWORK-DISABLED] only default networks fails", () => {
+    const output = mkOutput("N/A", "N/A", "N/A", "bridge bridge", "host host", "none null");
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-NETWORK-DISABLED").passed).toBe(false);
+    expect(find(checks, "DCK-NETWORK-DISABLED").currentValue).toContain("Only default networks");
+  });
+
+  // ── L507: BooleanLiteral — isRootless ──
+
+  it("[DCK-ROOTLESS-MODE] SecurityOptions with 'rootless' (mixed case) passes (L507)", () => {
+    const rootless = '{"Hosts":["unix:///var/run/docker.sock"],"ServerVersion":"24.0.7","SecurityOptions":["name=ROOTLESS"],"LoggingDriver":"json-file"}';
+    const checks = parseDockerChecks(rootless + "\n---DAEMON_JSON---\n{}\n---END_DAEMON_JSON---", "bare");
+    expect(find(checks, "DCK-ROOTLESS-MODE").passed).toBe(true);
+    expect(find(checks, "DCK-ROOTLESS-MODE").currentValue).toBe("Rootless Docker mode detected");
+  });
+
+  it("[DCK-ROOTLESS-MODE] empty SecurityOptions means not rootless (L507 false)", () => {
+    const output = mkOutput("N/A");
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-ROOTLESS-MODE").passed).toBe(false);
+    expect(find(checks, "DCK-ROOTLESS-MODE").currentValue).toBe("Docker running as root daemon");
+  });
+
+  // ── L539: Regex — hasHostNetworkMode ──
+
+  it("[DCK-NO-HOST-NETWORK-INSPECT] NetworkMode host in JSON format detected (L539)", () => {
+    const output = mkOutput(
+      "myapp nginx:latest Up 2 hours",
+      "N/A",
+      '/myapp SecurityOpt=[] "NetworkMode":"host" ReadonlyRootfs=false User=app Privileged=false',
+      "660 root docker",
+    );
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-NO-HOST-NETWORK-INSPECT").passed).toBe(false);
+    expect(find(checks, "DCK-NO-HOST-NETWORK-INSPECT").currentValue).toContain("host network mode");
+  });
+
+  it("[DCK-NO-HOST-NETWORK-INSPECT] no NetworkMode host passes (L539)", () => {
+    const output = mkOutput(
+      "myapp nginx:latest Up 2 hours",
+      "N/A",
+      '/myapp SecurityOpt=[] "NetworkMode":"bridge" ReadonlyRootfs=false User=app Privileged=false',
+      "660 root docker",
+    );
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-NO-HOST-NETWORK-INSPECT").passed).toBe(true);
+    expect(find(checks, "DCK-NO-HOST-NETWORK-INSPECT").currentValue).toBe("No containers using host network mode");
+  });
+
+  // ── L545/561-562: hasHealthChecks ──
+
+  it("[DCK-HEALTH-CHECK] 'unhealthy' keyword triggers health check present (L561)", () => {
+    const output = mkOutput(
+      "myapp nginx:latest Up 2 hours",
+      "N/A",
+      "/myapp SecurityOpt=[] ReadonlyRootfs=true User=app Privileged=false unhealthy",
+      "660 root docker",
+    );
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-HEALTH-CHECK").passed).toBe(true);
+    expect(find(checks, "DCK-HEALTH-CHECK").currentValue).toBe("Health check configuration detected");
+  });
+
+  it("[DCK-HEALTH-CHECK] Health keyword in output with running containers passes (L561-562)", () => {
+    const output = mkOutput(
+      "myapp nginx:latest Up 2 hours",
+      "N/A",
+      "/myapp SecurityOpt=[] ReadonlyRootfs=true User=app Privileged=false Health: check=curl",
+      "660 root docker",
+    );
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-HEALTH-CHECK").passed).toBe(true);
+  });
+
+  it("[DCK-HEALTH-CHECK] no health keywords with running containers fails (L562)", () => {
+    const output = mkOutput(
+      "myapp nginx:latest Up 2 hours",
+      "N/A",
+      "/myapp SecurityOpt=[seccomp:default] ReadonlyRootfs=true User=app Privileged=false",
+      "660 root docker",
+    );
+    const checks = parseDockerChecks(output, "bare");
+    const check = find(checks, "DCK-HEALTH-CHECK");
+    expect(check.passed).toBe(false);
+    expect(check.currentValue).toBe("No health checks found in running containers");
+  });
+
+  // ── L568: BooleanLiteral, ConditionalExpression — dck25 ──
+
+  it("[DCK-HEALTH-CHECK] docker not available returns passed=true (L568 ternary)", () => {
+    const checks = parseDockerChecks("N/A", "bare");
+    expect(find(checks, "DCK-HEALTH-CHECK").passed).toBe(true);
+  });
+
+  // ── L586: BooleanLiteral — bridgeInspectLine ──
+
+  it("[DCK-BRIDGE-NFCALL] no enable_icc line means ICC not enabled (L586)", () => {
+    const output = mkOutput("N/A", "N/A", "N/A");
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-BRIDGE-NFCALL").passed).toBe(true);
+    expect(find(checks, "DCK-BRIDGE-NFCALL").currentValue).toBe("ICC not enabled on default bridge");
+  });
+
+  it("[DCK-BRIDGE-NFCALL] enable_icc=false in JSON passes (L586 parsed)", () => {
+    const output = mkOutput(
+      "N/A", "N/A", "N/A",
+      '{"com.docker.network.bridge.enable_icc":"false"}',
+    );
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-BRIDGE-NFCALL").passed).toBe(true);
+  });
+
+  it("[DCK-BRIDGE-NFCALL] enable_icc=true in JSON fails (L586)", () => {
+    const output = mkOutput(
+      "N/A", "N/A", "N/A",
+      '{"com.docker.network.bridge.enable_icc":"true"}',
+    );
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-BRIDGE-NFCALL").passed).toBe(false);
+    expect(find(checks, "DCK-BRIDGE-NFCALL").currentValue).toBe("ICC enabled on default bridge (containers can communicate freely)");
+  });
+
+  // ── L616-619: insecure registry ──
+
+  it("[DCK-NO-INSECURE-REGISTRY] line with 'insecure-registry' keyword triggers check (L616)", () => {
+    const output = mkOutput(
+      "N/A", "N/A", "N/A",
+      "insecure-registry=192.168.1.100:5000",
+    );
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-NO-INSECURE-REGISTRY").passed).toBe(false);
+    expect(find(checks, "DCK-NO-INSECURE-REGISTRY").currentValue).toContain("Insecure");
+  });
+
+  it("[DCK-NO-INSECURE-REGISTRY] only [127.0.0.0/8] passes (L619 regex)", () => {
+    const output = mkOutput(
+      "N/A", "N/A", "N/A",
+      "[127.0.0.0/8]",
+    );
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-NO-INSECURE-REGISTRY").passed).toBe(true);
+    expect(find(checks, "DCK-NO-INSECURE-REGISTRY").currentValue).toBe("No custom insecure registries");
+  });
+
+  it("[DCK-NO-INSECURE-REGISTRY] standalone N/A line passes (L618)", () => {
+    // A standalone "N/A" line that also matches InsecureRegistryCIDRs won't exist;
+    // the N/A check applies to the trimmed full line, so only exact "N/A" works
+    const output = mkOutput("N/A", "N/A", "N/A", "insecure-registry N/A");
+    const checks = parseDockerChecks(output, "bare");
+    // Line "insecure-registry N/A" matches regex, value is "insecure-registry N/A" !== "N/A"
+    // but it also does not match loopback regex, and does not contain "[]"
+    // so it's treated as custom insecure registry -> fails
+    expect(find(checks, "DCK-NO-INSECURE-REGISTRY").passed).toBe(false);
+  });
+
+  // ── L642-645: experimental ──
+
+  it("[DCK-NO-EXPERIMENTAL] standalone 'true' as last bool line triggers experimental (L643-645)", () => {
+    const output = mkOutput("N/A", "N/A", "N/A", "inactive", "true");
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-NO-EXPERIMENTAL").passed).toBe(false);
+    expect(find(checks, "DCK-NO-EXPERIMENTAL").currentValue).toBe("Experimental features enabled");
+  });
+
+  it("[DCK-NO-EXPERIMENTAL] standalone 'false' as last bool line means not experimental (L645)", () => {
+    const output = mkOutput("N/A", "N/A", "N/A", "inactive", "false");
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-NO-EXPERIMENTAL").passed).toBe(true);
+    expect(find(checks, "DCK-NO-EXPERIMENTAL").currentValue).toBe("Experimental features disabled");
+  });
+
+  it("[DCK-NO-EXPERIMENTAL] 'experimental true' line is not standalone true (L642-644)", () => {
+    const output = mkOutput("N/A", "N/A", "N/A", "experimental true");
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-NO-EXPERIMENTAL").passed).toBe(true);
+  });
+
+  // ── L665-670: auth plugin ──
+
+  it("[DCK-AUTH-PLUGIN] '[authz-broker]' line detected as auth plugin (L665-670)", () => {
+    const info = '{"Hosts":["unix:///var/run/docker.sock"],"ServerVersion":"24.0.7","SecurityOptions":["name=seccomp"],"LoggingDriver":"json-file"}';
+    const output = [info, "---DAEMON_JSON---", "{}", "---END_DAEMON_JSON---", "N/A", "N/A", "N/A", "[authz-broker]"].join("\n");
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-AUTH-PLUGIN").passed).toBe(true);
+    expect(find(checks, "DCK-AUTH-PLUGIN").currentValue).toContain("authz-broker");
+  });
+
+  it("[DCK-AUTH-PLUGIN] '[]' means no auth plugin (L668-670)", () => {
+    const info = '{"Hosts":["unix:///var/run/docker.sock"],"ServerVersion":"24.0.7","SecurityOptions":["name=seccomp"],"LoggingDriver":"json-file"}';
+    const output = [info, "---DAEMON_JSON---", "{}", "---END_DAEMON_JSON---", "N/A", "N/A", "N/A", "[]"].join("\n");
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-AUTH-PLUGIN").passed).toBe(false);
+    expect(find(checks, "DCK-AUTH-PLUGIN").currentValue).toBe("None configured");
+  });
+
+  it("[DCK-AUTH-PLUGIN] '[ ]' means no auth plugin (L670)", () => {
+    const info = '{"Hosts":["unix:///var/run/docker.sock"],"ServerVersion":"24.0.7","SecurityOptions":["name=seccomp"],"LoggingDriver":"json-file"}';
+    const output = [info, "---DAEMON_JSON---", "{}", "---END_DAEMON_JSON---", "N/A", "N/A", "N/A", "[ ]"].join("\n");
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-AUTH-PLUGIN").passed).toBe(false);
+  });
+
+  // ── L689: LogicalOperator — hasCertsDir ──
+
+  it("[DCK-REGISTRY-CERTS] /etc/docker/certs.d/ present passes (L689)", () => {
+    const output = mkOutput("N/A", "N/A", "N/A", "/etc/docker/certs.d/myregistry.com");
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-REGISTRY-CERTS").passed).toBe(true);
+    expect(find(checks, "DCK-REGISTRY-CERTS").currentValue).toContain("certs.d");
+  });
+
+  it("[DCK-REGISTRY-CERTS] NO_CERTS_DIR even with certs.d fails (L689)", () => {
+    const output = mkOutput("N/A", "N/A", "N/A", "NO_CERTS_DIR /etc/docker/certs.d/");
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-REGISTRY-CERTS").passed).toBe(false);
+  });
+
+  it("[DCK-REGISTRY-CERTS] 'total 0' with certs.d fails (L689)", () => {
+    const output = mkOutput("N/A", "N/A", "N/A", "/etc/docker/certs.d/ total 0");
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-REGISTRY-CERTS").passed).toBe(false);
+    expect(find(checks, "DCK-REGISTRY-CERTS").currentValue).toContain("No registry TLS");
+  });
+
+  // ── L711-712: swarm state ──
+
+  it("[DCK-SWARM-INACTIVE] 'active' swarm state fails (L711-712)", () => {
+    const output = mkOutput("N/A", "N/A", "N/A", "active", "false");
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-SWARM-INACTIVE").passed).toBe(false);
+    expect(find(checks, "DCK-SWARM-INACTIVE").currentValue).toBe("Swarm mode active");
+  });
+
+  it("[DCK-SWARM-INACTIVE] 'locked' swarm state passes (L712)", () => {
+    const output = mkOutput("N/A", "N/A", "N/A", "locked", "false");
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-SWARM-INACTIVE").passed).toBe(true);
+    expect(find(checks, "DCK-SWARM-INACTIVE").currentValue).toContain("locked");
+  });
+
+  it("[DCK-SWARM-INACTIVE] 'error' swarm state passes (L712)", () => {
+    const output = mkOutput("N/A", "N/A", "N/A", "error", "false");
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-SWARM-INACTIVE").passed).toBe(true);
+  });
+
+  // ── L732: hasHostPid ──
+
+  it("[DCK-PID-MODE] PidMode=host (non-JSON) detected (L732)", () => {
+    const output = mkOutput(
+      "myapp nginx:latest Up 2 hours",
+      "N/A",
+      "/myapp SecurityOpt=[] PidMode=host ReadonlyRootfs=false User=app Privileged=false",
+      "660 root docker",
+    );
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-PID-MODE").passed).toBe(false);
+    expect(find(checks, "DCK-PID-MODE").currentValue).toContain("host PID");
+  });
+
+  it('[DCK-PID-MODE] "PidMode": "host" (JSON) detected (L732)', () => {
+    const output = mkOutput(
+      "myapp nginx:latest Up 2 hours",
+      "N/A",
+      '/myapp SecurityOpt=[] "PidMode": "host" ReadonlyRootfs=false User=app Privileged=false',
+      "660 root docker",
+    );
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-PID-MODE").passed).toBe(false);
+  });
+
+  it("[DCK-PID-MODE] no PidMode=host passes (L732)", () => {
+    const output = mkOutput(
+      "myapp nginx:latest Up 2 hours",
+      "N/A",
+      "/myapp SecurityOpt=[] PidMode=private ReadonlyRootfs=false User=app Privileged=false",
+      "660 root docker",
+    );
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-PID-MODE").passed).toBe(true);
+    expect(find(checks, "DCK-PID-MODE").currentValue).toBe("No containers using host PID namespace");
+  });
+
+  // ── Cross-cutting: docker not available ternary guards ──
+
+  it("[DCK-ROOTLESS-MODE] docker not available returns passed=true", () => {
+    const checks = parseDockerChecks("N/A", "bare");
+    expect(find(checks, "DCK-ROOTLESS-MODE").passed).toBe(true);
+    expect(find(checks, "DCK-ROOTLESS-MODE").currentValue).toBe("Docker not installed");
+  });
+
+  it("[DCK-NO-HOST-NETWORK-INSPECT] docker not available returns passed=true", () => {
+    const checks = parseDockerChecks("N/A", "bare");
+    expect(find(checks, "DCK-NO-HOST-NETWORK-INSPECT").passed).toBe(true);
+    expect(find(checks, "DCK-NO-HOST-NETWORK-INSPECT").currentValue).toBe("Docker not installed");
+  });
+
+  it("[DCK-BRIDGE-NFCALL] docker not available returns passed=true", () => {
+    const checks = parseDockerChecks("N/A", "bare");
+    expect(find(checks, "DCK-BRIDGE-NFCALL").passed).toBe(true);
+    expect(find(checks, "DCK-BRIDGE-NFCALL").currentValue).toBe("Docker not installed");
+  });
+
+  it("[DCK-NO-INSECURE-REGISTRY] docker not available returns passed=true", () => {
+    const checks = parseDockerChecks("N/A", "bare");
+    expect(find(checks, "DCK-NO-INSECURE-REGISTRY").passed).toBe(true);
+    expect(find(checks, "DCK-NO-INSECURE-REGISTRY").currentValue).toBe("Docker not installed");
+  });
+
+  it("[DCK-NO-EXPERIMENTAL] docker not available returns passed=true", () => {
+    const checks = parseDockerChecks("N/A", "bare");
+    expect(find(checks, "DCK-NO-EXPERIMENTAL").passed).toBe(true);
+    expect(find(checks, "DCK-NO-EXPERIMENTAL").currentValue).toBe("Docker not installed");
+  });
+
+  it("[DCK-AUTH-PLUGIN] docker not available returns passed=true", () => {
+    const checks = parseDockerChecks("N/A", "bare");
+    expect(find(checks, "DCK-AUTH-PLUGIN").passed).toBe(true);
+    expect(find(checks, "DCK-AUTH-PLUGIN").currentValue).toBe("Docker not installed");
+  });
+
+  it("[DCK-REGISTRY-CERTS] docker not available returns passed=true", () => {
+    const checks = parseDockerChecks("N/A", "bare");
+    expect(find(checks, "DCK-REGISTRY-CERTS").passed).toBe(true);
+    expect(find(checks, "DCK-REGISTRY-CERTS").currentValue).toBe("Docker not installed");
+  });
+
+  it("[DCK-SWARM-INACTIVE] docker not available returns passed=true", () => {
+    const checks = parseDockerChecks("N/A", "bare");
+    expect(find(checks, "DCK-SWARM-INACTIVE").passed).toBe(true);
+    expect(find(checks, "DCK-SWARM-INACTIVE").currentValue).toBe("Docker not installed");
+  });
+
+  it("[DCK-PID-MODE] docker not available returns passed=true", () => {
+    const checks = parseDockerChecks("N/A", "bare");
+    expect(find(checks, "DCK-PID-MODE").passed).toBe(true);
+    expect(find(checks, "DCK-PID-MODE").currentValue).toBe("Docker not installed");
+  });
+
+  it("[DCK-LOG-DRIVER-CONFIGURED] docker not available returns passed=true", () => {
+    const checks = parseDockerChecks("N/A", "bare");
+    expect(find(checks, "DCK-LOG-DRIVER-CONFIGURED").passed).toBe(true);
+    expect(find(checks, "DCK-LOG-DRIVER-CONFIGURED").currentValue).toBe("Docker not installed");
+  });
+
+  it("[DCK-NETWORK-DISABLED] docker not available returns passed=true", () => {
+    const checks = parseDockerChecks("N/A", "bare");
+    expect(find(checks, "DCK-NETWORK-DISABLED").passed).toBe(true);
+    expect(find(checks, "DCK-NETWORK-DISABLED").currentValue).toBe("Docker not installed");
+  });
+
+  // ── Bridge ICC regex fallback ──
+
+  it("[DCK-BRIDGE-NFCALL] non-JSON enable_icc false line triggers regex fallback — passes", () => {
+    const output = mkOutput(
+      "N/A", "N/A", "N/A",
+      'enable_icc "false" enable_ip_masquerade',
+    );
+    const checks = parseDockerChecks(output, "bare");
+    expect(find(checks, "DCK-BRIDGE-NFCALL").passed).toBe(true);
+  });
+
+  // ── Multiple TCP hosts ──
+
+  it("[DCK-NO-TCP-SOCKET] multiple TCP hosts all listed in currentValue", () => {
+    const multi = '{"Hosts":["unix:///sock","tcp://0.0.0.0:2375","tcp://0.0.0.0:2376"],"ServerVersion":"24.0.7","SecurityOptions":[],"LoggingDriver":"json-file"}';
+    const checks = parseDockerChecks(multi + "\n---DAEMON_JSON---\n{}\n---END_DAEMON_JSON---", "bare");
+    const check = find(checks, "DCK-NO-TCP-SOCKET");
+    expect(check.passed).toBe(false);
+    expect(check.currentValue).toContain("tcp://0.0.0.0:2375");
+    expect(check.currentValue).toContain("tcp://0.0.0.0:2376");
+  });
+});

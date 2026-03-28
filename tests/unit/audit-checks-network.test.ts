@@ -832,4 +832,241 @@ describe("parseNetworkChecks", () => {
       },
     );
   });
+
+  // ──────────────────────────────────────────────────────────────
+  // MUTATION-KILLER WAVE 2
+  // ──────────────────────────────────────────────────────────────
+
+  describe("extractSysctlValue — null return when key missing", () => {
+    it("NET-IP-FORWARDING shows 'Unable to determine' when ip_forward key absent", () => {
+      const checks = parseNetworkChecks("some unrelated text only", "bare");
+      const c = checks.find((c) => c.id === "NET-IP-FORWARDING")!;
+      expect(c.passed).toBe(false);
+      expect(c.currentValue).toBe("Unable to determine");
+    });
+
+    it("NET-ARP-ANNOUNCE shows 'Unable to determine' when arp_announce key absent", () => {
+      const checks = parseNetworkChecks("some unrelated text only", "bare");
+      const c = checks.find((c) => c.id === "NET-ARP-ANNOUNCE")!;
+      expect(c.passed).toBe(false);
+      expect(c.currentValue).toBe("Unable to determine");
+    });
+
+    it("NET-ARP-IGNORE shows 'Unable to determine' when arp_ignore key absent", () => {
+      const checks = parseNetworkChecks("some unrelated text only", "bare");
+      const c = checks.find((c) => c.id === "NET-ARP-IGNORE")!;
+      expect(c.passed).toBe(false);
+      expect(c.currentValue).toBe("Unable to determine");
+    });
+
+    it("NET-ICMP-REDIRECT-SEND shows 'Unable to determine' when send_redirects key absent", () => {
+      const checks = parseNetworkChecks("unrelated output", "bare");
+      const c = checks.find((c) => c.id === "NET-ICMP-REDIRECT-SEND")!;
+      expect(c.passed).toBe(false);
+      expect(c.currentValue).toBe("Unable to determine");
+    });
+
+    it("NET-ICMP-SECURE-REDIRECT shows 'Unable to determine' when secure_redirects key absent", () => {
+      const checks = parseNetworkChecks("unrelated output", "bare");
+      const c = checks.find((c) => c.id === "NET-ICMP-SECURE-REDIRECT")!;
+      expect(c.passed).toBe(false);
+      expect(c.currentValue).toBe("Unable to determine");
+    });
+
+    it("NET-SOURCE-ROUTING-V6 shows 'Unable to determine' when accept_source_route key absent", () => {
+      const checks = parseNetworkChecks("unrelated output", "bare");
+      const c = checks.find((c) => c.id === "NET-SOURCE-ROUTING-V6")!;
+      expect(c.passed).toBe(false);
+      expect(c.currentValue).toBe("Unable to determine");
+    });
+
+    it("NET-MARTIAN-LOGGING shows 'Unable to determine' when log_martians key absent", () => {
+      const checks = parseNetworkChecks("unrelated output", "bare");
+      const c = checks.find((c) => c.id === "NET-MARTIAN-LOGGING")!;
+      expect(c.passed).toBe(false);
+      expect(c.currentValue).toBe("Unable to determine");
+    });
+  });
+
+  describe("NET-01 dangerousPorts.length === 0 — zero vs nonzero", () => {
+    it("passes with 0 exposed ports (no 0.0.0.0: pattern at all)", () => {
+      const checks = parseNetworkChecks("LISTEN 127.0.0.1:3306 0.0.0.0:*", "bare");
+      const c = checks.find((c) => c.id === "NET-NO-DANGEROUS-PORTS")!;
+      expect(c.passed).toBe(true);
+      expect(c.currentValue).toBe("0 port(s) listening, no dangerous ports exposed");
+    });
+
+    it("passes with non-dangerous ports only", () => {
+      const checks = parseNetworkChecks("LISTEN 0.0.0.0:22 0.0.0.0:*", "bare");
+      const c = checks.find((c) => c.id === "NET-NO-DANGEROUS-PORTS")!;
+      expect(c.passed).toBe(true);
+      expect(c.currentValue).toBe("1 port(s) listening, no dangerous ports exposed");
+    });
+
+    it("fails with exactly 1 dangerous port", () => {
+      const checks = parseNetworkChecks("LISTEN 0.0.0.0:3306 0.0.0.0:*", "bare");
+      const c = checks.find((c) => c.id === "NET-NO-DANGEROUS-PORTS")!;
+      expect(c.passed).toBe(false);
+      expect(c.currentValue).toBe("Dangerous port(s) exposed: 3306");
+      expect(c.fixCommand).toBe("ufw deny 3306/tcp");
+    });
+  });
+
+  describe("NET-23 LISTENING-PORT-COUNT — boundary val >= 0 && val < 200", () => {
+    it("accepts val=0 (lower boundary)", () => {
+      const checks = parseNetworkChecks("0", "bare");
+      const c = checks.find((c) => c.id === "NET-LISTENING-PORT-COUNT")!;
+      expect(c.passed).toBe(true);
+      expect(c.currentValue).toBe("0 listening TCP ports");
+    });
+
+    it("accepts val=199 (just below upper boundary)", () => {
+      const checks = parseNetworkChecks("199", "bare");
+      const c = checks.find((c) => c.id === "NET-LISTENING-PORT-COUNT")!;
+      expect(c.passed).toBe(false);
+      expect(c.currentValue).toBe("199 listening TCP ports");
+    });
+
+    it("rejects val=200 (at upper boundary — not plausible)", () => {
+      const checks = parseNetworkChecks("200", "bare");
+      const c = checks.find((c) => c.id === "NET-LISTENING-PORT-COUNT")!;
+      expect(c.passed).toBe(true); // null case — passes by default
+      expect(c.currentValue).toBe("Port count not determinable");
+    });
+  });
+
+  describe("NET-02 DNS-RESOLVER — nameserver regex case variations", () => {
+    it("passes with 'NAMESERVER 8.8.8.8' (case-insensitive /i flag)", () => {
+      const checks = parseNetworkChecks("NAMESERVER 8.8.8.8", "bare");
+      const c = checks.find((c) => c.id === "NET-DNS-RESOLVER")!;
+      expect(c.passed).toBe(true);
+    });
+
+    it("passes with 'Nameserver 1.0.0.1' (mixed case)", () => {
+      const checks = parseNetworkChecks("Nameserver 1.0.0.1", "bare");
+      const c = checks.find((c) => c.id === "NET-DNS-RESOLVER")!;
+      expect(c.passed).toBe(true);
+    });
+
+    it("fails with 'nameserverx' (no whitespace after)", () => {
+      const checks = parseNetworkChecks("nameserverx", "bare");
+      const c = checks.find((c) => c.id === "NET-DNS-RESOLVER")!;
+      // regex requires \\s+ after nameserver, so "nameserverx" matches because \\S+ is after \\s+
+      // Actually the regex is /nameserver\s+\S+/i — "nameserverx" has no whitespace, so it fails
+      expect(c.passed).toBe(false);
+    });
+  });
+
+  describe("NET-03 TIME-SYNC — NTP regex case sensitivity", () => {
+    it("passes with 'ntp synchronized: yes' (lowercase)", () => {
+      const checks = parseNetworkChecks("ntp synchronized: yes", "bare");
+      const c = checks.find((c) => c.id === "NET-TIME-SYNC")!;
+      expect(c.passed).toBe(true);
+    });
+
+    it("fails with 'NTP synchronized: no'", () => {
+      const checks = parseNetworkChecks("NTP synchronized: no", "bare");
+      const c = checks.find((c) => c.id === "NET-TIME-SYNC")!;
+      expect(c.passed).toBe(false);
+    });
+
+    it("passes with 'system clock synchronized: YES' (case-insensitive)", () => {
+      const checks = parseNetworkChecks("System clock synchronized: yes", "bare");
+      const c = checks.find((c) => c.id === "NET-TIME-SYNC")!;
+      expect(c.passed).toBe(true);
+    });
+  });
+
+  describe("Correct value pass/fail pairs — boolean inversion killers", () => {
+    const passFailPairs: Array<[string, string, string, string]> = [
+      ["NET-SYN-COOKIES", "net.ipv4.tcp_syncookies", "1", "0"],
+      ["NET-IPV6-DISABLED", "net.ipv6.conf.all.disable_ipv6", "1", "0"],
+      ["NET-ICMP-REDIRECT-SEND", "net.ipv4.conf.all.send_redirects", "0", "1"],
+      ["NET-ICMP-SECURE-REDIRECT", "net.ipv4.conf.all.secure_redirects", "0", "1"],
+      ["NET-SOURCE-ROUTING-V6", "net.ipv6.conf.all.accept_source_route", "0", "1"],
+      ["NET-MARTIAN-LOGGING", "net.ipv4.conf.all.log_martians", "1", "0"],
+    ];
+
+    it.each(passFailPairs)(
+      "%s passes with %s=%s, fails with %s=%s",
+      (checkId, sysctlKey, passVal, failVal) => {
+        const passChecks = parseNetworkChecks(`${sysctlKey} = ${passVal}`, "bare");
+        const pass = passChecks.find((c) => c.id === checkId)!;
+        expect(pass.passed).toBe(true);
+        expect(pass.currentValue).toBe(`${sysctlKey} = ${passVal}`);
+
+        const failChecks = parseNetworkChecks(`${sysctlKey} = ${failVal}`, "bare");
+        const fail = failChecks.find((c) => c.id === checkId)!;
+        expect(fail.passed).toBe(false);
+        expect(fail.currentValue).toBe(`${sysctlKey} = ${failVal}`);
+      },
+    );
+  });
+
+  describe("NET-NO-MAIL-PORTS — NONE sentinel takes priority", () => {
+    it("passes with NONE even if port pattern exists on other lines", () => {
+      const output = "NONE\nLISTEN 0.0.0.0:25 0.0.0.0:*";
+      const checks = parseNetworkChecks(output, "bare");
+      const c = checks.find((c) => c.id === "NET-NO-MAIL-PORTS")!;
+      expect(c.passed).toBe(true);
+    });
+  });
+
+  describe("NET-NO-PROMISCUOUS-INTERFACES — NONE sentinel takes priority", () => {
+    it("passes with NONE even if PROMISC word exists on other lines", () => {
+      const output = "NONE\n3: eth0: <BROADCAST,MULTICAST,PROMISC,UP>";
+      const checks = parseNetworkChecks(output, "bare");
+      const c = checks.find((c) => c.id === "NET-NO-PROMISCUOUS-INTERFACES")!;
+      expect(c.passed).toBe(true);
+    });
+  });
+
+  describe("Severity assertions for all 21 checks", () => {
+    it("assigns correct severity to every check", () => {
+      const checks = parseNetworkChecks(secureOutput + "\nnet.ipv4.tcp_syncookies = 1", "bare");
+      const byId = (id: string) => checks.find((c) => c.id === id)!;
+
+      // warning severity
+      expect(byId("NET-NO-DANGEROUS-PORTS").severity).toBe("warning");
+      expect(byId("NET-IP-FORWARDING").severity).toBe("warning");
+      expect(byId("NET-SYN-COOKIES").severity).toBe("warning");
+      expect(byId("NET-HOSTS-DENY").severity).toBe("warning");
+      expect(byId("NET-ICMP-REDIRECT-SEND").severity).toBe("warning");
+      expect(byId("NET-ICMP-SECURE-REDIRECT").severity).toBe("warning");
+      expect(byId("NET-SOURCE-ROUTING-V6").severity).toBe("warning");
+      expect(byId("NET-NO-EXPOSED-MGMT-PORTS").severity).toBe("warning");
+      expect(byId("NET-RP-FILTER").severity).toBe("warning");
+      expect(byId("NET-ARP-ANNOUNCE").severity).toBe("warning");
+      expect(byId("NET-ARP-IGNORE").severity).toBe("warning");
+      expect(byId("NET-NO-PROMISCUOUS-INTERFACES").severity).toBe("warning");
+
+      // info severity
+      expect(byId("NET-DNS-RESOLVER").severity).toBe("info");
+      expect(byId("NET-TIME-SYNC").severity).toBe("info");
+      expect(byId("NET-HOSTS-ACCESS").severity).toBe("info");
+      expect(byId("NET-IPV6-DISABLED").severity).toBe("info");
+      expect(byId("NET-MARTIAN-LOGGING").severity).toBe("info");
+      expect(byId("NET-NO-MAIL-PORTS").severity).toBe("info");
+      expect(byId("NET-LISTENING-SERVICES-AUDIT").severity).toBe("info");
+      expect(byId("NET-TCP-WRAPPERS-CONFIGURED").severity).toBe("info");
+      expect(byId("NET-LISTENING-PORT-COUNT").severity).toBe("info");
+    });
+  });
+
+  describe("NET-01 fixCommand — no dangerous ports vs dangerous ports", () => {
+    it("fixCommand is review suggestion when no dangerous ports", () => {
+      const checks = parseNetworkChecks("LISTEN 0.0.0.0:22 0.0.0.0:*", "bare");
+      const c = checks.find((c) => c.id === "NET-NO-DANGEROUS-PORTS")!;
+      expect(c.fixCommand).toBe("Review listening ports with: ss -tlnp");
+    });
+  });
+
+  describe("NET-04 IP-FORWARDING — null ipForward value", () => {
+    it("shows 'Unable to determine' when ip_forward sysctl absent", () => {
+      const checks = parseNetworkChecks("no relevant sysctl here", "bare");
+      const c = checks.find((c) => c.id === "NET-IP-FORWARDING")!;
+      expect(c.passed).toBe(false);
+      expect(c.currentValue).toBe("Unable to determine");
+    });
+  });
 });

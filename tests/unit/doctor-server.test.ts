@@ -15,6 +15,9 @@ import {
   checkBackupAge,
   checkDockerDisk,
   runServerDoctor,
+  loadMetricsHistory,
+  saveMetricsHistory,
+  metricsHistoryPath,
   DoctorSeverity,
 } from "../../src/core/doctor";
 import type { DoctorFinding, DoctorResult } from "../../src/core/doctor";
@@ -616,5 +619,128 @@ describe("runServerDoctor", () => {
     expect(result.success).toBe(true);
     const diskFindings = result.data!.findings.filter((f) => f.id === "DISK_TREND");
     expect(diskFindings.length).toBe(0);
+  });
+});
+
+// ─── Mutation-Killer: loadMetricsHistory / saveMetricsHistory / metricsHistoryPath ───
+
+describe("loadMetricsHistory mutation-killer", () => {
+  const IP = "10.0.0.1";
+
+  beforeEach(() => jest.resetAllMocks());
+
+  it("returns [] (not undefined/null) when file does not exist", () => {
+    mockedExistsSync.mockReturnValue(false);
+    const result = loadMetricsHistory(IP);
+    expect(result).toEqual([]);
+    expect(Array.isArray(result)).toBe(true);
+    expect(result).toHaveLength(0);
+  });
+
+  it("returns [] when file has non-array JSON (object)", () => {
+    mockedExistsSync.mockReturnValue(true);
+    mockedReadFileSync.mockReturnValue('{"key":"value"}');
+    const result = loadMetricsHistory(IP);
+    expect(result).toEqual([]);
+    expect(Array.isArray(result)).toBe(true);
+  });
+
+  it("returns [] when file has non-array JSON (string)", () => {
+    mockedExistsSync.mockReturnValue(true);
+    mockedReadFileSync.mockReturnValue('"hello"');
+    const result = loadMetricsHistory(IP);
+    expect(result).toEqual([]);
+  });
+
+  it("returns [] when file has non-array JSON (number)", () => {
+    mockedExistsSync.mockReturnValue(true);
+    mockedReadFileSync.mockReturnValue("42");
+    const result = loadMetricsHistory(IP);
+    expect(result).toEqual([]);
+  });
+
+  it("returns [] when file has null", () => {
+    mockedExistsSync.mockReturnValue(true);
+    mockedReadFileSync.mockReturnValue("null");
+    const result = loadMetricsHistory(IP);
+    expect(result).toEqual([]);
+  });
+
+  it("returns [] when readFileSync throws", () => {
+    mockedExistsSync.mockReturnValue(true);
+    mockedReadFileSync.mockImplementation(() => { throw new Error("EACCES"); });
+    const result = loadMetricsHistory(IP);
+    expect(result).toEqual([]);
+  });
+
+  it("returns parsed array when file has valid array", () => {
+    mockedExistsSync.mockReturnValue(true);
+    const snapshots = [{ ts: "2026-01-01", disk: 50 }];
+    mockedReadFileSync.mockReturnValue(JSON.stringify(snapshots));
+    const result = loadMetricsHistory(IP);
+    expect(Array.isArray(result)).toBe(true);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual({ ts: "2026-01-01", disk: 50 });
+  });
+
+  it("returns array with multiple items", () => {
+    mockedExistsSync.mockReturnValue(true);
+    const snapshots = [{ ts: "a" }, { ts: "b" }, { ts: "c" }];
+    mockedReadFileSync.mockReturnValue(JSON.stringify(snapshots));
+    const result = loadMetricsHistory(IP);
+    expect(result).toHaveLength(3);
+  });
+});
+
+describe("metricsHistoryPath mutation-killer", () => {
+  it("replaces dots with dashes in IP", () => {
+    const path = metricsHistoryPath("10.0.0.1");
+    expect(path).toContain("10-0-0-1");
+    expect(path).not.toContain("10.0.0.1");
+  });
+
+  it("includes doctor-metrics prefix", () => {
+    const path = metricsHistoryPath("1.2.3.4");
+    expect(path).toContain("doctor-metrics-");
+  });
+
+  it("ends with .json", () => {
+    const path = metricsHistoryPath("1.2.3.4");
+    expect(path).toMatch(/\.json$/);
+  });
+});
+
+describe("saveMetricsHistory mutation-killer", () => {
+  const IP = "10.0.0.1";
+
+  beforeEach(() => jest.resetAllMocks());
+
+  it("writes atomically (tmp file then rename)", () => {
+    mockedExistsSync.mockReturnValue(true);
+    const snap: MetricSnapshot = { timestamp: "2026-01-01T00:00:00Z", diskPct: 50, ramPct: 40, cpuLoad1: 1, ncpu: 2, auditScore: 80 };
+    saveMetricsHistory(IP, [snap]);
+    expect(writeFileSync).toHaveBeenCalled();
+    expect(renameSync).toHaveBeenCalled();
+    // writeFileSync should write to .tmp path
+    const writePath = (writeFileSync as jest.Mock).mock.calls[0][0] as string;
+    expect(writePath).toContain(".tmp");
+    // renameSync should move .tmp to final path
+    const [from, to] = (renameSync as jest.Mock).mock.calls[0];
+    expect(from).toContain(".tmp");
+    expect(to).not.toContain(".tmp");
+  });
+
+  it("creates directory if it doesn't exist", () => {
+    mockedExistsSync.mockReturnValue(false);
+    saveMetricsHistory(IP, []);
+    expect(mkdirSync).toHaveBeenCalledWith(expect.any(String), { recursive: true });
+  });
+
+  it("writes JSON with 2-space indent", () => {
+    mockedExistsSync.mockReturnValue(true);
+    const snap: MetricSnapshot = { timestamp: "2026-01-01T00:00:00Z", diskPct: 50, ramPct: 40, cpuLoad1: 1, ncpu: 2, auditScore: 80 };
+    saveMetricsHistory(IP, [snap]);
+    const content = (writeFileSync as jest.Mock).mock.calls[0][1] as string;
+    expect(content).toContain("\n  ");
   });
 });

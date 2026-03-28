@@ -883,3 +883,104 @@ describe("checkAuditScoreDrop", () => {
     expect(SCORE_DROP_CRITICAL_THRESHOLD).toBe(10);
   });
 });
+
+// ─── Mutation-Killer: getGuardStates / saveGuardState / removeGuardState ─────
+
+describe("getGuardStates mutation-killer", () => {
+  beforeEach(() => jest.resetAllMocks());
+
+  it("returns {} (not undefined/null) when file does not exist", () => {
+    mockedExistsSync.mockReturnValue(false);
+    const result = getGuardStates();
+    expect(result).toBeDefined();
+    expect(result).not.toBeNull();
+    expect(typeof result).toBe("object");
+    expect(Object.keys(result)).toHaveLength(0);
+  });
+
+  it("returns {} when JSON is valid but fails Zod schema", () => {
+    mockedExistsSync.mockReturnValue(true);
+    // Valid JSON but installedAt should be string, not number
+    mockedReadFileSync.mockReturnValue(JSON.stringify({ server: { installedAt: 123, cronExpr: 456 } }));
+    const result = getGuardStates();
+    expect(result).toEqual({});
+  });
+
+  it("returns {} when JSON is an array instead of object", () => {
+    mockedExistsSync.mockReturnValue(true);
+    mockedReadFileSync.mockReturnValue("[1,2,3]");
+    const result = getGuardStates();
+    expect(result).toEqual({});
+  });
+
+  it("returns correct data (not {}) when JSON passes Zod schema", () => {
+    mockedExistsSync.mockReturnValue(true);
+    const valid = { srv: { installedAt: "2026-01-01", cronExpr: "*/5 * * * *" } };
+    mockedReadFileSync.mockReturnValue(JSON.stringify(valid));
+    const result = getGuardStates();
+    expect(Object.keys(result)).toHaveLength(1);
+    expect(result.srv).toBeDefined();
+    expect(result.srv.installedAt).toBe("2026-01-01");
+    expect(result.srv.cronExpr).toBe("*/5 * * * *");
+  });
+
+  it("returns {} when readFileSync throws", () => {
+    mockedExistsSync.mockReturnValue(true);
+    mockedReadFileSync.mockImplementation(() => { throw new Error("read error"); });
+    const result = getGuardStates();
+    expect(result).toEqual({});
+  });
+});
+
+describe("saveGuardState mutation-killer", () => {
+  beforeEach(() => jest.resetAllMocks());
+
+  it("calls mkdirSync with recursive: true", () => {
+    mockedExistsSync.mockReturnValue(false);
+    saveGuardState("test-srv", { installedAt: "2026-01-01", cronExpr: "*/5 * * * *" });
+    expect(mkdirSync).toHaveBeenCalledWith(expect.any(String), { recursive: true });
+  });
+
+  it("overwrites existing entry for same server", () => {
+    mockedExistsSync.mockReturnValue(true);
+    mockedReadFileSync.mockReturnValue(
+      JSON.stringify({ "test-srv": { installedAt: "old", cronExpr: "old" } }),
+    );
+    saveGuardState("test-srv", { installedAt: "new", cronExpr: "new" });
+    const [, content] = mockedWriteFileSync.mock.calls[0];
+    const parsed = JSON.parse(content as string);
+    expect(parsed["test-srv"].installedAt).toBe("new");
+    expect(parsed["test-srv"].cronExpr).toBe("new");
+  });
+
+  it("written JSON is properly indented (2-space)", () => {
+    mockedExistsSync.mockReturnValue(false);
+    saveGuardState("x", { installedAt: "a", cronExpr: "b" });
+    const [, content] = mockedWriteFileSync.mock.calls[0];
+    expect(content).toContain("\n  ");
+  });
+});
+
+describe("removeGuardState mutation-killer", () => {
+  beforeEach(() => jest.resetAllMocks());
+
+  it("produces {} when removing the only server", () => {
+    mockedExistsSync.mockReturnValue(true);
+    mockedReadFileSync.mockReturnValue(
+      JSON.stringify({ only: { installedAt: "a", cronExpr: "b" } }),
+    );
+    removeGuardState("only");
+    const [, content] = mockedWriteFileSync.mock.calls[0];
+    const parsed = JSON.parse(content as string);
+    expect(Object.keys(parsed)).toHaveLength(0);
+  });
+
+  it("calls mkdirSync before writeFileSync", () => {
+    mockedExistsSync.mockReturnValue(false);
+    removeGuardState("x");
+    const mockedMkdir = mkdirSync as jest.MockedFunction<typeof mkdirSync>;
+    const mkdirCallOrder = mockedMkdir.mock.invocationCallOrder[0];
+    const writeCallOrder = mockedWriteFileSync.mock.invocationCallOrder[0];
+    expect(mkdirCallOrder).toBeLessThan(writeCallOrder);
+  });
+});

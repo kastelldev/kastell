@@ -1600,3 +1600,195 @@ describe("applyLock P87 steps", () => {
     expect(result.steps).toHaveProperty("sudoHardening");
   });
 });
+
+// ─── Mutation-Killer: buildDockerHardeningCommand exact booleans ─────────────
+
+describe("buildDockerHardeningCommand mutation-killer", () => {
+  it("bare: no-new-privileges is exactly true (not false)", () => {
+    const cmd = buildDockerHardeningCommand(undefined);
+    expect(cmd).toContain('"no-new-privileges":true');
+    expect(cmd).not.toContain('"no-new-privileges":false');
+  });
+
+  it("bare: live-restore is exactly true (not false)", () => {
+    const cmd = buildDockerHardeningCommand(undefined);
+    expect(cmd).toContain('"live-restore":true');
+    expect(cmd).not.toContain('"live-restore":false');
+  });
+
+  it("bare: icc is exactly false (not true)", () => {
+    const cmd = buildDockerHardeningCommand(undefined);
+    expect(cmd).toContain('"icc":false');
+    expect(cmd).not.toContain('"icc":true');
+  });
+
+  it("coolify: still has no-new-privileges true", () => {
+    const cmd = buildDockerHardeningCommand("coolify");
+    expect(cmd).toContain('"no-new-privileges":true');
+  });
+
+  it("dokploy: still has no-new-privileges true", () => {
+    const cmd = buildDockerHardeningCommand("dokploy");
+    expect(cmd).toContain('"no-new-privileges":true');
+  });
+
+  it("dokploy: no live-restore and no icc", () => {
+    const cmd = buildDockerHardeningCommand("dokploy");
+    expect(cmd).not.toContain("live-restore");
+    expect(cmd).not.toContain('"icc"');
+  });
+
+  it("coolify: has live-restore but no icc", () => {
+    const cmd = buildDockerHardeningCommand("coolify");
+    expect(cmd).toContain('"live-restore":true');
+    expect(cmd).not.toContain('"icc"');
+  });
+});
+
+// ─── Mutation-Killer: buildSshFineTuningCommand exact values ─────────────────
+
+describe("buildSshFineTuningCommand mutation-killer", () => {
+  const cmd = buildSshFineTuningCommand();
+
+  it("AllowAgentForwarding is exactly no", () => {
+    expect(cmd).toContain("AllowAgentForwarding no");
+  });
+
+  it("X11Forwarding is exactly no", () => {
+    expect(cmd).toContain("X11Forwarding no");
+  });
+
+  it("StrictModes is exactly yes", () => {
+    expect(cmd).toContain("StrictModes yes");
+  });
+
+  it("PermitUserEnvironment is exactly no", () => {
+    expect(cmd).toContain("PermitUserEnvironment no");
+  });
+
+  it("LogLevel is exactly VERBOSE", () => {
+    expect(cmd).toContain("LogLevel VERBOSE");
+  });
+
+  it("UseDNS is exactly no", () => {
+    expect(cmd).toContain("UseDNS no");
+  });
+
+  it("PrintMotd is exactly no", () => {
+    expect(cmd).toContain("PrintMotd no");
+  });
+
+  it("IgnoreRhosts is exactly yes", () => {
+    expect(cmd).toContain("IgnoreRhosts yes");
+  });
+
+  it("HostbasedAuthentication is exactly no", () => {
+    expect(cmd).toContain("HostbasedAuthentication no");
+  });
+
+  it("MaxSessions is exactly 10", () => {
+    expect(cmd).toContain("MaxSessions 10");
+  });
+
+  it("PermitEmptyPasswords is exactly no", () => {
+    expect(cmd).toContain("PermitEmptyPasswords no");
+  });
+
+  it("ClientAliveInterval is exactly 300", () => {
+    expect(cmd).toContain("ClientAliveInterval 300");
+  });
+
+  it("ClientAliveCountMax is exactly 3", () => {
+    expect(cmd).toContain("ClientAliveCountMax 3");
+  });
+
+  it("LoginGraceTime is exactly 60", () => {
+    expect(cmd).toContain("LoginGraceTime 60");
+  });
+
+  it("contains exactly 15 directives (sshd_config entries)", () => {
+    const directiveNames = [
+      "ClientAliveInterval", "ClientAliveCountMax", "LoginGraceTime",
+      "AllowAgentForwarding", "X11Forwarding", "MaxStartups",
+      "StrictModes", "PermitUserEnvironment", "LogLevel",
+      "UseDNS", "PrintMotd", "IgnoreRhosts",
+      "HostbasedAuthentication", "MaxSessions", "PermitEmptyPasswords",
+    ];
+    for (const name of directiveNames) {
+      expect(cmd).toContain(name);
+    }
+  });
+
+  it("uses grep-sed-or-append pattern for each directive", () => {
+    expect(cmd).toContain("grep -qE");
+    expect(cmd).toContain("|| echo");
+  });
+
+  it("backs up before and rolls back on sshd -t failure", () => {
+    expect(cmd).toContain("bak-finetune");
+    expect(cmd).toContain("sshd -t");
+    expect(cmd).toContain("rolled back");
+  });
+});
+
+// ─── Mutation-Killer: buildLoginDefsCommand exact values ─────────────────────
+
+describe("buildLoginDefsCommand mutation-killer", () => {
+  const cmd = buildLoginDefsCommand();
+
+  it("PASS_MIN_DAYS is exactly 1", () => {
+    expect(cmd).toContain("PASS_MIN_DAYS 1");
+  });
+
+  it("PASS_WARN_AGE is exactly 7", () => {
+    expect(cmd).toContain("PASS_WARN_AGE 7");
+  });
+
+  it("ENCRYPT_METHOD is exactly SHA512", () => {
+    expect(cmd).toContain("ENCRYPT_METHOD SHA512");
+  });
+
+  it("UMASK is exactly 027", () => {
+    expect(cmd).toContain("UMASK 027");
+  });
+
+  it("INACTIVE is exactly 30", () => {
+    expect(cmd).toContain("INACTIVE=30");
+  });
+
+  it("targets /etc/login.defs for PASS_MIN_DAYS", () => {
+    expect(cmd).toContain("PASS_MIN_DAYS");
+    expect(cmd).toContain("/etc/login.defs");
+  });
+
+  it("targets /etc/default/useradd for INACTIVE", () => {
+    expect(cmd).toContain("/etc/default/useradd");
+    expect(cmd).toContain("INACTIVE");
+  });
+});
+
+// ─── Mutation-Killer: buildFaillockCommand exact values ──────────────────────
+
+describe("buildFaillockCommand mutation-killer", () => {
+  const cmd = buildFaillockCommand();
+
+  it("deny value is exactly 5", () => {
+    expect(cmd).toContain("deny = 5");
+    expect(cmd).not.toContain("deny = 0");
+  });
+
+  it("unlock_time value is exactly 900", () => {
+    expect(cmd).toContain("unlock_time = 900");
+  });
+
+  it("fail_interval value is exactly 900", () => {
+    expect(cmd).toContain("fail_interval = 900");
+  });
+
+  it("contains all 3 faillock directives", () => {
+    const directives = ["deny", "unlock_time", "fail_interval"];
+    for (const d of directives) {
+      expect(cmd).toContain(d);
+    }
+  });
+});

@@ -614,4 +614,544 @@ describe("parseAccountsChecks", () => {
     const check = checks.find((c) => c.id === "ACCT-NO-WORLD-WRITABLE-HOME");
     expect(check!.passed).toBe(false);
   });
+
+  describe("mutation-killer tests", () => {
+    // --- ACCT-NO-EXTRA-UID0: regex + filter logic ---
+    it("[ACCT-NO-EXTRA-UID0] regex matches user:uid: format correctly", () => {
+      // Only lines matching /^[^:]+:\d+:/gm are considered
+      const output = "root:0:/bin/bash\nnobody:65534:/usr/sbin/nologin";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-NO-EXTRA-UID0");
+      expect(check!.passed).toBe(true);
+      expect(check!.currentValue).toBe("Only root has UID 0");
+    });
+
+    it("[ACCT-NO-EXTRA-UID0] detects non-root UID 0 account", () => {
+      const output = "root:0:/bin/bash\ntoor:0:/bin/bash";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-NO-EXTRA-UID0");
+      expect(check!.passed).toBe(false);
+      expect(check!.currentValue).toMatch(/Extra UID 0: toor/);
+    });
+
+    it("[ACCT-NO-EXTRA-UID0] ignores non-UID-0 accounts", () => {
+      const output = "root:0:/bin/bash\nadmin:1000:/bin/bash\nnobody:65534:/bin/false";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-NO-EXTRA-UID0");
+      expect(check!.passed).toBe(true);
+    });
+
+    it("[ACCT-NO-EXTRA-UID0] uid comparison uses string equality '0' not number", () => {
+      // uid "00" should NOT match "0"
+      const output = "root:0:/bin/bash\nfake:00:/bin/bash";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-NO-EXTRA-UID0");
+      expect(check!.passed).toBe(true); // "00" !== "0"
+    });
+
+    // --- ACCT-NO-EMPTY-PASSWORD: regex /^[^:]+::/gm ---
+    it("[ACCT-NO-EMPTY-PASSWORD] detects multiple empty passwords", () => {
+      const output = "user1::\nuser2::\nuser3:$6$hash::";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-NO-EMPTY-PASSWORD");
+      expect(check!.passed).toBe(false);
+      expect(check!.currentValue).toMatch(/user1, user2/);
+    });
+
+    it("[ACCT-NO-EMPTY-PASSWORD] passes when all have hashes", () => {
+      const output = "root:$6$abc::\ndaemon:*::\nadmin:$6$xyz::";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-NO-EMPTY-PASSWORD");
+      expect(check!.passed).toBe(true);
+    });
+
+    // --- ACCT-NO-RHOSTS: .rhosts + negation logic ---
+    it("[ACCT-NO-RHOSTS] passes when output contains NONE with .rhosts", () => {
+      const output = ".rhosts NONE";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-NO-RHOSTS");
+      expect(check!.passed).toBe(true);
+    });
+
+    it("[ACCT-NO-RHOSTS] passes when .rhosts not in output at all", () => {
+      const output = "no dangerous files found";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-NO-RHOSTS");
+      expect(check!.passed).toBe(true);
+    });
+
+    it("[ACCT-NO-RHOSTS] fails when .rhosts present without NONE or No such file", () => {
+      const output = "-rw-r--r-- 1 user user 0 .rhosts";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-NO-RHOSTS");
+      expect(check!.passed).toBe(false);
+      expect(check!.currentValue).toBe(".rhosts file found");
+    });
+
+    // --- ACCT-HOSTS-EQUIV: same pattern as rhosts ---
+    it("[ACCT-HOSTS-EQUIV] passes when hosts.equiv not in output", () => {
+      const output = "clean output";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-HOSTS-EQUIV");
+      expect(check!.passed).toBe(true);
+    });
+
+    it("[ACCT-HOSTS-EQUIV] passes when hosts.equiv with NONE", () => {
+      const output = "hosts.equiv NONE";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-HOSTS-EQUIV");
+      expect(check!.passed).toBe(true);
+    });
+
+    it("[ACCT-HOSTS-EQUIV] passes when hosts.equiv with No such file", () => {
+      const output = "hosts.equiv: No such file or directory";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-HOSTS-EQUIV");
+      expect(check!.passed).toBe(true);
+    });
+
+    // --- ACCT-NO-NETRC: pattern ---
+    it("[ACCT-NO-NETRC] passes when .netrc not in output at all", () => {
+      const output = "clean output";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-NO-NETRC");
+      expect(check!.passed).toBe(true);
+    });
+
+    it("[ACCT-NO-NETRC] passes when .netrc with No such file", () => {
+      const output = ".netrc: No such file or directory";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-NO-NETRC");
+      expect(check!.passed).toBe(true);
+    });
+
+    // --- ACCT-NO-FORWARD: pattern ---
+    it("[ACCT-NO-FORWARD] passes when .forward not in output", () => {
+      const output = "clean output";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-NO-FORWARD");
+      expect(check!.passed).toBe(true);
+    });
+
+    it("[ACCT-NO-FORWARD] passes when .forward with NONE", () => {
+      const output = ".forward NONE";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-NO-FORWARD");
+      expect(check!.passed).toBe(true);
+    });
+
+    // --- ACCT-SYSTEM-SHELL: regex and root filter ---
+    it("[ACCT-SYSTEM-SHELL] matches /bin/sh shell", () => {
+      const output = "daemon:/bin/sh";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-SYSTEM-SHELL");
+      expect(check!.passed).toBe(false);
+      expect(check!.currentValue).toMatch(/daemon/);
+    });
+
+    it("[ACCT-SYSTEM-SHELL] matches /bin/zsh shell", () => {
+      const output = "sysuser:/bin/zsh";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-SYSTEM-SHELL");
+      expect(check!.passed).toBe(false);
+    });
+
+    it("[ACCT-SYSTEM-SHELL] matches /bin/csh shell", () => {
+      const output = "sysuser:/bin/csh";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-SYSTEM-SHELL");
+      expect(check!.passed).toBe(false);
+    });
+
+    it("[ACCT-SYSTEM-SHELL] filters out root from non-root check", () => {
+      const output = "root:/bin/bash";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-SYSTEM-SHELL");
+      expect(check!.passed).toBe(true);
+      expect(check!.currentValue).toBe("All system accounts have nologin/false shells");
+    });
+
+    it("[ACCT-SYSTEM-SHELL] passes when only nologin shells", () => {
+      const output = "daemon:/usr/sbin/nologin\nbin:/bin/false";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-SYSTEM-SHELL");
+      expect(check!.passed).toBe(true);
+    });
+
+    // --- ACCT-ROOT-HOME-PERMS: last digit === 0 ---
+    it("[ACCT-ROOT-HOME-PERMS] passes with 750 (last digit 0)", () => {
+      const output = "\n750\n";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-ROOT-HOME-PERMS");
+      expect(check!.passed).toBe(true);
+      expect(check!.currentValue).toMatch(/750/);
+    });
+
+    it("[ACCT-ROOT-HOME-PERMS] fails with 701 (last digit 1)", () => {
+      const output = "\n701\n";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-ROOT-HOME-PERMS");
+      expect(check!.passed).toBe(false);
+      expect(check!.currentValue).toMatch(/others can access/);
+    });
+
+    it("[ACCT-ROOT-HOME-PERMS] passes with 4-digit 1700", () => {
+      const output = "\n1700\n";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-ROOT-HOME-PERMS");
+      expect(check!.passed).toBe(true);
+    });
+
+    // --- ACCT-NO-DUPLICATE-UID: regex /^[^:]+:\d+$/gm ---
+    it("[ACCT-NO-DUPLICATE-UID] passes when NONE sentinel is present", () => {
+      const output = "NONE\nsome other data";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-NO-DUPLICATE-UID");
+      expect(check!.passed).toBe(true);
+    });
+
+    it("[ACCT-NO-DUPLICATE-UID] filters out empty trimmed lines and NONE", () => {
+      const output = "  \nNONE\n";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-NO-DUPLICATE-UID");
+      expect(check!.passed).toBe(true);
+    });
+
+    // --- ACCT-HOME-OWNERSHIP: dir name vs owner ---
+    it("[ACCT-HOME-OWNERSHIP] detects mismatch when dir name differs from owner", () => {
+      const output = "/home/alice bob";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-HOME-OWNERSHIP");
+      expect(check!.passed).toBe(false);
+      expect(check!.currentValue).toMatch(/Mismatched/);
+    });
+
+    it("[ACCT-HOME-OWNERSHIP] passes when dir name matches owner", () => {
+      const output = "/home/alice alice";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-HOME-OWNERSHIP");
+      expect(check!.passed).toBe(true);
+    });
+
+    it("[ACCT-HOME-OWNERSHIP] passes when no /home lines in output", () => {
+      const output = "no home dirs";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-HOME-OWNERSHIP");
+      expect(check!.passed).toBe(true);
+    });
+
+    // --- ACCT-SHADOW-PERMS: includes(":") && !includes("Permission denied") ---
+    it("[ACCT-SHADOW-PERMS] fails when no colon in output (no shadow data)", () => {
+      const output = "nothing here";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-SHADOW-PERMS");
+      expect(check!.passed).toBe(false);
+    });
+
+    it("[ACCT-SHADOW-PERMS] passes when colon present and no Permission denied", () => {
+      const output = "root:$6$hash::";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-SHADOW-PERMS");
+      expect(check!.passed).toBe(true);
+    });
+
+    it("[ACCT-SHADOW-PERMS] fails when both colon and Permission denied present", () => {
+      const output = "root:$6$hash::\nPermission denied";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-SHADOW-PERMS");
+      expect(check!.passed).toBe(false);
+    });
+
+    // --- ACCT-MAX-PASSWORD-DAYS: days <= 365 && days > 0 ---
+    it("[ACCT-MAX-PASSWORD-DAYS] passes with 90 days", () => {
+      const output = "PASS_MAX_DAYS 90";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-MAX-PASSWORD-DAYS");
+      expect(check!.passed).toBe(true);
+      expect(check!.currentValue).toBe("PASS_MAX_DAYS = 90");
+    });
+
+    it("[ACCT-MAX-PASSWORD-DAYS] passes with exactly 365", () => {
+      const output = "PASS_MAX_DAYS 365";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-MAX-PASSWORD-DAYS");
+      expect(check!.passed).toBe(true);
+    });
+
+    it("[ACCT-MAX-PASSWORD-DAYS] fails with 366", () => {
+      const output = "PASS_MAX_DAYS 366";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-MAX-PASSWORD-DAYS");
+      expect(check!.passed).toBe(false);
+    });
+
+    it("[ACCT-MAX-PASSWORD-DAYS] passes with exactly 1 (> 0 boundary)", () => {
+      const output = "PASS_MAX_DAYS 1";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-MAX-PASSWORD-DAYS");
+      expect(check!.passed).toBe(true);
+    });
+
+    // --- ACCT-MIN-PASSWORD-DAYS: days > 0 ---
+    it("[ACCT-MIN-PASSWORD-DAYS] passes with exactly 1", () => {
+      const output = "PASS_MIN_DAYS 1";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-MIN-PASSWORD-DAYS");
+      expect(check!.passed).toBe(true);
+    });
+
+    it("[ACCT-MIN-PASSWORD-DAYS] fails with exactly 0", () => {
+      const output = "PASS_MIN_DAYS 0";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-MIN-PASSWORD-DAYS");
+      expect(check!.passed).toBe(false);
+    });
+
+    // --- ACCT-INACTIVE-LOCK: two regex branches ---
+    it("[ACCT-INACTIVE-LOCK] passes with INACTIVE=30 (= sign)", () => {
+      const output = "INACTIVE=30";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-INACTIVE-LOCK");
+      expect(check!.passed).toBe(true);
+    });
+
+    it("[ACCT-INACTIVE-LOCK] passes with INACTIVE 30 (space, no =)", () => {
+      const output = "INACTIVE 30";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-INACTIVE-LOCK");
+      expect(check!.passed).toBe(true);
+    });
+
+    it("[ACCT-INACTIVE-LOCK] fails when INACTIVE has no number", () => {
+      const output = "INACTIVE disabled";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-INACTIVE-LOCK");
+      expect(check!.passed).toBe(false);
+    });
+
+    // --- ACCT-DEFAULT-UMASK: exact match 027 or 077 ---
+    it("[ACCT-DEFAULT-UMASK] fails with 022 (not 027 or 077)", () => {
+      const output = "UMASK 022";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-DEFAULT-UMASK");
+      expect(check!.passed).toBe(false);
+    });
+
+    it("[ACCT-DEFAULT-UMASK] fails with 002 (not 027 or 077)", () => {
+      const output = "UMASK 002";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-DEFAULT-UMASK");
+      expect(check!.passed).toBe(false);
+    });
+
+    // --- ACCT-NO-EMPTY-HOME: login shell list check ---
+    it("[ACCT-NO-EMPTY-HOME] detects /bin/fish as login shell", () => {
+      const output = "testuser:1001:/bin/fish\n25\n700";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-NO-EMPTY-HOME");
+      expect(check!.currentValue).toMatch(/1 user\(s\)/);
+    });
+
+    it("[ACCT-NO-EMPTY-HOME] does not detect /usr/sbin/nologin as login shell", () => {
+      const output = "testuser:1001:/usr/sbin/nologin\n25\n700";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-NO-EMPTY-HOME");
+      expect(check!.passed).toBe(true);
+      expect(check!.currentValue).toMatch(/No users with unexpected/);
+    });
+
+    it("[ACCT-NO-EMPTY-HOME] passes when < 10 suspicious users (boundary)", () => {
+      const users = Array.from({ length: 9 }, (_, i) => `user${i}:${1001 + i}:/bin/bash`).join("\n");
+      const output = users + "\n25\n700";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-NO-EMPTY-HOME");
+      expect(check!.passed).toBe(true);
+    });
+
+    it("[ACCT-NO-EMPTY-HOME] fails when exactly 10 suspicious users", () => {
+      const users = Array.from({ length: 10 }, (_, i) => `user${i}:${1001 + i}:/bin/bash`).join("\n");
+      const output = users + "\n25\n700";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-NO-EMPTY-HOME");
+      expect(check!.passed).toBe(false);
+    });
+
+    // --- ACCT-INACTIVE-ACCOUNTS: header and N/A filter ---
+    it("[ACCT-INACTIVE-ACCOUNTS] filters out lines starting with 'Username'", () => {
+      const output = "Username Port From Latest\nuser1 pts/0 10.0.0.1 Jan 1";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-INACTIVE-ACCOUNTS");
+      expect(check!.passed).toBe(true);
+      expect(check!.currentValue).toMatch(/1 accounts/);
+    });
+
+    it("[ACCT-INACTIVE-ACCOUNTS] counts exactly 4 as pass (< 5)", () => {
+      const lines = Array.from({ length: 4 }, (_, i) =>
+        `user${i} pts/0 10.0.0.${i} Jan ${i + 1}`
+      ).join("\n");
+      const checks = parseAccountsChecks(lines, "bare");
+      const check = checks.find((c) => c.id === "ACCT-INACTIVE-ACCOUNTS");
+      expect(check!.passed).toBe(true);
+      expect(check!.currentValue).toMatch(/4 accounts.*acceptable/);
+    });
+
+    it("[ACCT-INACTIVE-ACCOUNTS] counts exactly 5 as fail (>= 5)", () => {
+      const lines = Array.from({ length: 5 }, (_, i) =>
+        `user${i} pts/0 10.0.0.${i} Jan ${i + 1}`
+      ).join("\n");
+      const checks = parseAccountsChecks(lines, "bare");
+      const check = checks.find((c) => c.id === "ACCT-INACTIVE-ACCOUNTS");
+      expect(check!.passed).toBe(false);
+    });
+
+    // --- ACCT-TOTAL-USERS-REASONABLE: standalone number > 5 ---
+    it("[ACCT-TOTAL-USERS-REASONABLE] ignores numbers <= 5", () => {
+      const output = "3\n4\n5\nno more";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-TOTAL-USERS-REASONABLE");
+      expect(check!.passed).toBe(false);
+      expect(check!.currentValue).toBe("User count not determinable");
+    });
+
+    it("[ACCT-TOTAL-USERS-REASONABLE] picks first number > 5", () => {
+      const output = "3\n6\n30";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-TOTAL-USERS-REASONABLE");
+      expect(check!.passed).toBe(true);
+      expect(check!.currentValue).toMatch(/6 user accounts/);
+    });
+
+    it("[ACCT-TOTAL-USERS-REASONABLE] boundary: 49 passes, 50 fails", () => {
+      const output49 = "49";
+      const checks49 = parseAccountsChecks(output49, "bare");
+      const check49 = checks49.find((c) => c.id === "ACCT-TOTAL-USERS-REASONABLE");
+      expect(check49!.passed).toBe(true);
+
+      const output50 = "50";
+      const checks50 = parseAccountsChecks(output50, "bare");
+      const check50 = checks50.find((c) => c.id === "ACCT-TOTAL-USERS-REASONABLE");
+      expect(check50!.passed).toBe(false);
+    });
+
+    // --- ACCT-NO-WORLD-WRITABLE-HOME: [2, 3, 6, 7].includes(lastDigit) ---
+    it("[ACCT-NO-WORLD-WRITABLE-HOME] perms ending in 0 passes (not writable)", () => {
+      const output = "750 /home/user1";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-NO-WORLD-WRITABLE-HOME");
+      expect(check!.passed).toBe(true);
+    });
+
+    it("[ACCT-NO-WORLD-WRITABLE-HOME] perms ending in 1 passes (execute only)", () => {
+      const output = "751 /home/user1";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-NO-WORLD-WRITABLE-HOME");
+      expect(check!.passed).toBe(true);
+    });
+
+    it("[ACCT-NO-WORLD-WRITABLE-HOME] perms ending in 4 passes (read only)", () => {
+      const output = "754 /home/user1";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-NO-WORLD-WRITABLE-HOME");
+      expect(check!.passed).toBe(true);
+    });
+
+    it("[ACCT-NO-WORLD-WRITABLE-HOME] perms ending in 5 passes (read+exec)", () => {
+      const output = "755 /home/user1";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-NO-WORLD-WRITABLE-HOME");
+      expect(check!.passed).toBe(true);
+    });
+
+    it("[ACCT-NO-WORLD-WRITABLE-HOME] perms ending in 7 fails (rwx)", () => {
+      const output = "757 /home/user1";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-NO-WORLD-WRITABLE-HOME");
+      expect(check!.passed).toBe(false);
+    });
+
+    it("[ACCT-NO-WORLD-WRITABLE-HOME] no /home lines means pass (no dirs to check)", () => {
+      const output = "nothing here";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-NO-WORLD-WRITABLE-HOME");
+      expect(check!.passed).toBe(true);
+      expect(check!.currentValue).toBe("No world-writable home directories");
+    });
+
+    // --- ACCT-LOGIN-DEFS-UID-MAX: uidMin >= 1000 && uidMax >= 60000 ---
+    it("[ACCT-LOGIN-DEFS-UID-MAX] passes with UID_MIN=1000, UID_MAX=60000 (exact boundaries)", () => {
+      const output = "UID_MIN 1000\nUID_MAX 60000";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-LOGIN-DEFS-UID-MAX");
+      expect(check!.passed).toBe(true);
+    });
+
+    it("[ACCT-LOGIN-DEFS-UID-MAX] fails with UID_MIN=999", () => {
+      const output = "UID_MIN 999\nUID_MAX 60000";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-LOGIN-DEFS-UID-MAX");
+      expect(check!.passed).toBe(false);
+    });
+
+    it("[ACCT-LOGIN-DEFS-UID-MAX] fails with UID_MAX=59999", () => {
+      const output = "UID_MIN 1000\nUID_MAX 59999";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-LOGIN-DEFS-UID-MAX");
+      expect(check!.passed).toBe(false);
+    });
+
+    // --- ACCT-LOGIN-SHELL-AUDIT: shellCount <= 10 boundary + last number ---
+    it("[ACCT-LOGIN-SHELL-AUDIT] passes with exactly 10", () => {
+      const output = "10";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-LOGIN-SHELL-AUDIT");
+      expect(check!.passed).toBe(true);
+      expect(check!.currentValue).toMatch(/10 accounts/);
+    });
+
+    it("[ACCT-LOGIN-SHELL-AUDIT] fails with 11", () => {
+      const output = "11";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-LOGIN-SHELL-AUDIT");
+      expect(check!.passed).toBe(false);
+    });
+
+    it("[ACCT-LOGIN-SHELL-AUDIT] uses last standalone number in 0-499 range", () => {
+      // Multiple numbers: picks last one
+      const output = "5\n8";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-LOGIN-SHELL-AUDIT");
+      expect(check!.passed).toBe(true);
+      expect(check!.currentValue).toMatch(/8 accounts/);
+    });
+
+    // --- ACCT-GID-CONSISTENCY: NONE sentinel + standalone digit detection ---
+    it("[ACCT-GID-CONSISTENCY] passes when NONE on its own line", () => {
+      const output = "NONE";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-GID-CONSISTENCY");
+      expect(check!.passed).toBe(true);
+    });
+
+    it("[ACCT-GID-CONSISTENCY] fails when standalone numbers present (no NONE)", () => {
+      const output = "1000\n1001";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-GID-CONSISTENCY");
+      expect(check!.passed).toBe(false);
+      expect(check!.currentValue).toMatch(/Duplicate GIDs found/);
+    });
+
+    it("[ACCT-GID-CONSISTENCY] fails when NONE not on own line but numbers present", () => {
+      const output = "not-NONE\n1000";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-GID-CONSISTENCY");
+      expect(check!.passed).toBe(false);
+    });
+
+    it("[ACCT-GID-CONSISTENCY] passes when non-digit lines and no NONE (no dupes)", () => {
+      const output = "no duplicates found";
+      const checks = parseAccountsChecks(output, "bare");
+      const check = checks.find((c) => c.id === "ACCT-GID-CONSISTENCY");
+      expect(check!.passed).toBe(true);
+    });
+  });
 });
