@@ -169,7 +169,7 @@ kastell domain add my-server --domain example.com  # Set domain + SSL
 
 ### Security Audit
 ```bash
-kastell audit my-server                  # Full security audit (31 categories, 457+ checks)
+kastell audit my-server                  # Full security audit (31 categories, 468+ checks)
 kastell audit my-server --json           # JSON output for automation
 kastell audit my-server --threshold 70   # Exit code 1 if score below threshold
 kastell audit my-server --fix            # Interactive fix mode (prompts per severity)

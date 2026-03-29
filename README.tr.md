@@ -169,7 +169,7 @@ kastell domain add sunucum --domain ornek.com  # Domain + SSL ayarla
 
 ### Güvenlik Denetimi
 ```bash
-kastell audit sunucum                    # Tam güvenlik denetimi (31 kategori, 457+ kontrol)
+kastell audit sunucum                    # Tam güvenlik denetimi (31 kategori, 468+ kontrol)
 kastell audit sunucum --json             # Otomasyon için JSON çıktısı
 kastell audit sunucum --threshold 70     # Skor eşiğin altındaysa exit code 1
 kastell audit sunucum --fix              # İnteraktif düzeltme modu (önem derecesine göre)
@@ -339,7 +339,7 @@ Mevcut araçlar:
 | `server_secure` | secure, firewall, domain | SSH sıkılaştırma, güvenlik duvarı kuralları, domain/SSL yönetimi (10 alt komut) |
 | `server_backup` | backup, snapshot | Veritabanı yedekle/geri yükle ve VPS snapshot oluştur/yönet |
 | `server_provision` | create | Bulut sağlayıcılarda yeni sunucu oluştur |
-| `server_audit` | audit | 457+ kontrollü güvenlik denetimi, uyumluluk çerçevesi filtresiyle; iyileştirme rehberi için `--explain` kullanın |
+| `server_audit` | audit | 468+ kontrollü güvenlik denetimi, uyumluluk çerçevesi filtresiyle; iyileştirme rehberi için `--explain` kullanın |
 | `server_evidence` | collect | Adli kanıt paketi topla (SHA256 checksum ile) |
 | `server_guard` | start, stop, status | Otonom güvenlik izleme daemon'u yönet |
 | `server_doctor` | diagnose | Proaktif sağlık analizi ve iyileştirme komutları |
