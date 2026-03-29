@@ -187,7 +187,13 @@ async function maintainAll(options: MaintainOptions): Promise<void> {
   for (const server of servers) {
     if (isBareServer(server)) {
       logger.warning(
-        `Skipping ${server.name}: maintain command is not available for bare servers (requires a platform adapter).`,
+        `Bare server detected: ${server.name}. The 'maintain' command requires a platform adapter (Coolify or Dokploy).`,
+      );
+      logger.info(
+        "  To update packages manually: apt update && apt upgrade -y",
+      );
+      logger.info(
+        "  To apply security hardening: kastell fix --safe --server " + server.name,
       );
       console.log();
       continue;

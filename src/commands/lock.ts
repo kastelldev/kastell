@@ -123,14 +123,10 @@ export async function lockCommand(
     }
   }
 
-  // Audit score delta
-  if (result.scoreBefore !== undefined && result.scoreAfter !== undefined) {
-    const delta = result.scoreAfter - result.scoreBefore;
-    const sign = delta >= 0 ? "+" : "";
-    logger.info(
-      `Audit score: ${result.scoreBefore} -> ${result.scoreAfter} (${sign}${delta})`,
-    );
-  }
+  // Step count summary
+  const completedSteps = Object.values(result.steps).filter(Boolean).length;
+  const totalSteps = Object.keys(result.steps).length;
+  logger.info(`${completedSteps}/${totalSteps} steps completed.`);
 
   // Overall result
   if (result.success) {

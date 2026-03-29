@@ -242,14 +242,14 @@ describe("lockCommand", () => {
       expect(infoCalls).toContain("Monitoring");
     });
 
-    it("displays audit score delta when both scores are present", async () => {
+    it("displays step count (no audit score delta)", async () => {
       await lockCommand("prod-server", { production: true, force: true });
       const logCalls = [
         ...(mockedLogger.logger.info as jest.Mock).mock.calls.map((c: string[]) => c[0]),
         ...(mockedLogger.logger.success as jest.Mock).mock.calls.map((c: string[]) => c[0]),
       ].join(" ");
-      expect(logCalls).toContain("45");
-      expect(logCalls).toContain("72");
+      expect(logCalls).toContain("steps completed");
+      expect(logCalls).not.toContain("Audit score:");
     });
 
     it("logs success message on successful lock", async () => {
