@@ -1,3 +1,5 @@
+import { writeFileSync } from "fs";
+import { join } from "path";
 import chalk from "chalk";
 import inquirer from "inquirer";
 import { resolveServer } from "../utils/serverSelect.js";
@@ -15,8 +17,10 @@ import {
   fixCommandsFromChecks,
   type ScoredFixCheck,
 } from "../core/audit/fix.js";
-import { tryHandlerDispatch } from "../core/audit/handlers/index.js";
+import { tryHandlerDispatch, type DiffLine } from "../core/audit/handlers/index.js";
 import { buildImpactContext } from "../core/audit/scoring.js";
+import { filterChecksByProfile, isValidProfile, type ProfileName } from "../core/audit/profiles.js";
+import { generateFixReport, fixReportFilename } from "../utils/fixReport.js";
 import { backupServer } from "../core/backup.js";
 import { getErrorMessage } from "../utils/errorMapper.js";
 import {
@@ -46,15 +50,28 @@ export async function fixSafeCommand(
     history?: boolean;
     top?: string;
     target?: string;
+    profile?: string;
+    diff?: boolean;
+    report?: boolean;
   },
 ): Promise<void> {
-  // ── Flag validation (D-08, D-03, D-11) ─────────────────────────────────────
+  // ── Flag validation (D-08, D-03, D-11, D-05, D-13) ─────────────────────────
   if (options.top !== undefined && options.target !== undefined) {
     logger.error("--top ve --target birlikte kullanilamaz. Birini secin.");
     return;
   }
   if ((options.top !== undefined || options.target !== undefined) && !options.safe) {
     logger.error("--top / --target sadece --safe ile kullanilir.");
+    return;
+  }
+  // --profile requires --safe (per D-05)
+  if (options.profile !== undefined && !options.safe) {
+    logger.error("--profile requires --safe. Run: kastell fix --safe --profile <name> --server <server>");
+    return;
+  }
+  // --report requires --safe (per D-13)
+  if (options.report && !options.safe) {
+    logger.error("--report requires --safe. Run: kastell fix --safe --report --server <server>");
     return;
   }
   // ── History display (FIXPRO-02) ──────────────────────────────────────────
@@ -217,8 +234,20 @@ export async function fixSafeCommand(
 
   // ── Prioritization: sort + select by --top or --target (D-03, D-06, D-07) ──
   const allSafeChecks = safePlan.groups.flatMap((g) => g.checks);
+
+  // Profile filter (D-05): profile -> top/target operates on filtered set
+  let profileFilteredChecks = allSafeChecks;
+  if (options.profile !== undefined) {
+    if (!isValidProfile(options.profile)) {
+      logger.error(`Unknown profile: ${options.profile}. Valid profiles: web-server, database, mail-server`);
+      return;
+    }
+    profileFilteredChecks = filterChecksByProfile(allSafeChecks, options.profile as ProfileName);
+    logger.info(`Profile "${options.profile}": ${profileFilteredChecks.length} applicable checks (filtered from ${allSafeChecks.length})`);
+  }
+
   const impactCtx = buildImpactContext(auditResult.categories);
-  const sortedChecks = sortChecksByImpact(allSafeChecks, impactCtx);
+  const sortedChecks = sortChecksByImpact(profileFilteredChecks, impactCtx);
 
   let selectedChecks: ScoredFixCheck[];
   let parsedTarget: number | undefined;
@@ -353,6 +382,7 @@ export async function fixSafeCommand(
   fixSpinner.start();
   const applied: string[] = [];
   const errors: string[] = [];
+  const collectedDiffs: Array<{ checkId: string; category: string; severity: string; diff?: DiffLine }> = [];
 
   for (const check of selectedChecks) {
     try {
@@ -366,7 +396,17 @@ export async function fixSafeCommand(
       }
       // Handler dispatch — bypasses shell metachar guard (D-05, D-06)
       const dispatch = await tryHandlerDispatch(ip, check, applied, errors);
-      if (dispatch.handled) continue;
+      if (dispatch.handled) {
+        collectedDiffs.push({ checkId: check.id, category: check.category, severity: check.severity, diff: dispatch.diff });
+        // --diff display for handler-applied fixes
+        if (options.diff && dispatch.diff) {
+          const d = dispatch.diff;
+          console.log(chalk.cyan(`  [${d.handlerType}] ${d.key}: ${d.before} -> ${d.after}`));
+        } else if (options.diff) {
+          console.log(chalk.dim(`  ${check.id}: Shell command — diff not available`));
+        }
+        continue;
+      }
       // Whitelist + shell metachar guard
       if (!isFixCommandAllowed(check.fixCommand)) {
         errors.push(`${check.id}: fix command rejected`);
@@ -379,6 +419,11 @@ export async function fixSafeCommand(
         );
       } else {
         applied.push(check.id);
+        collectedDiffs.push({ checkId: check.id, category: check.category, severity: check.severity });
+        // --diff display for shell-applied fixes (no diff available)
+        if (options.diff) {
+          console.log(chalk.dim(`  ${check.id}: Shell command — diff not available`));
+        }
       }
     } catch (err) {
       errors.push(`${check.id}: ${getErrorMessage(err)}`);
@@ -445,6 +490,34 @@ export async function fixSafeCommand(
     status: applied.length > 0 ? "applied" : "failed",
     backupPath: remoteBackupPath,
   });
+
+  // Generate fix report (FIXPRO-07, D-10)
+  if (options.report) {
+    const timestamp = new Date().toISOString();
+    const date = timestamp.slice(0, 10);
+    const filename = fixReportFilename(name, date);
+    // Build skipped list: checks in all SAFE pool not in selectedChecks
+    const selectedIds = new Set(selectedChecks.map((c) => c.id));
+    const skipped = allSafeChecks
+      .filter((c) => !selectedIds.has(c.id))
+      .map((c) => ({ id: c.id, category: c.category, reason: "not selected" }));
+    const reportContent = generateFixReport({
+      server: { name, ip },
+      scoreBefore: auditResult.overallScore,
+      scoreAfter: newScore,
+      applied: collectedDiffs
+        .filter((d) => applied.includes(d.checkId))
+        .map((d) => ({ id: d.checkId, category: d.category, severity: d.severity, diff: d.diff })),
+      failed: errors.map((e) => ({ id: e.split(":")[0].trim(), error: e })),
+      skipped,
+      profile: options.profile,
+      dryRun: false,
+      timestamp,
+    });
+    const filepath = join(process.cwd(), filename);
+    writeFileSync(filepath, reportContent, "utf-8");
+    logger.success(`Report saved: ${filename}`);
+  }
 
   // Prune old backups (retention policy)
   await backupRemoteCleanup(ip);

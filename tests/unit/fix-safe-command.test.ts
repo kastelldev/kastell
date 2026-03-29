@@ -16,6 +16,9 @@ jest.mock("../../src/core/backup.js");
 jest.mock("../../src/utils/logger.js");
 jest.mock("../../src/core/audit/fix-history.js");
 jest.mock("../../src/core/audit/handlers/index.js");
+jest.mock("../../src/core/audit/profiles.js");
+jest.mock("../../src/utils/fixReport.js");
+jest.mock("fs");
 jest.mock("inquirer");
 
 import { fixSafeCommand } from "../../src/commands/fix.js";
@@ -35,6 +38,8 @@ import {
   tryHandlerDispatch,
 } from "../../src/core/audit/handlers/index.js";
 import { buildImpactContext } from "../../src/core/audit/scoring.js";
+import { filterChecksByProfile, isValidProfile } from "../../src/core/audit/profiles.js";
+import { generateFixReport, fixReportFilename } from "../../src/utils/fixReport.js";
 import { backupServer } from "../../src/core/backup.js";
 import { logger, createSpinner } from "../../src/utils/logger.js";
 import {
@@ -192,6 +197,19 @@ beforeEach(() => {
 
   // Default handler mock — return { handled: false } (no match) so existing tests use shell path
   mockedTryHandlerDispatch.mockResolvedValue({ handled: false });
+
+  // Default profiles mocks — pass-through (all checks accepted)
+  (isValidProfile as jest.MockedFunction<typeof isValidProfile>).mockImplementation(
+    (name: string): name is "web-server" | "database" | "mail-server" =>
+      name === "web-server" || name === "database" || name === "mail-server",
+  );
+  (filterChecksByProfile as jest.MockedFunction<typeof filterChecksByProfile>).mockImplementation(
+    (checks) => checks,
+  );
+
+  // Default fixReport mocks
+  (generateFixReport as jest.MockedFunction<typeof generateFixReport>).mockReturnValue("# Report\n");
+  (fixReportFilename as jest.MockedFunction<typeof fixReportFilename>).mockReturnValue("kastell-fix-report-test-server-2026-03-29.md");
 });
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
@@ -1037,6 +1055,95 @@ describe("fixSafeCommand", () => {
           checks: [],
         }),
       );
+    });
+  });
+
+  // ── --profile, --diff, --report flag tests ───────────────────────────────
+
+  describe("--profile, --diff, --report flags", () => {
+    it("Test PR1: --profile without --safe returns error and no audit", async () => {
+      await fixSafeCommand(undefined, { profile: "web-server" });
+
+      expect(mockedLogger.error).toHaveBeenCalledWith(
+        expect.stringContaining("--profile requires --safe"),
+      );
+      expect(mockedRunAudit).not.toHaveBeenCalled();
+    });
+
+    it("Test PR2: --report without --safe returns error and no audit", async () => {
+      await fixSafeCommand(undefined, { report: true });
+
+      expect(mockedLogger.error).toHaveBeenCalledWith(
+        expect.stringContaining("--report requires --safe"),
+      );
+      expect(mockedRunAudit).not.toHaveBeenCalled();
+    });
+
+    it("Test PR3: --profile with invalid name returns error", async () => {
+      mockedResolveServer.mockResolvedValue(testServer);
+      mockedCheckSsh.mockReturnValue(true);
+
+      const auditResult = makeResult([
+        makeCategory("Kernel", [
+          makeCheck({ id: "KERN-01", category: "Kernel", severity: "warning", passed: false, fixCommand: "sysctl -w net.ipv4.tcp_syncookies=1", safeToAutoFix: "SAFE" }),
+        ]),
+      ]);
+      mockedRunAudit.mockResolvedValue({ success: true, data: auditResult });
+      mockedPreviewSafeFixes.mockReturnValue(defaultSafePlan);
+
+      await fixSafeCommand(undefined, { safe: true, profile: "invalid-profile" });
+
+      expect(mockedLogger.error).toHaveBeenCalledWith(
+        expect.stringContaining("Unknown profile"),
+      );
+      expect(mockedBackupServer).not.toHaveBeenCalled();
+    });
+
+    it("Test PR4: --diff alone (without --safe) returns usage help only (no apply)", async () => {
+      // --diff without --safe triggers the gate check showing usage help
+      await fixSafeCommand(undefined, { diff: true });
+
+      // No audit should run — fell through to gate check
+      expect(mockedRunAudit).not.toHaveBeenCalled();
+      // Usage info shown (gate check output)
+      expect(mockedLogger.info).toHaveBeenCalledWith(
+        expect.stringContaining("kastell fix --safe"),
+      );
+    });
+
+    it("Test PR5: --diff with --safe shows diff lines for handler-applied fixes", async () => {
+      mockedResolveServer.mockResolvedValue(testServer);
+      mockedCheckSsh.mockReturnValue(true);
+
+      const auditResult = makeResult([
+        makeCategory("Kernel", [
+          makeCheck({ id: "KERN-01", category: "Kernel", severity: "warning", passed: false, fixCommand: "sysctl -w net.ipv4.tcp_syncookies=1", safeToAutoFix: "SAFE" }),
+        ]),
+      ]);
+      mockedRunAudit.mockResolvedValue({ success: true, data: auditResult });
+      mockedPreviewSafeFixes.mockReturnValue(defaultSafePlan);
+      mockedPrompt.mockResolvedValue({ confirm: true });
+      mockedBackupServer.mockResolvedValue({ success: true, backupPath: "/tmp/backup" } as BackupResult);
+
+      const consoleSpy = jest.spyOn(console, "log").mockImplementation(() => { /* noop */ });
+
+      // Handler returns diff info
+      mockedTryHandlerDispatch.mockImplementation(async (_ip, check, applied, _errors) => {
+        applied.push(check.id);
+        return {
+          handled: true,
+          diff: { handlerType: "sysctl" as const, key: "net.ipv4.tcp_syncookies", before: "0", after: "1" },
+        };
+      });
+
+      await fixSafeCommand(undefined, { safe: true, diff: true });
+
+      // Should print diff line
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining("net.ipv4.tcp_syncookies"),
+      );
+
+      consoleSpy.mockRestore();
     });
   });
 });

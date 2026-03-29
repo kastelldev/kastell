@@ -379,8 +379,11 @@ program
   .option("--history", "Show fix history for the server")
   .option("--top <n>", "Apply top N highest-impact SAFE fixes (requires --safe)")
   .option("--target <score>", "Apply SAFE fixes until score reaches target (requires --safe)")
+  .option("--profile <name>", "Apply only checks matching server profile (web-server, database, mail-server)")
+  .option("--diff", "Show per-fix diff preview after applying")
+  .option("--report", "Generate markdown fix report after applying fixes")
   .action(
-    (server?: string, options?: { safe?: boolean; dryRun?: boolean; category?: string; rollback?: string; history?: boolean; top?: string; target?: string }) =>
+    (server?: string, options?: { safe?: boolean; dryRun?: boolean; category?: string; rollback?: string; history?: boolean; top?: string; target?: string; profile?: string; diff?: boolean; report?: boolean }) =>
       fixSafeCommand(server, options ?? {}),
   );
 
