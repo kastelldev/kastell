@@ -494,3 +494,166 @@ describe("compound real-world patterns", () => {
     expect(chain![1].params.owner).toBe("root:shadow");
   });
 });
+
+// ─── handler diff field population ───────────────────────────────────────────
+
+describe("sysctl handler diff", () => {
+  beforeEach(() => {
+    mockedSshExec.mockReset();
+  });
+
+  it("populates diff with handlerType=sysctl, key, before, after on success", async () => {
+    // Read current value (different)
+    mockedSshExec.mockResolvedValueOnce({ code: 0, stdout: "0\n", stderr: "" });
+    // Apply
+    mockedSshExec.mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" });
+
+    const params = { type: "sysctl" as const, key: "kernel.randomize_va_space", value: "2" };
+    const result = await sysctlHandler.execute(MOCK_IP, params);
+
+    expect(result.diff).toBeDefined();
+    expect(result.diff?.handlerType).toBe("sysctl");
+    expect(result.diff?.key).toBe("kernel.randomize_va_space");
+    expect(result.diff?.before).toBe("0");
+    expect(result.diff?.after).toBe("2");
+  });
+
+  it("returns diff=undefined when skipped (already correct)", async () => {
+    mockedSshExec.mockResolvedValueOnce({ code: 0, stdout: "2\n", stderr: "" });
+
+    const params = { type: "sysctl" as const, key: "kernel.randomize_va_space", value: "2" };
+    const result = await sysctlHandler.execute(MOCK_IP, params);
+
+    expect(result.skipped).toBe(true);
+    expect(result.diff).toBeUndefined();
+  });
+});
+
+describe("file-append handler diff", () => {
+  beforeEach(() => {
+    mockedSshExec.mockReset();
+  });
+
+  it("populates diff with handlerType=file-append, key=path, before/after on success", async () => {
+    // cat file (line not present)
+    mockedSshExec.mockResolvedValueOnce({ code: 0, stdout: "other content\n", stderr: "" });
+    // append
+    mockedSshExec.mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" });
+
+    const params = {
+      type: "file-append" as const,
+      line: "Defaults log_output",
+      path: "/etc/sudoers.d/kastell-logging",
+    };
+    const result = await fileAppendHandler.execute(MOCK_IP, params);
+
+    expect(result.diff).toBeDefined();
+    expect(result.diff?.handlerType).toBe("file-append");
+    expect(result.diff?.key).toBe("/etc/sudoers.d/kastell-logging");
+    expect(result.diff?.before).toBe("not present");
+    expect(result.diff?.after).toContain("line added:");
+    expect(result.diff?.after).toContain("Defaults log_output");
+  });
+
+  it("returns diff=undefined when skipped (line already present)", async () => {
+    mockedSshExec.mockResolvedValueOnce({
+      code: 0,
+      stdout: "Defaults log_output\n",
+      stderr: "",
+    });
+
+    const params = {
+      type: "file-append" as const,
+      line: "Defaults log_output",
+      path: "/etc/sudoers.d/kastell-logging",
+    };
+    const result = await fileAppendHandler.execute(MOCK_IP, params);
+
+    expect(result.skipped).toBe(true);
+    expect(result.diff).toBeUndefined();
+  });
+});
+
+describe("chmodChown handler diff", () => {
+  beforeEach(() => {
+    mockedSshExec.mockReset();
+  });
+
+  it("populates diff with handlerType=chmod-chown, key=path on chmod success", async () => {
+    // stat: current mode 755
+    mockedSshExec.mockResolvedValueOnce({ code: 0, stdout: "755 root:root\n", stderr: "" });
+    // apply
+    mockedSshExec.mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" });
+
+    const params = { type: "chmod-chown" as const, mode: "700", path: "/root" };
+    const result = await chmodChownHandler.execute(MOCK_IP, params);
+
+    expect(result.diff).toBeDefined();
+    expect(result.diff?.handlerType).toBe("chmod-chown");
+    expect(result.diff?.key).toBe("/root");
+    expect(result.diff?.before).toBe("755");
+    expect(result.diff?.after).toBe("700");
+  });
+
+  it("populates diff with handlerType=chmod-chown on chown success", async () => {
+    // stat: current owner root:root
+    mockedSshExec.mockResolvedValueOnce({ code: 0, stdout: "644 root:root\n", stderr: "" });
+    // apply
+    mockedSshExec.mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" });
+
+    const params = { type: "chmod-chown" as const, owner: "root:shadow", path: "/etc/shadow" };
+    const result = await chmodChownHandler.execute(MOCK_IP, params);
+
+    expect(result.diff).toBeDefined();
+    expect(result.diff?.handlerType).toBe("chmod-chown");
+    expect(result.diff?.key).toBe("/etc/shadow");
+    expect(result.diff?.before).toBe("root:root");
+    expect(result.diff?.after).toBe("root:shadow");
+  });
+
+  it("returns diff=undefined when chmod skipped (already correct mode)", async () => {
+    mockedSshExec.mockResolvedValueOnce({ code: 0, stdout: "700 root:root\n", stderr: "" });
+
+    const params = { type: "chmod-chown" as const, mode: "700", path: "/root" };
+    const result = await chmodChownHandler.execute(MOCK_IP, params);
+
+    expect(result.skipped).toBe(true);
+    expect(result.diff).toBeUndefined();
+  });
+});
+
+describe("packageInstall handler diff", () => {
+  beforeEach(() => {
+    mockedSshExec.mockReset();
+  });
+
+  it("populates diff with handlerType=package-install, key=package name on install", async () => {
+    // dpkg check (not installed)
+    mockedSshExec.mockResolvedValueOnce({ code: 1, stdout: "", stderr: "" });
+    // install
+    mockedSshExec.mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" });
+
+    const params = { type: "package-install" as const, package: "rsync" };
+    const result = await packageInstallHandler.execute(MOCK_IP, params);
+
+    expect(result.diff).toBeDefined();
+    expect(result.diff?.handlerType).toBe("package-install");
+    expect(result.diff?.key).toBe("rsync");
+    expect(result.diff?.before).toBe("not installed");
+    expect(result.diff?.after).toBe("installed");
+  });
+
+  it("returns diff=undefined when skipped (already installed)", async () => {
+    mockedSshExec.mockResolvedValueOnce({
+      code: 0,
+      stdout: "ii  rsync  3.2.3-4  amd64\n",
+      stderr: "",
+    });
+
+    const params = { type: "package-install" as const, package: "rsync" };
+    const result = await packageInstallHandler.execute(MOCK_IP, params);
+
+    expect(result.skipped).toBe(true);
+    expect(result.diff).toBeUndefined();
+  });
+});
