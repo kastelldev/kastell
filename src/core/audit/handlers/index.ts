@@ -18,10 +18,19 @@ export interface HandlerParams {
   [key: string]: unknown;
 }
 
+/** Diff information collected during handler execution for --diff preview */
+export interface DiffLine {
+  handlerType: "sysctl" | "file-append" | "package-install" | "chmod-chown";
+  key: string;
+  before: string;
+  after: string;
+}
+
 export interface HandlerResult {
   success: boolean;
   skipped?: boolean; // idempotent: already in desired state
   error?: string;
+  diff?: DiffLine; // populated by handlers that can report state change
 }
 
 /** Rollback info collected during chain execution for atomic undo (D-08, D-16) */
@@ -96,6 +105,7 @@ export async function executeHandlerChain(
   chain: Array<{ handler: FixHandler; params: HandlerParams }>,
 ): Promise<HandlerResult> {
   const rollbackSteps: RollbackStep[] = [];
+  let lastDiff: DiffLine | undefined;
 
   for (const { handler, params } of chain) {
     const result = await handler.execute(ip, params);
@@ -115,16 +125,20 @@ export async function executeHandlerChain(
     if (result.rollbackStep) {
       rollbackSteps.push(result.rollbackStep);
     }
+    if (result.diff !== undefined) {
+      lastDiff = result.diff;
+    }
   }
 
-  return { success: true };
+  return { success: true, diff: lastDiff };
 }
 
 // ─── tryHandlerDispatch ─────────────────────────────────────���─────────────────
 
 /**
- * Attempts handler dispatch for a fix command. Returns true if handled (success or failure),
- * false if no handler matched (caller should fall through to shell path).
+ * Attempts handler dispatch for a fix command.
+ * Returns { handled: true, diff? } if a handler matched (success or failure),
+ * { handled: false } if no handler matched (caller should fall through to shell path).
  * Shared by runFix(), fixSafeCommand(), and handleServerFix() to avoid copy-paste.
  */
 export async function tryHandlerDispatch(
@@ -132,9 +146,9 @@ export async function tryHandlerDispatch(
   check: { id: string; fixCommand: string },
   applied: string[],
   errors: string[],
-): Promise<boolean> {
+): Promise<{ handled: boolean; diff?: DiffLine }> {
   const chain = resolveHandlerChain(check.fixCommand);
-  if (chain === null) return false;
+  if (chain === null) return { handled: false };
 
   const result = await executeHandlerChain(ip, chain);
   if (result.success) {
@@ -142,5 +156,5 @@ export async function tryHandlerDispatch(
   } else {
     errors.push(`${check.id}: handler failed — ${result.error ?? "unknown"}`);
   }
-  return true;
+  return { handled: true, diff: result.diff };
 }
