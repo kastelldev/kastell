@@ -190,8 +190,8 @@ beforeEach(() => {
   mockedSelectChecksForTop.mockImplementation((sorted, n) => sorted.slice(0, n));
   mockedSelectChecksForTarget.mockImplementation((sorted) => sorted);
 
-  // Default handler mock — return false (no match) so existing tests use shell path
-  mockedTryHandlerDispatch.mockResolvedValue(false);
+  // Default handler mock — return { handled: false } (no match) so existing tests use shell path
+  mockedTryHandlerDispatch.mockResolvedValue({ handled: false });
 });
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
@@ -922,7 +922,7 @@ describe("fixSafeCommand", () => {
       // Handler matches and succeeds — pushes to applied array
       mockedTryHandlerDispatch.mockImplementation(async (_ip, check, applied, _errors) => {
         applied.push(check.id);
-        return true;
+        return { handled: true };
       });
 
       await fixSafeCommand(undefined, { safe: true });
@@ -973,8 +973,8 @@ describe("fixSafeCommand", () => {
       mockedPrompt.mockResolvedValue({ confirm: true });
       mockedBackupServer.mockResolvedValue({ success: true, backupPath: "/tmp/backup" } as BackupResult);
 
-      // Handler returns false — no match, falls through to shell path
-      mockedTryHandlerDispatch.mockResolvedValue(false);
+      // Handler returns { handled: false } — no match, falls through to shell path
+      mockedTryHandlerDispatch.mockResolvedValue({ handled: false });
       // isFixCommandAllowed returns false (metachar)
       (isFixCommandAllowed as jest.MockedFunction<typeof isFixCommandAllowed>).mockReturnValue(false);
 
@@ -1001,7 +1001,7 @@ describe("fixSafeCommand", () => {
       // Handler matches but fails — pushes to errors array
       mockedTryHandlerDispatch.mockImplementation(async (_ip, check, _applied, errors) => {
         errors.push(`${check.id}: handler failed — sysctl write failed`);
-        return true;
+        return { handled: true };
       });
 
       await fixSafeCommand(undefined, { safe: true });
@@ -1025,7 +1025,7 @@ describe("fixSafeCommand", () => {
       // All fixes go through handler path — all fail
       mockedTryHandlerDispatch.mockImplementation(async (_ip, check, _applied, errors) => {
         errors.push(`${check.id}: handler failed — permission denied`);
-        return true;
+        return { handled: true };
       });
 
       await fixSafeCommand(undefined, { safe: true });

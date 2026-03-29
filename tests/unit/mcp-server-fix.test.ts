@@ -215,8 +215,8 @@ beforeEach(() => {
   mockedFix.selectChecksForTop.mockImplementation((sorted, n) => sorted.slice(0, n));
   mockedFix.selectChecksForTarget.mockImplementation((sorted) => sorted);
 
-  // Default handler mock — return false (no match) so existing tests use shell path
-  mockedHandlers.tryHandlerDispatch.mockResolvedValue(false);
+  // Default handler mock — return { handled: false } (no match) so existing tests use shell path
+  mockedHandlers.tryHandlerDispatch.mockResolvedValue({ handled: false });
 });
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
@@ -567,7 +567,7 @@ describe("MCP server_fix tool", () => {
       // Handler matches and succeeds — pushes to applied array
       mockedHandlers.tryHandlerDispatch.mockImplementation(async (_ip, check, applied, _errors) => {
         applied.push(check.id);
-        return true;
+        return { handled: true };
       });
 
       const result = await handleServerFix({ dryRun: false });
@@ -584,7 +584,7 @@ describe("MCP server_fix tool", () => {
       // Handler matches but fails — pushes to errors array
       mockedHandlers.tryHandlerDispatch.mockImplementation(async (_ip, check, _applied, errors) => {
         errors.push(`${check.id}: handler failed — sysctl write failed`);
-        return true;
+        return { handled: true };
       });
 
       const result = await handleServerFix({ dryRun: false });

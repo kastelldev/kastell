@@ -6,7 +6,7 @@ import inquirer from "inquirer";
 jest.mock("../../src/utils/ssh.js");
 jest.mock("inquirer");
 jest.mock("../../src/core/audit/handlers/index.js", () => ({
-  tryHandlerDispatch: jest.fn().mockResolvedValue(false),
+  tryHandlerDispatch: jest.fn().mockResolvedValue({ handled: false }),
   resolveHandlerChain: jest.fn().mockReturnValue(null),
   executeHandlerChain: jest.fn().mockResolvedValue({ success: true }),
   matchHandler: jest.fn().mockReturnValue(null),

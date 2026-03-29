@@ -6,7 +6,7 @@
 
 import { sshExec } from "../../../utils/ssh.js";
 import { cmd, raw } from "../../../utils/sshCommand.js";
-import type { FixHandler, HandlerParams, HandlerResult, RollbackStep } from "./index.js";
+import type { FixHandler, HandlerParams, HandlerResult, RollbackStep, DiffLine } from "./index.js";
 
 // chmod with octal mode: chmod 700 /root
 const CHMOD_REGEX = /^chmod\s+(\d{3,4})\s+(\/\S+)$/;
@@ -77,7 +77,8 @@ export const chmodChownHandler: FixHandler = {
           await sshExec(rollbackIp, rollbackCmd, useGlob ? { useStdin: true } : undefined);
         },
       };
-      return { success: true, rollbackStep };
+      const diff: DiffLine = { handlerType: "chmod-chown", key: path, before: oldMode, after: mode };
+      return { success: true, rollbackStep, diff };
     }
 
     if (owner !== undefined) {
@@ -103,7 +104,8 @@ export const chmodChownHandler: FixHandler = {
           await sshExec(rollbackIp, rollbackCmd, useGlob ? { useStdin: true } : undefined);
         },
       };
-      return { success: true, rollbackStep };
+      const diff: DiffLine = { handlerType: "chmod-chown", key: path, before: oldOwner, after: owner };
+      return { success: true, rollbackStep, diff };
     }
 
     return { success: false, error: "No mode or owner specified in params" };

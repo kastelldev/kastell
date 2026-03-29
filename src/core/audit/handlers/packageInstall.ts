@@ -6,7 +6,7 @@
 
 import { sshExec } from "../../../utils/ssh.js";
 import { cmd, raw } from "../../../utils/sshCommand.js";
-import type { FixHandler, HandlerParams, HandlerResult, RollbackStep } from "./index.js";
+import type { FixHandler, HandlerParams, HandlerResult, RollbackStep, DiffLine } from "./index.js";
 
 // Matches: apt-get install -y <pkg> or apt install -y <pkg> (or without -y)
 // Anchored at end to prevent partial match on "bad;cmd" (security)
@@ -55,6 +55,12 @@ export const packageInstallHandler: FixHandler = {
       },
     };
 
-    return { success: true, rollbackStep };
+    const diff: DiffLine = {
+      handlerType: "package-install",
+      key: pkgName,
+      before: "not installed",
+      after: "installed",
+    };
+    return { success: true, rollbackStep, diff };
   },
 };

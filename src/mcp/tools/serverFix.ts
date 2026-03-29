@@ -370,7 +370,8 @@ export async function handleServerFix(
           }
         }
         // Handler dispatch — bypasses shell metachar guard (D-05, D-06)
-        if (await tryHandlerDispatch(server.ip, check, applied, errors)) continue;
+        const dispatch = await tryHandlerDispatch(server.ip, check, applied, errors);
+        if (dispatch.handled) continue;
         if (!isFixCommandAllowed(check.fixCommand)) {
           errors.push(`${check.id}: fix command rejected`);
           continue;

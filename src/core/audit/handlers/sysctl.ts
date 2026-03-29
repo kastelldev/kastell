@@ -6,7 +6,7 @@
 
 import { sshExec } from "../../../utils/ssh.js";
 import { cmd } from "../../../utils/sshCommand.js";
-import type { FixHandler, HandlerParams, HandlerResult, RollbackStep } from "./index.js";
+import type { FixHandler, HandlerParams, HandlerResult, RollbackStep, DiffLine } from "./index.js";
 
 const SYSCTL_REGEX = /^sysctl\s+-w\s+([\w.]+)=([\w.]+)$/;
 
@@ -47,6 +47,7 @@ export const sysctlHandler: FixHandler = {
       },
     };
 
-    return { success: true, rollbackStep };
+    const diff: DiffLine = { handlerType: "sysctl", key, before: oldValue, after: value };
+    return { success: true, rollbackStep, diff };
   },
 };

@@ -365,7 +365,8 @@ export async function fixSafeCommand(
         }
       }
       // Handler dispatch — bypasses shell metachar guard (D-05, D-06)
-      if (await tryHandlerDispatch(ip, check, applied, errors)) continue;
+      const dispatch = await tryHandlerDispatch(ip, check, applied, errors);
+      if (dispatch.handled) continue;
       // Whitelist + shell metachar guard
       if (!isFixCommandAllowed(check.fixCommand)) {
         errors.push(`${check.id}: fix command rejected`);

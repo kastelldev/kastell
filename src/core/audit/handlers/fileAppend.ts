@@ -6,7 +6,7 @@
 
 import { sshExec } from "../../../utils/ssh.js";
 import { cmd, raw } from "../../../utils/sshCommand.js";
-import type { FixHandler, HandlerParams, HandlerResult, RollbackStep } from "./index.js";
+import type { FixHandler, HandlerParams, HandlerResult, RollbackStep, DiffLine } from "./index.js";
 
 // Matches: echo 'line' >> /path  or  echo "line" >> /path
 // Strip trailing comment before matching
@@ -58,16 +58,22 @@ export const fileAppendHandler: FixHandler = {
       rollback: async (rollbackIp: string) => {
         // Read file, remove last occurrence of line, write back
         const currentContent = (await sshExec(rollbackIp, cmd("cat", path))).stdout;
-        const lines = currentContent.split("\n");
-        const idx = lines.lastIndexOf(line);
+        const fileLines = currentContent.split("\n");
+        const idx = fileLines.lastIndexOf(line);
         if (idx >= 0) {
-          lines.splice(idx, 1);
-          const newContent = lines.join("\n");
+          fileLines.splice(idx, 1);
+          const newContent = fileLines.join("\n");
           await sshExec(rollbackIp, raw(`printf '%s' '${newContent.replace(/'/g, "'\\''")}' > ${path}`), { useStdin: true });
         }
       },
     };
 
-    return { success: true, rollbackStep };
+    const diff: DiffLine = {
+      handlerType: "file-append",
+      key: path,
+      before: "not present",
+      after: `line added: ${line}`,
+    };
+    return { success: true, rollbackStep, diff };
   },
 };

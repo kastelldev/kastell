@@ -330,7 +330,8 @@ export async function runFix(
           }
         }
         // Handler dispatch — bypasses shell metachar guard (D-05, D-06)
-        if (await tryHandlerDispatch(ip, check, applied, errors)) continue;
+        const dispatch = await tryHandlerDispatch(ip, check, applied, errors);
+        if (dispatch.handled) continue;
         // Validate fixCommand against known safe prefixes + reject shell metacharacters
         if (!isFixCommandAllowed(check.fixCommand)) {
           errors.push(`${check.id}: fix command rejected — ${check.fixCommand.slice(0, 60)}`);
