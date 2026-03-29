@@ -37,7 +37,7 @@ jobs:
     timeout-minutes: 360  # 6h — cache varsa ~15dk, yoksa kısmi ilerleme kaydedip sonraki gece devam eder
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           fetch-depth: 2  # nightly source change check için
 
@@ -50,7 +50,7 @@ jobs:
 
       - name: Setup Node.js
         if: github.event_name != 'schedule' || steps.changes.outputs.has_changes == 'true'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: npm
@@ -83,7 +83,7 @@ jobs:
 
       - name: Save seed cache and exit
         if: github.event.inputs.seed == 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: .stryker-tmp/incremental.json
           key: stryker-${{ github.ref }}-seed-${{ github.run_id }}
@@ -96,7 +96,7 @@ jobs:
 
       - name: Restore Stryker cache
         if: github.event_name != 'schedule' || steps.changes.outputs.has_changes == 'true'
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: .stryker-tmp/incremental.json
           key: stryker-${{ github.ref }}-${{ hashFiles('src/**/*.ts', 'tests/**/*.ts', 'stryker.config.mjs', 'jest.stryker.cjs') }}
@@ -147,14 +147,14 @@ jobs:
       # restore-keys prefix matching finds the latest entry.
       - name: Save Stryker cache
         if: always() && (github.event_name != 'schedule' || steps.changes.outputs.has_changes == 'true')
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: .stryker-tmp/incremental.json
           key: stryker-${{ github.ref }}-${{ hashFiles('src/**/*.ts', 'tests/**/*.ts', 'stryker.config.mjs', 'jest.stryker.cjs') }}-${{ github.run_id }}
 
       - name: Upload mutation report
         if: always() && (github.event_name != 'schedule' || steps.changes.outputs.has_changes == 'true')
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: mutation-report
           path: |
@@ -164,7 +164,7 @@ jobs:
 
       - name: Upload incremental cache (CI→Lokal sync için)
         if: always() && (github.event_name != 'schedule' || steps.changes.outputs.has_changes == 'true')
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: stryker-incremental
           path: .stryker-tmp/incremental.json
