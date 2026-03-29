@@ -95,6 +95,10 @@ Options:
   --top <n>          Apply top N highest-impact SAFE fixes (requires --safe)
   --target <score>   Apply SAFE fixes until score reaches target (requires
                      --safe)
+  --profile <name>   Apply only checks matching server profile (web-server,
+                     database, mail-server)
+  --diff             Show per-fix diff preview after applying
+  --report           Generate markdown fix report after applying fixes
   -h, --help         display help for command"
 `;
 
