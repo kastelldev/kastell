@@ -4,8 +4,8 @@ import {
   backupRemoteCleanup,
   REMOTE_BACKUP_BASE,
 } from "../../src/core/audit/fix-history.js";
-import { collectFixCommands } from "../../src/core/audit/fix.js";
-import type { FixPlan, FixGroup, FixCheck } from "../../src/core/audit/fix.js";
+import { fixCommandsFromChecks } from "../../src/core/audit/fix.js";
+import type { FixCheck } from "../../src/core/audit/fix.js";
 import * as ssh from "../../src/utils/ssh.js";
 
 jest.mock("../../src/utils/ssh.js");
@@ -217,29 +217,15 @@ describe("backupRemoteCleanup", () => {
   });
 });
 
-describe("collectFixCommands", () => {
-  it("should extract checkId and fixCommand from plan groups", () => {
-    const plan: FixPlan = {
-      groups: [
-        {
-          severity: "critical",
-          estimatedImpact: 10,
-          checks: [
-            makeFixCheck({ id: "KERN-01", fixCommand: "sysctl -w net.ipv4.tcp_syncookies=1" }),
-            makeFixCheck({ id: "KERN-02", fixCommand: "sysctl -w net.ipv4.conf.all.rp_filter=1" }),
-          ],
-        } as FixGroup,
-        {
-          severity: "warning",
-          estimatedImpact: 5,
-          checks: [
-            makeFixCheck({ id: "LOG-01", fixCommand: "chmod 640 /etc/rsyslog.conf" }),
-          ],
-        } as FixGroup,
-      ],
-    };
+describe("fixCommandsFromChecks", () => {
+  it("should extract checkId and fixCommand from check array", () => {
+    const checks: FixCheck[] = [
+      makeFixCheck({ id: "KERN-01", fixCommand: "sysctl -w net.ipv4.tcp_syncookies=1" }),
+      makeFixCheck({ id: "KERN-02", fixCommand: "sysctl -w net.ipv4.conf.all.rp_filter=1" }),
+      makeFixCheck({ id: "LOG-01", fixCommand: "chmod 640 /etc/rsyslog.conf" }),
+    ];
 
-    const result = collectFixCommands(plan);
+    const result = fixCommandsFromChecks(checks);
 
     expect(result).toHaveLength(3);
     expect(result[0]).toEqual({ checkId: "KERN-01", fixCommand: "sysctl -w net.ipv4.tcp_syncookies=1" });
@@ -247,24 +233,17 @@ describe("collectFixCommands", () => {
     expect(result[2]).toEqual({ checkId: "LOG-01", fixCommand: "chmod 640 /etc/rsyslog.conf" });
   });
 
-  it("should return empty array for empty plan", () => {
-    const plan: FixPlan = { groups: [] };
-    const result = collectFixCommands(plan);
+  it("should return empty array for empty checks", () => {
+    const result = fixCommandsFromChecks([]);
     expect(result).toEqual([]);
   });
 
-  it("should handle plan with single group and single check", () => {
-    const plan: FixPlan = {
-      groups: [
-        {
-          severity: "warning",
-          estimatedImpact: 3,
-          checks: [makeFixCheck({ id: "SSH-01", fixCommand: "chmod 600 /etc/ssh/sshd_config" })],
-        } as FixGroup,
-      ],
-    };
+  it("should handle single check", () => {
+    const checks: FixCheck[] = [
+      makeFixCheck({ id: "SSH-01", fixCommand: "chmod 600 /etc/ssh/sshd_config" }),
+    ];
 
-    const result = collectFixCommands(plan);
+    const result = fixCommandsFromChecks(checks);
     expect(result).toHaveLength(1);
     expect(result[0].checkId).toBe("SSH-01");
   });

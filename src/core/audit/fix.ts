@@ -9,6 +9,7 @@ import type { ImpactContext } from "./scoring.js";
 import { sshExec } from "../../utils/ssh.js";
 import { raw } from "../../utils/sshCommand.js";
 import { logger } from "../../utils/logger.js";
+import { getErrorMessage } from "../../utils/errorMapper.js";
 import inquirer from "inquirer";
 import { buildAuditBatchCommands, BATCH_TIMEOUTS } from "./commands.js";
 import { parseAllChecks } from "./checks/index.js";
@@ -210,34 +211,8 @@ export function previewSafeFixes(result: AuditResult): {
 }
 
 /**
- * Calculate estimated score impact if all checks in a group are fixed.
- * Uses the same severity and category weighting as the scoring engine.
- */
-function calculateGroupImpact(
-  checks: FixCheck[],
-  ctx: ImpactContext,
-): number {
-  if (ctx.totalOverallWeight === 0) return 0;
-
-  let totalImpact = 0;
-
-  for (const check of checks) {
-    const totalCategoryWeight = ctx.catWeightMap.get(check.category) ?? 0;
-    if (totalCategoryWeight === 0) continue;
-
-    const checkWeight = SEVERITY_WEIGHTS[check.severity];
-    const categoryImpact = (checkWeight / totalCategoryWeight) * 100;
-    const catWeight = CATEGORY_WEIGHTS[check.category] ?? DEFAULT_CATEGORY_WEIGHT;
-    totalImpact += (categoryImpact * catWeight) / ctx.totalOverallWeight;
-  }
-
-  return Math.round(totalImpact);
-}
-
-/**
  * Calculate estimated score impact if a single check is fixed.
- * Uses the same formula as calculateGroupImpact but for one check and without Math.round,
- * preserving fractional precision for accurate impact-based sorting.
+ * Preserves fractional precision (no rounding) for accurate impact-based sorting.
  */
 export function calculateCheckImpact(check: FixCheck, ctx: ImpactContext): number {
   if (ctx.totalOverallWeight === 0) return 0;
@@ -247,6 +222,17 @@ export function calculateCheckImpact(check: FixCheck, ctx: ImpactContext): numbe
   const categoryImpact = (checkWeight / totalCategoryWeight) * 100;
   const catWeight = CATEGORY_WEIGHTS[check.category] ?? DEFAULT_CATEGORY_WEIGHT;
   return (categoryImpact * catWeight) / ctx.totalOverallWeight;
+}
+
+/**
+ * Calculate estimated score impact if all checks in a group are fixed.
+ * Delegates to calculateCheckImpact per check, then rounds the total.
+ */
+function calculateGroupImpact(
+  checks: FixCheck[],
+  ctx: ImpactContext,
+): number {
+  return Math.round(checks.reduce((sum, c) => sum + calculateCheckImpact(c, ctx), 0));
 }
 
 /** A FixCheck annotated with its estimated score impact */
@@ -354,8 +340,7 @@ export async function runFix(
           applied.push(check.id);
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        errors.push(`${check.id}: ${message}`);
+        errors.push(`${check.id}: ${getErrorMessage(err)}`);
       }
     }
   }
@@ -364,16 +349,13 @@ export async function runFix(
 }
 
 /**
- * Collect fix commands from a safe plan for backup purposes.
- * Returns array of { checkId, fixCommand } for checks that will be applied.
- * Used by Plan 02 (CLI + MCP) to integrate with fix-history backup flow.
+ * Extract { checkId, fixCommand } pairs from a flat check array.
+ * Used by CLI and MCP to pass to backupFilesBeforeFix.
  */
-export function collectFixCommands(
-  safePlan: FixPlan,
+export function fixCommandsFromChecks(
+  checks: FixCheck[],
 ): Array<{ checkId: string; fixCommand: string }> {
-  return safePlan.groups.flatMap((g) =>
-    g.checks.map((c) => ({ checkId: c.id, fixCommand: c.fixCommand })),
-  );
+  return checks.map((c) => ({ checkId: c.id, fixCommand: c.fixCommand }));
 }
 
 /**
@@ -414,7 +396,7 @@ export async function runScoreCheck(
 
     return calculateOverallScore(mergedCategories);
   } catch (err) {
-    logger.warning(`Score re-audit failed: ${err instanceof Error ? err.message : String(err)}`);
+    logger.warning(`Score re-audit failed: ${getErrorMessage(err)}`);
     return null;
   }
 }

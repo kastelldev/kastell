@@ -197,7 +197,7 @@ beforeEach(() => {
   mockedFixHistory.rollbackFix.mockResolvedValue({ restored: [], errors: [] });
   mockedFixHistory.saveRollbackEntry.mockResolvedValue(undefined);
   mockedFixHistory.backupRemoteCleanup.mockResolvedValue(undefined);
-  mockedFix.collectFixCommands.mockReturnValue([
+  mockedFix.fixCommandsFromChecks.mockReturnValue([
     { checkId: "KERN-SYNCOOKIES", fixCommand: "sysctl -w net.ipv4.tcp_syncookies=1" },
   ]);
 

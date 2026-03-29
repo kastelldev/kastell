@@ -9,6 +9,7 @@ import {
   sortChecksByImpact,
   selectChecksForTop,
   selectChecksForTarget,
+  fixCommandsFromChecks,
 } from "../../core/audit/fix.js";
 import { buildImpactContext } from "../../core/audit/scoring.js";
 import { backupServer } from "../../core/backup.js";
@@ -345,8 +346,7 @@ export async function handleServerFix(
 
     // ── LIVE FIX — remote file backup + fix ID (D-01, D-03) ──────────────
     const fixId = generateFixId(server.ip);
-    // Back up only the files affected by selected (prioritized) checks
-    const fixCommands = selectedChecks.map((c) => ({ checkId: c.id, fixCommand: c.fixCommand }));
+    const fixCommands = fixCommandsFromChecks(selectedChecks);
     await mcpLog(mcpServer, "Creating remote file backup...");
     const remoteBackupPath = await backupFilesBeforeFix(
       server.ip,

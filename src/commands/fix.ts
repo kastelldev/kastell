@@ -12,6 +12,7 @@ import {
   sortChecksByImpact,
   selectChecksForTop,
   selectChecksForTarget,
+  fixCommandsFromChecks,
   type ScoredFixCheck,
 } from "../core/audit/fix.js";
 import { buildImpactContext } from "../core/audit/scoring.js";
@@ -219,6 +220,8 @@ export async function fixSafeCommand(
   const sortedChecks = sortChecksByImpact(allSafeChecks, impactCtx);
 
   let selectedChecks: ScoredFixCheck[];
+  let parsedTarget: number | undefined;
+
   if (options.top !== undefined) {
     const n = parseInt(options.top, 10);
     if (isNaN(n) || n <= 0) {
@@ -227,18 +230,18 @@ export async function fixSafeCommand(
     }
     selectedChecks = selectChecksForTop(sortedChecks, n);
   } else if (options.target !== undefined) {
-    const target = parseInt(options.target, 10);
-    if (isNaN(target) || target < 1 || target > 100) {
+    parsedTarget = parseInt(options.target, 10);
+    if (isNaN(parsedTarget) || parsedTarget < 1 || parsedTarget > 100) {
       logger.error("--target degeri 1-100 arasinda olmalidir.");
       return;
     }
-    if (auditResult.overallScore >= target) {
+    if (auditResult.overallScore >= parsedTarget) {
       logger.info(
-        `Mevcut skor ${auditResult.overallScore}, hedef ${target} — fix gerekmez.`,
+        `Mevcut skor ${auditResult.overallScore}, hedef ${parsedTarget} — fix gerekmez.`,
       );
       return;
     }
-    selectedChecks = selectChecksForTarget(sortedChecks, auditResult.overallScore, target);
+    selectedChecks = selectChecksForTarget(sortedChecks, auditResult.overallScore, parsedTarget);
   } else {
     selectedChecks = sortedChecks;
   }
@@ -338,8 +341,7 @@ export async function fixSafeCommand(
 
   // Generate fix ID and create remote backup (per D-01, D-03)
   const fixId = generateFixId(ip);
-  // Back up only the files affected by selected (prioritized) checks
-  const fixCommands = selectedChecks.map((c) => ({ checkId: c.id, fixCommand: c.fixCommand }));
+  const fixCommands = fixCommandsFromChecks(selectedChecks);
   const remoteBackupSpinner = createSpinner("Creating remote file backup...");
   remoteBackupSpinner.start();
   const remoteBackupPath = await backupFilesBeforeFix(ip, fixId, fixCommands);
@@ -419,13 +421,10 @@ export async function fixSafeCommand(
         `Score: ${auditResult.overallScore} \u2192 ${newScore} (${sign}${delta}) | Applied: ${applied.length} | Skipped: ${skippedCount} (GUARDED: ${guardedCount}, FORBIDDEN: ${forbiddenCount})`,
       );
       // D-06: --target unreachable warning
-      if (options.target !== undefined) {
-        const target = parseInt(options.target, 10);
-        if (!isNaN(target) && newScore < target) {
-          logger.info(
-            `Hedef: ${target}, ulasilan: ${newScore}. Kalan fix'ler GUARDED/FORBIDDEN tier'da.`,
-          );
-        }
+      if (parsedTarget !== undefined && newScore < parsedTarget) {
+        logger.info(
+          `Hedef: ${parsedTarget}, ulasilan: ${newScore}. Kalan fix'ler GUARDED/FORBIDDEN tier'da.`,
+        );
       }
     }
   }

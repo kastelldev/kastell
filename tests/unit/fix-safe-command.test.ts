@@ -25,7 +25,7 @@ import {
   previewSafeFixes,
   runScoreCheck,
   isFixCommandAllowed,
-  collectFixCommands,
+  fixCommandsFromChecks,
   sortChecksByImpact,
   selectChecksForTop,
   selectChecksForTarget,
@@ -63,7 +63,7 @@ const mockedBackupFilesBeforeFix = backupFilesBeforeFix as jest.MockedFunction<t
 const mockedRollbackFix = rollbackFix as jest.MockedFunction<typeof rollbackFix>;
 const mockedSaveRollbackEntry = saveRollbackEntry as jest.MockedFunction<typeof saveRollbackEntry>;
 const mockedBackupRemoteCleanup = backupRemoteCleanup as jest.MockedFunction<typeof backupRemoteCleanup>;
-const mockedCollectFixCommands = collectFixCommands as jest.MockedFunction<typeof collectFixCommands>;
+const mockedFixCommandsFromChecks = fixCommandsFromChecks as jest.MockedFunction<typeof fixCommandsFromChecks>;
 const mockedSortChecksByImpact = sortChecksByImpact as jest.MockedFunction<typeof sortChecksByImpact>;
 const mockedSelectChecksForTop = selectChecksForTop as jest.MockedFunction<typeof selectChecksForTop>;
 const mockedSelectChecksForTarget = selectChecksForTarget as jest.MockedFunction<typeof selectChecksForTarget>;
@@ -170,7 +170,7 @@ beforeEach(() => {
   mockedBackupFilesBeforeFix.mockResolvedValue("/root/.kastell/fix-backups/fix-2026-03-29-001");
   mockedRollbackFix.mockResolvedValue({ restored: [], errors: [] });
   mockedBackupRemoteCleanup.mockResolvedValue(undefined);
-  mockedCollectFixCommands.mockReturnValue([
+  mockedFixCommandsFromChecks.mockReturnValue([
     { checkId: "KERN-01", fixCommand: "sysctl -w net.ipv4.tcp_syncookies=1" },
   ]);
 
