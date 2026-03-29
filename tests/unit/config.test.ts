@@ -105,16 +105,16 @@ describe("config", () => {
       expect(result[0].mode).toBe("bare");
     });
 
-    it("should return empty array when file contains invalid JSON", () => {
+    it("should throw on corrupt/invalid JSON in servers.json", () => {
       mockedFs.existsSync.mockReturnValue(true);
       mockedFs.readFileSync.mockReturnValue("not-json{{{");
-      expect(getServers()).toEqual([]);
+      expect(() => getServers()).toThrow();
     });
 
-    it("should return empty array when file contains non-array JSON", () => {
+    it("should throw with 'corrupt' message when file contains non-array JSON", () => {
       mockedFs.existsSync.mockReturnValue(true);
       mockedFs.readFileSync.mockReturnValue('{"not": "array"}');
-      expect(getServers()).toEqual([]);
+      expect(() => getServers()).toThrow(/corrupt/);
     });
 
     it("should auto-migrate and persist records missing mode field", () => {
