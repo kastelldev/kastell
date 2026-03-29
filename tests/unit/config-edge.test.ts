@@ -17,31 +17,31 @@ describe("config edge cases", () => {
   });
 
   describe("getServers edge cases", () => {
-    it("should handle readFileSync throwing an error", () => {
+    it("should throw when readFileSync throws an error (fail-closed)", () => {
       mockedFs.existsSync.mockReturnValue(true);
       mockedFs.readFileSync.mockImplementation(() => {
         throw new Error("Permission denied");
       });
 
-      expect(getServers()).toEqual([]);
+      expect(() => getServers()).toThrow("Permission denied");
     });
 
-    it("should handle null in JSON file", () => {
+    it("should throw on null in JSON file (fail-closed)", () => {
       mockedFs.existsSync.mockReturnValue(true);
       mockedFs.readFileSync.mockReturnValue("null");
-      expect(getServers()).toEqual([]);
+      expect(() => getServers()).toThrow(/corrupt/);
     });
 
-    it("should handle number in JSON file", () => {
+    it("should throw on number in JSON file (fail-closed)", () => {
       mockedFs.existsSync.mockReturnValue(true);
       mockedFs.readFileSync.mockReturnValue("42");
-      expect(getServers()).toEqual([]);
+      expect(() => getServers()).toThrow(/corrupt/);
     });
 
-    it("should handle empty file", () => {
+    it("should throw on empty file (fail-closed)", () => {
       mockedFs.existsSync.mockReturnValue(true);
       mockedFs.readFileSync.mockReturnValue("");
-      expect(getServers()).toEqual([]);
+      expect(() => getServers()).toThrow();
     });
   });
 

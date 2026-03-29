@@ -22,25 +22,20 @@ function atomicWriteServers(servers: ServerRecord[]): void {
 }
 
 export function getServers(): ServerRecord[] {
-  try {
-    if (!existsSync(SERVERS_FILE)) {
-      return [];
-    }
-    const data = readFileSync(SERVERS_FILE, "utf-8");
-    const parsed = JSON.parse(data);
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-    const needsMigration = parsed.some((s: Record<string, unknown>) => !s.mode);
-    const servers = parsed.map((s: ServerRecord) => ({ ...s, mode: s.mode || "coolify" }) as ServerRecord);
-    if (needsMigration) {
-      atomicWriteServers(servers);
-    }
-    return servers;
-  } catch {
-    console.error("[kastell] Warning: servers.json is corrupted or unreadable, returning empty list");
+  if (!existsSync(SERVERS_FILE)) {
     return [];
   }
+  const data = readFileSync(SERVERS_FILE, "utf-8");
+  const parsed = JSON.parse(data);
+  if (!Array.isArray(parsed)) {
+    throw new Error("servers.json corrupt — check ~/.kastell/servers.json manually");
+  }
+  const needsMigration = parsed.some((s: Record<string, unknown>) => !s.mode);
+  const servers = parsed.map((s: ServerRecord) => ({ ...s, mode: s.mode || "coolify" }) as ServerRecord);
+  if (needsMigration) {
+    atomicWriteServers(servers);
+  }
+  return servers;
 }
 
 export async function saveServer(record: ServerRecord): Promise<void> {
