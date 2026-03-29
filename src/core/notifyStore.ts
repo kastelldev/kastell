@@ -4,6 +4,7 @@ import { join } from "path";
 import { storeToken, readToken } from "./tokenBuffer.js";
 import type { NotifyConfig } from "./notify.js";
 import { isKeychainAvailable as _isKeychainAvailable, getKeychainEntry as _getKeychainEntry } from "../utils/keyring.js";
+import { encryptData, decryptData, getMachineKey, isEncryptedPayload } from "../utils/encryption.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -31,8 +32,17 @@ function getKeychainEntry(channel: string, field: string) {
 function readSecretsFile(): Record<string, string> {
   try {
     if (!existsSync(NOTIFY_SECRETS_FILE)) return {};
-    return JSON.parse(readFileSync(NOTIFY_SECRETS_FILE, "utf-8")) as Record<string, string>;
+    const raw = readFileSync(NOTIFY_SECRETS_FILE, "utf-8");
+    const parsed = JSON.parse(raw);
+    if (isEncryptedPayload(parsed)) {
+      return JSON.parse(decryptData(parsed, getMachineKey()));
+    }
+    // Plaintext legacy — will be migrated on next write
+    return parsed as Record<string, string>;
   } catch {
+    process.stderr.write(
+      "[warn] Notify secret decryption failed — re-enter secrets with 'kastell notify add'\n",
+    );
     return {};
   }
 }
@@ -40,7 +50,8 @@ function readSecretsFile(): Record<string, string> {
 function writeSecretsFile(data: Record<string, string>): void {
   try {
     if (!existsSync(KASTELL_DIR)) mkdirSync(KASTELL_DIR, { recursive: true });
-    writeFileSync(NOTIFY_SECRETS_FILE, JSON.stringify(data, null, 2), { mode: 0o600 });
+    const payload = encryptData(JSON.stringify(data), getMachineKey());
+    writeFileSync(NOTIFY_SECRETS_FILE, JSON.stringify(payload, null, 2), { mode: 0o600 });
   } catch { /* ignore */ }
 }
 
@@ -80,7 +91,7 @@ export function storeNotifySecret(channel: string, field: string, value: string)
   // Fallback: tokenBuffer (in-memory) + file persistence
   if (platform() === "win32") {
     process.stderr.write(
-      "[warn] OS keychain unavailable — notify secret stored in plaintext at ~/.kastell/notify-secrets.json\n",
+      "[warn] OS keychain unavailable — notify secret stored encrypted at ~/.kastell/notify-secrets.json\n",
     );
   }
   storeToken(`${channel}:${field}`, value);
