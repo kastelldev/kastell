@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { SUPPORTED_PROVIDERS, PROVIDER_ENV_KEYS } from "../constants.js";
 import type { SupportedProvider } from "../constants.js";
 import { IS_ANDROID, loadKeyring, isKeychainAvailable as _isKeychainAvailable, getKeychainEntry as _getKeychainEntry } from "../utils/keyring.js";
+import { encryptData, decryptData, getMachineKey, isEncryptedPayload } from "../utils/encryption.js";
 
 const SERVICE_NAME = "kastell";
 let _warnedPlaintext = false;
@@ -14,14 +15,26 @@ const TOKENS_FILE = join(KASTELL_DIR, "tokens.json");
 function readTokensFile(): Record<string, string> {
   try {
     if (!existsSync(TOKENS_FILE)) return {};
-    return JSON.parse(readFileSync(TOKENS_FILE, "utf8"));
-  } catch { return {}; }
+    const raw = readFileSync(TOKENS_FILE, "utf8");
+    const parsed = JSON.parse(raw);
+    if (isEncryptedPayload(parsed)) {
+      return JSON.parse(decryptData(parsed, getMachineKey()));
+    }
+    // Plaintext legacy — will be migrated on next write
+    return parsed;
+  } catch {
+    process.stderr.write(
+      "[warn] Token decryption failed — re-enter tokens with 'kastell provider add'\n",
+    );
+    return {};
+  }
 }
 
 function writeTokensFile(data: Record<string, string>): boolean {
   try {
     if (!existsSync(KASTELL_DIR)) mkdirSync(KASTELL_DIR, { recursive: true });
-    writeFileSync(TOKENS_FILE, JSON.stringify(data, null, 2), { mode: 0o600 });
+    const payload = encryptData(JSON.stringify(data), getMachineKey());
+    writeFileSync(TOKENS_FILE, JSON.stringify(payload, null, 2), { mode: 0o600 });
     return true;
   } catch { return false; }
 }
@@ -38,7 +51,7 @@ export function setToken(provider: string, token: string): boolean {
     if (platform() === "win32" && !_warnedPlaintext) {
       _warnedPlaintext = true;
       process.stderr.write(
-        "[warn] OS keychain unavailable — token stored in plaintext at ~/.kastell/tokens.json\n",
+        "[warn] OS keychain unavailable — token stored encrypted at ~/.kastell/tokens.json\n",
       );
     }
     const data = readTokensFile();

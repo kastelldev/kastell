@@ -27,6 +27,28 @@ jest.mock("../../src/core/tokenBuffer.js", () => ({
   readToken: jest.fn(),
 }));
 
+// Mock encryption module for predictable test behavior
+jest.mock("../../src/utils/encryption.js", () => {
+  const mockKey = Buffer.alloc(32, 0xab);
+  return {
+    encryptData: jest.fn((plaintext: string) => ({
+      encrypted: true,
+      version: 1,
+      iv: "aabbccddee001122334455",
+      data: Buffer.from(plaintext).toString("hex"),
+      tag: "00112233445566778899aabbccddeeff",
+    })),
+    decryptData: jest.fn((payload: { data: string }) =>
+      Buffer.from(payload.data, "hex").toString("utf8"),
+    ),
+    getMachineKey: jest.fn(() => mockKey),
+    isEncryptedPayload: jest.fn((obj: unknown) => {
+      if (obj === null || obj === undefined || typeof obj !== "object") return false;
+      return (obj as Record<string, unknown>).encrypted === true;
+    }),
+  };
+});
+
 const mockedExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;
 const mockedReadFileSync = readFileSync as jest.MockedFunction<typeof readFileSync>;
 const mockedWriteFileSync = writeFileSync as jest.MockedFunction<typeof writeFileSync>;
@@ -36,8 +58,22 @@ import { storeToken as mockedStoreToken, readToken as mockedReadToken } from "..
 const storeTokenMock = mockedStoreToken as jest.Mock;
 const readTokenMock = mockedReadToken as jest.Mock;
 
+// Store encryption mock references for restoration after resetAllMocks
+const encMod = jest.requireMock("../../src/utils/encryption.js") as Record<string, jest.Mock>;
+const encOriginals = {
+  encryptData: encMod.encryptData.getMockImplementation(),
+  decryptData: encMod.decryptData.getMockImplementation(),
+  getMachineKey: encMod.getMachineKey.getMockImplementation(),
+  isEncryptedPayload: encMod.isEncryptedPayload.getMockImplementation(),
+};
+
 beforeEach(() => {
   jest.resetAllMocks();
+  // Restore encryption mocks that resetAllMocks clears
+  encMod.encryptData.mockImplementation(encOriginals.encryptData);
+  encMod.decryptData.mockImplementation(encOriginals.decryptData);
+  encMod.getMachineKey.mockImplementation(encOriginals.getMachineKey);
+  encMod.isEncryptedPayload.mockImplementation(encOriginals.isEncryptedPayload);
   __resetStore();
   __setAvailable(true);
 });
@@ -136,7 +172,7 @@ describe("storeNotifySecret / readNotifySecret — fallback path", () => {
     expect(storeTokenMock).toHaveBeenCalledWith("telegram:botToken", "bot123");
   });
 
-  it("also persists to notify-secrets.json when keychain unavailable (SEC-01)", () => {
+  it("also persists encrypted to notify-secrets.json when keychain unavailable (SEC-01)", () => {
     mockedReadFileSync.mockReturnValue("{}");
     mockedExistsSync.mockReturnValue(true);
 
@@ -147,6 +183,13 @@ describe("storeNotifySecret / readNotifySecret — fallback path", () => {
       expect.any(String),
       { mode: 0o600 },
     );
+    // Verify the written content is encrypted
+    const written = JSON.parse(
+      mockedWriteFileSync.mock.calls.find(
+        (c) => typeof c[0] === "string" && (c[0] as string).includes("notify-secrets.json"),
+      )![1] as string,
+    );
+    expect(written.encrypted).toBe(true);
   });
 
   it("reads from tokenBuffer first when keychain unavailable (SEC-01)", () => {
@@ -554,8 +597,6 @@ describe("saveNotifyChannel — unknown channel", () => {
 });
 
 describe("storeNotifySecret — win32 fallback warning", () => {
-  const originalPlatform = process.platform;
-
   it("writes warning to stderr on win32 when keychain unavailable", () => {
     __setAvailable(false);
     mockedExistsSync.mockReturnValue(false);
@@ -564,7 +605,6 @@ describe("storeNotifySecret — win32 fallback warning", () => {
     storeNotifySecret("telegram", "botToken", "val");
 
     // On actual win32, the warning is shown. This covers the platform() === "win32" branch.
-    // The test runs on win32 so this should trigger.
     if (process.platform === "win32") {
       expect(stderrSpy).toHaveBeenCalledWith(
         expect.stringContaining("OS keychain unavailable"),
