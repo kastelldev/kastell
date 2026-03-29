@@ -16,27 +16,11 @@ jest.mock("fs", () => {
   };
 });
 
-// Mock encryption module for predictable test behavior
-jest.mock("../../src/utils/encryption.js", () => {
-  const mockKey = Buffer.alloc(32, 0xab);
-  return {
-    encryptData: jest.fn((plaintext: string) => ({
-      encrypted: true,
-      version: 1,
-      iv: "aabbccddee001122334455",
-      data: Buffer.from(plaintext).toString("hex"),
-      tag: "00112233445566778899aabbccddeeff",
-    })),
-    decryptData: jest.fn((payload: { data: string }) =>
-      Buffer.from(payload.data, "hex").toString("utf8"),
-    ),
-    getMachineKey: jest.fn(() => mockKey),
-    isEncryptedPayload: jest.fn((obj: unknown) => {
-      if (obj === null || obj === undefined || typeof obj !== "object") return false;
-      return (obj as Record<string, unknown>).encrypted === true;
-    }),
-  };
-});
+// Mock encryption module — shared factory from tests/helpers
+jest.mock("../../src/utils/encryption.js", () =>
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require("../helpers/encryption-factories").createEncryptionMock(),
+);
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
 import {

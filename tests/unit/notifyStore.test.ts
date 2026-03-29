@@ -27,27 +27,12 @@ jest.mock("../../src/core/tokenBuffer.js", () => ({
   readToken: jest.fn(),
 }));
 
-// Mock encryption module for predictable test behavior
-jest.mock("../../src/utils/encryption.js", () => {
-  const mockKey = Buffer.alloc(32, 0xab);
-  return {
-    encryptData: jest.fn((plaintext: string) => ({
-      encrypted: true,
-      version: 1,
-      iv: "aabbccddee001122334455",
-      data: Buffer.from(plaintext).toString("hex"),
-      tag: "00112233445566778899aabbccddeeff",
-    })),
-    decryptData: jest.fn((payload: { data: string }) =>
-      Buffer.from(payload.data, "hex").toString("utf8"),
-    ),
-    getMachineKey: jest.fn(() => mockKey),
-    isEncryptedPayload: jest.fn((obj: unknown) => {
-      if (obj === null || obj === undefined || typeof obj !== "object") return false;
-      return (obj as Record<string, unknown>).encrypted === true;
-    }),
-  };
-});
+// Mock encryption module — shared factory from tests/helpers
+jest.mock("../../src/utils/encryption.js", () =>
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require("../helpers/encryption-factories").createEncryptionMock(),
+);
+import { restoreEncryptionMock } from "../helpers/encryption-factories";
 
 const mockedExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;
 const mockedReadFileSync = readFileSync as jest.MockedFunction<typeof readFileSync>;
@@ -60,20 +45,13 @@ const readTokenMock = mockedReadToken as jest.Mock;
 
 // Store encryption mock references for restoration after resetAllMocks
 const encMod = jest.requireMock("../../src/utils/encryption.js") as Record<string, jest.Mock>;
-const encOriginals = {
-  encryptData: encMod.encryptData.getMockImplementation(),
-  decryptData: encMod.decryptData.getMockImplementation(),
-  getMachineKey: encMod.getMachineKey.getMockImplementation(),
-  isEncryptedPayload: encMod.isEncryptedPayload.getMockImplementation(),
-};
+const encOriginals = Object.fromEntries(
+  Object.keys(encMod).map((k) => [k, encMod[k].getMockImplementation()]),
+);
 
 beforeEach(() => {
   jest.resetAllMocks();
-  // Restore encryption mocks that resetAllMocks clears
-  encMod.encryptData.mockImplementation(encOriginals.encryptData);
-  encMod.decryptData.mockImplementation(encOriginals.decryptData);
-  encMod.getMachineKey.mockImplementation(encOriginals.getMachineKey);
-  encMod.isEncryptedPayload.mockImplementation(encOriginals.isEncryptedPayload);
+  restoreEncryptionMock(encMod, encOriginals);
   __resetStore();
   __setAvailable(true);
 });
