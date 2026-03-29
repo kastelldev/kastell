@@ -83,7 +83,7 @@ jobs:
 
       - name: Save seed cache and exit
         if: github.event.inputs.seed == 'true'
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
         with:
           path: .stryker-tmp/incremental.json
           key: stryker-${{ github.ref }}-seed-${{ github.run_id }}
@@ -96,7 +96,7 @@ jobs:
 
       - name: Restore Stryker cache
         if: github.event_name != 'schedule' || steps.changes.outputs.has_changes == 'true'
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
         with:
           path: .stryker-tmp/incremental.json
           key: stryker-${{ github.ref }}-${{ hashFiles('src/**/*.ts', 'tests/**/*.ts', 'stryker.config.mjs', 'jest.stryker.cjs') }}
@@ -147,7 +147,7 @@ jobs:
       # restore-keys prefix matching finds the latest entry.
       - name: Save Stryker cache
         if: always() && (github.event_name != 'schedule' || steps.changes.outputs.has_changes == 'true')
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
         with:
           path: .stryker-tmp/incremental.json
           key: stryker-${{ github.ref }}-${{ hashFiles('src/**/*.ts', 'tests/**/*.ts', 'stryker.config.mjs', 'jest.stryker.cjs') }}-${{ github.run_id }}
