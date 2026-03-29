@@ -209,8 +209,17 @@ describe("selectChecksForTarget", () => {
   });
 
   it("returns all checks when target is unreachable (includes all)", () => {
-    const selected = selectChecksForTarget(sorted, 50, 99);
-    // When target is impossible to reach, all checks are returned
-    expect(selected).toHaveLength(sorted.length);
+    // Use a tiny-impact context so accumulated score never reaches 99 from 50
+    // Each check has tiny impact: (1/10)*100 * DEFAULT(1)/100 = 0.1 per check
+    const tinyCtx = makeImpactCtx({ SSH: 10, Kernel: 10, Logging: 10 }, 100);
+    const tinyChecks: FixCheck[] = [
+      makeFixCheck({ id: "SSH-01", category: "SSH", severity: "info" }),
+      makeFixCheck({ id: "KERNEL-01", category: "Kernel", severity: "info" }),
+      makeFixCheck({ id: "LOG-01", category: "Logging", severity: "info" }),
+    ];
+    const tinySorted = sortChecksByImpact(tinyChecks, tinyCtx);
+    const selected = selectChecksForTarget(tinySorted, 50, 99);
+    // 3 checks * 0.1 impact = 50.3 total — never reaches 99, so all returned
+    expect(selected).toHaveLength(tinySorted.length);
   });
 });

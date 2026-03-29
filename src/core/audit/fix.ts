@@ -93,6 +93,9 @@ export interface FixResult {
 /** Severity ordering for display (critical first) */
 const SEVERITY_ORDER: Severity[] = ["critical", "warning", "info"];
 
+/** Severity rank for tie-breaking in impact sort (lower = higher priority) */
+const SEVERITY_RANK: Record<Severity, number> = { critical: 0, warning: 1, info: 2 };
+
 /**
  * Determine pre-condition check for dangerous fixes.
  * Prevents lockout scenarios (e.g., disabling password auth without SSH keys).
@@ -229,6 +232,60 @@ function calculateGroupImpact(
   }
 
   return Math.round(totalImpact);
+}
+
+/**
+ * Calculate estimated score impact if a single check is fixed.
+ * Uses the same formula as calculateGroupImpact but for one check and without Math.round,
+ * preserving fractional precision for accurate impact-based sorting.
+ */
+export function calculateCheckImpact(check: FixCheck, ctx: ImpactContext): number {
+  if (ctx.totalOverallWeight === 0) return 0;
+  const totalCategoryWeight = ctx.catWeightMap.get(check.category) ?? 0;
+  if (totalCategoryWeight === 0) return 0;
+  const checkWeight = SEVERITY_WEIGHTS[check.severity];
+  const categoryImpact = (checkWeight / totalCategoryWeight) * 100;
+  const catWeight = CATEGORY_WEIGHTS[check.category] ?? DEFAULT_CATEGORY_WEIGHT;
+  return (categoryImpact * catWeight) / ctx.totalOverallWeight;
+}
+
+/** A FixCheck annotated with its estimated score impact */
+export type ScoredFixCheck = FixCheck & { impact: number };
+
+/**
+ * Sort checks by impact descending, severity as tie-breaker (critical first).
+ * Returns a new array with an `impact` property added to each element.
+ */
+export function sortChecksByImpact(checks: FixCheck[], ctx: ImpactContext): ScoredFixCheck[] {
+  return checks
+    .map((c) => ({ ...c, impact: calculateCheckImpact(c, ctx) }))
+    .sort((a, b) => b.impact - a.impact || SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity]);
+}
+
+/** Select top N checks from a pre-sorted array. Returns at most N elements. */
+export function selectChecksForTop(sorted: ScoredFixCheck[], n: number): ScoredFixCheck[] {
+  return sorted.slice(0, n);
+}
+
+/**
+ * Select checks from sorted array until estimated score reaches target.
+ * Returns empty array if currentScore is already >= target.
+ * If target is unreachable, returns all checks.
+ */
+export function selectChecksForTarget(
+  sorted: ScoredFixCheck[],
+  currentScore: number,
+  target: number,
+): ScoredFixCheck[] {
+  if (currentScore >= target) return [];
+  const selected: ScoredFixCheck[] = [];
+  let est = currentScore;
+  for (const check of sorted) {
+    selected.push(check);
+    est += check.impact;
+    if (est >= target) break;
+  }
+  return selected;
 }
 
 /**
