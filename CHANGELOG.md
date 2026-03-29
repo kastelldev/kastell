@@ -2,6 +2,37 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.16.0] - 2026-03-29
+
+### Added
+- **AES-256-GCM token encryption** — tokens.json and notify-secrets.json encrypted at rest when OS keychain is unavailable. Per-installation random salt, cross-platform machine key derivation (Linux/macOS/Windows), transparent plaintext auto-migration
+- **Fix rollback & history** — `kastell fix --rollback <id>` restores from backup, `kastell fix --history` shows fix log
+- **Fix prioritization** — `kastell fix --top N` applies highest-impact fixes, `kastell fix --target 80` fixes until score reaches target
+- **Programmatic fix handlers** — 4 dedicated handlers (sysctl, file-append, package-install, chmod/chown) replace shell redirect/pipe for SAFE tier fixes
+- **Fix profiles** — `kastell fix --profile web-server|database|mail-server` applies server-type-specific fix sets
+- **Fix diff preview** — `kastell fix --diff` shows per-fix before/after changes
+- **Fix report** — `kastell fix --report` generates markdown fix report with score change and compliance info
+- **WAF audit deep checks** — 5 new WAF pipeline checks (IP ACL, rate limiting, input sanitization, bot detection headers, data masking) expanding nginx category to 14 checks
+- **Dependabot config** — `.github/dependabot.yml` for automated GitHub Actions SHA updates
+- 10 project-specific security audit custom checks (SSH injection, SAFE_MODE bypass, token leak, MCP validation, subprocess env, SSH host key, API sanitization, error disclosure, npm lifecycle)
+
+### Fixed
+- **getServers() fail-closed** — corrupt servers.json now throws instead of silently returning empty array
+- **fileAppend handler shell injection** — single-quote escape via shellEscape() on forward path (rollback already escaped)
+- **Encryption key hardening** — per-installation random salt replaces hardcoded "kastell-v1", persistent random UUID fallback replaces low-entropy hostname
+
+### Security
+- All 13 GitHub Actions references SHA-pinned across 5 workflow files (zero floating tags)
+- SECFIX-01 through SECFIX-09 addressed: token encryption, supply chain hardening, fail-closed config, 5 already-closed findings verified
+- Security audit: 29 findings (down from 39), 0 critical, 1 high (deferred to v2.0 by design)
+- `/review` skill added to release security gate
+
+### Changed
+- Test count: 5,522 → 9,611 (4,089 new tests including 3,623 mutation killers)
+- Test suites: 207 → 215
+- Test helpers: 4 → 5 factory files (encryption-factories.ts added)
+- Mutation score: 44.65% → 59.06% nominal / 78.6% effective (Dalga 1-3 complete)
+
 ## [1.15.1] - 2026-03-28
 
 ### Added

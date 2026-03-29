@@ -45,7 +45,7 @@ Running `kastell` without any arguments launches an **interactive search menu** 
  ██║  ██╗  ██║  ██║ ███████║   ██║   ███████╗███████╗███████╗
  ╚═╝  ╚═╝  ╚═╝  ╚═╝ ╚══════╝   ╚═╝   ╚══════╝╚══════╝╚══════╝
 
-  KASTELL  v1.15.1  ·  Your infrastructure, fortified.
+  KASTELL  v1.16.0  ·  Your infrastructure, fortified.
 
   $ kastell init --template production  → deploy a new server
   $ kastell status --all                → check all servers
@@ -262,7 +262,7 @@ kastell init --template production --provider hetzner
 
 ## Security
 
-Kastell is built with security as a priority -- **6,441 tests** across 207 suites, including dedicated security test suites.
+Kastell is built with security as a priority -- **9,611 tests** across 215 suites, including dedicated security test suites.
 
 - API tokens are never stored on disk -- prompted at runtime or via environment variables
 - SSH keys are auto-generated if needed (Ed25519)
@@ -305,7 +305,7 @@ Use `kastell status my-server --autostart` to check platform status and auto-res
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing, and contribution guidelines.
 
-Kastell uses **6,441 tests** across 207 suites. Run `npm test` before submitting PRs.
+Kastell uses **9,611 tests** across 215 suites. Run `npm test` before submitting PRs.
 
 ## MCP Server (AI Integration)
 
