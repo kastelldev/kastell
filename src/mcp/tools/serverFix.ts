@@ -13,7 +13,7 @@ import {
 } from "../../core/audit/fix.js";
 import { tryHandlerDispatch, type CollectedDiff } from "../../core/audit/handlers/index.js";
 import { buildImpactContext } from "../../core/audit/scoring.js";
-import { filterChecksByProfile } from "../../core/audit/profiles.js";
+import { filterChecksByProfile, isValidProfile, loadCustomProfiles, PROFILES } from "../../core/audit/profiles.js";
 import { writeFixReport } from "../../utils/fixReport.js";
 import { backupServer } from "../../core/backup.js";
 import { isSafeMode } from "../../core/manage.js";
@@ -95,9 +95,9 @@ export const serverFixSchema = {
       "Apply SAFE fixes until score reaches this value (1-100). Requires action:'apply'. Mutually exclusive with top.",
     ),
   profile: z
-    .enum(["web-server", "database", "mail-server"])
+    .string()
     .optional()
-    .describe("Server profile to filter applicable checks (web-server, database, mail-server)"),
+    .describe("Server profile to filter applicable checks (built-in: web-server, database, mail-server; or custom profile name)"),
   diff: z
     .boolean()
     .optional()
@@ -127,7 +127,7 @@ export async function handleServerFix(
     category?: string;
     top?: number;
     target?: number;
-    profile?: "web-server" | "database" | "mail-server";
+    profile?: string;
     diff?: boolean;
     report?: boolean;
   },
@@ -338,6 +338,11 @@ export async function handleServerFix(
 
     // Profile filter (D-05): applied after category/checks AND filters
     if (params.profile) {
+      if (!isValidProfile(params.profile)) {
+        const custom = loadCustomProfiles();
+        const allProfiles = [...Object.keys(PROFILES), ...Object.keys(custom)];
+        return mcpError(`Unknown profile: "${params.profile}". Available: ${allProfiles.join(", ")}`);
+      }
       filteredChecks = filterChecksByProfile(filteredChecks, params.profile);
     }
 

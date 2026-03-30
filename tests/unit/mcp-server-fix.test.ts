@@ -20,6 +20,7 @@ jest.mock("../../src/core/audit/index");
 jest.mock("../../src/core/audit/fix");
 jest.mock("../../src/core/audit/fix-history");
 jest.mock("../../src/core/audit/scoring");
+jest.mock("../../src/core/audit/profiles");
 jest.mock("../../src/core/backup");
 jest.mock("../../src/core/manage");
 jest.mock("../../src/utils/ssh");
@@ -39,6 +40,7 @@ import * as backup from "../../src/core/backup";
 import * as manage from "../../src/core/manage";
 import * as ssh from "../../src/utils/ssh";
 import * as handlers from "../../src/core/audit/handlers/index";
+import * as profiles from "../../src/core/audit/profiles";
 import { handleServerFix } from "../../src/mcp/tools/serverFix";
 import type { FixHistoryEntry } from "../../src/core/audit/types";
 
@@ -51,6 +53,7 @@ const mockedBackup = backup as jest.Mocked<typeof backup>;
 const mockedManage = manage as jest.Mocked<typeof manage>;
 const mockedSsh = ssh as jest.Mocked<typeof ssh>;
 const mockedHandlers = handlers as jest.Mocked<typeof handlers>;
+const mockedProfiles = profiles as jest.Mocked<typeof profiles>;
 
 // ─── Test fixtures ────────────────────────────────────────────────────────────
 
@@ -217,6 +220,16 @@ beforeEach(() => {
 
   // Default handler mock — return { handled: false } (no match) so existing tests use shell path
   mockedHandlers.tryHandlerDispatch.mockResolvedValue({ handled: false });
+
+  // Default profiles mock — pass through for valid built-in profiles
+  mockedProfiles.isValidProfile.mockReturnValue(true);
+  mockedProfiles.filterChecksByProfile.mockImplementation((checks) => checks);
+  mockedProfiles.loadCustomProfiles.mockReturnValue({});
+  (mockedProfiles as unknown as { PROFILES: Record<string, readonly string[]> }).PROFILES = {
+    "web-server": [],
+    "database": [],
+    "mail-server": [],
+  };
 });
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
@@ -1008,6 +1021,44 @@ describe("MCP server_fix tool", () => {
       // Optional field — undefined is valid
       const parsed = serverFixSchema.rollbackId.optional().parse(undefined);
       expect(parsed).toBeUndefined();
+    });
+
+    it("serverFixSchema profile accepts arbitrary string (custom profiles)", () => {
+      const { serverFixSchema } = require("../../src/mcp/tools/serverFix");
+      expect(serverFixSchema.profile).toBeDefined();
+      const parsed = serverFixSchema.profile.parse("my-custom");
+      expect(parsed).toBe("my-custom");
+    });
+  });
+
+  // ── Custom profile validation ───────────────────────────────────────────
+
+  describe("custom profile validation", () => {
+    it("returns mcpError with Available list when profile is unknown", async () => {
+      mockedProfiles.isValidProfile.mockReturnValue(false);
+      mockedProfiles.loadCustomProfiles.mockReturnValue({ "custom-one": { checks: ["CHECK-A"] } });
+
+      const result = await handleServerFix({ profile: "nonexistent-profile" });
+
+      expect(result.isError).toBe(true);
+      const text = result.content[0].text;
+      expect(text).toContain("Unknown profile");
+      expect(text).toContain("Available:");
+      expect(text).toContain("web-server");
+      expect(text).toContain("custom-one");
+    });
+
+    it("valid custom profile passes through to filterChecksByProfile", async () => {
+      mockedProfiles.isValidProfile.mockReturnValue(true);
+      mockedProfiles.filterChecksByProfile.mockImplementation((checks) => checks);
+
+      const result = await handleServerFix({ profile: "my-custom" });
+
+      expect(result.isError).toBeUndefined();
+      expect(mockedProfiles.filterChecksByProfile).toHaveBeenCalledWith(
+        expect.any(Array),
+        "my-custom",
+      );
     });
   });
 });
