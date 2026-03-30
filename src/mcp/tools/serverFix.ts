@@ -27,6 +27,8 @@ import {
   backupFilesBeforeFix,
   rollbackFix,
   backupRemoteCleanup,
+  rollbackAllFixes,
+  rollbackToFix,
 } from "../../core/audit/fix-history.js";
 import {
   resolveServerForMcp,
@@ -46,10 +48,10 @@ export const serverFixSchema = {
       "Server name or IP. Auto-selected if only one server exists.",
     ),
   action: z
-    .enum(["apply", "rollback", "history"])
+    .enum(["apply", "rollback", "history", "rollback-all", "rollback-to"])
     .default("apply")
     .describe(
-      "apply: run fixes (default), rollback: restore backup by fix-id, history: list fix operations",
+      "apply: run fixes (default), rollback: restore single fix, rollback-all: revert all applied fixes, rollback-to: revert down to specific fix-id, history: list fix operations",
     ),
   dryRun: z
     .boolean()
@@ -118,7 +120,7 @@ const SEVERITY_ORDER: Array<"critical" | "warning" | "info"> = [
 export async function handleServerFix(
   params: {
     server?: string;
-    action?: "apply" | "rollback" | "history";
+    action?: "apply" | "rollback" | "history" | "rollback-all" | "rollback-to";
     dryRun?: boolean;
     rollbackId?: string;
     checks?: string[];
@@ -224,6 +226,69 @@ export async function handleServerFix(
         restored,
         errors: rollbackErrors,
         scoreBefore: entry.scoreAfter ?? entry.scoreBefore,
+        scoreAfter,
+      });
+    }
+
+    // ── ROLLBACK-ALL action (FIX-01) ─────────────────────────────────────
+    if (params.action === "rollback-all") {
+      if (isSafeMode()) {
+        return mcpError(
+          "Rollback blocked: KASTELL_SAFE_MODE=true",
+          "Set SAFE_MODE=false to allow rollback operations",
+        );
+      }
+
+      await mcpLog(mcpServer, "Rolling back all fixes...");
+      const { rolledBack, errors: rbErrors } = await rollbackAllFixes(server.ip, server.name);
+
+      let scoreAfter: number | null = null;
+      if (rolledBack.length > 0) {
+        await mcpLog(mcpServer, "Verifying score...");
+        const auditRes = await runAudit(server.ip, server.name, platform);
+        if (auditRes.success && auditRes.data) {
+          scoreAfter = auditRes.data.overallScore;
+        }
+      }
+
+      return mcpSuccess({
+        action: "rollback-all",
+        rolledBack,
+        errors: rbErrors,
+        scoreAfter,
+      });
+    }
+
+    // ── ROLLBACK-TO action (FIX-02) ──────────────────────────────────────
+    if (params.action === "rollback-to") {
+      if (isSafeMode()) {
+        return mcpError(
+          "Rollback blocked: KASTELL_SAFE_MODE=true",
+          "Set SAFE_MODE=false to allow rollback operations",
+        );
+      }
+
+      if (!params.rollbackId) {
+        return mcpError("rollbackId is required for rollback-to action");
+      }
+
+      await mcpLog(mcpServer, `Rolling back to ${params.rollbackId}...`);
+      const { rolledBack, errors: rbErrors } = await rollbackToFix(server.ip, params.rollbackId);
+
+      let scoreAfter: number | null = null;
+      if (rolledBack.length > 0) {
+        await mcpLog(mcpServer, "Verifying score...");
+        const auditRes = await runAudit(server.ip, server.name, platform);
+        if (auditRes.success && auditRes.data) {
+          scoreAfter = auditRes.data.overallScore;
+        }
+      }
+
+      return mcpSuccess({
+        action: "rollback-to",
+        targetFixId: params.rollbackId,
+        rolledBack,
+        errors: rbErrors,
         scoreAfter,
       });
     }

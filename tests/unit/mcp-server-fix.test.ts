@@ -866,6 +866,132 @@ describe("MCP server_fix tool", () => {
     });
   });
 
+  // ── rollback-all action ──────────────────────────────────────────────────
+
+  describe("rollback-all action", () => {
+    it("returns rolledBack list on success", async () => {
+      mockedFixHistory.rollbackAllFixes.mockResolvedValue({
+        rolledBack: ["fix-001", "fix-002"],
+        errors: [],
+      });
+      mockedAudit.runAudit.mockResolvedValue({
+        success: true,
+        data: { ...defaultAuditResult, overallScore: 65 } as never,
+      });
+
+      const result = await handleServerFix({ action: "rollback-all" });
+
+      expect(result.isError).toBeUndefined();
+      const parsed = JSON.parse(result.content[0].text) as Record<string, unknown>;
+      expect(parsed.action).toBe("rollback-all");
+      expect(parsed.rolledBack).toEqual(["fix-001", "fix-002"]);
+    });
+
+    it("blocked by SAFE_MODE", async () => {
+      mockedManage.isSafeMode.mockReturnValue(true);
+
+      const result = await handleServerFix({ action: "rollback-all" });
+
+      expect(result.isError).toBe(true);
+      const parsed = JSON.parse(result.content[0].text) as Record<string, unknown>;
+      expect(String(parsed.error)).toContain("SAFE_MODE");
+    });
+
+    it("returns empty when no applied fixes", async () => {
+      mockedFixHistory.rollbackAllFixes.mockResolvedValue({
+        rolledBack: [],
+        errors: [],
+      });
+
+      const result = await handleServerFix({ action: "rollback-all" });
+
+      expect(result.isError).toBeUndefined();
+      const parsed = JSON.parse(result.content[0].text) as Record<string, unknown>;
+      expect(parsed.action).toBe("rollback-all");
+      expect(parsed.rolledBack).toEqual([]);
+    });
+
+    it("runs single post-rollback re-audit when fixes rolled back", async () => {
+      mockedFixHistory.rollbackAllFixes.mockResolvedValue({
+        rolledBack: ["fix-001"],
+        errors: [],
+      });
+      mockedAudit.runAudit.mockResolvedValue({
+        success: true,
+        data: { ...defaultAuditResult, overallScore: 60 } as never,
+      });
+
+      await handleServerFix({ action: "rollback-all" });
+
+      expect(mockedAudit.runAudit).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // ── rollback-to action ───────────────────────────────────────────────────
+
+  describe("rollback-to action", () => {
+    it("calls rollbackToFix with rollbackId", async () => {
+      mockedFixHistory.rollbackToFix.mockResolvedValue({
+        rolledBack: ["fix-2026-03-29-001"],
+        errors: [],
+      });
+      mockedAudit.runAudit.mockResolvedValue({
+        success: true,
+        data: { ...defaultAuditResult, overallScore: 60 } as never,
+      });
+
+      const result = await handleServerFix({
+        action: "rollback-to",
+        rollbackId: "fix-2026-03-29-001",
+      });
+
+      expect(result.isError).toBeUndefined();
+      expect(mockedFixHistory.rollbackToFix).toHaveBeenCalledWith(
+        "1.2.3.4",
+        "fix-2026-03-29-001",
+      );
+      const parsed = JSON.parse(result.content[0].text) as Record<string, unknown>;
+      expect(parsed.action).toBe("rollback-to");
+      expect(parsed.targetFixId).toBe("fix-2026-03-29-001");
+    });
+
+    it("requires rollbackId", async () => {
+      const result = await handleServerFix({ action: "rollback-to" });
+
+      expect(result.isError).toBe(true);
+      const parsed = JSON.parse(result.content[0].text) as Record<string, unknown>;
+      expect(String(parsed.error)).toContain("rollbackId is required");
+    });
+
+    it("blocked by SAFE_MODE", async () => {
+      mockedManage.isSafeMode.mockReturnValue(true);
+
+      const result = await handleServerFix({
+        action: "rollback-to",
+        rollbackId: "fix-2026-03-29-001",
+      });
+
+      expect(result.isError).toBe(true);
+      const parsed = JSON.parse(result.content[0].text) as Record<string, unknown>;
+      expect(String(parsed.error)).toContain("SAFE_MODE");
+    });
+
+    it("runs single post-rollback re-audit when fixes rolled back", async () => {
+      mockedFixHistory.rollbackToFix.mockResolvedValue({
+        rolledBack: ["fix-001"],
+        errors: [],
+      });
+      mockedAudit.runAudit.mockResolvedValue({
+        success: true,
+        data: { ...defaultAuditResult, overallScore: 60 } as never,
+      });
+
+      await handleServerFix({ action: "rollback-to", rollbackId: "fix-001" });
+
+      expect(mockedAudit.runAudit).toHaveBeenCalledTimes(1);
+    });
+  });
+
   // ── Schema validation ────────────────────────────────────────────────────
 
   describe("schema validation", () => {

@@ -376,6 +376,8 @@ program
   .option("--dry-run", "Preview fixes without applying")
   .option("--category <list>", "Comma-separated category filter")
   .option("--rollback <id>", "Rollback a previous fix (fix ID or 'last')")
+  .option("--rollback-all", "Rollback all applied fixes for server")
+  .option("--rollback-to <id>", "Rollback all fixes from newest down to given fix ID")
   .option("--history", "Show fix history for the server")
   .option("--top <n>", "Apply top N highest-impact SAFE fixes (requires --safe)")
   .option("--target <score>", "Apply SAFE fixes until score reaches target (requires --safe)")
@@ -383,7 +385,7 @@ program
   .option("--diff", "Show per-fix diff preview after applying")
   .option("--report", "Generate markdown fix report after applying fixes")
   .action(
-    (server?: string, options?: { safe?: boolean; dryRun?: boolean; category?: string; rollback?: string; history?: boolean; top?: string; target?: string; profile?: string; diff?: boolean; report?: boolean }) =>
+    (server?: string, options?: { safe?: boolean; dryRun?: boolean; category?: string; rollback?: string; rollbackAll?: boolean; rollbackTo?: string; history?: boolean; top?: string; target?: string; profile?: string; diff?: boolean; report?: boolean }) =>
       fixSafeCommand(server, options ?? {}),
   );
 
