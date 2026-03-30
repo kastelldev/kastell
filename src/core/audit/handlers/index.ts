@@ -10,6 +10,7 @@ import { sysctlHandler } from "./sysctl.js";
 import { fileAppendHandler } from "./fileAppend.js";
 import { packageInstallHandler } from "./packageInstall.js";
 import { chmodChownHandler } from "./chmodChown.js";
+import { sedReplaceHandler } from "./sedReplace.js";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -58,6 +59,7 @@ const HANDLERS: FixHandler[] = [
   fileAppendHandler,
   packageInstallHandler,
   chmodChownHandler,
+  sedReplaceHandler,
 ];
 
 // ─── matchHandler ──────────────────────────────────────────────────────────────

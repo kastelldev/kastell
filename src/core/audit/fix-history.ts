@@ -180,6 +180,14 @@ export function extractFilePathsFromFixCommand(cmd: string): string[] {
     return [];
   }
 
+  if (cmd.startsWith("sed-replace:")) {
+    const parts = cmd.split(":");
+    if (parts[1] && parts[1].startsWith("/")) {
+      return [parts[1]];
+    }
+    return [];
+  }
+
   const regex = /(?:^|\s)(\/(?:etc|root|var|usr|home)\/\S+)/g;
   const paths: string[] = [];
   let match;

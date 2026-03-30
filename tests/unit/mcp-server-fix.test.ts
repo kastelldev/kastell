@@ -866,6 +866,18 @@ describe("MCP server_fix tool", () => {
     });
   });
 
+  // ── sed-replace handler registration ──────────────────────────────────
+
+  describe("sed-replace handler accessible via MCP path", () => {
+    it("resolveHandlerChain returns non-null for sed-replace command (handler registered)", () => {
+      const realHandlers = jest.requireActual("../../src/core/audit/handlers/index") as typeof handlers;
+      const chain = realHandlers.resolveHandlerChain("sed-replace:/etc/ssh/sshd_config:old:new");
+      expect(chain).not.toBeNull();
+      expect(chain!.length).toBe(1);
+      expect(chain![0].params.type).toBe("sed-replace");
+    });
+  });
+
   // ── Schema validation ────────────────────────────────────────────────────
 
   describe("schema validation", () => {

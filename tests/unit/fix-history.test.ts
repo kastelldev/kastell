@@ -340,4 +340,16 @@ describe("extractFilePathsFromFixCommand", () => {
     const paths = extractFilePathsFromFixCommand(cmd);
     expect(paths).not.toContain("/etc/cron.d/");
   });
+
+  it("should extract absolute path from sed-replace command", () => {
+    const cmd = "sed-replace:/etc/ssh/sshd_config:old:new";
+    const paths = extractFilePathsFromFixCommand(cmd);
+    expect(paths).toEqual(["/etc/ssh/sshd_config"]);
+  });
+
+  it("should return [] for sed-replace with relative path", () => {
+    const cmd = "sed-replace:relative/path:old:new";
+    const paths = extractFilePathsFromFixCommand(cmd);
+    expect(paths).toEqual([]);
+  });
 });

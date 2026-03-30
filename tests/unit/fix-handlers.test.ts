@@ -808,6 +808,24 @@ describe("sedReplaceHandler", () => {
     expect(result.error).toBe("sed: error");
   });
 
+  // resolveHandlerChain integration
+  it("resolveHandlerChain returns 2-entry chain for compound sed-replace + sysctl", () => {
+    const cmd = "sed-replace:/etc/file:old:new && sysctl -w net.ipv4.tcp_syncookies=1";
+    const chain = resolveHandlerChain(cmd);
+    expect(chain).not.toBeNull();
+    expect(chain!.length).toBe(2);
+    expect(chain![0].params.type).toBe("sed-replace");
+    expect(chain![1].params.type).toBe("sysctl");
+  });
+
+  it("resolveHandlerChain returns 1-entry chain for single sed-replace", () => {
+    const cmd = "sed-replace:/etc/file:old:new";
+    const chain = resolveHandlerChain(cmd);
+    expect(chain).not.toBeNull();
+    expect(chain!.length).toBe(1);
+    expect(chain![0].params.type).toBe("sed-replace");
+  });
+
   // rollbackStep
   it("rollback calls sshExec with reverse sed", async () => {
     mockedSshExec.mockResolvedValueOnce({
