@@ -16,6 +16,7 @@ import { sysctlHandler } from "../../src/core/audit/handlers/sysctl.js";
 import { fileAppendHandler } from "../../src/core/audit/handlers/fileAppend.js";
 import { packageInstallHandler } from "../../src/core/audit/handlers/packageInstall.js";
 import { chmodChownHandler } from "../../src/core/audit/handlers/chmodChown.js";
+import { sedReplaceHandler } from "../../src/core/audit/handlers/sedReplace.js";
 
 const mockedSshExec = sshExec as jest.MockedFunction<typeof sshExec>;
 
@@ -655,5 +656,182 @@ describe("packageInstall handler diff", () => {
 
     expect(result.skipped).toBe(true);
     expect(result.diff).toBeUndefined();
+  });
+});
+
+// ─── sed-replace handler ────────────────────────────────────────────────────
+
+describe("sedReplaceHandler", () => {
+  beforeEach(() => {
+    mockedSshExec.mockReset();
+  });
+
+  // match() tests
+  it("match returns params for valid sed-replace command", () => {
+    const result = sedReplaceHandler.match(
+      "sed-replace:/etc/ssh/sshd_config:PermitRootLogin yes:PermitRootLogin no",
+    );
+    expect(result).toEqual({
+      type: "sed-replace",
+      path: "/etc/ssh/sshd_config",
+      oldPattern: "PermitRootLogin yes",
+      newValue: "PermitRootLogin no",
+    });
+  });
+
+  it("match returns null for non-sed-replace command", () => {
+    expect(sedReplaceHandler.match("sysctl -w net.ipv4.tcp_syncookies=1")).toBeNull();
+  });
+
+  it("match returns null when newValue segment is missing", () => {
+    expect(sedReplaceHandler.match("sed-replace:/etc/file:oldPattern")).toBeNull();
+  });
+
+  it("match handles colons in newValue (greedy last group)", () => {
+    const result = sedReplaceHandler.match("sed-replace:/etc/file:old:new:with:colons");
+    expect(result).not.toBeNull();
+    expect(result!.newValue).toBe("new:with:colons");
+  });
+
+  // execute() — success path
+  it("applies sed replace and returns success with diff and rollbackStep", async () => {
+    // cat file
+    mockedSshExec.mockResolvedValueOnce({
+      code: 0,
+      stdout: "PermitRootLogin yes\nOtherConfig value\n",
+      stderr: "",
+    });
+    // sed apply
+    mockedSshExec.mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" });
+
+    const params = {
+      type: "sed-replace" as const,
+      path: "/etc/ssh/sshd_config",
+      oldPattern: "PermitRootLogin yes",
+      newValue: "PermitRootLogin no",
+    };
+    const result = await sedReplaceHandler.execute(MOCK_IP, params);
+
+    expect(result.success).toBe(true);
+    expect(result.diff).toBeDefined();
+    expect(result.diff?.handlerType).toBe("sed-replace");
+    expect(result.diff?.key).toBe("/etc/ssh/sshd_config");
+    expect(result.diff?.before).toBe("PermitRootLogin yes");
+    expect(result.diff?.after).toBe("PermitRootLogin no");
+    expect(result.rollbackStep).toBeDefined();
+    expect(mockedSshExec).toHaveBeenCalledTimes(2);
+  });
+
+  // execute() — idempotency (already applied)
+  it("returns skipped=true when newValue already present", async () => {
+    mockedSshExec.mockResolvedValueOnce({
+      code: 0,
+      stdout: "PermitRootLogin no\nOtherConfig value\n",
+      stderr: "",
+    });
+
+    const params = {
+      type: "sed-replace" as const,
+      path: "/etc/ssh/sshd_config",
+      oldPattern: "PermitRootLogin yes",
+      newValue: "PermitRootLogin no",
+    };
+    const result = await sedReplaceHandler.execute(MOCK_IP, params);
+
+    expect(result.success).toBe(true);
+    expect(result.skipped).toBe(true);
+    expect(mockedSshExec).toHaveBeenCalledTimes(1);
+  });
+
+  // execute() — pattern gone, newValue absent
+  it("returns failure when pattern not found and newValue absent", async () => {
+    mockedSshExec.mockResolvedValueOnce({
+      code: 0,
+      stdout: "SomeOtherConfig value\n",
+      stderr: "",
+    });
+
+    const params = {
+      type: "sed-replace" as const,
+      path: "/etc/ssh/sshd_config",
+      oldPattern: "PermitRootLogin yes",
+      newValue: "PermitRootLogin no",
+    };
+    const result = await sedReplaceHandler.execute(MOCK_IP, params);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/Pattern not found/);
+  });
+
+  // execute() — cat failure
+  it("returns failure when cat fails", async () => {
+    mockedSshExec.mockResolvedValueOnce({
+      code: 1,
+      stdout: "",
+      stderr: "No such file",
+    });
+
+    const params = {
+      type: "sed-replace" as const,
+      path: "/etc/ssh/sshd_config",
+      oldPattern: "PermitRootLogin yes",
+      newValue: "PermitRootLogin no",
+    };
+    const result = await sedReplaceHandler.execute(MOCK_IP, params);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("No such file");
+  });
+
+  // execute() — sed apply failure
+  it("returns failure when sed apply fails", async () => {
+    mockedSshExec.mockResolvedValueOnce({
+      code: 0,
+      stdout: "PermitRootLogin yes\n",
+      stderr: "",
+    });
+    mockedSshExec.mockResolvedValueOnce({
+      code: 1,
+      stdout: "",
+      stderr: "sed: error",
+    });
+
+    const params = {
+      type: "sed-replace" as const,
+      path: "/etc/ssh/sshd_config",
+      oldPattern: "PermitRootLogin yes",
+      newValue: "PermitRootLogin no",
+    };
+    const result = await sedReplaceHandler.execute(MOCK_IP, params);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("sed: error");
+  });
+
+  // rollbackStep
+  it("rollback calls sshExec with reverse sed", async () => {
+    mockedSshExec.mockResolvedValueOnce({
+      code: 0,
+      stdout: "PermitRootLogin yes\n",
+      stderr: "",
+    });
+    mockedSshExec.mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" });
+
+    const params = {
+      type: "sed-replace" as const,
+      path: "/etc/ssh/sshd_config",
+      oldPattern: "PermitRootLogin yes",
+      newValue: "PermitRootLogin no",
+    };
+    const result = await sedReplaceHandler.execute(MOCK_IP, params);
+
+    expect(result.rollbackStep).toBeDefined();
+    mockedSshExec.mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" });
+    await result.rollbackStep!.rollback(MOCK_IP);
+    expect(mockedSshExec).toHaveBeenCalledTimes(3);
+    // Verify the rollback sed reverses the replacement
+    const rollbackCall = mockedSshExec.mock.calls[2][1];
+    expect(rollbackCall).toContain("PermitRootLogin no");
+    expect(rollbackCall).toContain("PermitRootLogin yes");
   });
 });

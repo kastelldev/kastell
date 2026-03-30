@@ -14,13 +14,13 @@ import { chmodChownHandler } from "./chmodChown.js";
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
 export interface HandlerParams {
-  type: "sysctl" | "file-append" | "package-install" | "chmod-chown";
+  type: "sysctl" | "file-append" | "package-install" | "chmod-chown" | "sed-replace";
   [key: string]: unknown;
 }
 
 /** Diff information collected during handler execution for --diff preview */
 export interface DiffLine {
-  handlerType: "sysctl" | "file-append" | "package-install" | "chmod-chown";
+  handlerType: "sysctl" | "file-append" | "package-install" | "chmod-chown" | "sed-replace";
   key: string;
   before: string;
   after: string;
