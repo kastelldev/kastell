@@ -8,8 +8,18 @@ import {
   PROFILES,
   filterChecksByProfile,
   isValidProfile,
+  loadCustomProfiles,
 } from "../../src/core/audit/profiles.js";
 import type { ProfileName } from "../../src/core/audit/profiles.js";
+import * as fs from "fs";
+
+jest.mock("fs", () => ({
+  ...jest.requireActual("fs"),
+  existsSync: jest.fn(),
+  readFileSync: jest.fn(),
+}));
+
+const mockedFs = fs as jest.Mocked<typeof fs>;
 
 // ─── COMMON_CATEGORIES ────────────────────────────────────────────────────────
 
@@ -130,13 +140,10 @@ describe("isValidProfile", () => {
     expect(isValidProfile("WEB-SERVER")).toBe(false);
   });
 
-  it("type guard narrows to ProfileName when true", () => {
-    const name = "database";
-    if (isValidProfile(name)) {
-      // TypeScript should accept name as ProfileName here
-      const profile: ProfileName = name;
-      expect(profile).toBe("database");
-    }
+  it("returns boolean (no longer a type guard)", () => {
+    const result = isValidProfile("database");
+    expect(typeof result).toBe("boolean");
+    expect(result).toBe(true);
   });
 });
 
@@ -201,5 +208,113 @@ describe("filterChecksByProfile", () => {
     ];
     const result = filterChecksByProfile(richChecks, "web-server");
     expect(result[0]).toEqual({ id: "SSH-01", category: "SSH", severity: "critical", passed: false });
+  });
+});
+
+// ─── loadCustomProfiles ─────────────────────────────────────────────────────
+
+describe("loadCustomProfiles", () => {
+  beforeEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("returns {} when fix-profiles.json does not exist", () => {
+    mockedFs.existsSync.mockReturnValue(false);
+    expect(loadCustomProfiles()).toEqual({});
+  });
+
+  it("returns {} when fix-profiles.json contains invalid JSON", () => {
+    mockedFs.existsSync.mockReturnValue(true);
+    mockedFs.readFileSync.mockReturnValue("not json {");
+    expect(loadCustomProfiles()).toEqual({});
+  });
+
+  it("returns {} when Zod validation fails (checks not array)", () => {
+    mockedFs.existsSync.mockReturnValue(true);
+    mockedFs.readFileSync.mockReturnValue(JSON.stringify({ bad: { checks: "not-array" } }));
+    expect(loadCustomProfiles()).toEqual({});
+  });
+
+  it("returns parsed profiles for valid JSON", () => {
+    mockedFs.existsSync.mockReturnValue(true);
+    mockedFs.readFileSync.mockReturnValue(
+      JSON.stringify({ "nginx-hardened": { checks: ["SSH-01", "KERN-01"] } }),
+    );
+    expect(loadCustomProfiles()).toEqual({ "nginx-hardened": { checks: ["SSH-01", "KERN-01"] } });
+  });
+});
+
+// ─── isValidProfile with custom profiles ────────────────────────────────────
+
+describe("isValidProfile with custom profiles", () => {
+  beforeEach(() => {
+    mockedFs.existsSync.mockReturnValue(true);
+    mockedFs.readFileSync.mockReturnValue(
+      JSON.stringify({ "nginx-hardened": { checks: ["SSH-01"] } }),
+    );
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("returns true for built-in profile 'web-server'", () => {
+    expect(isValidProfile("web-server")).toBe(true);
+  });
+
+  it("returns true for custom profile 'nginx-hardened'", () => {
+    expect(isValidProfile("nginx-hardened")).toBe(true);
+  });
+
+  it("returns false for unknown profile 'nonexistent'", () => {
+    mockedFs.readFileSync.mockReturnValue(
+      JSON.stringify({ "nginx-hardened": { checks: ["SSH-01"] } }),
+    );
+    expect(isValidProfile("nonexistent")).toBe(false);
+  });
+});
+
+// ─── filterChecksByProfile with custom profiles ─────────────────────────────
+
+describe("filterChecksByProfile with custom profiles", () => {
+  const testChecks = [
+    { id: "SSH-01", category: "SSH" },
+    { id: "WAF-01", category: "WAF & Reverse Proxy" },
+    { id: "KERN-01", category: "Kernel" },
+  ];
+
+  beforeEach(() => {
+    mockedFs.existsSync.mockReturnValue(true);
+    mockedFs.readFileSync.mockReturnValue(
+      JSON.stringify({ "nginx-hardened": { checks: ["SSH-01", "KERN-01"] } }),
+    );
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("filters by check ID for custom profile", () => {
+    const result = filterChecksByProfile(testChecks, "nginx-hardened");
+    const ids = result.map((c) => c.id);
+    expect(ids).toContain("SSH-01");
+    expect(ids).toContain("KERN-01");
+    expect(ids).not.toContain("WAF-01");
+  });
+
+  it("returns [] when no checks match custom profile", () => {
+    mockedFs.readFileSync.mockReturnValue(
+      JSON.stringify({ "nginx-empty": { checks: [] } }),
+    );
+    const result = filterChecksByProfile(testChecks, "nginx-empty");
+    expect(result).toHaveLength(0);
+  });
+
+  it("still filters by category for built-in 'web-server' profile (no regression)", () => {
+    const result = filterChecksByProfile(testChecks, "web-server");
+    const ids = result.map((c) => c.id);
+    expect(ids).toContain("SSH-01");
+    expect(ids).toContain("WAF-01");
+    expect(ids).toContain("KERN-01");
   });
 });
