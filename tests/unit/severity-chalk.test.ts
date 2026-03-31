@@ -3,12 +3,15 @@ import chalk from "chalk";
 
 describe("severityChalk", () => {
   it("returns chalk.red for critical", () => {
-    expect(severityChalk("critical")).toBe(chalk.red);
+    const fn = severityChalk("critical");
+    expect(fn("test")).toBe(chalk.red("test"));
   });
   it("returns chalk.yellow for warning", () => {
-    expect(severityChalk("warning")).toBe(chalk.yellow);
+    const fn = severityChalk("warning");
+    expect(fn("test")).toBe(chalk.yellow("test"));
   });
   it("returns chalk.blue for info", () => {
-    expect(severityChalk("info")).toBe(chalk.blue);
+    const fn = severityChalk("info");
+    expect(fn("test")).toBe(chalk.blue("test"));
   });
 });
