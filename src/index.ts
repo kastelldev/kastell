@@ -162,6 +162,7 @@ program
   .option("--fix", "Interactively fix doctor findings via SSH")
   .option("--force", "Skip confirmation prompts (use with --fix)")
   .option("--dry-run", "Show fix commands without executing (use with --fix)")
+  .option("--auto-fix", "Run diagnose->fix chain for all actionable findings")
   .action(
     (
       server?: string,
@@ -172,6 +173,7 @@ program
         fix?: boolean;
         force?: boolean;
         dryRun?: boolean;
+        autoFix?: boolean;
       },
     ) => doctorCommand(server, options, pkg.version),
   );

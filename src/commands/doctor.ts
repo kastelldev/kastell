@@ -65,6 +65,7 @@ export async function doctorCommand(
     fix?: boolean;
     force?: boolean;
     dryRun?: boolean;
+    autoFix?: boolean;
   },
   version?: string,
 ): Promise<void> {
@@ -74,14 +75,19 @@ export async function doctorCommand(
     return;
   }
 
+  if (options?.autoFix && !server) {
+    logger.error("--auto-fix requires a server argument");
+    return;
+  }
+
   // ── Server mode ──────────────────────────────────────────────────────────────
   if (server) {
     const resolved = await resolveServer(server, "Select a server for doctor analysis:");
     if (!resolved) return;
 
-    // --fix forces --fresh to get current server state before fixing
-    const useFresh = options?.fix ? true : options?.fresh;
-    if (options?.fix) {
+    // --fix / --auto-fix forces --fresh to get current server state before fixing
+    const useFresh = options?.fix || options?.autoFix ? true : options?.fresh;
+    if (options?.fix || options?.autoFix) {
       logger.info("Running with --fresh to get current server state before fixing.");
     }
 
@@ -107,6 +113,54 @@ export async function doctorCommand(
     }
 
     displayFindings(result.data!);
+
+    if (options?.autoFix) {
+      const findings = result.data!.findings;
+      const fixable = findings.filter((f) => f.fixCommand);
+      const manual = findings.filter((f) => !f.fixCommand);
+
+      if (fixable.length === 0) {
+        logger.info("No auto-fixable findings detected.");
+        return;
+      }
+
+      if (options.dryRun) {
+        console.log();
+        logger.title("Auto-Fix Preview (--dry-run -- no SSH will be executed)");
+        for (const f of fixable) {
+          logger.step(`[${f.severity.toUpperCase()}] ${f.description}`);
+          logger.info(`  Handler: ${f.fixCommand}`);
+        }
+        if (manual.length > 0) {
+          console.log();
+          logger.info(`${manual.length} finding(s) require manual remediation`);
+        }
+        return;
+      }
+
+      const fixResult = await runDoctorFix(resolved.ip, findings, {
+        dryRun: false,
+        force: options.force ?? false,
+      });
+
+      // Finding count delta summary (per D-03)
+      console.log();
+      logger.title("Auto-Fix Summary");
+      logger.info(`Findings: ${findings.length} total (${fixable.length} auto-fixable, ${manual.length} manual)`);
+      if (fixResult.applied.length > 0) {
+        logger.success(`Applied: ${fixResult.applied.length}`);
+      }
+      if (fixResult.skipped.length > 0) {
+        logger.info(`Skipped: ${fixResult.skipped.length}`);
+      }
+      if (fixResult.failed.length > 0) {
+        logger.error(`Failed: ${fixResult.failed.length}`);
+        for (const entry of fixResult.failed) {
+          logger.error(`  ${entry}`);
+        }
+      }
+      return;
+    }
 
     if (!options?.fix) {
       return;

@@ -1,13 +1,19 @@
 import * as config from "../../src/utils/config";
 import * as doctorCore from "../../src/core/doctor";
+import * as doctorFix from "../../src/core/doctor-fix";
+import * as manage from "../../src/core/manage";
 import { handleServerDoctor } from "../../src/mcp/tools/serverDoctor";
 import type { DoctorResult } from "../../src/core/doctor";
 
 jest.mock("../../src/utils/config");
 jest.mock("../../src/core/doctor");
+jest.mock("../../src/core/doctor-fix");
+jest.mock("../../src/core/manage");
 
 const mockedConfig = config as jest.Mocked<typeof config>;
 const mockedDoctor = doctorCore as jest.Mocked<typeof doctorCore>;
+const mockedDoctorFix = doctorFix as jest.Mocked<typeof doctorFix>;
+const mockedManage = manage as jest.Mocked<typeof manage>;
 
 const sampleServer = {
   id: "123",
@@ -44,6 +50,28 @@ const sampleDoctorResult: DoctorResult = {
   ],
   ranAt: "2026-03-14T11:00:00Z",
   usedFreshData: false,
+};
+
+const sampleDoctorResultWithFixable: DoctorResult = {
+  serverName: "my-server",
+  serverIp: "1.2.3.4",
+  findings: [
+    {
+      id: "STALE_PACKAGES",
+      severity: "info",
+      description: "15 packages available for upgrade",
+      command: "sudo apt update && sudo apt upgrade",
+      fixCommand: "DEBIAN_FRONTEND=noninteractive sudo apt update && sudo apt upgrade -y",
+    },
+    {
+      id: "DISK_TREND",
+      severity: "critical",
+      description: "Disk projected to reach 95% full in ~2 days",
+      command: "df -h / && kastell audit my-server",
+    },
+  ],
+  ranAt: "2026-03-14T11:00:00Z",
+  usedFreshData: true,
 };
 
 beforeEach(() => {
@@ -202,6 +230,94 @@ describe("MCP server_doctor tool", () => {
         fresh: false,
       });
     });
+  });
+});
+
+describe("autoFix mode", () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+    mockedConfig.getServers.mockReturnValue([sampleServer] as never);
+    mockedConfig.findServer.mockReturnValue(sampleServer as never);
+    mockedManage.isSafeMode.mockReturnValue(false);
+  });
+
+  it("autoFix=false (default) preserves existing read-only behavior", async () => {
+    mockedDoctor.runServerDoctor.mockResolvedValue({
+      success: true,
+      data: sampleDoctorResult,
+    });
+
+    const result = await handleServerDoctor({ server: "my-server", autoFix: false });
+
+    expect(result.isError).toBeUndefined();
+    expect(mockedDoctorFix.runDoctorFix).not.toHaveBeenCalled();
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.total).toBe(3);
+  });
+
+  it("autoFix=true calls runDoctorFix and returns applied/skipped/failed counts", async () => {
+    mockedDoctor.runServerDoctor.mockResolvedValue({
+      success: true,
+      data: sampleDoctorResultWithFixable,
+    });
+    mockedDoctorFix.runDoctorFix.mockResolvedValue({
+      applied: ["STALE_PACKAGES"],
+      skipped: [],
+      failed: [],
+    });
+
+    const result = await handleServerDoctor({ server: "my-server", autoFix: true, force: true });
+
+    expect(mockedDoctorFix.runDoctorFix).toHaveBeenCalledWith(
+      "1.2.3.4",
+      sampleDoctorResultWithFixable.findings,
+      { dryRun: false, force: true },
+    );
+    expect(result.isError).toBeUndefined();
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.applied).toBe(1);
+    expect(parsed.skipped).toBe(0);
+    expect(parsed.failed).toBe(0);
+    expect(parsed.mode).toBe("applied");
+  });
+
+  it("autoFix=true with isSafeMode=true forces dryRun", async () => {
+    mockedManage.isSafeMode.mockReturnValue(true);
+    mockedDoctor.runServerDoctor.mockResolvedValue({
+      success: true,
+      data: sampleDoctorResultWithFixable,
+    });
+    mockedDoctorFix.runDoctorFix.mockResolvedValue({
+      applied: [],
+      skipped: ["STALE_PACKAGES", "DISK_TREND"],
+      failed: [],
+    });
+
+    const result = await handleServerDoctor({ server: "my-server", autoFix: true });
+
+    expect(mockedDoctorFix.runDoctorFix).toHaveBeenCalledWith(
+      "1.2.3.4",
+      sampleDoctorResultWithFixable.findings,
+      { dryRun: true, force: false },
+    );
+    expect(result.isError).toBeUndefined();
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.mode).toBe("dry-run");
+    expect(parsed.safeModeForcedDryRun).toBe(true);
+  });
+
+  it("autoFix=true returns message when no auto-fixable findings", async () => {
+    mockedDoctor.runServerDoctor.mockResolvedValue({
+      success: true,
+      data: sampleDoctorResult,
+    });
+
+    const result = await handleServerDoctor({ server: "my-server", autoFix: true });
+
+    expect(mockedDoctorFix.runDoctorFix).not.toHaveBeenCalled();
+    expect(result.isError).toBeUndefined();
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.message).toContain("No auto-fixable findings");
   });
 });
 
