@@ -53,7 +53,7 @@ const MENU: MenuCategory[] = [
       { name: "Monitor resources (CPU/RAM/Disk)", value: "monitor", description: "Live resource usage with optional Docker container list" },
       { name: "Health check", value: "health", description: "Verify platform and server connectivity" },
       { name: "Guard daemon", value: "guard", description: "Start, stop, or check autonomous security monitoring" },
-      { name: "Doctor (diagnostics)", value: "doctor", description: "Proactive health analysis with remediation commands" },
+      { name: "Doctor (diagnostics + auto-fix)", value: "doctor", description: "Proactive health analysis with optional auto-fix" },
     ],
   },
   {
@@ -352,6 +352,8 @@ async function promptDoctor(): Promise<string[] | null> {
     { name: "Fresh data via SSH (accurate)", value: "fresh" },
     { name: "Use cached metrics (fast)", value: "cached" },
     { name: "Interactive fix mode", value: "fix" },
+    { name: "Auto-fix (diagnose + fix all)", value: "auto-fix" },
+    { name: "Auto-fix dry run (preview only)", value: "auto-fix-dry" },
   ]);
   if (!mode) return null;
   const args = ["doctor"];
@@ -364,6 +366,18 @@ async function promptDoctor(): Promise<string[] | null> {
     ]);
     if (!dryRun) return null;
     if (dryRun === "dry-run") args.push("--dry-run");
+  }
+  if (mode === "auto-fix") {
+    args.push("--auto-fix");
+    const forceOption = await promptList("Confirmation mode:", [
+      { name: "Confirm each finding", value: "interactive" },
+      { name: "Skip confirmations (--force)", value: "force" },
+    ]);
+    if (!forceOption) return null;
+    if (forceOption === "force") args.push("--force");
+  }
+  if (mode === "auto-fix-dry") {
+    args.push("--auto-fix", "--dry-run");
   }
   return args;
 }
