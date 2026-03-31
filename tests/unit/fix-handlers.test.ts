@@ -937,14 +937,11 @@ describe("aptUpgradeHandler", () => {
       expect(result.error).toBe("E: Could not get lock");
     });
 
-    it("returns success=false with error message when sshExec throws", async () => {
+    it("propagates sshExec errors to caller (no internal try/catch)", async () => {
       mockedSshExec.mockRejectedValueOnce(new Error("Connection timeout"));
 
       const params = { type: "apt-upgrade" as const, action: "upgrade" };
-      const result = await aptUpgradeHandler.execute(MOCK_IP, params);
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain("Connection timeout");
+      await expect(aptUpgradeHandler.execute(MOCK_IP, params)).rejects.toThrow("Connection timeout");
     });
 
     it("does not return a rollbackStep (system upgrade is not reversible)", async () => {

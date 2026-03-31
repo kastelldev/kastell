@@ -69,14 +69,8 @@ export async function doctorCommand(
   },
   version?: string,
 ): Promise<void> {
-  // ── Guard: --fix requires a server argument ───────────────────────────────
-  if (options?.fix && !server) {
-    logger.error("--fix requires a server argument");
-    return;
-  }
-
-  if (options?.autoFix && !server) {
-    logger.error("--auto-fix requires a server argument");
+  if ((options?.fix || options?.autoFix) && !server) {
+    logger.error(`${options?.autoFix ? "--auto-fix" : "--fix"} requires a server argument`);
     return;
   }
 
@@ -107,17 +101,17 @@ export async function doctorCommand(
       return;
     }
 
-    if (!result.success) {
+    if (!result.success || !result.data) {
       logger.error(result.error ?? "Doctor analysis failed");
       return;
     }
 
-    displayFindings(result.data!);
+    displayFindings(result.data);
 
     if (options?.autoFix) {
-      const findings = result.data!.findings;
+      const findings = result.data.findings;
       const fixable = findings.filter((f) => f.fixCommand);
-      const manual = findings.filter((f) => !f.fixCommand);
+      const manualCount = findings.length - fixable.length;
 
       if (fixable.length === 0) {
         logger.info("No auto-fixable findings detected.");
@@ -131,9 +125,9 @@ export async function doctorCommand(
           logger.step(`[${f.severity.toUpperCase()}] ${f.description}`);
           logger.info(`  Handler: ${f.fixCommand}`);
         }
-        if (manual.length > 0) {
+        if (manualCount > 0) {
           console.log();
-          logger.info(`${manual.length} finding(s) require manual remediation`);
+          logger.info(`${manualCount} finding(s) require manual remediation`);
         }
         return;
       }
@@ -146,7 +140,7 @@ export async function doctorCommand(
       // Finding count delta summary (per D-03)
       console.log();
       logger.title("Auto-Fix Summary");
-      logger.info(`Findings: ${findings.length} total (${fixable.length} auto-fixable, ${manual.length} manual)`);
+      logger.info(`Findings: ${findings.length} total (${fixable.length} auto-fixable, ${manualCount} manual)`);
       if (fixResult.applied.length > 0) {
         logger.success(`Applied: ${fixResult.applied.length}`);
       }
@@ -167,7 +161,7 @@ export async function doctorCommand(
     }
 
     // ── Fix mode ──────────────────────────────────────────────────────────────
-    const findings = result.data!.findings;
+    const findings = result.data.findings;
 
     if (options.dryRun) {
       console.log();

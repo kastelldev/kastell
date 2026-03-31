@@ -23,19 +23,14 @@ export const aptUpgradeHandler: FixHandler = {
     ip: string,
     _params: HandlerParams,
   ): Promise<HandlerResult & { rollbackStep?: RollbackStep }> {
-    try {
-      const result = await sshExec(
-        ip,
-        raw("DEBIAN_FRONTEND=noninteractive apt-get update && apt-get upgrade -y"),
-        { useStdin: true },
-      );
-      if (result.code !== 0) {
-        return { success: false, error: result.stderr };
-      }
-      return { success: true };
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      return { success: false, error: message };
+    const result = await sshExec(
+      ip,
+      raw("DEBIAN_FRONTEND=noninteractive apt-get update && apt-get upgrade -y"),
+      { useStdin: true },
+    );
+    if (result.code !== 0) {
+      return { success: false, error: result.stderr };
     }
+    return { success: true };
   },
 };
