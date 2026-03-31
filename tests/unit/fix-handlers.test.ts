@@ -1,7 +1,7 @@
 /**
  * Unit tests for programmatic fix handler module.
  * Covers: matchHandler, resolveHandlerChain, executeHandlerChain,
- * and all 4 handler types (sysctl, file-append, package-install, chmod/chown).
+ * and all handler types (sysctl, file-append, package-install, chmod/chown, apt-upgrade).
  */
 
 jest.mock("../../src/utils/ssh.js");
@@ -17,6 +17,7 @@ import { fileAppendHandler } from "../../src/core/audit/handlers/fileAppend.js";
 import { packageInstallHandler } from "../../src/core/audit/handlers/packageInstall.js";
 import { chmodChownHandler } from "../../src/core/audit/handlers/chmodChown.js";
 import { sedReplaceHandler } from "../../src/core/audit/handlers/sedReplace.js";
+import { aptUpgradeHandler } from "../../src/core/audit/handlers/aptUpgrade.js";
 
 const mockedSshExec = sshExec as jest.MockedFunction<typeof sshExec>;
 
@@ -85,6 +86,13 @@ describe("matchHandler", () => {
     expect(matchHandler("unknown-command foo")).toBeNull();
     expect(matchHandler("rm -rf /")).toBeNull();
     expect(matchHandler("")).toBeNull();
+  });
+
+  it("returns aptUpgradeHandler for apt-upgrade", () => {
+    const result = matchHandler("apt-upgrade");
+    expect(result).not.toBeNull();
+    expect(result!.handler).toBe(aptUpgradeHandler);
+    expect(result!.params).toEqual({ type: "apt-upgrade", action: "upgrade" });
   });
 });
 
@@ -851,5 +859,110 @@ describe("sedReplaceHandler", () => {
     const rollbackCall = mockedSshExec.mock.calls[2][1];
     expect(rollbackCall).toContain("PermitRootLogin no");
     expect(rollbackCall).toContain("PermitRootLogin yes");
+  });
+});
+
+// ─── aptUpgrade handler ───────────────────────────────────────────────────────
+
+describe("aptUpgradeHandler", () => {
+  beforeEach(() => {
+    mockedSshExec.mockReset();
+  });
+
+  describe("match", () => {
+    it('returns params for exact "apt-upgrade" command', () => {
+      const result = aptUpgradeHandler.match("apt-upgrade");
+      expect(result).toEqual({ type: "apt-upgrade", action: "upgrade" });
+    });
+
+    it("returns params for trimmed input with whitespace", () => {
+      const result = aptUpgradeHandler.match("  apt-upgrade  ");
+      expect(result).toEqual({ type: "apt-upgrade", action: "upgrade" });
+    });
+
+    it('returns null for "apt install -y foo" (does not steal packageInstall matches)', () => {
+      expect(aptUpgradeHandler.match("apt install -y foo")).toBeNull();
+    });
+
+    it('returns null for "apt-upgrade-foo" (exact match only)', () => {
+      expect(aptUpgradeHandler.match("apt-upgrade-foo")).toBeNull();
+    });
+
+    it('returns null for empty string', () => {
+      expect(aptUpgradeHandler.match("")).toBeNull();
+    });
+
+    it('returns null for "apt-get upgrade"', () => {
+      expect(aptUpgradeHandler.match("apt-get upgrade")).toBeNull();
+    });
+  });
+
+  describe("execute", () => {
+    it("returns success=true on exit code 0", async () => {
+      mockedSshExec.mockResolvedValueOnce({ code: 0, stdout: "ok", stderr: "" });
+
+      const params = { type: "apt-upgrade" as const, action: "upgrade" };
+      const result = await aptUpgradeHandler.execute(MOCK_IP, params);
+
+      expect(result.success).toBe(true);
+      expect(result.skipped).toBeUndefined();
+    });
+
+    it("calls sshExec with DEBIAN_FRONTEND=noninteractive apt-get update && apt-get upgrade -y via useStdin", async () => {
+      mockedSshExec.mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" });
+
+      const params = { type: "apt-upgrade" as const, action: "upgrade" };
+      await aptUpgradeHandler.execute(MOCK_IP, params);
+
+      expect(mockedSshExec).toHaveBeenCalledTimes(1);
+      const [calledIp, calledCmd, calledOpts] = mockedSshExec.mock.calls[0];
+      expect(calledIp).toBe(MOCK_IP);
+      expect(calledCmd).toContain("DEBIAN_FRONTEND=noninteractive");
+      expect(calledCmd).toContain("apt-get update");
+      expect(calledCmd).toContain("apt-get upgrade -y");
+      expect(calledOpts).toMatchObject({ useStdin: true });
+    });
+
+    it("returns success=false with stderr as error on non-zero exit code", async () => {
+      mockedSshExec.mockResolvedValueOnce({
+        code: 1,
+        stdout: "",
+        stderr: "E: Could not get lock",
+      });
+
+      const params = { type: "apt-upgrade" as const, action: "upgrade" };
+      const result = await aptUpgradeHandler.execute(MOCK_IP, params);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("E: Could not get lock");
+    });
+
+    it("returns success=false with error message when sshExec throws", async () => {
+      mockedSshExec.mockRejectedValueOnce(new Error("Connection timeout"));
+
+      const params = { type: "apt-upgrade" as const, action: "upgrade" };
+      const result = await aptUpgradeHandler.execute(MOCK_IP, params);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Connection timeout");
+    });
+
+    it("does not return a rollbackStep (system upgrade is not reversible)", async () => {
+      mockedSshExec.mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" });
+
+      const params = { type: "apt-upgrade" as const, action: "upgrade" };
+      const result = await aptUpgradeHandler.execute(MOCK_IP, params);
+
+      expect(result.rollbackStep).toBeUndefined();
+    });
+  });
+
+  describe("resolveHandlerChain integration", () => {
+    it('resolveHandlerChain("apt-upgrade") returns a 1-element chain (not null)', () => {
+      const chain = resolveHandlerChain("apt-upgrade");
+      expect(chain).not.toBeNull();
+      expect(chain!.length).toBe(1);
+      expect(chain![0].params).toEqual({ type: "apt-upgrade", action: "upgrade" });
+    });
   });
 });

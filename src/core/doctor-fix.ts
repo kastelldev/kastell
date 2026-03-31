@@ -7,18 +7,13 @@
  *   interactive: Prompt per-finding before executing.
  *
  * Safety rule: --dry-run always wins over --force.
+ * Dispatch: all fixable findings are routed through resolveHandlerChain (D-01).
  */
 
 import inquirer from "inquirer";
-import { assertValidIp, sshExec } from "../utils/ssh.js";
-import { raw } from "../utils/sshCommand.js";
+import { assertValidIp } from "../utils/ssh.js";
+import { resolveHandlerChain, executeHandlerChain } from "./audit/handlers/index.js";
 import type { DoctorFinding } from "./doctor.js";
-
-/** Whitelist of known safe fix commands produced by doctor checks */
-const KNOWN_FIX_COMMANDS = new Set([
-  "DEBIAN_FRONTEND=noninteractive sudo apt update && sudo apt upgrade -y",
-  "docker system prune -a --force",
-]);
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -28,11 +23,11 @@ export interface DoctorFixOptions {
 }
 
 export interface DoctorFixResult {
-  /** Finding IDs successfully fixed via SSH. */
+  /** Finding IDs successfully fixed via handler chain. */
   applied: string[];
   /** Finding IDs skipped (user declined or not auto-fixable). */
   skipped: string[];
-  /** Finding IDs where sshExec failed (entry: "ID: reason"). */
+  /** Finding IDs where handler failed or format unknown (entry: "ID: reason"). */
   failed: string[];
 }
 
@@ -42,7 +37,7 @@ export interface DoctorFixResult {
  * Run doctor fix for a list of findings on the given server IP.
  *
  * Throws synchronously if `ip` is invalid (from assertValidIp).
- * All SSH errors are caught and recorded in `failed` — never rethrown.
+ * All handler errors are caught and recorded in `failed` — never rethrown.
  */
 export async function runDoctorFix(
   ip: string,
@@ -69,8 +64,9 @@ export async function runDoctorFix(
       continue;
     }
 
-    if (!KNOWN_FIX_COMMANDS.has(finding.fixCommand)) {
-      failed.push(`${finding.id}: unrecognized fix command`);
+    const chain = resolveHandlerChain(finding.fixCommand);
+    if (chain === null) {
+      failed.push(`${finding.id}: Unknown handler format: "${finding.fixCommand}"`);
       continue;
     }
 
@@ -91,15 +87,11 @@ export async function runDoctorFix(
     }
 
     try {
-      // finding.fixCommand is validated against KNOWN_FIX_COMMANDS whitelist above
-      const result = await sshExec(ip, raw(finding.fixCommand));
-      if (result.code !== 0) {
-        const reason = result.stderr?.trim()
-          ? `exit ${result.code} — ${result.stderr.trim()}`
-          : `exit ${result.code}`;
-        failed.push(`${finding.id}: ${reason}`);
-      } else {
+      const handlerResult = await executeHandlerChain(ip, chain);
+      if (handlerResult.success) {
         applied.push(finding.id);
+      } else {
+        failed.push(`${finding.id}: ${handlerResult.error ?? "handler failed"}`);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
