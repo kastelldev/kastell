@@ -188,6 +188,8 @@ function isNoWaf(output: string): boolean {
   return !/modsecurity|coraza/i.test(output) || /NO_WAF/i.test(output);
 }
 
+const WAF_SKIP_MSG = "WAF not installed \u2014 advanced checks skipped";
+
 const WAF_DEEP_CHECKS: NgxCheckDef[] = [
   {
     id: "NGX-WAF-IP-ACL",
@@ -215,7 +217,7 @@ const WAF_DEEP_CHECKS: NgxCheckDef[] = [
     severity: "info",
     check: (output) => {
       if (isNoWaf(output)) {
-        return { passed: true, currentValue: "WAF not installed — advanced checks skipped" };
+        return { passed: true, currentValue: WAF_SKIP_MSG };
       }
       // Look for SecRule with rate-related patterns (IP: prefix or id:900 range)
       if (/SecRule\s+(IP:|REQUEST_HEADERS|REMOTE_ADDR)[^;]*id['":\s]*9\d{2}/i.test(output) ||
@@ -237,7 +239,7 @@ const WAF_DEEP_CHECKS: NgxCheckDef[] = [
     severity: "info",
     check: (output) => {
       if (isNoWaf(output)) {
-        return { passed: true, currentValue: "WAF not installed — advanced checks skipped" };
+        return { passed: true, currentValue: WAF_SKIP_MSG };
       }
       if (/SecRuleEngine\s+(On|DetectionOnly)/i.test(output)) {
         return { passed: true, currentValue: "SecRuleEngine active — input sanitization enabled" };
@@ -257,7 +259,7 @@ const WAF_DEEP_CHECKS: NgxCheckDef[] = [
     severity: "info",
     check: (output) => {
       if (isNoWaf(output)) {
-        return { passed: true, currentValue: "WAF not installed — advanced checks skipped" };
+        return { passed: true, currentValue: WAF_SKIP_MSG };
       }
       // The CRS rule count comes from `ls /usr/share/modsecurity-crs/rules/ | wc -l`
       // It appears as a standalone number line after the WAF detection line
@@ -300,7 +302,7 @@ const WAF_DEEP_CHECKS: NgxCheckDef[] = [
     severity: "info",
     check: (output) => {
       if (isNoWaf(output)) {
-        return { passed: true, currentValue: "WAF not installed -- advanced checks skipped" };
+        return { passed: true, currentValue: WAF_SKIP_MSG };
       }
       const hasCrsBot = /REQUEST-913|scanner-detection|bot-detection/i.test(output);
       const hasUaMap = /map\s+\$http_user_agent/i.test(output);
@@ -323,7 +325,7 @@ const WAF_DEEP_CHECKS: NgxCheckDef[] = [
     severity: "info",
     check: (output) => {
       if (isNoWaf(output)) {
-        return { passed: true, currentValue: "WAF not installed -- advanced checks skipped" };
+        return { passed: true, currentValue: WAF_SKIP_MSG };
       }
       const hasModSecChallenge = /redirect:\/captcha|redirect:\/challenge|SecAction.*challenge/i.test(output);
       const hasNginxChallenge = /error_page.*challenge/i.test(output);
