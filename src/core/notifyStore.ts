@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
+import { readFileSync, writeFileSync, mkdirSync } from "fs";
 import { platform } from "os";
 import { join } from "path";
 import { storeToken, readToken } from "./tokenBuffer.js";
@@ -50,7 +50,7 @@ function readSecretsFile(): Record<string, string> {
 
 function writeSecretsFile(data: Record<string, string>): void {
   try {
-    if (!existsSync(KASTELL_DIR)) mkdirSync(KASTELL_DIR, { recursive: true });
+    mkdirSync(KASTELL_DIR, { recursive: true });
     const payload = encryptData(JSON.stringify(data), getMachineKey());
     writeFileSync(NOTIFY_SECRETS_FILE, JSON.stringify(payload, null, 2), { mode: 0o600 });
   } catch { /* ignore */ }
@@ -67,7 +67,7 @@ function readChannelMetadata(): Record<string, boolean> {
 }
 
 function writeChannelMetadata(metadata: Record<string, boolean>): void {
-  if (!existsSync(KASTELL_DIR)) mkdirSync(KASTELL_DIR, { recursive: true });
+  mkdirSync(KASTELL_DIR, { recursive: true });
   writeFileSync(NOTIFY_CHANNELS_FILE, JSON.stringify(metadata, null, 2), { mode: 0o600 });
 }
 
@@ -177,8 +177,16 @@ export function saveNotifyChannel(
 export function loadNotifyChannels(): NotifyConfig {
   // Migration: check for legacy notify.json with plain-text secrets
   let migrationMetadata: Record<string, boolean> | undefined;
-  if (existsSync(NOTIFY_LEGACY_FILE) && !existsSync(NOTIFY_CHANNELS_FILE)) {
-    migrationMetadata = migrateFromLegacyNotifyJson();
+  try {
+    readFileSync(NOTIFY_CHANNELS_FILE, "utf-8");
+  } catch {
+    // Channels file missing — check for legacy file to migrate
+    try {
+      readFileSync(NOTIFY_LEGACY_FILE, "utf-8");
+      migrationMetadata = migrateFromLegacyNotifyJson();
+    } catch {
+      // No legacy file either — fresh install
+    }
   }
 
   const metadata = migrationMetadata ?? readChannelMetadata();
@@ -248,7 +256,7 @@ export function loadAllowedChatIds(): string[] {
  * Persist allowedChatIds to notify-channels.json, preserving existing channel flags.
  */
 export function saveAllowedChatIds(ids: string[]): void {
-  if (!existsSync(KASTELL_DIR)) mkdirSync(KASTELL_DIR, { recursive: true });
+  mkdirSync(KASTELL_DIR, { recursive: true });
   const existing = readChannelMetadata() as Record<string, unknown>;
   existing.allowedChatIds = ids;
   writeFileSync(NOTIFY_CHANNELS_FILE, JSON.stringify(existing, null, 2), { mode: 0o600 });

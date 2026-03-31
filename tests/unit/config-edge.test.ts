@@ -46,8 +46,7 @@ describe("config edge cases", () => {
   });
 
   describe("saveServer edge cases", () => {
-    it("should not create dir if it already exists", async () => {
-      mockedFs.existsSync.mockReturnValue(true); // ensureConfigDir - dir exists
+    it("should call mkdirSync with recursive (idempotent) before writing", async () => {
       const enoent = Object.assign(new Error("ENOENT"), { code: "ENOENT" });
       mockedFs.readFileSync.mockImplementation(() => { throw enoent; }); // getServers - file doesn't exist
 
@@ -63,7 +62,7 @@ describe("config edge cases", () => {
       };
       await saveServer(record);
 
-      expect(mockedFs.mkdirSync).not.toHaveBeenCalled();
+      expect(mockedFs.mkdirSync).toHaveBeenCalledWith(expect.any(String), { recursive: true, mode: 0o700 });
       expect(mockedFs.writeFileSync).toHaveBeenCalled();
     });
   });

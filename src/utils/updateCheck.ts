@@ -1,11 +1,10 @@
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
-import { homedir } from "os";
+import { readFileSync, writeFileSync, mkdirSync } from "fs";
 import { join } from "path";
 import axios from "axios";
 import { logger } from "./logger.js";
+import { KASTELL_DIR } from "./paths.js";
 
-const CONFIG_DIR = join(homedir(), ".kastell");
-export const UPDATE_CHECK_FILE = join(CONFIG_DIR, ".update-check");
+export const UPDATE_CHECK_FILE = join(KASTELL_DIR, ".update-check");
 
 const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const REQUEST_TIMEOUT_MS = 3000; // 3 seconds
@@ -45,9 +44,6 @@ export function isNewerVersion(current: string, latest: string): boolean {
 
 function readCache(): UpdateCache | null {
   try {
-    if (!existsSync(UPDATE_CHECK_FILE)) {
-      return null;
-    }
     const content = readFileSync(UPDATE_CHECK_FILE, "utf-8");
     const cache = JSON.parse(content) as UpdateCache;
     if (
@@ -65,9 +61,7 @@ function readCache(): UpdateCache | null {
 
 function writeCache(cache: UpdateCache): void {
   try {
-    if (!existsSync(CONFIG_DIR)) {
-      mkdirSync(CONFIG_DIR, { recursive: true, mode: 0o700 });
-    }
+    mkdirSync(KASTELL_DIR, { recursive: true, mode: 0o700 });
     writeFileSync(UPDATE_CHECK_FILE, JSON.stringify(cache), { mode: 0o600 });
   } catch {
     // Silently ignore write errors

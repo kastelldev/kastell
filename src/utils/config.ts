@@ -1,17 +1,14 @@
-import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from "fs";
-import { homedir } from "os";
+import { readFileSync, writeFileSync, mkdirSync, renameSync } from "fs";
 import { join } from "path";
 import type { ServerRecord } from "../types/index.js";
 import { withFileLock } from "./fileLock.js";
+import { KASTELL_DIR } from "./paths.js";
 
-const CONFIG_DIR = join(homedir(), ".kastell");
-const SERVERS_FILE = join(CONFIG_DIR, "servers.json");
-const BACKUPS_DIR = join(CONFIG_DIR, "backups");
+const SERVERS_FILE = join(KASTELL_DIR, "servers.json");
+const BACKUPS_DIR = join(KASTELL_DIR, "backups");
 
 function ensureConfigDir(): void {
-  if (!existsSync(CONFIG_DIR)) {
-    mkdirSync(CONFIG_DIR, { recursive: true, mode: 0o700 });
-  }
+  mkdirSync(KASTELL_DIR, { recursive: true, mode: 0o700 });
 }
 
 /** Atomic write: write to tmp file, then rename to prevent corruption on crash */
@@ -97,4 +94,6 @@ export function findServers(query: string): ServerRecord[] {
 }
 
 // Exported for testing
+/** @deprecated Use KASTELL_DIR from ./paths.js — kept for backward compat */
+const CONFIG_DIR = KASTELL_DIR;
 export { CONFIG_DIR, SERVERS_FILE, BACKUPS_DIR };

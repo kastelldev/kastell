@@ -595,16 +595,23 @@ describe("storeNotifySecret — win32 fallback warning", () => {
 // ─── Migration from legacy notify.json ───────────────────────────────────────
 
 describe("loadNotifyChannels — migration from legacy notify.json", () => {
+  /** Helper: mock readFileSync so channels.json throws ENOENT but legacy notify.json returns data */
+  function mockLegacyMigration(legacyData: object): void {
+    const enoent = Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+    mockedReadFileSync.mockImplementation((p: unknown) => {
+      const path = p as string;
+      if (path.includes("notify-channels.json")) throw enoent;
+      if (path.includes("notify-secrets.json")) throw enoent;
+      // Legacy notify.json and readNotifySecret reads
+      return JSON.stringify(legacyData);
+    });
+  }
+
   it("migrates telegram secrets from legacy notify.json to keychain (SEC-01)", () => {
     const legacy = {
       telegram: { botToken: "legacyBot", chatId: "legacyChat" },
     };
-    mockedExistsSync.mockImplementation((p: unknown) => {
-      const path = p as string;
-      // Legacy notify.json exists, channels.json does not
-      return path.includes("notify.json") && !path.includes("notify-channels") && !path.includes("notify-secrets");
-    });
-    mockedReadFileSync.mockReturnValue(JSON.stringify(legacy));
+    mockLegacyMigration(legacy);
 
     const config = loadNotifyChannels();
 
@@ -614,11 +621,7 @@ describe("loadNotifyChannels — migration from legacy notify.json", () => {
 
   it("writes notify-channels.json after migration from legacy notify.json (SEC-01)", () => {
     const legacy = { telegram: { botToken: "legacyBot", chatId: "legacyChat" } };
-    mockedExistsSync.mockImplementation((p: unknown) => {
-      const path = p as string;
-      return path.includes("notify.json") && !path.includes("notify-channels") && !path.includes("notify-secrets");
-    });
-    mockedReadFileSync.mockReturnValue(JSON.stringify(legacy));
+    mockLegacyMigration(legacy);
 
     loadNotifyChannels();
 
@@ -632,11 +635,7 @@ describe("loadNotifyChannels — migration from legacy notify.json", () => {
     const legacy = {
       discord: { webhookUrl: "https://discord.com/api/webhooks/1/legacyTok" },
     };
-    mockedExistsSync.mockImplementation((p: unknown) => {
-      const path = p as string;
-      return path.includes("notify.json") && !path.includes("notify-channels") && !path.includes("notify-secrets");
-    });
-    mockedReadFileSync.mockReturnValue(JSON.stringify(legacy));
+    mockLegacyMigration(legacy);
 
     const config = loadNotifyChannels();
 
@@ -647,11 +646,7 @@ describe("loadNotifyChannels — migration from legacy notify.json", () => {
     const legacy = {
       slack: { webhookUrl: "https://hooks.slack.com/T/B/legacySlack" },
     };
-    mockedExistsSync.mockImplementation((p: unknown) => {
-      const path = p as string;
-      return path.includes("notify.json") && !path.includes("notify-channels") && !path.includes("notify-secrets");
-    });
-    mockedReadFileSync.mockReturnValue(JSON.stringify(legacy));
+    mockLegacyMigration(legacy);
 
     const config = loadNotifyChannels();
 
@@ -664,11 +659,7 @@ describe("loadNotifyChannels — migration from legacy notify.json", () => {
       discord: { webhookUrl: "https://discord.com/api/webhooks/1/legacyTok" },
       slack: { webhookUrl: "https://hooks.slack.com/T/B/legacySlack" },
     };
-    mockedExistsSync.mockImplementation((p: unknown) => {
-      const path = p as string;
-      return path.includes("notify.json") && !path.includes("notify-channels") && !path.includes("notify-secrets");
-    });
-    mockedReadFileSync.mockReturnValue(JSON.stringify(legacy));
+    mockLegacyMigration(legacy);
 
     const config = loadNotifyChannels();
 

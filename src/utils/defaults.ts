@@ -1,23 +1,19 @@
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
-import { homedir } from "os";
+import { readFileSync, writeFileSync, mkdirSync } from "fs";
 import { join } from "path";
 import type { KastellConfig } from "../types/index.js";
 import { SUPPORTED_PROVIDERS, invalidProviderError } from "../constants.js";
+import { KASTELL_DIR } from "./paths.js";
 
-const CONFIG_DIR = join(homedir(), ".kastell");
-const DEFAULTS_FILE = join(CONFIG_DIR, "config.json");
+const DEFAULTS_FILE = join(KASTELL_DIR, "config.json");
 
 const VALID_KEYS = ["provider", "region", "size", "name"];
 
 function ensureConfigDir(): void {
-  if (!existsSync(CONFIG_DIR)) {
-    mkdirSync(CONFIG_DIR, { recursive: true, mode: 0o700 });
-  }
+  mkdirSync(KASTELL_DIR, { recursive: true, mode: 0o700 });
 }
 
 export function getDefaults(): KastellConfig {
   try {
-    if (!existsSync(DEFAULTS_FILE)) return {};
     const data = readFileSync(DEFAULTS_FILE, "utf-8");
     const parsed = JSON.parse(data);
     if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return {};
@@ -50,4 +46,6 @@ export function resetDefaults(): void {
   writeFileSync(DEFAULTS_FILE, JSON.stringify({}, null, 2), { mode: 0o600 });
 }
 
+/** @deprecated Use KASTELL_DIR from ./paths.js — kept for backward compat */
+const CONFIG_DIR = KASTELL_DIR;
 export { CONFIG_DIR, DEFAULTS_FILE, VALID_KEYS };
