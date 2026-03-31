@@ -31,7 +31,6 @@ function getKeychainEntry(channel: string, field: string) {
 
 function readSecretsFile(): Record<string, string> {
   try {
-    if (!existsSync(NOTIFY_SECRETS_FILE)) return {};
     const raw = readFileSync(NOTIFY_SECRETS_FILE, "utf-8");
     const parsed = JSON.parse(raw);
     if (isEncryptedPayload(parsed)) {
@@ -59,7 +58,6 @@ function writeSecretsFile(data: Record<string, string>): void {
 
 function readChannelMetadata(): Record<string, boolean> {
   try {
-    if (!existsSync(NOTIFY_CHANNELS_FILE)) return {};
     return JSON.parse(readFileSync(NOTIFY_CHANNELS_FILE, "utf-8")) as Record<string, boolean>;
   } catch {
     return {};
@@ -235,13 +233,11 @@ export function isNotifyKeychainAvailable(): boolean {
  * Returns [] if the file does not exist, the field is absent, or is not an array.
  */
 export function loadAllowedChatIds(): string[] {
-  if (!existsSync(NOTIFY_CHANNELS_FILE)) return [];
   try {
     const raw = JSON.parse(readFileSync(NOTIFY_CHANNELS_FILE, "utf-8")) as Record<string, unknown>;
     const ids = raw?.allowedChatIds;
     return Array.isArray(ids) ? ids.map(String) : [];
   } catch {
-    // Malformed JSON — return empty allowlist
     return [];
   }
 }

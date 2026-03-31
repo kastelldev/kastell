@@ -22,10 +22,15 @@ function atomicWriteServers(servers: ServerRecord[]): void {
 }
 
 export function getServers(): ServerRecord[] {
-  if (!existsSync(SERVERS_FILE)) {
-    return [];
+  let data: string;
+  try {
+    data = readFileSync(SERVERS_FILE, "utf-8");
+  } catch (err: unknown) {
+    if (err && typeof err === "object" && "code" in err && (err as { code: string }).code === "ENOENT") {
+      return [];
+    }
+    throw err;
   }
-  const data = readFileSync(SERVERS_FILE, "utf-8");
   const parsed = JSON.parse(data);
   if (!Array.isArray(parsed)) {
     throw new Error("servers.json corrupt — check ~/.kastell/servers.json manually");

@@ -47,9 +47,9 @@ describe("config edge cases", () => {
 
   describe("saveServer edge cases", () => {
     it("should not create dir if it already exists", async () => {
-      mockedFs.existsSync
-        .mockReturnValueOnce(true) // ensureConfigDir - dir exists
-        .mockReturnValueOnce(false); // getServers - file doesn't exist
+      mockedFs.existsSync.mockReturnValue(true); // ensureConfigDir - dir exists
+      const enoent = Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+      mockedFs.readFileSync.mockImplementation(() => { throw enoent; }); // getServers - file doesn't exist
 
       const record = {
         id: "1",

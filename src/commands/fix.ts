@@ -1,6 +1,7 @@
 import chalk from "chalk";
 import inquirer from "inquirer";
 import { resolveServer } from "../utils/serverSelect.js";
+import { severityChalk } from "../core/audit/formatters/shared.js";
 import { checkSshAvailable, sshExec } from "../utils/ssh.js";
 import { raw } from "../utils/sshCommand.js";
 import { logger, createSpinner } from "../utils/logger.js";
@@ -335,12 +336,7 @@ export async function fixSafeCommand(
   );
 
   for (const check of selectedChecks) {
-    const severityColor =
-      check.severity === "critical"
-        ? chalk.red
-        : check.severity === "warning"
-          ? chalk.yellow
-          : chalk.blue;
+    const severityColor = severityChalk(check.severity);
     logger.info(
       `  ${severityColor(`[${check.severity}]`.padEnd(12))} ${check.id.padEnd(22)} ${check.category} / ${check.name}`,
     );

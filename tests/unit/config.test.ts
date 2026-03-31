@@ -26,7 +26,8 @@ describe("config", () => {
 
   describe("getServers", () => {
     it("should return empty array when file does not exist", () => {
-      mockedFs.existsSync.mockReturnValue(false);
+      const err = Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+      mockedFs.readFileSync.mockImplementation(() => { throw err; });
       expect(getServers()).toEqual([]);
     });
 
