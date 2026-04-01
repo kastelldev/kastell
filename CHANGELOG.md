@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.17.1] - 2026-04-01
+
+### Security
+- **28 defence-in-depth fixes** from 5-skill security audit (security-audit, supply-chain, insecure-defaults, sharp-edges, code-review)
+- **`sshExec` type narrowing** — accepts `SshCommand` only (removed `| string`), 33 callers wrapped with `raw()` for explicit shell trust
+- **`SAFE_MODE` typo-safe** — accepts `"yes"`, `"1"`, `"on"` as truthy; warns on unrecognized values; `remove` action now gated
+- **`sanitizedEnv()` expanded blocklist** — 10 secret patterns (up from 4): TOKEN, SECRET, PASSWORD, CREDENTIAL, API_KEY, APIKEY, AUTH_KEY, AUTHKEY, PRIVATE_KEY, ACCESS_KEY
+- **Rollback SHA256 integrity** — `restore-commands.sh` checksum written during backup, verified before execution
+- **MCP error sanitization** — all 12 tool handlers route errors through `sanitizeStderr` to prevent IP/path leakage
+- **Path traversal guard** — `relPath` in rollback validated with allowlist regex (`/^[a-zA-Z0-9_./-]+$/`)
+- **`backupPath` Zod regex** — format constraint prevents tampered `fix-history.json` from injecting shell commands
+- **`SHELL_METACHAR`** — added `&` to block `&&` on fallback path
+- **`sedReplace` path quoting** — POSIX single-quote escape for file paths
+- **`DEBIAN_FRONTEND` scope** — applied to both `apt-get update` and `apt-get upgrade`
+
+### Changed
+- **`scheduleManager` `execSync` → `spawnSync`** — temp file approach, no shell interpolation, `updateCrontab()` DRY helper
+- **`encryption.ts` `execSync` → `spawnSync`** — array args for machine ID retrieval
+- **Production deps pinned** — all 11 dependencies use exact versions (no caret ranges)
+- **`isSafeMode()` extracted** to `src/utils/safeMode.ts` (re-exported from `manage.ts`)
+- **Platform fallback** — detection failure defaults to `"bare"` (was `"coolify"`)
+- **`cmd("")` throws** — empty string arguments rejected
+- **`timeoutMs=0` guard** — falls back to default instead of instant kill
+- **ControlMaster socket dir** — created with `mode: 0o700`
+- **`debugLog` redaction** — sensitive keywords and objects redacted
+- **`getServers()` hardened** — JSON.parse catch, provider validation against `SUPPORTED_PROVIDERS`
+- **`warnIfPermissionError`** — shared helper for EACCES/EPERM distinction
+
 ## [1.17.0] - 2026-04-01
 
 ### Added
