@@ -66,6 +66,7 @@ describe("snapshotCommand", () => {
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
     jest.clearAllMocks();
+    process.env.KASTELL_SAFE_MODE = "false";
     mockedProviderFactory.createProviderWithToken.mockReturnValue(mockProvider);
     mockedServerSelect.promptApiToken.mockResolvedValue("test-token");
   });

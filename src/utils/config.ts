@@ -3,6 +3,7 @@ import { join } from "path";
 import type { ServerRecord } from "../types/index.js";
 import { withFileLock } from "./fileLock.js";
 import { KASTELL_DIR } from "./paths.js";
+import { SUPPORTED_PROVIDERS } from "../constants.js";
 
 const SERVERS_FILE = join(KASTELL_DIR, "servers.json");
 const BACKUPS_DIR = join(KASTELL_DIR, "backups");
@@ -28,12 +29,25 @@ export function getServers(): ServerRecord[] {
     }
     throw err;
   }
-  const parsed = JSON.parse(data);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(data);
+  } catch {
+    throw new Error("servers.json corrupt (invalid JSON) — check ~/.kastell/servers.json manually");
+  }
   if (!Array.isArray(parsed)) {
     throw new Error("servers.json corrupt — check ~/.kastell/servers.json manually");
   }
-  const needsMigration = parsed.some((s: Record<string, unknown>) => !s.mode);
-  const servers = parsed.map((s: ServerRecord) => ({ ...s, mode: s.mode || "coolify" }) as ServerRecord);
+  const validProviders = new Set(SUPPORTED_PROVIDERS as readonly string[]);
+  const validRecords = parsed.filter((s: Record<string, unknown>) => {
+    if (s.provider && !validProviders.has(s.provider as string)) {
+      process.stderr.write(`Warning: skipping server "${s.name}" — unknown provider "${s.provider}"\n`);
+      return false;
+    }
+    return true;
+  });
+  const needsMigration = validRecords.some((s: Record<string, unknown>) => !s.mode);
+  const servers = validRecords.map((s: ServerRecord) => ({ ...s, mode: s.mode || "coolify" }) as ServerRecord);
   if (needsMigration) {
     atomicWriteServers(servers);
   }

@@ -1,6 +1,7 @@
 import { getServers, saveServer, removeServer, findServer } from "../utils/config.js";
 import { createProviderWithToken } from "../utils/providerFactory.js";
 import { sshExec, checkSshAvailable, assertValidIp } from "../utils/ssh.js";
+import { raw } from "../utils/sshCommand.js";
 import { getErrorMessage, mapProviderError } from "../utils/errorMapper.js";
 import { getProviderToken } from "./tokens.js";
 import { detectPlatform } from "../adapters/factory.js";
@@ -8,33 +9,8 @@ import type { ServerRecord, ServerMode, Platform } from "../types/index.js";
 import { SUPPORTED_PROVIDERS, invalidProviderError, COOLIFY_PORT, DOKPLOY_PORT } from "../constants.js";
 import chalk from "chalk";
 
-// ─── SAFE_MODE ────────────────────────────────────────────────────────────────
-
-let _safeModeWarningShown = false;
-
-export function isSafeMode(): boolean {
-  // KASTELL_SAFE_MODE takes precedence — no deprecation warning
-  const kastell = process.env.KASTELL_SAFE_MODE;
-  if (kastell !== undefined) {
-    return kastell === "true";
-  }
-
-  // Backward compat: QUICKLIFY_SAFE_MODE with one-time deprecation warning
-  const quicklify = process.env.QUICKLIFY_SAFE_MODE;
-  if (quicklify !== undefined) {
-    if (!_safeModeWarningShown) {
-      _safeModeWarningShown = true;
-      process.stderr.write(
-        chalk.yellow(
-          "QUICKLIFY_SAFE_MODE is deprecated. Use KASTELL_SAFE_MODE instead.\n",
-        ),
-      );
-    }
-    return quicklify === "true";
-  }
-
-  return false;
-}
+// Re-export from dedicated module for backward compatibility
+export { isSafeMode } from "../utils/safeMode.js";
 
 // ─── Validation ───────────────────────────────────────────────────────────────
 
@@ -149,10 +125,10 @@ export async function addServerRecord(params: AddServerParams): Promise<AddServe
       const detected = await detectPlatform(params.ip);
       modeStr = detected; // "coolify" | "dokploy" | "bare"
     } catch {
-      modeStr = "coolify"; // fallback on detection failure
+      modeStr = "bare"; // safe fallback — bare is least privileged
     }
   }
-  modeStr = modeStr || "coolify";
+  modeStr = modeStr || "bare";
   const isBare = modeStr === "bare";
   const platform: Platform | undefined = isBare ? undefined
     : modeStr === "dokploy" ? "dokploy"
@@ -172,14 +148,14 @@ export async function addServerRecord(params: AddServerParams): Promise<AddServe
       try {
         const result = await sshExec(
           params.ip,
-          `curl -s -o /dev/null -w '%{http_code}' http://localhost:${healthPort}${healthPath}`,
+          raw(`curl -s -o /dev/null -w '%{http_code}' http://localhost:${healthPort}${healthPath}`),
         );
         if (result.code === 0 && result.stdout.trim().includes("200")) {
           platformStatus = "running";
         } else {
           const dockerResult = await sshExec(
             params.ip,
-            `docker ps --format '{{.Names}}' 2>/dev/null | grep -q ${containerGrep} && echo OK`,
+            raw(`docker ps --format '{{.Names}}' 2>/dev/null | grep -q ${containerGrep} && echo OK`),
           );
           if (dockerResult.code === 0 && dockerResult.stdout.trim().includes("OK")) {
             platformStatus = "containers_detected";

@@ -1,4 +1,5 @@
 import { sshExec, isHostKeyMismatch } from "../utils/ssh.js";
+import { raw } from "../utils/sshCommand.js";
 import { isBareServer } from "../utils/modeGuard.js";
 import { getAdapter, resolvePlatform } from "../adapters/factory.js";
 import type { ServerRecord } from "../types/index.js";
@@ -14,7 +15,7 @@ export async function checkServerHealth(server: ServerRecord): Promise<ServerHea
 
   if (isBareServer(server)) {
     try {
-      const result = await sshExec(server.ip, "echo ok");
+      const result = await sshExec(server.ip, raw("echo ok"));
       const responseTime = Date.now() - start;
       if (result.code === 0) {
         return { server, status: "healthy", responseTime };

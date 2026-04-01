@@ -13,6 +13,7 @@ import {
   sshStream,
   sanitizedEnv,
 } from "../../src/utils/ssh";
+import { raw } from "../../src/utils/sshCommand";
 
 const mockedSpawn = spawn as jest.MockedFunction<typeof spawn>;
 const mockedSpawnSync = spawnSync as jest.MockedFunction<typeof spawnSync>;
@@ -49,14 +50,14 @@ describe("security-ssh E2E", () => {
     });
 
     it("sshExec should throw 'Invalid IP address' for non-IP strings", () => {
-      expect(() => sshExec("malicious; rm -rf /", "uptime")).toThrow("Invalid IP address");
-      expect(() => sshExec("$(whoami)", "id")).toThrow("Invalid IP address");
-      expect(() => sshExec("`hostname`", "pwd")).toThrow("Invalid IP address");
+      expect(() => sshExec("malicious; rm -rf /", raw("uptime"))).toThrow("Invalid IP address");
+      expect(() => sshExec("$(whoami)", raw("id"))).toThrow("Invalid IP address");
+      expect(() => sshExec("`hostname`", raw("pwd"))).toThrow("Invalid IP address");
     });
 
     it("sshStream should throw 'Invalid IP address' for non-IP strings", () => {
-      expect(() => sshStream("not-an-ip", "tail -f /var/log/syslog")).toThrow("Invalid IP address");
-      expect(() => sshStream("1.2.3", "journalctl")).toThrow("Invalid IP address");
+      expect(() => sshStream("not-an-ip", raw("tail -f /var/log/syslog"))).toThrow("Invalid IP address");
+      expect(() => sshStream("1.2.3", raw("journalctl"))).toThrow("Invalid IP address");
     });
 
     it("should accept valid IPv4 addresses", async () => {
@@ -100,7 +101,7 @@ describe("security-ssh E2E", () => {
       const mockCp = createMockProcess(0);
       mockedSpawn.mockReturnValue(mockCp);
 
-      await sshExec("1.2.3.4", "uptime");
+      await sshExec("1.2.3.4", raw("uptime"));
 
       expect(mockedSpawn).toHaveBeenCalledWith(
         "ssh",
@@ -113,7 +114,7 @@ describe("security-ssh E2E", () => {
       const mockCp = createMockProcess(0);
       mockedSpawn.mockReturnValue(mockCp);
 
-      await sshStream("1.2.3.4", "docker logs coolify --follow");
+      await sshStream("1.2.3.4", raw("docker logs coolify --follow"));
 
       expect(mockedSpawn).toHaveBeenCalledWith(
         "ssh",
@@ -261,7 +262,7 @@ describe("security-ssh E2E", () => {
       const mockCp = new MockChildProcess(0, 99999);
       mockedSpawn.mockReturnValue(mockCp as unknown as ReturnType<typeof spawn>);
 
-      const promise = sshExec("1.2.3.4", "test");
+      const promise = sshExec("1.2.3.4", raw("test"));
       process.nextTick(() => mockCp.emit("close", 0));
       await promise;
 
@@ -280,7 +281,7 @@ describe("security-ssh E2E", () => {
       const mockCp = createMockProcess(0);
       mockedSpawn.mockReturnValue(mockCp);
 
-      await sshStream("1.2.3.4", "tail -f /var/log/syslog");
+      await sshStream("1.2.3.4", raw("tail -f /var/log/syslog"));
 
       const spawnCall = mockedSpawn.mock.calls[0];
       const options = spawnCall[2] as { env: NodeJS.ProcessEnv };
@@ -321,7 +322,7 @@ describe("security-ssh E2E", () => {
       const mockCp = new MockChildProcess(0, 99999);
       mockedSpawn.mockReturnValue(mockCp as unknown as ReturnType<typeof spawn>);
 
-      const promise = sshExec("1.2.3.4", "test");
+      const promise = sshExec("1.2.3.4", raw("test"));
       process.nextTick(() => mockCp.emit("error", new Error("spawn failed")));
       const result = await promise;
 
@@ -333,7 +334,7 @@ describe("security-ssh E2E", () => {
       const mockCp = new MockChildProcess(0, 99999);
       mockedSpawn.mockReturnValue(mockCp as unknown as ReturnType<typeof spawn>);
 
-      const promise = sshStream("1.2.3.4", "journalctl -f");
+      const promise = sshStream("1.2.3.4", raw("journalctl -f"));
       process.nextTick(() => mockCp.emit("error", new Error("spawn failed")));
       const code = await promise;
 

@@ -29,6 +29,9 @@ export function shellEscape(arg: string): string {
  * Each argument is shell-escaped before joining with spaces.
  */
 export function cmd(...args: string[]): SshCommand {
+  if (args.some((a) => a.length === 0)) {
+    throw new Error("cmd() received an empty string argument — this is likely a bug");
+  }
   return args.map(shellEscape).join(" ") as SshCommand;
 }
 

@@ -3,6 +3,7 @@ import { randomBytes } from "crypto";
 // Mock child_process and os for platform-specific getMachineKey tests
 jest.mock("child_process", () => ({
   execSync: jest.fn(),
+  spawnSync: jest.fn(),
 }));
 
 jest.mock("os", () => {
@@ -30,11 +31,12 @@ jest.mock("fs", () => {
   };
 });
 
-import { execSync } from "child_process";
+import { execSync, spawnSync } from "child_process";
 import { readFileSync, existsSync, writeFileSync } from "fs";
 import { platform } from "os";
 
 const mockedExecSync = execSync as jest.MockedFunction<typeof execSync>;
+const mockedSpawnSync = spawnSync as jest.MockedFunction<typeof spawnSync>;
 const mockedReadFileSync = readFileSync as jest.MockedFunction<typeof readFileSync>;
 const mockedExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;
 const mockedWriteFileSync = writeFileSync as jest.MockedFunction<typeof writeFileSync>;
@@ -55,7 +57,7 @@ beforeEach(() => {
 
 async function loadModule() {
   // Re-mock after resetModules
-  jest.mock("child_process", () => ({ execSync: mockedExecSync }));
+  jest.mock("child_process", () => ({ execSync: mockedExecSync, spawnSync: mockedSpawnSync }));
   jest.mock("os", () => {
     const actual = jest.requireActual<typeof import("os")>("os");
     return { ...actual, platform: mockedPlatform, hostname: jest.fn(() => "test-host"), arch: jest.fn(() => "x64") };
@@ -227,32 +229,44 @@ describe("getMachineKey", () => {
 
   it("works on darwin (parses IOPlatformUUID)", async () => {
     mockedPlatform.mockReturnValue("darwin" as NodeJS.Platform);
-    mockedExecSync.mockReturnValue(
-      '  | "IOPlatformUUID" = "DARWIN-UUID-1234-5678"\n',
-    );
+    mockedSpawnSync.mockReturnValue({
+      stdout: '  | "IOPlatformUUID" = "DARWIN-UUID-1234-5678"\n',
+      stderr: "",
+      status: 0,
+      pid: 1,
+      output: [],
+      signal: null,
+    } as unknown as ReturnType<typeof spawnSync>);
 
     const { getMachineKey } = await loadModule();
     const key = getMachineKey();
 
     expect(key.length).toBe(32);
-    expect(mockedExecSync).toHaveBeenCalledWith(
-      "ioreg -rd1 -c IOPlatformExpertDevice",
+    expect(mockedSpawnSync).toHaveBeenCalledWith(
+      "ioreg",
+      ["-rd1", "-c", "IOPlatformExpertDevice"],
       expect.objectContaining({ encoding: "utf8" }),
     );
   });
 
   it("works on win32 (parses MachineGuid from registry)", async () => {
     mockedPlatform.mockReturnValue("win32" as NodeJS.Platform);
-    mockedExecSync.mockReturnValue(
-      "\r\nHKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\r\n    MachineGuid    REG_SZ    WIN-GUID-1234\r\n\r\n",
-    );
+    mockedSpawnSync.mockReturnValue({
+      stdout: "\r\nHKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\r\n    MachineGuid    REG_SZ    WIN-GUID-1234\r\n\r\n",
+      stderr: "",
+      status: 0,
+      pid: 1,
+      output: [],
+      signal: null,
+    } as unknown as ReturnType<typeof spawnSync>);
 
     const { getMachineKey } = await loadModule();
     const key = getMachineKey();
 
     expect(key.length).toBe(32);
-    expect(mockedExecSync).toHaveBeenCalledWith(
-      "cmd /c reg query HKLM\\SOFTWARE\\Microsoft\\Cryptography /v MachineGuid",
+    expect(mockedSpawnSync).toHaveBeenCalledWith(
+      "reg",
+      ["query", "HKLM\\SOFTWARE\\Microsoft\\Cryptography", "/v", "MachineGuid"],
       expect.objectContaining({ encoding: "utf8" }),
     );
   });
@@ -263,7 +277,7 @@ describe("getMachineKey", () => {
       // Salt and fallback files don't exist yet — throw for all reads
       throw new Error("ENOENT");
     });
-    mockedExecSync.mockImplementation(() => {
+    mockedSpawnSync.mockImplementation(() => {
       throw new Error("command not found");
     });
 
@@ -277,9 +291,14 @@ describe("getMachineKey", () => {
 
   it("uses per-installation random salt instead of hardcoded string", async () => {
     mockedPlatform.mockReturnValue("win32" as NodeJS.Platform);
-    mockedExecSync.mockReturnValue(
-      "\r\nHKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\r\n    MachineGuid    REG_SZ    TEST-GUID-1234\r\n\r\n",
-    );
+    mockedSpawnSync.mockReturnValue({
+      stdout: "\r\nHKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\r\n    MachineGuid    REG_SZ    TEST-GUID-1234\r\n\r\n",
+      stderr: "",
+      status: 0,
+      pid: 1,
+      output: [],
+      signal: null,
+    } as unknown as ReturnType<typeof spawnSync>);
 
     const { getMachineKey } = await loadModule();
     getMachineKey();

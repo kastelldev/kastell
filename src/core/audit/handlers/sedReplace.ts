@@ -61,7 +61,8 @@ export const sedReplaceHandler: FixHandler = {
     }
 
     const originalLine = lines[matchIndex];
-    const sedCmd = `sed -i 's|${escapeSedPipe(oldPattern)}|${escapeSedPipe(newValue)}|' ${path}`;
+    const quotedPath = path.replace(/'/g, "'\\''");
+    const sedCmd = `sed -i 's|${escapeSedPipe(oldPattern)}|${escapeSedPipe(newValue)}|' '${quotedPath}'`;
     const applyResult = await sshExec(ip, raw(sedCmd), { useStdin: true });
 
     if (applyResult.code !== 0) {

@@ -36,6 +36,18 @@ export function createSpinner(text: string): Ora {
   });
 }
 
+const REDACT_PATTERNS = /token|secret|password|credential|apikey|api_key/i;
+
+function redactArg(arg: unknown): unknown {
+  if (typeof arg === "string") {
+    return REDACT_PATTERNS.test(arg) ? "[REDACTED]" : arg;
+  }
+  if (typeof arg === "object" && arg !== null) {
+    return "[object]";
+  }
+  return arg;
+}
+
 export const debugLog = process.env.KASTELL_DEBUG
-  ? (...args: unknown[]) => console.error("[debug]", ...args)
+  ? (...args: unknown[]) => console.error("[debug]", ...args.map(redactArg))
   : undefined;

@@ -72,6 +72,7 @@ describe("BUG-02 — restore --force backup auto-selection", () => {
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
     jest.resetAllMocks();
+    process.env.KASTELL_SAFE_MODE = "false";
     mockedSsh.checkSshAvailable.mockReturnValue(true);
     mockedConfig.findServers.mockReturnValue([sampleServer]);
     mockedExistsSync.mockReturnValue(true);

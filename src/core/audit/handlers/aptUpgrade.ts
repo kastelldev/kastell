@@ -25,7 +25,7 @@ export const aptUpgradeHandler: FixHandler = {
   ): Promise<HandlerResult & { rollbackStep?: RollbackStep }> {
     const result = await sshExec(
       ip,
-      raw("DEBIAN_FRONTEND=noninteractive apt-get update && apt-get upgrade -y"),
+      raw("DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y"),
       { useStdin: true },
     );
     if (result.code !== 0) {

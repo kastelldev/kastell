@@ -14,7 +14,7 @@ import {
 import { join } from "path";
 import { z } from "zod";
 import { CONFIG_DIR } from "../../utils/config.js";
-import { withFileLock } from "../../utils/fileLock.js";
+import { withFileLock, warnIfPermissionError } from "../../utils/fileLock.js";
 import { sshExec } from "../../utils/ssh.js";
 import { raw } from "../../utils/sshCommand.js";
 import type { FixHistoryEntry } from "./types.js";
@@ -45,7 +45,7 @@ const fixHistoryEntrySchema = z.object({
   scoreBefore: z.number(),
   scoreAfter: z.number().nullable(),
   status: z.enum(["applied", "rolled-back", "failed"]),
-  backupPath: z.string(),
+  backupPath: z.string().regex(/^\/root\/\.kastell\/fix-backups\/fix-[\d-]+$/, "Invalid backup path format"),
 }).strict();
 
 const fixHistoryFileSchema = z.array(fixHistoryEntrySchema);
@@ -66,7 +66,8 @@ export function loadFixHistory(serverIp: string): FixHistoryEntry[] {
       return [];
     }
     return result.data.filter((e) => e.serverIp === serverIp);
-  } catch {
+  } catch (err: unknown) {
+    warnIfPermissionError(err, "fix history");
     return [];
   }
 }
@@ -275,12 +276,17 @@ export async function rollbackFix(
     raw(`find ${backupPath} -type f ! -name 'restore-commands.sh' -printf '%P\\n'`),
   );
   const files = findResult.stdout.trim().split("\n").filter(Boolean);
+  const SAFE_PATH = /^[a-zA-Z0-9_./-]+$/;
+  const safeFiles = files.filter((f) => SAFE_PATH.test(f) && !f.includes(".."));
+  if (safeFiles.length < files.length) {
+    errors.push(`skipped ${files.length - safeFiles.length} file(s) with suspicious path characters`);
+  }
 
-  if (files.length > 0) {
-    const cpCmds = files.map((relPath) => `cp ${backupPath}/${relPath} /${relPath}`).join(" && ");
+  if (safeFiles.length > 0) {
+    const cpCmds = safeFiles.map((relPath) => `cp ${backupPath}/${relPath} /${relPath}`).join(" && ");
     const batchResult = await sshExec(ip, raw(cpCmds));
     if (batchResult.code === 0) {
-      restored.push(...files.map((r) => `/${r}`));
+      restored.push(...safeFiles.map((r) => `/${r}`));
     } else {
       errors.push(`batch restore failed (exit ${batchResult.code})`);
     }

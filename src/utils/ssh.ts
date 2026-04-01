@@ -3,6 +3,7 @@ import { existsSync, mkdirSync } from "fs";
 import { dirname, join } from "path";
 import { tmpdir } from "os";
 import type { SshCommand } from "./sshCommand.js";
+import { sanitizeStderr } from "./errorMapper.js";
 
 /** Default SSH connect timeout in seconds */
 const SSH_CONNECT_TIMEOUT = 10;
@@ -251,7 +252,7 @@ function sshStreamInner(
 
 export function sshStream(
   ip: string,
-  command: string | SshCommand,
+  command: SshCommand,
   opts?: { useStdin?: boolean },
 ): Promise<number> {
   assertValidIp(ip);
@@ -270,11 +271,12 @@ function killChild(child: ChildProcess): void {
 
 function sshExecInner(
   ip: string,
-  command: string | SshCommand,
+  command: SshCommand,
   retried: boolean,
   timeoutMs: number = SSH_EXEC_TIMEOUT_MS,
   useStdin: boolean = false,
 ): Promise<{ code: number; stdout: string; stderr: string }> {
+  const effectiveTimeout = timeoutMs > 0 ? timeoutMs : SSH_EXEC_TIMEOUT_MS;
   const sshBin = resolveSshPath();
   return new Promise((resolve) => {
     let settled = false;
@@ -317,8 +319,8 @@ function sshExecInner(
     // Process-level timeout — kill SSH if it takes too long
     const timer = setTimeout(() => {
       killChild(child);
-      finish({ code: 1, stdout, stderr: stderr || `SSH command timed out after ${timeoutMs / 1000}s` });
-    }, timeoutMs);
+      finish({ code: 1, stdout, stderr: stderr || `SSH command timed out after ${effectiveTimeout / 1000}s` });
+    }, effectiveTimeout);
 
     let stdout = "";
     let stderr = "";
@@ -353,18 +355,18 @@ function sshExecInner(
             retryResult.stderr += `\nHint: Run "ssh-keygen -R ${ip}" to remove the stale host key, then retry.`;
           }
           resolve(retryResult);
-        }).catch((err: Error) => resolve({ code: 1, stdout: "", stderr: err.message }));
+        }).catch((err: Error) => resolve({ code: 1, stdout: "", stderr: sanitizeStderr(err.message) }));
       } else {
         finish({ code: exitCode, stdout, stderr });
       }
     });
-    child.on("error", (err) => finish({ code: 1, stdout: "", stderr: err.message }));
+    child.on("error", (err) => finish({ code: 1, stdout: "", stderr: sanitizeStderr(err.message) }));
   });
 }
 
 export function sshExec(
   ip: string,
-  command: string | SshCommand,
+  command: SshCommand,
   opts?: { timeoutMs?: number; useStdin?: boolean },
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   assertValidIp(ip);
@@ -381,7 +383,7 @@ function controlSocketPath(ip: string): string {
   // Unix-style paths — Node's os.tmpdir() returns Windows backslash paths
   // which SSH cannot use as socket paths.
   const dir = process.platform === "win32" ? "/tmp/kastell-ssh" : join(tmpdir(), "kastell-ssh");
-  mkdirSync(dir, { recursive: true });
+  mkdirSync(dir, { recursive: true, mode: 0o700 });
   return `${dir}/master-${ip}`;
 }
 

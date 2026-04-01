@@ -7,6 +7,7 @@ import { logger, createSpinner } from "../utils/logger.js";
 import { getErrorMessage, mapProviderError } from "../utils/errorMapper.js";
 import { openBrowser } from "../utils/openBrowser.js";
 import { assertValidIp, removeStaleHostKey, sshExec } from "../utils/ssh.js";
+import { raw } from "../utils/sshCommand.js";
 import { findLocalSshKey, generateSshKey, getSshKeyName } from "../utils/sshKey.js";
 import { saveServer } from "../utils/config.js";
 import { waitForCoolify } from "../utils/healthCheck.js";
@@ -254,7 +255,7 @@ async function barePostSetup(
     let sshReady = false;
     for (let attempt = 1; attempt <= 60; attempt++) {
       try {
-        await sshExec(serverIp, "echo ok");
+        await sshExec(serverIp, raw("echo ok"));
         sshReady = true;
         break;
       } catch {
@@ -267,7 +268,7 @@ async function barePostSetup(
       // Step 2: Wait for cloud-init to finish
       cloudInitSpinner.text = "SSH ready — waiting for cloud-init to finish...";
       try {
-        const ciResult = await sshExec(serverIp, "cloud-init status --wait");
+        const ciResult = await sshExec(serverIp, raw("cloud-init status --wait"));
         if (ciResult.code === 0) {
           cloudInitSpinner.succeed("Cloud-init completed");
         } else {

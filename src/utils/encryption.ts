@@ -1,6 +1,6 @@
 import { randomBytes, createCipheriv, createDecipheriv, scryptSync, randomUUID } from "crypto";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
-import { execSync } from "child_process";
+import { spawnSync } from "child_process";
 import { platform } from "os";
 import { join } from "path";
 import { KASTELL_DIR } from "./paths.js";
@@ -90,17 +90,14 @@ function getRawMachineId(): string {
     }
 
     if (plat === "darwin") {
-      const out = execSync("ioreg -rd1 -c IOPlatformExpertDevice", { encoding: "utf8" });
-      const match = out.match(/IOPlatformUUID[^=]*=\s*"?([^"\n]+)"?/);
+      const result = spawnSync("ioreg", ["-rd1", "-c", "IOPlatformExpertDevice"], { encoding: "utf8" });
+      const match = result.stdout?.match(/IOPlatformUUID[^=]*=\s*"?([^"\n]+)"?/);
       if (match?.[1]) return match[1].trim();
     }
 
     if (plat === "win32") {
-      const out = execSync(
-        "cmd /c reg query HKLM\\SOFTWARE\\Microsoft\\Cryptography /v MachineGuid",
-        { encoding: "utf8" },
-      );
-      const match = out.match(/MachineGuid\s+REG_SZ\s+(.+)/);
+      const result = spawnSync("reg", ["query", "HKLM\\SOFTWARE\\Microsoft\\Cryptography", "/v", "MachineGuid"], { encoding: "utf8" });
+      const match = result.stdout?.match(/MachineGuid\s+REG_SZ\s+(.+)/);
       if (match?.[1]) return match[1].trim();
     }
   } catch {

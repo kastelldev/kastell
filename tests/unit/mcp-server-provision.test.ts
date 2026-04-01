@@ -58,7 +58,7 @@ const originalEnv = process.env;
 beforeEach(() => {
   jest.clearAllMocks();
   process.env = { ...originalEnv };
-  delete process.env.KASTELL_SAFE_MODE;
+  process.env.KASTELL_SAFE_MODE = "false";
   delete process.env.QUICKLIFY_SAFE_MODE;
 
   mockProvider = createMockProvider();

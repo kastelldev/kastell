@@ -102,7 +102,7 @@ describe("addServerRecord — default mode (backward compat)", () => {
     expect(mockedSsh.sshExec).toHaveBeenCalled();
   });
 
-  it("should save ServerRecord with mode:'coolify' when mode is not specified", async () => {
+  it("should save ServerRecord with mode:'bare' when mode is not specified (bare is default fallback)", async () => {
     const result = await addServerRecord({
       provider: "hetzner",
       ip: "5.6.7.8",
@@ -111,9 +111,9 @@ describe("addServerRecord — default mode (backward compat)", () => {
     });
 
     expect(result.success).toBe(true);
-    expect(result.server?.mode).toBe("coolify");
+    expect(result.server?.mode).toBe("bare");
     expect(mockedConfig.saveServer).toHaveBeenCalledWith(
-      expect.objectContaining({ mode: "coolify" }),
+      expect.objectContaining({ mode: "bare" }),
     );
   });
 });

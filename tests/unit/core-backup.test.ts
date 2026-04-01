@@ -439,6 +439,7 @@ const mockGetAdapter = getAdapter as jest.MockedFunction<typeof getAdapter>;
 describe("restoreBackup — adapter delegation", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    process.env.KASTELL_SAFE_MODE = "false";
   });
 
   it("should delegate to DokployAdapter when manifest.platform is 'dokploy'", async () => {

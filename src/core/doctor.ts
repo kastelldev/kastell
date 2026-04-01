@@ -9,6 +9,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from "
 import { join } from "path";
 import { CONFIG_DIR } from "../utils/config.js";
 import { assertValidIp, sshExec } from "../utils/ssh.js";
+import { raw } from "../utils/sshCommand.js";
 import { loadAuditHistory } from "./audit/history.js";
 import type { MetricSnapshot, KastellResult } from "../types/index.js";
 import type { AuditHistoryEntry } from "./audit/types.js";
@@ -354,7 +355,7 @@ export async function runServerDoctor(
 
   if (fresh) {
     // Fetch current MetricSnapshot from VPS and append to local cache
-    const metricsResult = await sshExec(ip, CMD_METRICS, { useStdin: true });
+    const metricsResult = await sshExec(ip, raw(CMD_METRICS), { useStdin: true });
     if (metricsResult.code === 0 && metricsResult.stdout.trim()) {
       try {
         const parsed = JSON.parse(metricsResult.stdout) as MetricSnapshot;
@@ -369,11 +370,11 @@ export async function runServerDoctor(
 
     // Collect live probe data
     const [swapRes, aptRes, fail2banRes, backupRes, dockerRes] = await Promise.all([
-      sshExec(ip, CMD_SWAP),
-      sshExec(ip, CMD_APT),
-      sshExec(ip, CMD_FAIL2BAN),
-      sshExec(ip, CMD_BACKUP_LOG),
-      sshExec(ip, CMD_DOCKER),
+      sshExec(ip, raw(CMD_SWAP)),
+      sshExec(ip, raw(CMD_APT)),
+      sshExec(ip, raw(CMD_FAIL2BAN)),
+      sshExec(ip, raw(CMD_BACKUP_LOG)),
+      sshExec(ip, raw(CMD_DOCKER)),
     ]);
 
     swapOutput = swapRes.stdout;

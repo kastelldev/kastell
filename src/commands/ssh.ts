@@ -1,5 +1,6 @@
 import { resolveServer } from "../utils/serverSelect.js";
 import { checkSshAvailable, sshConnect, sshExec } from "../utils/ssh.js";
+import { raw } from "../utils/sshCommand.js";
 import { logger } from "../utils/logger.js";
 
 export async function sshCommand(query?: string, options?: { command?: string }): Promise<void> {
@@ -15,7 +16,7 @@ export async function sshCommand(query?: string, options?: { command?: string })
 
   if (options?.command) {
     logger.info(`Running command on ${server.name} (${server.ip})...`);
-    const result = await sshExec(server.ip, options.command);
+    const result = await sshExec(server.ip, raw(options.command));
     if (result.stdout) console.log(result.stdout);
     if (result.stderr) console.error(result.stderr);
     if (result.code !== 0) {

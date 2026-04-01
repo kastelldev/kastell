@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
 import axios from "axios";
 import { assertValidIp, sshExec } from "../utils/ssh.js";
+import { raw } from "../utils/sshCommand.js";
 import { debugLog } from "../utils/logger.js";
 import { HTTP_TIMEOUT_MS } from "../constants.js";
 import { formatTimestamp, getBackupDir } from "../utils/backupPath.js";
@@ -61,7 +62,7 @@ export async function sharedUpdate(
 ): Promise<UpdateResult> {
   assertValidIp(ip);
   try {
-    const result = await sshExec(ip, updateCmd, { timeoutMs: UPDATE_TIMEOUT_MS });
+    const result = await sshExec(ip, raw(updateCmd), { timeoutMs: UPDATE_TIMEOUT_MS });
     if (result.code === 0) {
       return { success: true, output: result.stdout || undefined };
     }
@@ -91,7 +92,7 @@ export async function sharedGetStatus(
   domain?: string,
 ): Promise<PlatformStatusResult> {
   assertValidIp(ip);
-  const versionResult = await sshExec(ip, versionCmd);
+  const versionResult = await sshExec(ip, raw(versionCmd));
   const platformVersion = versionResult.code === 0 ? versionResult.stdout.trim() : "unknown";
   const health = await sharedHealthCheck(ip, port, domain);
   return {
@@ -156,11 +157,11 @@ export async function sharedCreateBackup(
 
   try {
     // Step 1: Get platform version (best-effort)
-    const versionResult = await sshExec(ip, config.versionCmd);
+    const versionResult = await sshExec(ip, raw(config.versionCmd));
     const platformVersion = versionResult.code === 0 ? versionResult.stdout.trim() : "unknown";
 
     // Step 2: Database backup
-    const dbResult = await sshExec(ip, config.pgDumpCmd);
+    const dbResult = await sshExec(ip, raw(config.pgDumpCmd));
     if (dbResult.code !== 0) {
       return {
         success: false,
@@ -170,7 +171,7 @@ export async function sharedCreateBackup(
     }
 
     // Step 3: Config backup
-    const configResult = await sshExec(ip, config.configTarCmd);
+    const configResult = await sshExec(ip, raw(config.configTarCmd));
     if (configResult.code !== 0) {
       return {
         success: false,
@@ -227,7 +228,7 @@ export async function sharedCreateBackup(
     );
 
     // Step 6: Cleanup remote (best-effort)
-    await sshExec(ip, config.cleanupCmd).catch((e) => debugLog?.("backup cleanup failed:", e));
+    await sshExec(ip, raw(config.cleanupCmd)).catch((e) => debugLog?.("backup cleanup failed:", e));
 
     return { success: true, backupPath, manifest };
   } catch (error: unknown) {
@@ -304,7 +305,7 @@ export async function sharedRestoreBackup(
 
     // Step 1: Stop platform
     const platformLabel = adapterDisplayName({ name: config.platform });
-    const stopResult = await sshExec(ip, config.stopCmd);
+    const stopResult = await sshExec(ip, raw(config.stopCmd));
     if (stopResult.code !== 0) {
       steps.push({
         name: `Stop ${platformLabel}`,
@@ -316,46 +317,46 @@ export async function sharedRestoreBackup(
     steps.push({ name: `Stop ${platformLabel}`, status: "success" });
 
     // Step 2: Start DB only
-    const dbStartResult = await sshExec(ip, config.startDbCmd);
+    const dbStartResult = await sshExec(ip, raw(config.startDbCmd));
     if (dbStartResult.code !== 0) {
       steps.push({
         name: "Start database",
         status: "failure",
         error: sanitizeStderr(dbStartResult.stderr),
       });
-      await sshExec(ip, config.tryRestartCmd).catch((e) => debugLog?.("restart after db start failure:", e));
+      await sshExec(ip, raw(config.tryRestartCmd)).catch((e) => debugLog?.("restart after db start failure:", e));
       return { success: false, steps, error: "Failed to start database" };
     }
     steps.push({ name: "Start database", status: "success" });
 
     // Step 3: Restore database
-    const restoreDbResult = await sshExec(ip, config.restoreDbCmd);
+    const restoreDbResult = await sshExec(ip, raw(config.restoreDbCmd));
     if (restoreDbResult.code !== 0) {
       steps.push({
         name: "Restore database",
         status: "failure",
         error: sanitizeStderr(restoreDbResult.stderr),
       });
-      await sshExec(ip, config.tryRestartCmd).catch((e) => debugLog?.("restart after db restore failure:", e));
+      await sshExec(ip, raw(config.tryRestartCmd)).catch((e) => debugLog?.("restart after db restore failure:", e));
       return { success: false, steps, error: "Database restore failed" };
     }
     steps.push({ name: "Restore database", status: "success" });
 
     // Step 4: Restore config
-    const restoreConfigResult = await sshExec(ip, config.restoreConfigCmd);
+    const restoreConfigResult = await sshExec(ip, raw(config.restoreConfigCmd));
     if (restoreConfigResult.code !== 0) {
       steps.push({
         name: "Restore config",
         status: "failure",
         error: sanitizeStderr(restoreConfigResult.stderr),
       });
-      await sshExec(ip, config.tryRestartCmd).catch((e) => debugLog?.("restart after config restore failure:", e));
+      await sshExec(ip, raw(config.tryRestartCmd)).catch((e) => debugLog?.("restart after config restore failure:", e));
       return { success: false, steps, error: "Config restore failed" };
     }
     steps.push({ name: "Restore config", status: "success" });
 
     // Step 5: Start platform
-    const startResult = await sshExec(ip, config.startCmd);
+    const startResult = await sshExec(ip, raw(config.startCmd));
     if (startResult.code !== 0) {
       steps.push({
         name: `Start ${platformLabel}`,
@@ -367,7 +368,7 @@ export async function sharedRestoreBackup(
     steps.push({ name: `Start ${platformLabel}`, status: "success" });
 
     // Cleanup remote (best-effort)
-    await sshExec(ip, config.cleanupCmd).catch((e) => debugLog?.("restore cleanup failed:", e));
+    await sshExec(ip, raw(config.cleanupCmd)).catch((e) => debugLog?.("restore cleanup failed:", e));
 
     return { success: true, steps };
   } catch (error: unknown) {

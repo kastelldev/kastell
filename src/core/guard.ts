@@ -4,6 +4,7 @@ import { z } from "zod";
 import { sshExec, assertValidIp } from "../utils/ssh.js";
 import { raw, type SshCommand } from "../utils/sshCommand.js";
 import { CONFIG_DIR } from "../utils/config.js";
+import { warnIfPermissionError } from "../utils/fileLock.js";
 import { dispatchWithCooldown } from "./notify.js";
 import { listSnapshots, loadSnapshot } from "./audit/snapshot.js";
 
@@ -62,7 +63,8 @@ export function getGuardStates(): Record<string, GuardStateEntry> {
   try {
     const parsed = guardStateSchema.safeParse(JSON.parse(readFileSync(GUARD_STATE_FILE, "utf-8")));
     return parsed.success ? parsed.data : {};
-  } catch {
+  } catch (err: unknown) {
+    warnIfPermissionError(err, "guard state");
     return {};
   }
 }

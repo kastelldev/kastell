@@ -25,7 +25,7 @@ export async function withRetry<T>(
         if (retryAfter) {
           const parsed = parseInt(retryAfter, 10);
           if (Number.isFinite(parsed) && parsed > 0) {
-            delayMs = parsed * 1000;
+            delayMs = Math.min(parsed * 1000, maxDelayMs);
           } else {
             // Try HTTP-date format
             const dateMs = Date.parse(retryAfter);

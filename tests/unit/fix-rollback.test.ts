@@ -332,9 +332,9 @@ describe("rollbackAllFixes", () => {
   });
 
   it("reverts all applied fixes in reverse-chronological order", async () => {
-    const entryA = makeEntry({ fixId: "fix-A", backupPath: `${REMOTE_BACKUP_BASE}/fix-A`, serverIp: "1.2.3.4", timestamp: "2026-03-29T10:00:00.000Z" });
-    const entryB = makeEntry({ fixId: "fix-B", backupPath: `${REMOTE_BACKUP_BASE}/fix-B`, serverIp: "1.2.3.4", timestamp: "2026-03-29T11:00:00.000Z" });
-    const entryC = makeEntry({ fixId: "fix-C", backupPath: `${REMOTE_BACKUP_BASE}/fix-C`, serverIp: "1.2.3.4", timestamp: "2026-03-29T12:00:00.000Z" });
+    const entryA = makeEntry({ fixId: "fix-2026-03-29-001", backupPath: `${REMOTE_BACKUP_BASE}/fix-2026-03-29-001`, serverIp: "1.2.3.4", timestamp: "2026-03-29T10:00:00.000Z" });
+    const entryB = makeEntry({ fixId: "fix-2026-03-29-002", backupPath: `${REMOTE_BACKUP_BASE}/fix-2026-03-29-002`, serverIp: "1.2.3.4", timestamp: "2026-03-29T11:00:00.000Z" });
+    const entryC = makeEntry({ fixId: "fix-2026-03-29-003", backupPath: `${REMOTE_BACKUP_BASE}/fix-2026-03-29-003`, serverIp: "1.2.3.4", timestamp: "2026-03-29T12:00:00.000Z" });
 
     setupHistory([entryA, entryB, entryC]);
 
@@ -352,7 +352,7 @@ describe("rollbackAllFixes", () => {
     const result = await rollbackAllFixes("1.2.3.4");
 
     expect(result.errors).toHaveLength(0);
-    expect(result.rolledBack).toEqual(["fix-C", "fix-B", "fix-A"]);
+    expect(result.rolledBack).toEqual(["fix-2026-03-29-003", "fix-2026-03-29-002", "fix-2026-03-29-001"]);
   });
 
   it("returns empty arrays when no applied fixes exist (noop)", async () => {
@@ -367,8 +367,8 @@ describe("rollbackAllFixes", () => {
   });
 
   it("calls saveRollbackEntry (writes to file) for each successfully rolled-back fix", async () => {
-    const entryA = makeEntry({ fixId: "fix-A", backupPath: `${REMOTE_BACKUP_BASE}/fix-A`, serverIp: "1.2.3.4" });
-    const entryB = makeEntry({ fixId: "fix-B", backupPath: `${REMOTE_BACKUP_BASE}/fix-B`, serverIp: "1.2.3.4" });
+    const entryA = makeEntry({ fixId: "fix-2026-03-29-001", backupPath: `${REMOTE_BACKUP_BASE}/fix-2026-03-29-001`, serverIp: "1.2.3.4" });
+    const entryB = makeEntry({ fixId: "fix-2026-03-29-002", backupPath: `${REMOTE_BACKUP_BASE}/fix-2026-03-29-002`, serverIp: "1.2.3.4" });
 
     setupHistory([entryA, entryB]);
 
@@ -383,15 +383,15 @@ describe("rollbackAllFixes", () => {
     const result = await rollbackAllFixes("1.2.3.4");
 
     // Both fixes rolled back
-    expect(result.rolledBack).toEqual(["fix-B", "fix-A"]);
+    expect(result.rolledBack).toEqual(["fix-2026-03-29-002", "fix-2026-03-29-001"]);
     // writeFileSync called for each saveRollbackEntry (atomic write via tmp file)
     expect(mockedFs.writeFileSync).toHaveBeenCalledTimes(2);
   });
 
   it("continues on individual failure and collects errors", async () => {
-    const entryA = makeEntry({ fixId: "fix-A", backupPath: `${REMOTE_BACKUP_BASE}/fix-A`, serverIp: "1.2.3.4" });
-    const entryB = makeEntry({ fixId: "fix-B", backupPath: `${REMOTE_BACKUP_BASE}/fix-B`, serverIp: "1.2.3.4" });
-    const entryC = makeEntry({ fixId: "fix-C", backupPath: `${REMOTE_BACKUP_BASE}/fix-C`, serverIp: "1.2.3.4" });
+    const entryA = makeEntry({ fixId: "fix-2026-03-29-001", backupPath: `${REMOTE_BACKUP_BASE}/fix-2026-03-29-001`, serverIp: "1.2.3.4" });
+    const entryB = makeEntry({ fixId: "fix-2026-03-29-002", backupPath: `${REMOTE_BACKUP_BASE}/fix-2026-03-29-002`, serverIp: "1.2.3.4" });
+    const entryC = makeEntry({ fixId: "fix-2026-03-29-003", backupPath: `${REMOTE_BACKUP_BASE}/fix-2026-03-29-003`, serverIp: "1.2.3.4" });
 
     setupHistory([entryA, entryB, entryC]);
 
@@ -409,9 +409,9 @@ describe("rollbackAllFixes", () => {
 
     const result = await rollbackAllFixes("1.2.3.4");
 
-    expect(result.rolledBack).toContain("fix-C");
-    expect(result.rolledBack).toContain("fix-A");
-    expect(result.errors.some((e) => e.startsWith("fix-B:"))).toBe(true);
+    expect(result.rolledBack).toContain("fix-2026-03-29-003");
+    expect(result.rolledBack).toContain("fix-2026-03-29-001");
+    expect(result.errors.some((e) => e.startsWith("fix-2026-03-29-002:"))).toBe(true);
   });
 });
 
@@ -430,9 +430,9 @@ describe("rollbackToFix", () => {
   });
 
   it("reverts from newest to target fix inclusive (does not revert older entries)", async () => {
-    const entryA = makeEntry({ fixId: "fix-A", backupPath: `${REMOTE_BACKUP_BASE}/fix-A`, serverIp: "1.2.3.4" });
-    const entryB = makeEntry({ fixId: "fix-B", backupPath: `${REMOTE_BACKUP_BASE}/fix-B`, serverIp: "1.2.3.4" });
-    const entryC = makeEntry({ fixId: "fix-C", backupPath: `${REMOTE_BACKUP_BASE}/fix-C`, serverIp: "1.2.3.4" });
+    const entryA = makeEntry({ fixId: "fix-2026-03-29-001", backupPath: `${REMOTE_BACKUP_BASE}/fix-2026-03-29-001`, serverIp: "1.2.3.4" });
+    const entryB = makeEntry({ fixId: "fix-2026-03-29-002", backupPath: `${REMOTE_BACKUP_BASE}/fix-2026-03-29-002`, serverIp: "1.2.3.4" });
+    const entryC = makeEntry({ fixId: "fix-2026-03-29-003", backupPath: `${REMOTE_BACKUP_BASE}/fix-2026-03-29-003`, serverIp: "1.2.3.4" });
 
     setupHistory([entryA, entryB, entryC]);
 
@@ -444,15 +444,15 @@ describe("rollbackToFix", () => {
       .mockResolvedValueOnce(makeSshResult({ stdout: "" }))        // B: no restore script
       .mockResolvedValueOnce(makeSshResult({ stdout: "" }));       // B: no files
 
-    const result = await rollbackToFix("1.2.3.4", "fix-B");
+    const result = await rollbackToFix("1.2.3.4", "fix-2026-03-29-002");
 
     expect(result.errors).toHaveLength(0);
-    expect(result.rolledBack).toEqual(["fix-C", "fix-B"]);
-    expect(result.rolledBack).not.toContain("fix-A");
+    expect(result.rolledBack).toEqual(["fix-2026-03-29-003", "fix-2026-03-29-002"]);
+    expect(result.rolledBack).not.toContain("fix-2026-03-29-001");
   });
 
   it("returns error for unknown fix-id", async () => {
-    const entryA = makeEntry({ fixId: "fix-A", serverIp: "1.2.3.4" });
+    const entryA = makeEntry({ fixId: "fix-2026-03-29-001", serverIp: "1.2.3.4" });
     setupHistory([entryA]);
 
     const result = await rollbackToFix("1.2.3.4", "fix-UNKNOWN");
@@ -464,10 +464,10 @@ describe("rollbackToFix", () => {
   });
 
   it("returns error for fix-id that exists but is already rolled-back (only applied entries are targets)", async () => {
-    const entryA = makeEntry({ fixId: "fix-A", status: "rolled-back", serverIp: "1.2.3.4" });
+    const entryA = makeEntry({ fixId: "fix-2026-03-29-001", status: "rolled-back", serverIp: "1.2.3.4" });
     setupHistory([entryA]);
 
-    const result = await rollbackToFix("1.2.3.4", "fix-A");
+    const result = await rollbackToFix("1.2.3.4", "fix-2026-03-29-001");
 
     expect(result.rolledBack).toEqual([]);
     expect(result.errors.some((e) => e.includes("Fix not found or not in applied state"))).toBe(true);

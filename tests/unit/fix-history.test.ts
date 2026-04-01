@@ -14,6 +14,7 @@ jest.mock("../../src/utils/config.js", () => ({
 }));
 jest.mock("../../src/utils/fileLock", () => ({
   withFileLock: jest.fn((_path: string, fn: () => unknown) => fn()),
+  warnIfPermissionError: jest.fn(),
 }));
 
 const mockedFs = fs as jest.Mocked<typeof fs>;

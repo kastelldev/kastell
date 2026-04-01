@@ -29,6 +29,11 @@ jest.mock("../../src/utils/serverSelect", () => ({
   resolveServer: jest.fn(),
 }));
 
+jest.mock("../../src/utils/config", () => ({
+  getServers: jest.fn(() => []),
+  CONFIG_DIR: "/home/test/.kastell",
+}));
+
 jest.mock("../../src/core/doctor", () => ({
   ...jest.requireActual("../../src/core/doctor"),
   runServerDoctor: jest.fn(),
@@ -227,21 +232,19 @@ describe("doctorCommand — local mode (no server arg)", () => {
     mockedExistsSync.mockReturnValue(true);
     mockedAccessSync.mockImplementation(() => {});
 
-    const fs = require("fs");
-    fs.readFileSync.mockReturnValueOnce(
-      JSON.stringify([
-        {
-          id: "1",
-          name: "test",
-          provider: "hetzner",
-          ip: "1.2.3.4",
-          region: "nbg1",
-          size: "cax11",
-          createdAt: "2026-01-01",
-          mode: "coolify" as const,
-        },
-      ]),
-    );
+    const config = require("../../src/utils/config");
+    config.getServers.mockReturnValue([
+      {
+        id: "1",
+        name: "test",
+        provider: "hetzner",
+        ip: "1.2.3.4",
+        region: "nbg1",
+        size: "cax11",
+        createdAt: "2026-01-01",
+        mode: "coolify" as const,
+      },
+    ]);
 
     const results = runDoctorChecks("0.6.0");
     const serversCheck = results.find((r) => r.name === "Servers");
@@ -585,8 +588,8 @@ describe("checkProviderTokens", () => {
   });
 
   it("should show info message when no servers registered", async () => {
-    const fs = require("fs");
-    fs.readFileSync.mockReturnValue("[]");
+    const config = require("../../src/utils/config");
+    config.getServers.mockReturnValue([]);
 
     await checkProviderTokens();
 
@@ -596,21 +599,19 @@ describe("checkProviderTokens", () => {
   });
 
   it("should show warning when token is not set in environment", async () => {
-    const fs = require("fs");
-    fs.readFileSync.mockReturnValue(
-      JSON.stringify([
-        {
-          id: "1",
-          name: "test",
-          provider: "hetzner",
-          ip: "1.2.3.4",
-          region: "nbg1",
-          size: "cax11",
-          createdAt: "2026-01-01",
-          mode: "coolify" as const,
-        },
-      ]),
-    );
+    const config = require("../../src/utils/config");
+    config.getServers.mockReturnValue([
+      {
+        id: "1",
+        name: "test",
+        provider: "hetzner",
+        ip: "1.2.3.4",
+        region: "nbg1",
+        size: "cax11",
+        createdAt: "2026-01-01",
+        mode: "coolify" as const,
+      },
+    ]);
     delete process.env.HETZNER_TOKEN;
 
     await checkProviderTokens();
@@ -620,21 +621,19 @@ describe("checkProviderTokens", () => {
   });
 
   it("should show success when token is valid", async () => {
-    const fs = require("fs");
-    fs.readFileSync.mockReturnValue(
-      JSON.stringify([
-        {
-          id: "1",
-          name: "test",
-          provider: "hetzner",
-          ip: "1.2.3.4",
-          region: "nbg1",
-          size: "cax11",
-          createdAt: "2026-01-01",
-          mode: "coolify" as const,
-        },
-      ]),
-    );
+    const config = require("../../src/utils/config");
+    config.getServers.mockReturnValue([
+      {
+        id: "1",
+        name: "test",
+        provider: "hetzner",
+        ip: "1.2.3.4",
+        region: "nbg1",
+        size: "cax11",
+        createdAt: "2026-01-01",
+        mode: "coolify" as const,
+      },
+    ]);
     process.env.HETZNER_TOKEN = "valid-token";
     mockedAxios.get.mockResolvedValueOnce({ data: { servers: [] } });
 
@@ -646,21 +645,19 @@ describe("checkProviderTokens", () => {
   });
 
   it("should show error when token is invalid", async () => {
-    const fs = require("fs");
-    fs.readFileSync.mockReturnValue(
-      JSON.stringify([
-        {
-          id: "1",
-          name: "test",
-          provider: "digitalocean",
-          ip: "1.2.3.4",
-          region: "nyc1",
-          size: "s-1vcpu-1gb",
-          createdAt: "2026-01-01",
-          mode: "coolify" as const,
-        },
-      ]),
-    );
+    const config = require("../../src/utils/config");
+    config.getServers.mockReturnValue([
+      {
+        id: "1",
+        name: "test",
+        provider: "digitalocean",
+        ip: "1.2.3.4",
+        region: "nyc1",
+        size: "s-1vcpu-1gb",
+        createdAt: "2026-01-01",
+        mode: "coolify" as const,
+      },
+    ]);
     process.env.DIGITALOCEAN_TOKEN = "invalid-token";
     mockedAxios.get.mockRejectedValueOnce(new Error("Unauthorized"));
 
@@ -672,31 +669,29 @@ describe("checkProviderTokens", () => {
   });
 
   it("should check multiple providers when servers from different providers exist", async () => {
-    const fs = require("fs");
-    fs.readFileSync.mockReturnValue(
-      JSON.stringify([
-        {
-          id: "1",
-          name: "test1",
-          provider: "hetzner",
-          ip: "1.2.3.4",
-          region: "nbg1",
-          size: "cax11",
-          createdAt: "2026-01-01",
-          mode: "coolify" as const,
-        },
-        {
-          id: "2",
-          name: "test2",
-          provider: "vultr",
-          ip: "5.6.7.8",
-          region: "ewr",
-          size: "vc2-1c-1gb",
-          createdAt: "2026-01-01",
-          mode: "coolify" as const,
-        },
-      ]),
-    );
+    const config = require("../../src/utils/config");
+    config.getServers.mockReturnValue([
+      {
+        id: "1",
+        name: "test1",
+        provider: "hetzner",
+        ip: "1.2.3.4",
+        region: "nbg1",
+        size: "cax11",
+        createdAt: "2026-01-01",
+        mode: "coolify" as const,
+      },
+      {
+        id: "2",
+        name: "test2",
+        provider: "vultr",
+        ip: "5.6.7.8",
+        region: "ewr",
+        size: "vc2-1c-1gb",
+        createdAt: "2026-01-01",
+        mode: "coolify" as const,
+      },
+    ]);
     process.env.HETZNER_TOKEN = "valid-hetzner";
     process.env.VULTR_TOKEN = "valid-vultr";
     mockedAxios.get.mockResolvedValue({ data: {} });
@@ -710,21 +705,19 @@ describe("checkProviderTokens", () => {
   });
 
   it("should handle network error gracefully", async () => {
-    const fs = require("fs");
-    fs.readFileSync.mockReturnValue(
-      JSON.stringify([
-        {
-          id: "1",
-          name: "test",
-          provider: "linode",
-          ip: "1.2.3.4",
-          region: "us-east",
-          size: "g6-nanode-1",
-          createdAt: "2026-01-01",
-          mode: "coolify" as const,
-        },
-      ]),
-    );
+    const config = require("../../src/utils/config");
+    config.getServers.mockReturnValue([
+      {
+        id: "1",
+        name: "test",
+        provider: "linode",
+        ip: "1.2.3.4",
+        region: "us-east",
+        size: "g6-nanode-1",
+        createdAt: "2026-01-01",
+        mode: "coolify" as const,
+      },
+    ]);
     process.env.LINODE_TOKEN = "some-token";
     mockedAxios.get.mockRejectedValueOnce(new Error("Network Error"));
 
@@ -736,21 +729,19 @@ describe("checkProviderTokens", () => {
   });
 
   it("should skip unknown providers with warning", async () => {
-    const fs = require("fs");
-    fs.readFileSync.mockReturnValue(
-      JSON.stringify([
-        {
-          id: "1",
-          name: "test",
-          provider: "unknown-provider",
-          ip: "1.2.3.4",
-          region: "region1",
-          size: "size1",
-          createdAt: "2026-01-01",
-          mode: "coolify" as const,
-        },
-      ]),
-    );
+    const config = require("../../src/utils/config");
+    config.getServers.mockReturnValue([
+      {
+        id: "1",
+        name: "test",
+        provider: "unknown-provider",
+        ip: "1.2.3.4",
+        region: "region1",
+        size: "size1",
+        createdAt: "2026-01-01",
+        mode: "coolify" as const,
+      },
+    ]);
 
     await checkProviderTokens();
 
@@ -759,31 +750,29 @@ describe("checkProviderTokens", () => {
   });
 
   it("should deduplicate providers when multiple servers use same provider", async () => {
-    const fs = require("fs");
-    fs.readFileSync.mockReturnValue(
-      JSON.stringify([
-        {
-          id: "1",
-          name: "test1",
-          provider: "hetzner",
-          ip: "1.2.3.4",
-          region: "nbg1",
-          size: "cax11",
-          createdAt: "2026-01-01",
-          mode: "coolify" as const,
-        },
-        {
-          id: "2",
-          name: "test2",
-          provider: "hetzner",
-          ip: "5.6.7.8",
-          region: "fsn1",
-          size: "cax21",
-          createdAt: "2026-01-01",
-          mode: "coolify" as const,
-        },
-      ]),
-    );
+    const config = require("../../src/utils/config");
+    config.getServers.mockReturnValue([
+      {
+        id: "1",
+        name: "test1",
+        provider: "hetzner",
+        ip: "1.2.3.4",
+        region: "nbg1",
+        size: "cax11",
+        createdAt: "2026-01-01",
+        mode: "coolify" as const,
+      },
+      {
+        id: "2",
+        name: "test2",
+        provider: "hetzner",
+        ip: "5.6.7.8",
+        region: "fsn1",
+        size: "cax21",
+        createdAt: "2026-01-01",
+        mode: "coolify" as const,
+      },
+    ]);
     process.env.HETZNER_TOKEN = "valid-token";
     mockedAxios.get.mockResolvedValue({ data: {} });
 
@@ -794,21 +783,19 @@ describe("checkProviderTokens", () => {
   });
 
   it("should use correct API endpoint for each provider", async () => {
-    const fs = require("fs");
-    fs.readFileSync.mockReturnValue(
-      JSON.stringify([
-        {
-          id: "1",
-          name: "test",
-          provider: "digitalocean",
-          ip: "1.2.3.4",
-          region: "nyc1",
-          size: "s-1vcpu-1gb",
-          createdAt: "2026-01-01",
-          mode: "coolify" as const,
-        },
-      ]),
-    );
+    const config = require("../../src/utils/config");
+    config.getServers.mockReturnValue([
+      {
+        id: "1",
+        name: "test",
+        provider: "digitalocean",
+        ip: "1.2.3.4",
+        region: "nyc1",
+        size: "s-1vcpu-1gb",
+        createdAt: "2026-01-01",
+        mode: "coolify" as const,
+      },
+    ]);
     process.env.DIGITALOCEAN_TOKEN = "test-token";
     mockedAxios.get.mockResolvedValueOnce({ data: {} });
 
@@ -823,21 +810,19 @@ describe("checkProviderTokens", () => {
   });
 
   it("should show title for provider token validation section", async () => {
-    const fs = require("fs");
-    fs.readFileSync.mockReturnValue(
-      JSON.stringify([
-        {
-          id: "1",
-          name: "test",
-          provider: "hetzner",
-          ip: "1.2.3.4",
-          region: "nbg1",
-          size: "cax11",
-          createdAt: "2026-01-01",
-          mode: "coolify" as const,
-        },
-      ]),
-    );
+    const config = require("../../src/utils/config");
+    config.getServers.mockReturnValue([
+      {
+        id: "1",
+        name: "test",
+        provider: "hetzner",
+        ip: "1.2.3.4",
+        region: "nbg1",
+        size: "cax11",
+        createdAt: "2026-01-01",
+        mode: "coolify" as const,
+      },
+    ]);
     delete process.env.HETZNER_TOKEN;
 
     await checkProviderTokens();

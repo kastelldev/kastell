@@ -2,6 +2,7 @@ import { createProviderWithToken } from "../utils/providerFactory.js";
 import { getErrorMessage, mapSshError } from "../utils/errorMapper.js";
 import { getAdapter, resolvePlatform } from "../adapters/factory.js";
 import { sshExec } from "../utils/ssh.js";
+import { raw } from "../utils/sshCommand.js";
 import { COOLIFY_RESTART_CMD, POLL_DELAY_MS } from "../constants.js";
 import type { ServerRecord, Platform } from "../types/index.js";
 
@@ -77,7 +78,7 @@ export async function restartPlatform(server: ServerRecord): Promise<RestartPlat
   }
 
   try {
-    const result = await sshExec(server.ip, restartCmd);
+    const result = await sshExec(server.ip, raw(restartCmd));
     if (result.code !== 0) {
       return {
         success: false,

@@ -82,6 +82,7 @@ describe("restoreCommand — bare mode routing", () => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
     jest.clearAllMocks();
     delete process.env.SAFE_MODE;
+    process.env.KASTELL_SAFE_MODE = "false";
     mockedCoreBackup.getBackupDir.mockReturnValue("/home/user/.kastell/backups/bare-test");
     // Default: manifest exists
     mockedExistsSync.mockReturnValue(true);

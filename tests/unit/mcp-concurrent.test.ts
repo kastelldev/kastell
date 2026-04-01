@@ -179,6 +179,7 @@ describe("concurrent MCP tool invocations", () => {
 describe("timeout and partial response edge cases", () => {
   beforeEach(() => {
     jest.resetAllMocks();
+    process.env.KASTELL_SAFE_MODE = "false";
   });
 
   it("returns mcpError when core function rejects with timeout error", async () => {

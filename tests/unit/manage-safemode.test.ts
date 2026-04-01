@@ -31,7 +31,7 @@ describe("isSafeMode — dual env var support", () => {
     return require("../../src/core/manage");
   }
 
-  it("should return false when neither env var is set", () => {
+  it("should return false when neither env var is set (CLI default)", () => {
     const { isSafeMode } = freshImport();
     expect(isSafeMode()).toBe(false);
   });
@@ -95,9 +95,9 @@ describe("isSafeMode — dual env var support", () => {
     expect(isSafeMode()).toBe(false);
   });
 
-  it("should return false for non-'true' values of QUICKLIFY_SAFE_MODE", () => {
+  it("should return true for '1' value of QUICKLIFY_SAFE_MODE (truthy)", () => {
     process.env.QUICKLIFY_SAFE_MODE = "1";
     const { isSafeMode } = freshImport();
-    expect(isSafeMode()).toBe(false);
+    expect(isSafeMode()).toBe(true);
   });
 });

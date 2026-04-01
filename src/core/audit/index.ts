@@ -10,6 +10,7 @@ import { calculateOverallScore, calculateCategoryScore } from "./scoring.js";
 import { parseAllChecks, mergeComplianceRefs } from "./checks/index.js";
 import { COMPLIANCE_MAP } from "./compliance/mapper.js";
 import { sshExec } from "../../utils/ssh.js";
+import { raw } from "../../utils/sshCommand.js";
 import { calculateQuickWins } from "./quickwin.js";
 import { extractVpsType, applyVpsAdjustments } from "./vps.js";
 import { AUDIT_VERSION } from "../../constants.js";
@@ -53,7 +54,7 @@ export async function runAudit(
     // Execute each batch with its tier-specific timeout
     for (const batch of batches) {
       try {
-        const result = await sshExec(ip, batch.command, {
+        const result = await sshExec(ip, raw(batch.command), {
           timeoutMs: BATCH_TIMEOUTS[batch.tier],
           useStdin: true,
         });

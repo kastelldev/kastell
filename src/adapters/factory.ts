@@ -4,6 +4,7 @@ import type { Platform } from "../types/index.js";
 import { CoolifyAdapter } from "./coolify.js";
 import { DokployAdapter } from "./dokploy.js";
 import { assertValidIp, sshExec } from "../utils/ssh.js";
+import { raw } from "../utils/sshCommand.js";
 
 export type { Platform };
 
@@ -11,12 +12,12 @@ export async function detectPlatform(ip: string): Promise<Platform | "bare"> {
   assertValidIp(ip);
   try {
     // Check Dokploy first (newer platform, less likely false positive)
-    const dokployCheck = await sshExec(ip, "test -d /etc/dokploy && echo dokploy || echo no");
+    const dokployCheck = await sshExec(ip, raw("test -d /etc/dokploy && echo dokploy || echo no"));
     if (dokployCheck.code === 0 && dokployCheck.stdout.trim() === "dokploy") {
       return "dokploy";
     }
     // Check Coolify
-    const coolifyCheck = await sshExec(ip, "test -d /data/coolify/source && echo coolify || echo no");
+    const coolifyCheck = await sshExec(ip, raw("test -d /data/coolify/source && echo coolify || echo no"));
     if (coolifyCheck.code === 0 && coolifyCheck.stdout.trim() === "coolify") {
       return "coolify";
     }

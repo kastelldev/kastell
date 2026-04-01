@@ -48,3 +48,13 @@ export async function withFileLock<T>(
     `Could not acquire lock on ${filePath} after ${maxRetries} retries`,
   );
 }
+
+/** Warn on stderr if a caught error is a permission issue. Returns true if it was a permission error. */
+export function warnIfPermissionError(err: unknown, label: string): boolean {
+  const code = (err as NodeJS.ErrnoException).code;
+  if (code === "EACCES" || code === "EPERM") {
+    process.stderr.write(`Warning: cannot read ${label} — ${code}\n`);
+    return true;
+  }
+  return false;
+}

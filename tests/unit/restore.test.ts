@@ -93,6 +93,7 @@ describe("restore", () => {
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
     jest.clearAllMocks();
+    process.env.KASTELL_SAFE_MODE = "false";
     mockedSsh.resolveScpPath.mockReturnValue("scp");
     mockedAdapterFactory.getAdapter.mockImplementation((platform: string) =>
       platform === "dokploy" ? defaultDokployAdapter : defaultCoolifyAdapter,

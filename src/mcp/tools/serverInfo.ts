@@ -6,6 +6,7 @@ import { getProviderToken, collectProviderTokensFromEnv } from "../../core/token
 import { getErrorMessage } from "../../utils/errorMapper.js";
 import { isBareServer } from "../../utils/modeGuard.js";
 import { sshExec, isHostKeyMismatch } from "../../utils/ssh.js";
+import { raw } from "../../utils/sshCommand.js";
 import { createProviderWithToken } from "../../utils/providerFactory.js";
 import { mcpSuccess, mcpError } from "../utils.js";
 import type { ServerRecord, ServerMode } from "../../types/index.js";
@@ -128,7 +129,7 @@ interface BareServerSshResult {
 
 async function checkBareServerSsh(server: ServerRecord): Promise<BareServerSshResult> {
   try {
-    const result = await sshExec(server.ip, "echo ok");
+    const result = await sshExec(server.ip, raw("echo ok"));
     // Check stdout for "ok" as primary indicator — SSH banners can cause
     // non-zero exit codes on some Windows SSH binaries even when the
     // command succeeds (banner text goes to stderr, exit code becomes 1).

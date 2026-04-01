@@ -109,7 +109,7 @@ afterAll(() => {
 // ─── Core: isSafeMode ─────────────────────────────────────────────────────────
 
 describe("isSafeMode", () => {
-  it("should return false when no env var is set", () => {
+  it("should return false when no env var is set (CLI default)", () => {
     delete process.env.KASTELL_SAFE_MODE;
     delete process.env.QUICKLIFY_SAFE_MODE;
     expect(isSafeMode()).toBe(false);
@@ -120,12 +120,14 @@ describe("isSafeMode", () => {
     expect(isSafeMode()).toBe(true);
   });
 
-  it("should return false for other values of KASTELL_SAFE_MODE", () => {
+  it("should return false when KASTELL_SAFE_MODE=false", () => {
     process.env.KASTELL_SAFE_MODE = "false";
     expect(isSafeMode()).toBe(false);
+  });
 
+  it("should return true when KASTELL_SAFE_MODE=1 (truthy)", () => {
     process.env.KASTELL_SAFE_MODE = "1";
-    expect(isSafeMode()).toBe(false);
+    expect(isSafeMode()).toBe(true);
   });
 
   it("should return true when only QUICKLIFY_SAFE_MODE is 'true' (backward compat)", () => {
@@ -376,7 +378,7 @@ describe("addServerRecord", () => {
     expect(result.platformStatus).toBe("not_detected");
   });
 
-  it("should handle SSH unavailable", async () => {
+  it("should handle SSH unavailable (falls back to bare, skips verification)", async () => {
     process.env.HETZNER_TOKEN = "test-token";
     mockedConfig.getServers.mockReturnValue([]);
     (mockProvider.validateToken as jest.Mock).mockResolvedValue(true);
@@ -389,7 +391,9 @@ describe("addServerRecord", () => {
       name: "test-server",
     });
     expect(result.success).toBe(true);
-    expect(result.platformStatus).toBe("ssh_unavailable");
+    // When SSH is unavailable, platform can't be detected, so mode falls back to "bare"
+    // and bare mode skips verification entirely (platformStatus = "skipped")
+    expect(result.platformStatus).toBe("skipped");
   });
 });
 
@@ -678,6 +682,10 @@ describe("handleServerManage — remove", () => {
 // ─── MCP Handler: handleServerManage — destroy ───────────────────────────────
 
 describe("handleServerManage — destroy", () => {
+  beforeEach(() => {
+    process.env.KASTELL_SAFE_MODE = "false";
+  });
+
   it("should block destroy in SAFE_MODE", async () => {
     process.env.KASTELL_SAFE_MODE = "true";
 
@@ -792,6 +800,10 @@ describe("handleServerManage — destroy", () => {
 // ─── MCP Handler: error handling ──────────────────────────────────────────────
 
 describe("handleServerManage — error handling", () => {
+  beforeEach(() => {
+    process.env.KASTELL_SAFE_MODE = "false";
+  });
+
   it("should catch unexpected errors", async () => {
     const spy = jest.spyOn(manage, "destroyCloudServer").mockRejectedValue(
       new Error("Config corrupted"),

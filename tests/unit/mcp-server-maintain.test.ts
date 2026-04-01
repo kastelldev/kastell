@@ -97,6 +97,7 @@ const originalEnv = process.env;
 beforeEach(() => {
   jest.clearAllMocks();
   process.env = { ...originalEnv };
+  process.env.KASTELL_SAFE_MODE = "false";
   mockedSsh.assertValidIp.mockImplementation(() => {});
 });
 
