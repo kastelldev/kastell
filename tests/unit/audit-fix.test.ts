@@ -505,6 +505,43 @@ describe("resolveTier mutation-killer", () => {
     expect(FORBIDDEN_CATEGORIES.has("Kernel")).toBe(false);
     expect(FORBIDDEN_CATEGORIES.size).toBe(3);
   });
+
+  // D-21: network sysctl promotion
+  it("promotes SAFE→GUARDED for network sysctl fix commands", () => {
+    const netCheck = {
+      ...baseCheck,
+      safeToAutoFix: "SAFE" as const,
+      fixCommand: "sysctl -w net.ipv4.tcp_syncookies=1 && echo 'net.ipv4.tcp_syncookies=1' >> /etc/sysctl.conf",
+    };
+    expect(resolveTier(netCheck, "Kernel")).toBe("GUARDED");
+  });
+
+  it("does NOT promote non-network sysctl (kernel.*) SAFE fix commands", () => {
+    const kernelCheck = {
+      ...baseCheck,
+      safeToAutoFix: "SAFE" as const,
+      fixCommand: "sysctl -w kernel.randomize_va_space=2 && echo 'kernel.randomize_va_space=2' >> /etc/sysctl.conf",
+    };
+    expect(resolveTier(kernelCheck, "Kernel")).toBe("SAFE");
+  });
+
+  it("does NOT promote non-sysctl SAFE fix commands", () => {
+    const echoCheck = {
+      ...baseCheck,
+      safeToAutoFix: "SAFE" as const,
+      fixCommand: "echo 'sshd: ALL' > /etc/hosts.allow",
+    };
+    expect(resolveTier(echoCheck, "Network")).toBe("SAFE");
+  });
+
+  it("does NOT promote GUARDED network sysctl (already GUARDED)", () => {
+    const guardedCheck = {
+      ...baseCheck,
+      safeToAutoFix: "GUARDED" as const,
+      fixCommand: "sysctl -w net.ipv6.conf.all.disable_ipv6=1",
+    };
+    expect(resolveTier(guardedCheck, "Network")).toBe("GUARDED");
+  });
 });
 
 // ─── Mutation-Killer: previewSafeFixes ───────────────────────────────────────

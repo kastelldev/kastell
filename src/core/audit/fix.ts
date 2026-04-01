@@ -52,14 +52,23 @@ export function isFixCommandAllowed(command: string): boolean {
 /** Categories where auto-fix is NEVER allowed regardless of check-level tier (D-02) */
 export const FORBIDDEN_CATEGORIES = new Set(["SSH", "Firewall", "Docker"]);
 
+/** Network sysctl fix commands are auto-promoted to GUARDED to prevent cumulative SSH breakage (D-21) */
+const NETWORK_SYSCTL_PATTERN = /sysctl\s+-w\s+net\./;
+
 /**
  * Resolve the effective fix tier for a check.
  * Category-level FORBIDDEN override trumps check-level field (D-02).
+ * Network sysctl fixes are promoted SAFE→GUARDED to prevent cumulative SSH breakage (D-21).
  * Undefined safeToAutoFix defaults to GUARDED (D-04 safety net).
  */
 export function resolveTier(check: AuditCheck, categoryName: string): FixTier {
   if (FORBIDDEN_CATEGORIES.has(categoryName)) return "FORBIDDEN";
-  return check.safeToAutoFix ?? "GUARDED";
+  const tier = check.safeToAutoFix ?? "GUARDED";
+  // D-21: network sysctl changes can cumulatively break SSH — promote to GUARDED
+  if (tier === "SAFE" && check.fixCommand && NETWORK_SYSCTL_PATTERN.test(check.fixCommand)) {
+    return "GUARDED";
+  }
+  return tier;
 }
 
 /** A check with pre-condition info for safe fixing */
