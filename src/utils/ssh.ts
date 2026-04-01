@@ -377,9 +377,12 @@ export function sshExec(
 const activeMasters = new Map<string, string>();
 
 function controlSocketPath(ip: string): string {
-  const dir = join(tmpdir(), "kastell-ssh");
+  // Use /tmp on Unix and Git Bash (Windows). SSH ControlPath requires
+  // Unix-style paths — Node's os.tmpdir() returns Windows backslash paths
+  // which SSH cannot use as socket paths.
+  const dir = process.platform === "win32" ? "/tmp/kastell-ssh" : join(tmpdir(), "kastell-ssh");
   mkdirSync(dir, { recursive: true });
-  return join(dir, `master-${ip}`);
+  return `${dir}/master-${ip}`;
 }
 
 /**
