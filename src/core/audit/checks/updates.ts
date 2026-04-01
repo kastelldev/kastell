@@ -102,7 +102,7 @@ export const parseUpdatesChecks: CheckParser = (sectionOutput: string, _platform
           : "Unable to determine",
     expectedValue: "No reboot required",
     fixCommand: "reboot",
-    safeToAutoFix: "SAFE",
+    safeToAutoFix: "GUARDED",
     explain: "Some updates require a reboot to take effect, especially kernel updates.",
   };
 

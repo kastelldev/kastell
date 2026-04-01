@@ -542,6 +542,22 @@ describe("resolveTier mutation-killer", () => {
     };
     expect(resolveTier(guardedCheck, "Network")).toBe("GUARDED");
   });
+
+  // D-22: reboot/shutdown promotion
+  it("promotes SAFE→GUARDED for reboot fix command", () => {
+    const rebootCheck = { ...baseCheck, safeToAutoFix: "SAFE" as const, fixCommand: "reboot" };
+    expect(resolveTier(rebootCheck, "Updates")).toBe("GUARDED");
+  });
+
+  it("promotes SAFE→GUARDED for shutdown fix command", () => {
+    const shutdownCheck = { ...baseCheck, safeToAutoFix: "SAFE" as const, fixCommand: "shutdown" };
+    expect(resolveTier(shutdownCheck, "Updates")).toBe("GUARDED");
+  });
+
+  it("does NOT promote non-reboot commands", () => {
+    const safeCheck = { ...baseCheck, safeToAutoFix: "SAFE" as const, fixCommand: "apt-get install -y aide" };
+    expect(resolveTier(safeCheck, "FileIntegrity")).toBe("SAFE");
+  });
 });
 
 // ─── Mutation-Killer: previewSafeFixes ───────────────────────────────────────

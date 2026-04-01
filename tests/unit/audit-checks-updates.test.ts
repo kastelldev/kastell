@@ -532,7 +532,7 @@ describe("parseUpdatesChecks", () => {
       ["UPD-SECURITY-PATCHES", "critical", "SAFE"],
       ["UPD-AUTO-UPDATES", "warning", "SAFE"],
       ["UPD-CACHE-FRESH", "info", "SAFE"],
-      ["UPD-REBOOT-REQUIRED", "warning", "SAFE"],
+      ["UPD-REBOOT-REQUIRED", "warning", "GUARDED"],
       ["UPD-LAST-UPGRADE-RECENT", "warning", "SAFE"],
       ["UPD-CVE-SCANNER-PRESENT", "info", "SAFE"],
       ["UPD-DPKG-NO-PARTIAL", "warning", "SAFE"],
