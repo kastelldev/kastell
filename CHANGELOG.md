@@ -2,6 +2,38 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.17.0] - 2026-04-01
+
+### Added
+- **Bulk rollback** — `kastell fix --rollback-all` and `--rollback-to <fix-id>` for batch fix reversal
+- **Doctor auto-fix** — `kastell doctor --auto-fix` diagnose-then-fix pipeline with `--dry-run` and `--force` options
+- **Fix scheduling** — `kastell schedule fix|audit` installs local cron for automated fix/audit runs with `list` and `remove` management
+- **Fix engine DRY refactor** — shared bulk rollback helpers, sed-replace and aptUpgrade programmatic handlers
+- **Custom fix profiles** — user-defined profiles loaded from `~/.kastell/profiles/` alongside built-in web-server/database/mail-server
+- **SSH ControlMaster** — connection multiplexing for fix engine prevents sshd MaxStartups exhaustion during bulk operations
+- **Interactive menu full CLI parity** — schedule category, audit extras (snapshot/trend/watch/host/threshold/report/compare), fix extras (category/diff/report/rollback-to), doctor/lock/evidence/maintain/backup/status/snapshot/fleet options, shared validators
+- **WAF bot detection checks** — NGX-WAF-BOT-DETECT and NGX-WAF-CHALLENGE-MODE audit checks for nginx bot mitigation
+- **`--no-interactive` flag** — `kastell fix --no-interactive` for scheduled/automated runs without confirmation prompts
+
+### Fixed
+- **SSH lockout prevention** — NET-HOSTS-DENY moved to GUARDED tier, prevents TCP wrapper lockout via `/etc/hosts.deny`
+- **Sysctl SSH breakage** — all sysctl fixes promoted to GUARDED tier, network sysctl SSH probe with automatic rollback (D-20)
+- **Session-terminating commands** — reboot/shutdown/poweroff/halt promoted to GUARDED tier (D-22)
+- **SSH ControlMaster Windows** — Unix-style `/tmp` socket path, stale socket cleanup, fork detection fix
+- **MCP SAFE_MODE guards** — `serverLock`, `serverGuard`, `serverSecure` now enforce `isSafeMode()` for destructive operations
+- **Fix backup directory** — rollback remote backup path resolution bug fixed (BUG-01)
+- **fileWrite + systemctl handlers** — shell metachar bypass prevention for programmatic fix handlers
+
+### Changed
+- **TOCTOU elimination** — replaced `existsSync` checks with direct operation + ENOENT handling across fix engine and core modules
+- **KASTELL_DIR consolidation** — unified `CONFIG_DIR` imports to `KASTELL_DIR` from `paths.ts`, eliminated deprecated re-exports
+- **severityChalk utility** — centralized severity-to-chalk color mapping, replaces inline switch statements
+- **9,871 tests** across 219 suites (up from 9,611 / 215 in v1.16)
+
+### Security
+- **Tier promotion system** — dangerous fixes (sysctl, hosts.deny, reboot) automatically promoted from SAFE to GUARDED, requiring explicit `--guarded` flag
+- **MCP fail-closed SAFE_MODE** — MCP server defaults to safe mode, blocking destructive operations unless explicitly disabled
+
 ## [1.16.0] - 2026-03-29
 
 ### Added
