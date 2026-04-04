@@ -16,6 +16,7 @@
 [![Socket Badge](https://socket.dev/api/badge/npm/package/kastell)](https://socket.dev/npm/package/kastell)
 [![Snyk](https://snyk.io/test/github/kastelldev/kastell/badge.svg)](https://snyk.io/test/github/kastelldev/kastell)
 [![Website](https://img.shields.io/badge/website-kastell.dev-blue?style=flat-square)](https://kastell.dev)
+[![DeepWiki](https://img.shields.io/badge/DeepWiki-kastelldev%2Fkastell-blue.svg?logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMxNy41MiAyIDEyIDJ6bTAgMThjLTQuNDIgMC04LTMuNTgtOC04czMuNTgtOCA4LTggOCAzLjU4IDggOC0zLjU4IDgtOCA4eiIgZmlsbD0iI2ZmZiIvPjwvc3ZnPg==)](https://deepwiki.com/kastelldev/kastell)
 ![Zero Telemetry](https://img.shields.io/badge/telemetry-zero-brightgreen)
 
 ## Why Kastell?
