@@ -3,54 +3,35 @@ import { join, resolve } from "path";
 import { sshExec, assertValidIp } from "../utils/ssh.js";
 import { BACKUPS_DIR } from "../utils/config.js";
 import { getErrorMessage, mapSshError, sanitizeStderr } from "../utils/errorMapper.js";
-import { raw, type SshCommand } from "../utils/sshCommand.js";
 import type { BackupManifest, Platform, ServerRecord } from "../types/index.js";
 import { getAdapter, resolvePlatform } from "../adapters/factory.js";
 import { isBareServer } from "../utils/modeGuard.js";
 import { debugLog } from "../utils/logger.js";
 import { formatTimestamp, getBackupDir } from "../utils/backupPath.js";
 import { scpDownload, scpUpload } from "../utils/scp.js";
+export * from "./backup-commands.js";
+import {
+  buildBareConfigTarCommand, buildBareRestoreConfigCommand,
+  buildBareCleanupCommand, buildStartCoolifyCommand,
+} from "./backup-commands.js";
 
-// Re-export from utils for backward compatibility
 export { formatTimestamp, getBackupDir } from "../utils/backupPath.js";
 export { scpDownload, scpUpload, assertSafePath } from "../utils/scp.js";
 
-export function buildPgDumpCommand(): SshCommand {
-  return raw("docker exec coolify-db pg_dump -U coolify -d coolify | gzip > /tmp/coolify-backup.sql.gz");
+// ─── Result Types ────────────────────────────────────────────────────────────
+export interface BackupResult {
+  success: boolean;
+  backupPath?: string;
+  manifest?: BackupManifest;
+  error?: string;
+  hint?: string;
 }
 
-export function buildConfigTarCommand(): SshCommand {
-  return raw("tar czf /tmp/coolify-config.tar.gz -C /data/coolify/source .env docker-compose.yml docker-compose.prod.yml 2>/dev/null || tar czf /tmp/coolify-config.tar.gz -C /data/coolify/source .env docker-compose.yml");
-}
-
-export function buildCleanupCommand(): SshCommand {
-  return raw("rm -f /tmp/coolify-backup.sql.gz /tmp/coolify-config.tar.gz");
-}
-
-export function buildCoolifyVersionCommand(): SshCommand {
-  return raw("docker inspect coolify --format '{{.Config.Image}}' 2>/dev/null | sed 's/.*://' || echo unknown");
-}
-
-// ─── Pure Functions (Restore) ────────────────────────────────────────────────
-
-export function buildStopCoolifyCommand(): SshCommand {
-  return raw("cd /data/coolify/source && docker compose -f docker-compose.yml -f docker-compose.prod.yml stop");
-}
-
-export function buildStartCoolifyCommand(): SshCommand {
-  return raw("cd /data/coolify/source && docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d");
-}
-
-export function buildStartDbCommand(): SshCommand {
-  return raw("cd /data/coolify/source && docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d postgres && sleep 3");
-}
-
-export function buildRestoreDbCommand(): SshCommand {
-  return raw("gunzip -c /tmp/coolify-backup.sql.gz | docker exec -i coolify-db psql -U coolify -d coolify");
-}
-
-export function buildRestoreConfigCommand(): SshCommand {
-  return raw("tar xzf /tmp/coolify-config.tar.gz -C /data/coolify/source");
+export interface RestoreResult {
+  success: boolean;
+  steps: Array<{ name: string; status: "success" | "failure"; error?: string }>;
+  error?: string;
+  hint?: string;
 }
 
 // ─── Semi-Pure Functions (FS Read) ───────────────────────────────────────────
@@ -102,31 +83,6 @@ export function cleanupServerBackups(serverName: string): { removed: boolean; pa
   } catch {
     return { removed: false, path: dir };
   }
-}
-
-
-// ─── Pure Functions (Bare Backup) ────────────────────────────────────────────
-
-export function buildBareConfigTarCommand(): SshCommand {
-  return raw(
-    "tar czf /tmp/bare-config.tar.gz --ignore-failed-read " +
-    "-C / " +
-    "etc/nginx " +
-    "etc/ssh/sshd_config " +
-    "etc/ufw " +
-    "etc/fail2ban " +
-    "etc/crontab " +
-    "etc/apt/apt.conf.d/50unattended-upgrades " +
-    "2>/dev/null || tar czf /tmp/bare-config.tar.gz --ignore-failed-read -C / etc/ssh/sshd_config",
-  );
-}
-
-export function buildBareRestoreConfigCommand(): SshCommand {
-  return raw("tar xzf /tmp/bare-config.tar.gz -C /");
-}
-
-export function buildBareCleanupCommand(): SshCommand {
-  return raw("rm -f /tmp/bare-config.tar.gz");
 }
 
 // ─── Async Wrappers (Bare) ────────────────────────────────────────────────────
@@ -257,23 +213,6 @@ export async function tryRestartCoolify(ip: string): Promise<void> {
   } catch {
     // Best-effort — swallow errors
   }
-}
-
-// ─── Result Types ────────────────────────────────────────────────────────────
-
-export interface BackupResult {
-  success: boolean;
-  backupPath?: string;
-  manifest?: BackupManifest;
-  error?: string;
-  hint?: string;
-}
-
-export interface RestoreResult {
-  success: boolean;
-  steps: Array<{ name: string; status: "success" | "failure"; error?: string }>;
-  error?: string;
-  hint?: string;
 }
 
 // ─── Async Wrappers ─────────────────────────────────────────────────────────

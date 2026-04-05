@@ -86,6 +86,18 @@ export function parseUfwStatus(stdout: string): FirewallStatus {
   return { active, rules };
 }
 
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function getPlatformPortWarning(port: number, platform?: Platform): string | undefined {
+  if (platform === "coolify" && COOLIFY_PORTS.includes(port))
+    return `Port ${port} is used by Coolify. Removing it may break Coolify access.`;
+  if (platform === "dokploy" && DOKPLOY_PORTS.includes(port))
+    return `Port ${port} is used by Dokploy. Removing it may break Dokploy access.`;
+  if (!platform && (COOLIFY_PORTS.includes(port) || DOKPLOY_PORTS.includes(port)))
+    return `Port ${port} is commonly used by platform services. Removing it may break access.`;
+  return undefined;
+}
+
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface FirewallResult {
@@ -171,14 +183,7 @@ export async function removeFirewallRule(
     return { success: false, error: `Port ${port} is protected (SSH access). Cannot remove.` };
   }
 
-  const warning =
-    platform === "coolify" && COOLIFY_PORTS.includes(port)
-      ? `Port ${port} is used by Coolify. Removing it may break Coolify access.`
-      : platform === "dokploy" && DOKPLOY_PORTS.includes(port)
-        ? `Port ${port} is used by Dokploy. Removing it may break Dokploy access.`
-        : !platform && (COOLIFY_PORTS.includes(port) || DOKPLOY_PORTS.includes(port))
-          ? `Port ${port} is commonly used by platform services. Removing it may break access.`
-          : undefined;
+  const warning = getPlatformPortWarning(port, platform);
 
   try {
     const result = await sshExec(ip, buildUfwRuleCommand("delete allow", port, protocol));

@@ -64,9 +64,6 @@ export interface RestartPlatformResult {
   hint?: string;
 }
 
-/** @deprecated Use restartPlatform instead */
-export const restartCoolify = restartPlatform;
-
 export async function restartPlatform(server: ServerRecord): Promise<RestartPlatformResult> {
   const platform: Platform = resolvePlatform(server) ?? "coolify";
   const adapter = getAdapter(platform);
@@ -108,3 +105,6 @@ export async function restartPlatform(server: ServerRecord): Promise<RestartPlat
     };
   }
 }
+
+/** @deprecated Use restartPlatform instead */
+export const restartCoolify = restartPlatform;
