@@ -1,14 +1,13 @@
-/**
- * SSH command builders for backup and restore operations.
- * All functions are pure (no I/O) — they return SshCommand values only.
- */
+/** Pure functions returning SshCommand values — no I/O. */
 
 import { raw, type SshCommand } from "../utils/sshCommand.js";
+
+const COOLIFY_COMPOSE = "cd /data/coolify/source && docker compose -f docker-compose.yml -f docker-compose.prod.yml";
 
 // ─── Coolify Backup Commands ─────────────────────────────────────────────────
 
 export function buildPgDumpCommand(): SshCommand {
-  return raw("docker exec coolify-db pg_dump -U coolify -d coolify | gzip > /tmp/coolify-backup.sql.gz");
+  return raw("set -o pipefail && docker exec coolify-db pg_dump -U coolify -d coolify | gzip > /tmp/coolify-backup.sql.gz");
 }
 
 export function buildConfigTarCommand(): SshCommand {
@@ -26,15 +25,15 @@ export function buildCoolifyVersionCommand(): SshCommand {
 // ─── Coolify Restore Commands ────────────────────────────────────────────────
 
 export function buildStopCoolifyCommand(): SshCommand {
-  return raw("cd /data/coolify/source && docker compose -f docker-compose.yml -f docker-compose.prod.yml stop");
+  return raw(`${COOLIFY_COMPOSE} stop`);
 }
 
 export function buildStartCoolifyCommand(): SshCommand {
-  return raw("cd /data/coolify/source && docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d");
+  return raw(`${COOLIFY_COMPOSE} up -d`);
 }
 
 export function buildStartDbCommand(): SshCommand {
-  return raw("cd /data/coolify/source && docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d postgres && sleep 3");
+  return raw(`${COOLIFY_COMPOSE} up -d postgres && sleep 3`);
 }
 
 export function buildRestoreDbCommand(): SshCommand {
@@ -44,6 +43,7 @@ export function buildRestoreDbCommand(): SshCommand {
 export function buildRestoreConfigCommand(): SshCommand {
   return raw("tar xzf /tmp/coolify-config.tar.gz -C /data/coolify/source");
 }
+
 
 // ─── Bare Server Backup Commands ─────────────────────────────────────────────
 

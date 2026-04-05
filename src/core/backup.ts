@@ -1,7 +1,7 @@
 import { mkdirSync, existsSync, writeFileSync, readFileSync, readdirSync, rmSync } from "fs";
 import { join, resolve } from "path";
 import { sshExec, assertValidIp } from "../utils/ssh.js";
-import { BACKUPS_DIR } from "../utils/config.js";
+import { BACKUPS_DIR } from "../utils/paths.js";
 import { getErrorMessage, mapSshError, sanitizeStderr } from "../utils/errorMapper.js";
 import type { BackupManifest, Platform, ServerRecord } from "../types/index.js";
 import { getAdapter, resolvePlatform } from "../adapters/factory.js";
@@ -9,12 +9,12 @@ import { isBareServer } from "../utils/modeGuard.js";
 import { debugLog } from "../utils/logger.js";
 import { formatTimestamp, getBackupDir } from "../utils/backupPath.js";
 import { scpDownload, scpUpload } from "../utils/scp.js";
-export * from "./backup-commands.js";
 import {
   buildBareConfigTarCommand, buildBareRestoreConfigCommand,
   buildBareCleanupCommand, buildStartCoolifyCommand,
 } from "./backup-commands.js";
 
+export * from "./backup-commands.js";
 export { formatTimestamp, getBackupDir } from "../utils/backupPath.js";
 export { scpDownload, scpUpload, assertSafePath } from "../utils/scp.js";
 
@@ -32,6 +32,10 @@ export interface RestoreResult {
   steps: Array<{ name: string; status: "success" | "failure"; error?: string }>;
   error?: string;
   hint?: string;
+}
+
+function isPathTraversal(backupPath: string, baseDir: string): boolean {
+  return !resolve(backupPath).startsWith(resolve(baseDir));
 }
 
 // ─── Semi-Pure Functions (FS Read) ───────────────────────────────────────────
@@ -151,9 +155,7 @@ export async function restoreBareBackup(
   assertValidIp(ip);
   const baseDir = getBackupDir(serverName);
   const backupPath = join(baseDir, backupId);
-
-  // Path traversal guard
-  if (!resolve(backupPath).startsWith(resolve(baseDir))) {
+  if (isPathTraversal(backupPath, baseDir)) {
     return { success: false, steps: [], error: "Invalid backupId: path traversal detected" };
   }
 
@@ -263,9 +265,7 @@ export async function restoreBackup(
 
   const baseDir = getBackupDir(serverName);
   const backupPath = join(baseDir, backupId);
-
-  // Path traversal guard
-  if (!resolve(backupPath).startsWith(resolve(baseDir))) {
+  if (isPathTraversal(backupPath, baseDir)) {
     return { success: false, steps: [], error: "Invalid backupId: path traversal detected" };
   }
 

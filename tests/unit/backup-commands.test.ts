@@ -1,7 +1,4 @@
-/**
- * Unit tests for backup-commands.ts pure SSH command builders.
- * All functions are pure (no I/O) — they return SshCommand strings only.
- */
+// Unit tests for backup-commands.ts
 
 import {
   buildPgDumpCommand,

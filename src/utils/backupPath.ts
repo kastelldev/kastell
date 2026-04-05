@@ -1,5 +1,5 @@
 import { join } from "path";
-import { BACKUPS_DIR } from "./config.js";
+import { BACKUPS_DIR } from "./paths.js";
 
 /**
  * Formats a Date as a filesystem-safe timestamp string.

@@ -6,7 +6,7 @@ import { KASTELL_DIR } from "./paths.js";
 import { SUPPORTED_PROVIDERS } from "../constants.js";
 
 const SERVERS_FILE = join(KASTELL_DIR, "servers.json");
-const BACKUPS_DIR = join(KASTELL_DIR, "backups");
+
 
 function ensureConfigDir(): void {
   mkdirSync(KASTELL_DIR, { recursive: true, mode: 0o700 });
@@ -107,4 +107,5 @@ export function findServers(query: string): ServerRecord[] {
   return servers.filter((s) => s.name === query);
 }
 
-export { SERVERS_FILE, BACKUPS_DIR };
+export { BACKUPS_DIR } from "./paths.js";
+export { SERVERS_FILE };
