@@ -229,6 +229,42 @@ port 2222`;
       const cmd = buildHardeningCommand({ port: 22 });
       expect(cmd).not.toContain("Port 22");
     });
+
+    // Port boundary tests (CQ-04)
+    it("should accept port 1 (minimum valid)", () => {
+      const cmd = buildHardeningCommand({ port: 1 });
+      expect(cmd).toContain("Port 1");
+    });
+
+    it("should accept port 65535 (maximum valid)", () => {
+      const cmd = buildHardeningCommand({ port: 65535 });
+      expect(cmd).toContain("Port 65535");
+    });
+
+    it("should silently skip NaN port", () => {
+      const cmd = buildHardeningCommand({ port: NaN });
+      expect(cmd).not.toMatch(/Port \d/);
+    });
+
+    it("should silently skip negative port", () => {
+      const cmd = buildHardeningCommand({ port: -1 });
+      expect(cmd).not.toMatch(/Port \d/);
+    });
+
+    it("should silently skip port 0", () => {
+      const cmd = buildHardeningCommand({ port: 0 });
+      expect(cmd).not.toMatch(/Port \d/);
+    });
+
+    it("should silently skip port exceeding 65535", () => {
+      const cmd = buildHardeningCommand({ port: 99999 });
+      expect(cmd).not.toMatch(/Port \d/);
+    });
+
+    it("should silently skip non-integer port", () => {
+      const cmd = buildHardeningCommand({ port: 1.5 });
+      expect(cmd).not.toMatch(/Port \d/);
+    });
   });
 
   describe("buildFail2banCommand", () => {

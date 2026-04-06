@@ -166,6 +166,7 @@ export class HetznerProvider implements CloudProvider {
       { id: "fsn1", name: "Falkenstein", location: "Germany" },
       { id: "hel1", name: "Helsinki", location: "Finland" },
       { id: "ash", name: "Ashburn", location: "USA" },
+      { id: "sin1", name: "Singapore", location: "Singapore" },
     ];
   }
 
