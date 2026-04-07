@@ -6,3 +6,6 @@ export const KASTELL_DIR = join(homedir(), ".kastell");
 
 /** Backups directory: ~/.kastell/backups */
 export const BACKUPS_DIR = join(KASTELL_DIR, "backups");
+
+/** Security audit log: ~/.kastell/security.log */
+export const SECURITY_LOG = join(KASTELL_DIR, "security.log");
