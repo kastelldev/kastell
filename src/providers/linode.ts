@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { apiClient, stripSensitiveData, withProviderErrorHandling, assertValidServerId, uploadSshKeyWithConflict, type CloudProvider } from "./base.js";
+import { BusinessError } from "../utils/errors.js";
 import { withRetry } from "../utils/retry.js";
 import type { Region, ServerSize, ServerConfig, ServerResult, SnapshotInfo, ServerMode } from "../types/index.js";
 import { formatSnapshotCost } from "../constants.js";
@@ -245,7 +246,7 @@ export class LinodeProvider implements CloudProvider {
       );
       const disks = disksResponse.data.data;
       if (!disks || disks.length === 0) {
-        throw new Error("No disks found on this instance");
+        throw new BusinessError("No disks found on this instance", { hint: "Instance may still be provisioning — try again shortly" });
       }
       // Use the largest disk
       const disk = disks.sort((a: { size: number }, b: { size: number }) => b.size - a.size)[0];

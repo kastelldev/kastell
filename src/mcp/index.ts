@@ -25,6 +25,8 @@ async function main(): Promise<void> {
   if (process.env.KASTELL_SAFE_MODE === undefined) {
     process.env.KASTELL_SAFE_MODE = "true";
   }
+  // Mark invocation source so detectCaller() returns "mcp" for all downstream calls.
+  process.env.KASTELL_CALLER = "mcp";
 
   migrateConfigIfNeeded();
   const server = createMcpServer();

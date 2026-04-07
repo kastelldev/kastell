@@ -10,6 +10,7 @@ import {
 import { KASTELL_DIR } from "../utils/paths.js";
 import { sanitizedEnv } from "../utils/ssh.js";
 import { dispatchWithCooldown } from "../core/notify.js";
+import { ValidationError } from "../utils/errors.js";
 
 export type ScheduleType = "fix" | "audit";
 
@@ -67,8 +68,9 @@ export function parseScheduleKey(key: string): { server: string; type: ScheduleT
 
 export function sanitizeServerName(name: string): string {
   if (!/^[a-zA-Z0-9._-]+$/.test(name)) {
-    throw new Error(
+    throw new ValidationError(
       `Invalid server name "${name}": only alphanumeric characters, dots, hyphens, and underscores are allowed`,
+      { hint: "Server name must contain only letters, numbers, dots, hyphens, and underscores" },
     );
   }
   return name;

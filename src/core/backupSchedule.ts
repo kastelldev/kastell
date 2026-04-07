@@ -4,6 +4,7 @@ import { z } from "zod";
 import { sshExec, assertValidIp } from "../utils/ssh.js";
 import { raw, type SshCommand } from "../utils/sshCommand.js";
 import { KASTELL_DIR } from "../utils/paths.js";
+import { ValidationError } from "../utils/errors.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -99,7 +100,7 @@ export function buildInstallCronCommand(cronExpr: string): SshCommand {
   // Defense-in-depth: validate inside command builder so callers cannot bypass
   const validation = validateCronExpr(cronExpr);
   if (!validation.valid) {
-    throw new Error(`Invalid cron expression: ${validation.error}`);
+    throw new ValidationError(`Invalid cron expression: ${validation.error}`, { hint: "Check cron syntax (5 fields: min hour day month weekday)" });
   }
   const entry = `${cronExpr} /root/kastell-backup.sh # kastell-backup`;
   // Single quotes prevent shell expansion of interpolated cron expression

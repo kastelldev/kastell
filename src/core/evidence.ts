@@ -18,6 +18,7 @@ import { sshExec } from "../utils/ssh.js";
 import { withFileLock } from "../utils/fileLock.js";
 import { KASTELL_DIR } from "../utils/paths.js";
 import { getErrorMessage } from "../utils/errorMapper.js";
+import { ValidationError } from "../utils/errors.js";
 import {
   buildEvidenceBatchCommand,
   getEvidenceSectionFilenames,
@@ -124,7 +125,7 @@ function buildDirName(opts: EvidenceOptions): string {
   const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
   if (opts.name) {
     if (/[/\\]|\.\./.test(opts.name)) {
-      throw new Error("Invalid evidence name: contains path separator or traversal");
+      throw new ValidationError("Invalid evidence name: contains path separator or traversal", { hint: "Evidence name must not contain / \\ or .." });
     }
     return `${date}_${opts.name}`;
   }

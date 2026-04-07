@@ -1,5 +1,6 @@
 import { sshExec, assertValidIp } from "../utils/ssh.js";
 import { getErrorMessage, mapSshError } from "../utils/errorMapper.js";
+import { ValidationError } from "../utils/errors.js";
 import { raw, type SshCommand } from "../utils/sshCommand.js";
 import {
   COOLIFY_SOURCE_DIR,
@@ -46,7 +47,7 @@ export function escapePsqlString(input: string): string {
 
 export function buildSetFqdnCommand(domain: string, ssl: boolean, platform?: Platform): SshCommand {
   if (/[^a-zA-Z0-9.:_-]/.test(domain)) {
-    throw new Error(`Invalid domain for FQDN command: ${domain}`);
+    throw new ValidationError(`Invalid domain for FQDN command: ${domain}`, { hint: "Domain must be a valid FQDN (e.g., example.com)" });
   }
   const protocol = ssl ? "https" : "http";
   const url = escapePsqlString(`${protocol}://${domain}`);

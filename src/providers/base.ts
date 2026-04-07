@@ -7,6 +7,7 @@ import type {
   SnapshotInfo,
   ServerMode,
 } from "../types/index.js";
+import { TransientError, BusinessError, PermissionError, ValidationError } from "../utils/errors.js";
 
 /** Default timeout for provider API calls (15 seconds) */
 export const API_TIMEOUT_MS = 15_000;
@@ -112,14 +113,27 @@ export async function withProviderErrorHandling<T>(
     if (extractApiMessage && axios.isAxiosError(error) && error.response?.data) {
       message = extractApiMessage(error.response.data) || message;
     }
-    throw new Error(`Failed to ${operation}: ${message}`, { cause: error });
+    const fullMessage = `Failed to ${operation}: ${message}`;
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status ?? 0;
+      if (status === 401 || status === 403) {
+        throw new PermissionError(fullMessage, { cause: error });
+      }
+      if (status === 404 || status === 409) {
+        throw new BusinessError(fullMessage, { cause: error });
+      }
+      // status >= 500, network error (status === 0), or other non-auth/non-client errors
+      throw new TransientError(fullMessage, { cause: error });
+    }
+    // Non-axios errors — safe default: retry-eligible
+    throw new TransientError(fullMessage, { cause: error });
   }
 }
 
 /** Assert serverId is safe for API URLs (alphanumeric, hyphens, slashes for Linode image IDs) */
 export function assertValidServerId(serverId: string): void {
   if (!/^[a-zA-Z0-9-]+(\/[a-zA-Z0-9.-]+)?$/.test(serverId)) {
-    throw new Error(`Invalid server ID format: ${serverId}`);
+    throw new ValidationError(`Invalid server ID format: ${serverId}`, { hint: "Server ID must be alphanumeric with optional hyphens" });
   }
 }
 
@@ -187,7 +201,7 @@ export async function uploadSshKeyWithConflict(
         return config.idToString !== false ? String(id) : (id as string);
       }
     }
-    throw new Error(
+    throw new TransientError(
       `Failed to upload SSH key: ${error instanceof Error ? error.message : String(error)}`,
       { cause: error },
     );

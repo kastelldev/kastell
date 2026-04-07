@@ -9,12 +9,14 @@ import { readNotifySecret, loadAllowedChatIds } from "../notifyStore.js";
 import { allowedChatIdsMiddleware } from "./middleware.js";
 import { registerHandlers } from "./handlers.js";
 import { ensureOffsetDir, saveOffset } from "./offset.js";
+import { BusinessError } from "../../utils/errors.js";
 
 export async function startBot(): Promise<void> {
   const token = readNotifySecret("telegram", "botToken");
   if (!token) {
-    throw new Error(
+    throw new BusinessError(
       "Telegram bot token not configured. Run: kastell notify add telegram",
+      { hint: "Run: kastell notify add telegram to configure the bot token" },
     );
   }
 

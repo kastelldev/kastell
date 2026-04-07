@@ -5,6 +5,7 @@ import { sshExec, assertValidIp } from "../utils/ssh.js";
 import { raw, type SshCommand } from "../utils/sshCommand.js";
 import { KASTELL_DIR } from "../utils/paths.js";
 import { warnIfPermissionError } from "../utils/fileLock.js";
+import { ValidationError } from "../utils/errors.js";
 import { dispatchWithCooldown } from "./notify.js";
 import { listSnapshots, loadSnapshot } from "./audit/snapshot.js";
 
@@ -159,7 +160,7 @@ export function buildInstallGuardCronCommand(): SshCommand {
   // Defense-in-depth: validate even hardcoded cron expressions
   const fields = GUARD_CRON_EXPR.trim().split(/\s+/);
   if (fields.length !== 5 || fields.some((f) => !/^[0-9*,/-]+$/.test(f))) {
-    throw new Error("Invalid guard cron expression");
+    throw new ValidationError("Invalid guard cron expression", { hint: "Check cron syntax (5 fields: min hour day month weekday)" });
   }
   const entry = `${GUARD_CRON_EXPR} ${GUARD_SCRIPT_PATH} ${GUARD_MARKER}`;
   return raw(`(crontab -l 2>/dev/null | grep -v '${GUARD_MARKER}'; echo '${entry}') | crontab -`);

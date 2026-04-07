@@ -5,6 +5,7 @@ import axios from "axios";
 import chalk from "chalk";
 import inquirer from "inquirer";
 import { KASTELL_DIR } from "../utils/paths.js";
+import { ValidationError } from "../utils/errors.js";
 import { createSpinner } from "../utils/logger.js";
 import { loadNotifyChannels, saveNotifyChannel, removeNotifyChannel } from "./notifyStore.js";
 
@@ -29,10 +30,10 @@ const PRIVATE_IP_PATTERNS = [
 function assertSafeWebhookUrl(url: string): void {
   const parsed = new URL(url);
   if (PRIVATE_IP_PATTERNS.some((p) => p.test(parsed.hostname))) {
-    throw new Error("Webhook URL points to a private/reserved address");
+    throw new ValidationError("Webhook URL points to a private/reserved address", { hint: "Use a public webhook URL" });
   }
   if (parsed.protocol !== "https:") {
-    throw new Error("Webhook URL must use HTTPS");
+    throw new ValidationError("Webhook URL must use HTTPS", { hint: "Webhook URL must start with https://" });
   }
 }
 
