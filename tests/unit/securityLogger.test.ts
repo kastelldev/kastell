@@ -62,13 +62,13 @@ function cleanDir(dir: string) {
   }
 }
 
-const baseEntry = {
-  level: "info" as SecurityLogLevel,
+const baseEntry: Omit<SecurityLogEntry, "ts" | "caller"> = {
+  level: "info",
   action: "server.lock",
-  category: "destructive" as SecurityLogCategory,
+  category: "destructive",
   server: "test-server",
   ip: "1.2.3.4",
-  result: "allow" as SecurityLogResult,
+  result: "allow",
   reason: "user confirmed",
   duration_ms: 250,
 };
@@ -133,11 +133,11 @@ describe("securityLogger", () => {
 
   describe("logSecurityEvent — optional fields", () => {
     it("omits undefined optional fields from JSON output", () => {
-      const minimalEntry = {
-        level: "warn" as SecurityLogLevel,
+      const minimalEntry: Omit<SecurityLogEntry, "ts" | "caller"> = {
+        level: "warn",
         action: "mcp.call",
-        category: "mcp" as SecurityLogCategory,
-        result: "block" as SecurityLogResult,
+        category: "mcp",
+        result: "block",
       };
 
       logSecurityEvent(minimalEntry);
@@ -233,15 +233,17 @@ describe("securityLogger", () => {
     });
 
     it("does not throw when appendFileSync throws", () => {
-      // Point mockKastellDir to a path that cannot be created to force failure
       // Use a file path as directory (impossible to mkdirSync into a file)
-      const impossibleDir = join(mockKastellDir, "security.log", "subdir");
-      // First create security.log as a file so the dir above is impossible
-      writeFileSync(join(mockKastellDir, "security.log"), "existing\n");
+      const savedDir = mockKastellDir;
+      const impossibleDir = join(savedDir, "security.log", "subdir");
+      writeFileSync(join(savedDir, "security.log"), "existing\n");
       mockKastellDir = impossibleDir;
 
       // Must not throw — silent fail
       expect(() => logSecurityEvent(baseEntry)).not.toThrow();
+
+      // Restore so afterEach cleanup works correctly
+      mockKastellDir = savedDir;
     });
   });
 

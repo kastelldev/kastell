@@ -1,6 +1,5 @@
 import { appendFileSync, statSync, renameSync, mkdirSync } from "fs";
-import { join } from "path";
-import { KASTELL_DIR } from "./paths.js";
+import { KASTELL_DIR, SECURITY_LOG } from "./paths.js";
 
 export type SecurityLogLevel = "info" | "warn" | "error";
 export type SecurityLogCategory = "destructive" | "auth" | "ssh" | "mcp" | "config";
@@ -22,19 +21,11 @@ export interface SecurityLogEntry {
 
 const DEFAULT_MAX_BYTES = 10 * 1024 * 1024; // 10MB
 
-function getLogPath(): string {
-  return join(KASTELL_DIR, "security.log");
-}
-
-function getBakPath(): string {
-  return join(KASTELL_DIR, "security.log.1");
-}
-
 function rotateIfNeeded(maxBytes: number): void {
   try {
-    const stat = statSync(getLogPath());
+    const stat = statSync(SECURITY_LOG);
     if (stat.size >= maxBytes) {
-      renameSync(getLogPath(), getBakPath());
+      renameSync(SECURITY_LOG, SECURITY_LOG + ".1");
     }
   } catch {
     // File doesn't exist yet — no rotation needed
@@ -55,17 +46,8 @@ export function logSecurityEvent(
       ...entry,
     };
 
-    // Remove undefined optional fields so they are absent from JSON (not null)
-    const cleaned: Partial<SecurityLogEntry> = {};
-    for (const [k, v] of Object.entries(fullEntry)) {
-      if (v !== undefined) {
-        (cleaned as Record<string, unknown>)[k] = v;
-      }
-    }
-
-    appendFileSync(getLogPath(), JSON.stringify(cleaned) + "\n", {
+    appendFileSync(SECURITY_LOG, JSON.stringify(fullEntry) + "\n", {
       encoding: "utf8",
-      flag: "a",
       mode: 0o600,
     });
   } catch {

@@ -46,125 +46,46 @@ describe("KastellError base class", () => {
   });
 });
 
-describe("TransientError", () => {
+describe.each([
+  { Cls: TransientError, code: "TRANSIENT", hint: "Retry later" },
+  { Cls: ValidationError, code: "VALIDATION", hint: "Use valid IP" },
+  { Cls: BusinessError, code: "BUSINESS", hint: "Upgrade plan" },
+  { Cls: PermissionError, code: "PERMISSION", hint: "Check SSH key" },
+] as const)("$Cls.name", ({ Cls, code, hint }) => {
+  const others = [TransientError, ValidationError, BusinessError, PermissionError].filter(C => C !== Cls);
+
   it("should be instanceof KastellError", () => {
-    expect(new TransientError("x")).toBeInstanceOf(KastellError);
+    expect(new Cls("x")).toBeInstanceOf(KastellError);
   });
 
-  it("should be instanceof TransientError", () => {
-    expect(new TransientError("x")).toBeInstanceOf(TransientError);
+  it("should be instanceof itself", () => {
+    expect(new Cls("x")).toBeInstanceOf(Cls);
   });
 
-  it("should NOT be instanceof ValidationError", () => {
-    expect(new TransientError("x")).not.toBeInstanceOf(ValidationError);
+  it.each(others)("should NOT be instanceof %s", (Other) => {
+    expect(new Cls("x")).not.toBeInstanceOf(Other);
   });
 
-  it("should NOT be instanceof BusinessError", () => {
-    expect(new TransientError("x")).not.toBeInstanceOf(BusinessError);
+  it(`should have code ${code}`, () => {
+    expect(new Cls("x").code).toBe(code);
   });
 
-  it("should NOT be instanceof PermissionError", () => {
-    expect(new TransientError("x")).not.toBeInstanceOf(PermissionError);
-  });
-
-  it("should have code TRANSIENT", () => {
-    expect(new TransientError("x").code).toBe("TRANSIENT");
-  });
-
-  it("should have name TransientError", () => {
-    expect(new TransientError("x").name).toBe("TransientError");
+  it("should have correct name", () => {
+    expect(new Cls("x").name).toBe(Cls.name);
   });
 
   it("should preserve cause chain", () => {
     const original = new Error("root");
-    const err = new TransientError("wrapped", { cause: original });
+    const err = new Cls("wrapped", { cause: original });
     expect(err.cause).toBe(original);
   });
 
   it("should have undefined hint by default", () => {
-    expect(new TransientError("x").hint).toBeUndefined();
+    expect(new Cls("x").hint).toBeUndefined();
   });
 
   it("should preserve hint when provided", () => {
-    expect(new TransientError("x", { hint: "Retry later" }).hint).toBe("Retry later");
-  });
-});
-
-describe("ValidationError", () => {
-  it("should be instanceof KastellError", () => {
-    expect(new ValidationError("x")).toBeInstanceOf(KastellError);
-  });
-
-  it("should be instanceof ValidationError", () => {
-    expect(new ValidationError("x")).toBeInstanceOf(ValidationError);
-  });
-
-  it("should NOT be instanceof TransientError", () => {
-    expect(new ValidationError("x")).not.toBeInstanceOf(TransientError);
-  });
-
-  it("should have code VALIDATION", () => {
-    expect(new ValidationError("x").code).toBe("VALIDATION");
-  });
-
-  it("should have name ValidationError", () => {
-    expect(new ValidationError("x").name).toBe("ValidationError");
-  });
-
-  it("should preserve hint when provided", () => {
-    expect(new ValidationError("bad ip", { hint: "Use valid IP" }).hint).toBe("Use valid IP");
-  });
-});
-
-describe("BusinessError", () => {
-  it("should be instanceof KastellError", () => {
-    expect(new BusinessError("x")).toBeInstanceOf(KastellError);
-  });
-
-  it("should be instanceof BusinessError", () => {
-    expect(new BusinessError("x")).toBeInstanceOf(BusinessError);
-  });
-
-  it("should NOT be instanceof TransientError", () => {
-    expect(new BusinessError("x")).not.toBeInstanceOf(TransientError);
-  });
-
-  it("should have code BUSINESS", () => {
-    expect(new BusinessError("x").code).toBe("BUSINESS");
-  });
-
-  it("should have name BusinessError", () => {
-    expect(new BusinessError("x").name).toBe("BusinessError");
-  });
-
-  it("should preserve hint when provided", () => {
-    expect(new BusinessError("limit reached", { hint: "Upgrade plan" }).hint).toBe("Upgrade plan");
-  });
-});
-
-describe("PermissionError", () => {
-  it("should be instanceof KastellError", () => {
-    expect(new PermissionError("x")).toBeInstanceOf(KastellError);
-  });
-
-  it("should be instanceof PermissionError", () => {
-    expect(new PermissionError("x")).toBeInstanceOf(PermissionError);
-  });
-
-  it("should NOT be instanceof ValidationError", () => {
-    expect(new PermissionError("x")).not.toBeInstanceOf(ValidationError);
-  });
-
-  it("should have code PERMISSION", () => {
-    expect(new PermissionError("x").code).toBe("PERMISSION");
-  });
-
-  it("should have name PermissionError", () => {
-    expect(new PermissionError("x").name).toBe("PermissionError");
-  });
-
-  it("should preserve hint when provided", () => {
-    expect(new PermissionError("denied", { hint: "Check SSH key" }).hint).toBe("Check SSH key");
+    expect(new Cls("x", { hint }).hint).toBe(hint);
   });
 });
 
