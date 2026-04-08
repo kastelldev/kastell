@@ -1,5 +1,15 @@
+import { z } from "zod";
 import { apiClient, stripSensitiveData, withProviderErrorHandling, assertValidServerId, uploadSshKeyWithConflict, type CloudProvider } from "./base.js";
 import { withRetry } from "../utils/retry.js";
+
+export const VultrInstanceSchema = z.object({
+  instance: z.object({
+    id: z.string(),
+    main_ip: z.string().optional(),
+    power_status: z.string(),
+    server_status: z.string().nullable().optional(),
+  }),
+});
 import type { Region, ServerSize, ServerConfig, ServerResult, SnapshotInfo, ServerMode } from "../types/index.js";
 import { VULTR_UBUNTU_OS_ID, formatSnapshotCost } from "../constants.js";
 
@@ -85,7 +95,8 @@ export class VultrProvider implements CloudProvider {
         },
       });
 
-      const instance = response.data.instance;
+      const parsed = VultrInstanceSchema.parse(response.data);
+      const instance = parsed.instance;
       return {
         id: instance.id,
         ip: instance.main_ip || "pending",
@@ -101,10 +112,11 @@ export class VultrProvider implements CloudProvider {
         const response = await apiClient.get(`${this.baseUrl}/instances/${serverId}`, {
           headers: { Authorization: `Bearer ${this.apiToken}` },
         });
-        const instance = response.data.instance;
+        const parsed = VultrInstanceSchema.parse(response.data);
+        const instance = parsed.instance;
         return {
           id: instance.id,
-          ip: instance.main_ip,
+          ip: instance.main_ip || "pending",
           status: instance.power_status === "running" ? "running" : instance.power_status,
         };
       }),
@@ -118,7 +130,8 @@ export class VultrProvider implements CloudProvider {
         const response = await apiClient.get(`${this.baseUrl}/instances/${serverId}`, {
           headers: { Authorization: `Bearer ${this.apiToken}` },
         });
-        const inst = response.data.instance;
+        const parsed = VultrInstanceSchema.parse(response.data);
+        const inst = parsed.instance;
         // Vultr reports power_status=running before server is fully provisioned.
         // server_status progresses: none → locked → installingbooting → ok
         if (inst.power_status === "running" && inst.server_status != null && inst.server_status !== "ok") {

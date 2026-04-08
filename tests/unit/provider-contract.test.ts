@@ -45,11 +45,11 @@ const CREATE_MOCK_DATA: Record<string, unknown> = {
 };
 
 const STATUS_MOCK_DATA: Record<string, unknown> = {
-  hetzner: { server: { status: "running" } },
-  digitalocean: { droplet: { status: "active" } },
+  hetzner: { server: { id: 123, status: "running" } },
+  digitalocean: { droplet: { id: 456, status: "active" } },
   // Vultr special case: power_status=running + server_status=ok → normal path (not "provisioning")
-  vultr: { instance: { power_status: "running", server_status: "ok" } },
-  linode: { status: "running" },
+  vultr: { instance: { id: "abc", power_status: "running", server_status: "ok" } },
+  linode: { id: 789, status: "running" },
 };
 
 // Per-provider mock responses for findServerByIp (IP found case).

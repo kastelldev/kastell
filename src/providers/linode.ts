@@ -1,6 +1,13 @@
 import crypto from "crypto";
+import { z } from "zod";
 import { apiClient, stripSensitiveData, withProviderErrorHandling, assertValidServerId, uploadSshKeyWithConflict, type CloudProvider } from "./base.js";
 import { BusinessError } from "../utils/errors.js";
+
+export const LinodeInstanceSchema = z.object({
+  id: z.number(),
+  status: z.string(),
+  ipv4: z.array(z.string()).optional(),
+});
 import { withRetry } from "../utils/retry.js";
 import type { Region, ServerSize, ServerConfig, ServerResult, SnapshotInfo, ServerMode } from "../types/index.js";
 import { formatSnapshotCost } from "../constants.js";
@@ -105,7 +112,7 @@ export class LinodeProvider implements CloudProvider {
         },
       });
 
-      const instance = response.data;
+      const instance = LinodeInstanceSchema.parse(response.data);
       return {
         id: instance.id.toString(),
         ip: instance.ipv4?.[0] || "pending",
@@ -121,7 +128,7 @@ export class LinodeProvider implements CloudProvider {
         const response = await apiClient.get(`${this.baseUrl}/linode/instances/${serverId}`, {
           headers: { Authorization: `Bearer ${this.apiToken}` },
         });
-        const instance = response.data;
+        const instance = LinodeInstanceSchema.parse(response.data);
         return {
           id: instance.id.toString(),
           ip: instance.ipv4?.[0] || "pending",
@@ -138,7 +145,8 @@ export class LinodeProvider implements CloudProvider {
         const response = await apiClient.get(`${this.baseUrl}/linode/instances/${serverId}`, {
           headers: { Authorization: `Bearer ${this.apiToken}` },
         });
-        return response.data.status;
+        const instance = LinodeInstanceSchema.parse(response.data);
+        return instance.status;
       }),
     );
   }
