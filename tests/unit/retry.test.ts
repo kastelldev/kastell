@@ -26,6 +26,34 @@ function make500Error(): Error & { isAxiosError: boolean; response: { status: nu
   return err;
 }
 
+function make502Error(): Error & { isAxiosError: boolean; response: { status: number; headers: Record<string, string> } } {
+  const err = new Error("Bad Gateway") as Error & { isAxiosError: boolean; response: { status: number; headers: Record<string, string> } };
+  err.isAxiosError = true;
+  err.response = { status: 502, headers: {} };
+  return err;
+}
+
+function make503Error(): Error & { isAxiosError: boolean; response: { status: number; headers: Record<string, string> } } {
+  const err = new Error("Service Unavailable") as Error & { isAxiosError: boolean; response: { status: number; headers: Record<string, string> } };
+  err.isAxiosError = true;
+  err.response = { status: 503, headers: {} };
+  return err;
+}
+
+function makeEtimedoutError(): Error & { isAxiosError: boolean; code: string; response?: undefined } {
+  const err = new Error("Connection timed out") as Error & { isAxiosError: boolean; code: string; response?: undefined };
+  err.isAxiosError = true;
+  err.code = "ETIMEDOUT";
+  return err;
+}
+
+function makeEconnrefusedError(): Error & { isAxiosError: boolean; code: string; response?: undefined } {
+  const err = new Error("Connection refused") as Error & { isAxiosError: boolean; code: string; response?: undefined };
+  err.isAxiosError = true;
+  err.code = "ECONNREFUSED";
+  return err;
+}
+
 describe("withRetry", () => {
   beforeEach(() => {
     jest.resetAllMocks();
@@ -143,6 +171,95 @@ describe("withRetry", () => {
 
       await expect(withRetry(fn, { maxRetries: 3 })).rejects.toThrow("Internal Server Error");
       expect(fn).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("retries502", () => {
+    it("should retry on 502 status using exponential backoff", async () => {
+      const err502 = make502Error();
+      const fn = jest.fn()
+        .mockRejectedValueOnce(err502)
+        .mockResolvedValueOnce("ok");
+
+      const promise = withRetry(fn, { maxRetries: 3, baseDelayMs: 100, maxDelayMs: 5000 });
+      await jest.advanceTimersByTimeAsync(200);
+
+      const result = await promise;
+      expect(result).toBe("ok");
+      expect(fn).toHaveBeenCalledTimes(2);
+    });
+
+    it("should NOT use Retry-After for 502 even if header present", async () => {
+      const err502 = make502Error();
+      const fn = jest.fn()
+        .mockRejectedValueOnce(err502)
+        .mockResolvedValueOnce("ok");
+
+      const promise = withRetry(fn, { maxRetries: 3, baseDelayMs: 100, maxDelayMs: 5000 });
+      // With exponential backoff at attempt 0: ~100ms + jitter, not Retry-After seconds
+      await jest.advanceTimersByTimeAsync(200);
+
+      const result = await promise;
+      expect(result).toBe("ok");
+    });
+  });
+
+  describe("retries503", () => {
+    it("should retry on 503 status using exponential backoff", async () => {
+      const err503 = make503Error();
+      const fn = jest.fn()
+        .mockRejectedValueOnce(err503)
+        .mockResolvedValueOnce("ok");
+
+      const promise = withRetry(fn, { maxRetries: 3, baseDelayMs: 100, maxDelayMs: 5000 });
+      await jest.advanceTimersByTimeAsync(200);
+
+      const result = await promise;
+      expect(result).toBe("ok");
+      expect(fn).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("retriesEtimedout", () => {
+    it("should retry on ETIMEDOUT network error (no response object)", async () => {
+      const errEtimedout = makeEtimedoutError();
+      const fn = jest.fn()
+        .mockRejectedValueOnce(errEtimedout)
+        .mockResolvedValueOnce("ok");
+
+      const promise = withRetry(fn, { maxRetries: 3, baseDelayMs: 100, maxDelayMs: 5000 });
+      await jest.advanceTimersByTimeAsync(200);
+
+      const result = await promise;
+      expect(result).toBe("ok");
+      expect(fn).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("doesNotRetryEconnrefused", () => {
+    it("should throw ECONNREFUSED immediately without retry", async () => {
+      const errEconnrefused = makeEconnrefusedError();
+      const fn = jest.fn().mockRejectedValueOnce(errEconnrefused);
+
+      await expect(withRetry(fn, { maxRetries: 3 })).rejects.toThrow("Connection refused");
+      expect(fn).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("429StillUsesRetryAfter", () => {
+    it("should still use Retry-After header for 429 after 502/503 support added", async () => {
+      const err429 = make429Error({ "retry-after": "2" });
+      const fn = jest.fn()
+        .mockRejectedValueOnce(err429)
+        .mockResolvedValueOnce("ok");
+
+      const promise = withRetry(fn, { maxRetries: 3 });
+      // Retry-After: 2s = 2000ms
+      await jest.advanceTimersByTimeAsync(2100);
+
+      const result = await promise;
+      expect(result).toBe("ok");
+      expect(fn).toHaveBeenCalledTimes(2);
     });
   });
 

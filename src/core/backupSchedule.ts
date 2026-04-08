@@ -5,6 +5,7 @@ import { sshExec, assertValidIp } from "../utils/ssh.js";
 import { raw, type SshCommand } from "../utils/sshCommand.js";
 import { KASTELL_DIR } from "../utils/paths.js";
 import { ValidationError } from "../utils/errors.js";
+import { shellEscape } from "../utils/shellEscape.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -103,8 +104,8 @@ export function buildInstallCronCommand(cronExpr: string): SshCommand {
     throw new ValidationError(`Invalid cron expression: ${validation.error}`, { hint: "Check cron syntax (5 fields: min hour day month weekday)" });
   }
   const entry = `${cronExpr} /root/kastell-backup.sh # kastell-backup`;
-  // Single quotes prevent shell expansion of interpolated cron expression
-  return raw(`(crontab -l 2>/dev/null | grep -v '# kastell-backup'; echo '${entry}') | crontab -`);
+  // shellEscape provides POSIX single-quote wrapping with embedded quote escaping (defense-in-depth, SEC-05)
+  return raw(`(crontab -l 2>/dev/null | grep -v '# kastell-backup'; echo ${shellEscape(entry)}) | crontab -`);
 }
 
 export function buildListCronCommand(): SshCommand {

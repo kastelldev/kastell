@@ -6,6 +6,16 @@ export interface RetryOptions {
   maxDelayMs?: number;
 }
 
+const RETRYABLE_HTTP_STATUSES = new Set([429, 502, 503]);
+
+function isRetryable(error: unknown): boolean {
+  if (!axios.isAxiosError(error)) return false;
+  if (error.response?.status !== undefined) {
+    return RETRYABLE_HTTP_STATUSES.has(error.response.status);
+  }
+  return error.code === "ETIMEDOUT";
+}
+
 export async function withRetry<T>(
   fn: () => Promise<T>,
   options: RetryOptions = {},
@@ -18,10 +28,13 @@ export async function withRetry<T>(
     } catch (error: unknown) {
       if (attempt === maxRetries) throw error;
 
-      if (axios.isAxiosError(error) && error.response?.status === 429) {
-        const retryAfter = error.response.headers["retry-after"];
-        let delayMs: number;
+      if (!isRetryable(error)) throw error;
 
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+      let delayMs: number;
+
+      if (status === 429) {
+        const retryAfter = (error as import("axios").AxiosError).response?.headers["retry-after"];
         if (retryAfter) {
           const parsed = parseInt(retryAfter, 10);
           if (Number.isFinite(parsed) && parsed > 0) {
@@ -41,11 +54,13 @@ export async function withRetry<T>(
           delayMs = Math.min(baseDelayMs * 2 ** attempt, maxDelayMs);
           delayMs += Math.random() * delayMs * 0.1;
         }
-
-        await new Promise((r) => setTimeout(r, delayMs));
-        continue;
+      } else {
+        // 502, 503, ETIMEDOUT — always exponential backoff
+        delayMs = Math.min(baseDelayMs * 2 ** attempt, maxDelayMs);
+        delayMs += Math.random() * delayMs * 0.1;
       }
-      throw error; // Non-429 errors are not retryable
+
+      await new Promise((r) => setTimeout(r, delayMs));
     }
   }
   throw new Error("Unreachable");
