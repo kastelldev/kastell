@@ -1,7 +1,21 @@
+import { z } from "zod";
 import { apiClient, stripSensitiveData, withProviderErrorHandling, assertValidServerId, uploadSshKeyWithConflict, type CloudProvider } from "./base.js";
 import { withRetry } from "../utils/retry.js";
 import type { Region, ServerSize, ServerConfig, ServerResult, SnapshotInfo, ServerMode } from "../types/index.js";
 import { formatSnapshotCost } from "../constants.js";
+
+export const DODropletSchema = z.object({
+  droplet: z.object({
+    id: z.number(),
+    status: z.string(),
+    networks: z.object({
+      v4: z.array(z.object({
+        type: z.string(),
+        ip_address: z.string(),
+      })).optional(),
+    }).optional(),
+  }),
+});
 
 interface DORegion {
   slug: string;
@@ -84,9 +98,10 @@ export class DigitalOceanProvider implements CloudProvider {
         },
       });
 
-      const droplet = response.data.droplet;
+      const parsed = DODropletSchema.parse(response.data);
+      const droplet = parsed.droplet;
       const ip =
-        droplet.networks?.v4?.find((n: { type: string }) => n.type === "public")?.ip_address ||
+        droplet.networks?.v4?.find((n) => n.type === "public")?.ip_address ||
         "pending";
 
       return {
@@ -104,9 +119,10 @@ export class DigitalOceanProvider implements CloudProvider {
         const response = await apiClient.get(`${this.baseUrl}/droplets/${serverId}`, {
           headers: { Authorization: `Bearer ${this.apiToken}` },
         });
-        const droplet = response.data.droplet;
+        const parsed = DODropletSchema.parse(response.data);
+        const droplet = parsed.droplet;
         const ip =
-          droplet.networks?.v4?.find((n: { type: string }) => n.type === "public")?.ip_address ||
+          droplet.networks?.v4?.find((n) => n.type === "public")?.ip_address ||
           "pending";
         return {
           id: droplet.id.toString(),
@@ -125,7 +141,8 @@ export class DigitalOceanProvider implements CloudProvider {
           headers: { Authorization: `Bearer ${this.apiToken}` },
         });
         // Normalize DO status: "active" → "running" (init.ts checks for "running")
-        const doStatus: string = response.data.droplet.status;
+        const parsed = DODropletSchema.parse(response.data);
+        const doStatus = parsed.droplet.status;
         return doStatus === "active" ? "running" : doStatus;
       }),
     );

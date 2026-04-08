@@ -1,4 +1,5 @@
 import axios from "axios";
+import { ZodError } from "zod";
 import type {
   Region,
   ServerSize,
@@ -112,6 +113,12 @@ export async function withProviderErrorHandling<T>(
           : String(error);
     if (extractApiMessage && axios.isAxiosError(error) && error.response?.data) {
       message = extractApiMessage(error.response.data) || message;
+    }
+    if (error instanceof ZodError) {
+      throw new ValidationError(
+        `Failed to ${operation}: unexpected API response shape — ${error.issues.map((i) => i.message).join(", ")}`,
+        { cause: error },
+      );
     }
     const fullMessage = `Failed to ${operation}: ${message}`;
     if (axios.isAxiosError(error)) {

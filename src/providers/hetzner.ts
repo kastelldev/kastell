@@ -1,7 +1,18 @@
+import { z } from "zod";
 import { apiClient, stripSensitiveData, withProviderErrorHandling, assertValidServerId, uploadSshKeyWithConflict, type CloudProvider } from "./base.js";
 import { withRetry } from "../utils/retry.js";
 import type { Region, ServerSize, ServerConfig, ServerResult, SnapshotInfo, ServerMode } from "../types/index.js";
 import { formatSnapshotCost } from "../constants.js";
+
+export const HetznerServerSchema = z.object({
+  server: z.object({
+    id: z.number(),
+    status: z.string(),
+    public_net: z.object({
+      ipv4: z.object({ ip: z.string() }).nullable().optional(),
+    }).optional(),
+  }),
+});
 
 interface HetznerLocation {
   name: string;
@@ -99,10 +110,11 @@ export class HetznerProvider implements CloudProvider {
         },
       });
 
+      const parsed = HetznerServerSchema.parse(response.data);
       return {
-        id: response.data.server.id.toString(),
-        ip: response.data.server?.public_net?.ipv4?.ip || "pending",
-        status: response.data.server.status,
+        id: parsed.server.id.toString(),
+        ip: parsed.server.public_net?.ipv4?.ip || "pending",
+        status: parsed.server.status,
       };
     }, extractHetznerError);
   }
@@ -114,10 +126,11 @@ export class HetznerProvider implements CloudProvider {
         const response = await apiClient.get(`${this.baseUrl}/servers/${serverId}`, {
           headers: { Authorization: `Bearer ${this.apiToken}` },
         });
+        const parsed = HetznerServerSchema.parse(response.data);
         return {
-          id: response.data.server.id.toString(),
-          ip: response.data.server?.public_net?.ipv4?.ip || "pending",
-          status: response.data.server.status,
+          id: parsed.server.id.toString(),
+          ip: parsed.server.public_net?.ipv4?.ip || "pending",
+          status: parsed.server.status,
         };
       }),
     );
@@ -130,7 +143,8 @@ export class HetznerProvider implements CloudProvider {
         const response = await apiClient.get(`${this.baseUrl}/servers/${serverId}`, {
           headers: { Authorization: `Bearer ${this.apiToken}` },
         });
-        return response.data.server.status;
+        const parsed = HetznerServerSchema.parse(response.data);
+        return parsed.server.status;
       }),
     );
   }
