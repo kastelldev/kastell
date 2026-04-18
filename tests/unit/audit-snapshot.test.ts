@@ -56,8 +56,8 @@ describe("saveSnapshot", () => {
   it("should write JSON to ~/.kastell/snapshots/{safeIp}/{timestamp}.json", async () => {
     await saveSnapshot(makeAuditResult());
 
-    expect(mockedFs.writeFileSync).toHaveBeenCalled();
-    const writePath = (mockedFs.writeFileSync as jest.Mock).mock.calls[0][0] as string;
+    expect(mockedSecureWrite.secureWriteFileSync).toHaveBeenCalled();
+    const writePath = mockedSecureWrite.secureWriteFileSync.mock.calls[0][0] as string;
     expect(writePath).toContain("snapshots");
     expect(writePath).toContain("1-2-3-4");
     expect(writePath).toContain(".tmp");
@@ -82,7 +82,7 @@ describe("saveSnapshot", () => {
   it("should produce JSON with schemaVersion: 2 (v2 schema)", async () => {
     await saveSnapshot(makeAuditResult());
 
-    const writeContent = (mockedFs.writeFileSync as jest.Mock).mock.calls[0][1] as string;
+    const writeContent = mockedSecureWrite.secureWriteFileSync.mock.calls[0][1] as string;
     const parsed = JSON.parse(writeContent);
     expect(parsed.schemaVersion).toBe(2);
   });
@@ -91,7 +91,7 @@ describe("saveSnapshot", () => {
     const result = makeAuditResult({ overallScore: 85 });
     await saveSnapshot(result);
 
-    const writeContent = (mockedFs.writeFileSync as jest.Mock).mock.calls[0][1] as string;
+    const writeContent = mockedSecureWrite.secureWriteFileSync.mock.calls[0][1] as string;
     const parsed = JSON.parse(writeContent);
     expect(parsed.audit.overallScore).toBe(85);
     expect(parsed.audit.serverIp).toBe("1.2.3.4");
@@ -100,7 +100,7 @@ describe("saveSnapshot", () => {
   it("should use atomic write (tmp + rename)", async () => {
     await saveSnapshot(makeAuditResult());
 
-    const writePath = (mockedFs.writeFileSync as jest.Mock).mock.calls[0][0] as string;
+    const writePath = mockedSecureWrite.secureWriteFileSync.mock.calls[0][0] as string;
     expect(writePath).toMatch(/\.tmp$/);
     expect(mockedFs.renameSync).toHaveBeenCalled();
 
@@ -113,14 +113,14 @@ describe("saveSnapshot", () => {
     it("should include name in filename when provided", async () => {
       await saveSnapshot(makeAuditResult(), "pre-upgrade");
 
-      const writePath = (mockedFs.writeFileSync as jest.Mock).mock.calls[0][0] as string;
+      const writePath = mockedSecureWrite.secureWriteFileSync.mock.calls[0][0] as string;
       expect(writePath).toContain("pre-upgrade");
     });
 
     it("should store name in SnapshotFile.name field", async () => {
       await saveSnapshot(makeAuditResult(), "pre-upgrade");
 
-      const writeContent = (mockedFs.writeFileSync as jest.Mock).mock.calls[0][1] as string;
+      const writeContent = mockedSecureWrite.secureWriteFileSync.mock.calls[0][1] as string;
       const parsed = JSON.parse(writeContent);
       expect(parsed.name).toBe("pre-upgrade");
     });
@@ -128,7 +128,7 @@ describe("saveSnapshot", () => {
     it("should sanitize name — replace non-[a-zA-Z0-9_-] with underscore", async () => {
       await saveSnapshot(makeAuditResult(), "my name! @here");
 
-      const writeContent = (mockedFs.writeFileSync as jest.Mock).mock.calls[0][1] as string;
+      const writeContent = mockedSecureWrite.secureWriteFileSync.mock.calls[0][1] as string;
       const parsed = JSON.parse(writeContent);
       expect(parsed.name).toMatch(/^[a-zA-Z0-9_-]+$/);
       expect(parsed.name).not.toContain(" ");
@@ -139,7 +139,7 @@ describe("saveSnapshot", () => {
     it("should neutralize path traversal in name", async () => {
       await saveSnapshot(makeAuditResult(), "../../../etc/passwd");
 
-      const writePath = (mockedFs.writeFileSync as jest.Mock).mock.calls[0][0] as string;
+      const writePath = mockedSecureWrite.secureWriteFileSync.mock.calls[0][0] as string;
       expect(writePath).not.toContain("etc/passwd");
       expect(writePath).not.toContain("..");
     });
@@ -148,7 +148,7 @@ describe("saveSnapshot", () => {
       const longName = "a".repeat(100);
       await saveSnapshot(makeAuditResult(), longName);
 
-      const writeContent = (mockedFs.writeFileSync as jest.Mock).mock.calls[0][1] as string;
+      const writeContent = mockedSecureWrite.secureWriteFileSync.mock.calls[0][1] as string;
       const parsed = JSON.parse(writeContent);
       expect(parsed.name!.length).toBeLessThanOrEqual(64);
     });
@@ -156,7 +156,7 @@ describe("saveSnapshot", () => {
     it("should not include name field when no name provided", async () => {
       await saveSnapshot(makeAuditResult());
 
-      const writeContent = (mockedFs.writeFileSync as jest.Mock).mock.calls[0][1] as string;
+      const writeContent = mockedSecureWrite.secureWriteFileSync.mock.calls[0][1] as string;
       const parsed = JSON.parse(writeContent);
       expect(parsed.name).toBeUndefined();
     });

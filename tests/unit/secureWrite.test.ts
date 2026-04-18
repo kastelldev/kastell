@@ -129,7 +129,7 @@ describe("ensureSecureDir", () => {
 
     expect(mockedSecurityLoggerWarn).toHaveBeenCalledWith(
       "ACL operation failed",
-      expect.objectContaining({ dirPath: "C:\\Users\\testuser\\secure", platform: "win32" }),
+      expect.objectContaining({ path: "C:\\Users\\testuser\\secure", platform: "win32" }),
     );
   });
 
@@ -146,7 +146,7 @@ describe("ensureSecureDir", () => {
 
     expect(mockedSecurityLoggerWarn).toHaveBeenCalledWith(
       "chmod operation failed",
-      expect.objectContaining({ dirPath: "/secure/dir", platform: "linux" }),
+      expect.objectContaining({ path: "/secure/dir", platform: "linux" }),
     );
   });
 });
@@ -200,7 +200,7 @@ describe("secureWriteFileSync", () => {
 
       expect(mockedSecurityLoggerWarn).toHaveBeenCalledWith(
         "ACL operation failed",
-        expect.objectContaining({ filePath: "C:\\Users\\testuser\\file.txt", platform: "win32" }),
+        expect.objectContaining({ path: "C:\\Users\\testuser\\file.txt", platform: "win32" }),
       );
     });
   });
@@ -231,7 +231,7 @@ describe("secureWriteFileSync", () => {
 
       expect(mockedSecurityLoggerWarn).toHaveBeenCalledWith(
         "chmod operation failed",
-        expect.objectContaining({ filePath: "/home/testuser/file.txt", platform: "linux" }),
+        expect.objectContaining({ path: "/home/testuser/file.txt", platform: "linux" }),
       );
     });
   });
@@ -300,7 +300,7 @@ describe("secureMkdirSync", () => {
 
       expect(mockedSecurityLoggerWarn).toHaveBeenCalledWith(
         "ACL operation failed",
-        expect.objectContaining({ dirPath: "C:\\Users\\testuser\\dir", platform: "win32" }),
+        expect.objectContaining({ path: "C:\\Users\\testuser\\dir", platform: "win32" }),
       );
     });
   });
@@ -331,7 +331,7 @@ describe("secureMkdirSync", () => {
 
       expect(mockedSecurityLoggerWarn).toHaveBeenCalledWith(
         "chmod operation failed",
-        expect.objectContaining({ dirPath: "/home/testuser/dir", platform: "linux" }),
+        expect.objectContaining({ path: "/home/testuser/dir", platform: "linux" }),
       );
     });
 

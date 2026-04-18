@@ -8,14 +8,13 @@
 import {
   readFileSync,
   existsSync,
-  mkdirSync,
   renameSync,
 } from "fs";
 import { join } from "path";
 import { z } from "zod";
 import { KASTELL_DIR } from "../../utils/paths.js";
 import { withFileLock } from "../../utils/fileLock.js";
-import { secureWriteFileSync } from "../../utils/secureWrite.js";
+import { secureWriteFileSync, secureMkdirSync } from "../../utils/secureWrite.js";
 import type {
   AuditResult,
   AuditHistoryEntry,
@@ -83,7 +82,7 @@ export async function saveAuditHistory(result: AuditResult): Promise<void> {
   await withFileLock(historyFile, () => {
     // Ensure config directory exists
     if (!existsSync(KASTELL_DIR)) {
-      mkdirSync(KASTELL_DIR, { recursive: true });
+      secureMkdirSync(KASTELL_DIR);
     }
 
     // Load existing history

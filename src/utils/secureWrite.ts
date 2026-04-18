@@ -8,46 +8,52 @@ export interface WriteFileOptions {
   flag?: string;
 }
 
+let cachedUsername: string | undefined;
+function getUsername(): string {
+  if (!cachedUsername) cachedUsername = userInfo().username;
+  return cachedUsername;
+}
+
 const securedDirs = new Set<string>();
 
 export function clearCache(): void {
   securedDirs.clear();
+  cachedUsername = undefined;
+}
+
+function applyPermissions(targetPath: string, mode: 0o600 | 0o700): void {
+  if (process.platform === "win32") {
+    const result = spawnSync("icacls", [
+      targetPath,
+      "/inheritance:r",
+      "/grant:r",
+      `${getUsername()}:F`,
+    ]);
+    if (result.status !== 0) {
+      SecurityLogger.warn("ACL operation failed", {
+        path: targetPath,
+        platform: process.platform,
+        error: result.stderr?.toString() ?? "unknown",
+      });
+    }
+  } else {
+    try {
+      chmodSync(targetPath, mode);
+    } catch (error) {
+      SecurityLogger.warn("chmod operation failed", {
+        path: targetPath,
+        platform: process.platform,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
 }
 
 export function ensureSecureDir(dirPath: string): void {
   if (securedDirs.has(dirPath)) {
     return;
   }
-
-  const username = userInfo().username;
-  const platform = process.platform;
-
-  if (platform === "win32") {
-    const result = spawnSync("icacls", [
-      dirPath,
-      "/inheritance:r",
-      "/grant:r",
-      `${username}:F`,
-    ]);
-    if (result.status !== 0) {
-      SecurityLogger.warn("ACL operation failed", {
-        dirPath,
-        platform,
-        error: result.stderr?.toString() ?? "unknown",
-      });
-    }
-  } else {
-    try {
-      chmodSync(dirPath, 0o700);
-    } catch (error) {
-      SecurityLogger.warn("chmod operation failed", {
-        dirPath,
-        platform,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
-
+  applyPermissions(dirPath, 0o700);
   securedDirs.add(dirPath);
 }
 
@@ -57,35 +63,7 @@ export function secureWriteFileSync(
   options?: WriteFileOptions
 ): void {
   writeFileSync(filePath, data, options);
-
-  const username = userInfo().username;
-  const platform = process.platform;
-
-  if (platform === "win32") {
-    const result = spawnSync("icacls", [
-      filePath,
-      "/inheritance:r",
-      "/grant:r",
-      `${username}:F`,
-    ]);
-    if (result.status !== 0) {
-      SecurityLogger.warn("ACL operation failed", {
-        filePath,
-        platform,
-        error: result.stderr?.toString() ?? "unknown",
-      });
-    }
-  } else {
-    try {
-      chmodSync(filePath, 0o600);
-    } catch (error) {
-      SecurityLogger.warn("chmod operation failed", {
-        filePath,
-        platform,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
+  applyPermissions(filePath, 0o600);
 }
 
 export function secureMkdirSync(
@@ -93,33 +71,5 @@ export function secureMkdirSync(
   options?: { recursive?: boolean }
 ): void {
   mkdirSync(dirPath, { recursive: options?.recursive ?? true });
-
-  const username = userInfo().username;
-  const platform = process.platform;
-
-  if (platform === "win32") {
-    const result = spawnSync("icacls", [
-      dirPath,
-      "/inheritance:r",
-      "/grant:r",
-      `${username}:F`,
-    ]);
-    if (result.status !== 0) {
-      SecurityLogger.warn("ACL operation failed", {
-        dirPath,
-        platform,
-        error: result.stderr?.toString() ?? "unknown",
-      });
-    }
-  } else {
-    try {
-      chmodSync(dirPath, 0o700);
-    } catch (error) {
-      SecurityLogger.warn("chmod operation failed", {
-        dirPath,
-        platform,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
+  ensureSecureDir(dirPath);
 }

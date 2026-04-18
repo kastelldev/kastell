@@ -7,13 +7,12 @@
 
 import {
   readFileSync,
-  writeFileSync,
   existsSync,
   renameSync,
   readdirSync,
 } from "fs";
 import { join } from "path";
-import { secureMkdirSync } from "../../utils/secureWrite.js";
+import { secureMkdirSync, secureWriteFileSync } from "../../utils/secureWrite.js";
 import { z } from "zod";
 import { KASTELL_DIR } from "../../utils/paths.js";
 import { withFileLock } from "../../utils/fileLock.js";
@@ -172,7 +171,7 @@ export async function saveSnapshot(
     }
 
     const tmpFile = filePath + ".tmp";
-    writeFileSync(tmpFile, JSON.stringify(snapshotFile, null, 2), "utf-8");
+    secureWriteFileSync(tmpFile, JSON.stringify(snapshotFile, null, 2), { encoding: "utf-8" });
     renameSync(tmpFile, filePath);
   });
 }
