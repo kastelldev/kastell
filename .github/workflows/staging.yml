@@ -9,6 +9,7 @@ on:
 jobs:
   staging:
     runs-on: ubuntu-latest
+    permissions: contents: read
     timeout-minutes: 20
     env:
       KASTELL_SAFE_MODE: 'false'
