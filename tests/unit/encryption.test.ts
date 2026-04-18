@@ -63,6 +63,12 @@ async function loadModule() {
     return { ...actual, platform: mockedPlatform, hostname: jest.fn(() => "test-host"), arch: jest.fn(() => "x64") };
   });
   jest.mock("fs", () => ({ ...actualFs, readFileSync: mockedReadFileSync, existsSync: mockedExistsSync, writeFileSync: mockedWriteFileSync, mkdirSync: jest.fn() }));
+  jest.mock("../../src/utils/secureWrite", () => ({
+    secureWriteFileSync: mockedWriteFileSync,
+    secureMkdirSync: jest.fn(),
+    ensureSecureDir: jest.fn(),
+    clearCache: jest.fn(),
+  }));
   return await import("../../src/utils/encryption");
 }
 
@@ -304,10 +310,9 @@ describe("getMachineKey", () => {
     getMachineKey();
 
     // Salt file should be written since existsSync returns false
-    expect(mockedWriteFileSync).toHaveBeenCalledWith(
-      expect.stringContaining(".encryption-salt"),
-      expect.any(String),
-      { mode: 0o600 },
-    );
+    expect(mockedWriteFileSync).toHaveBeenCalledTimes(1);
+    const [path, data] = mockedWriteFileSync.mock.calls[0];
+    expect(path).toContain(".encryption-salt");
+    expect(typeof data).toBe("string");
   });
 });

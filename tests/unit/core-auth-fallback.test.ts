@@ -22,6 +22,13 @@ jest.mock("../../src/utils/encryption.js", () =>
   require("../helpers/encryption-factories").createEncryptionMock(),
 );
 
+jest.mock("../../src/utils/secureWrite", () => ({
+  secureWriteFileSync: jest.fn(),
+  secureMkdirSync: jest.fn(),
+  ensureSecureDir: jest.fn(),
+  clearCache: jest.fn(),
+}));
+
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
 import {
   setToken,
@@ -30,11 +37,14 @@ import {
   listStoredProviders,
   isKeychainAvailable,
 } from "../../src/core/auth";
+import { secureWriteFileSync, secureMkdirSync } from "../../src/utils/secureWrite";
 
 const mockExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;
 const mockReadFileSync = readFileSync as jest.MockedFunction<typeof readFileSync>;
 const mockWriteFileSync = writeFileSync as jest.MockedFunction<typeof writeFileSync>;
 const mockMkdirSync = mkdirSync as jest.MockedFunction<typeof mkdirSync>;
+const mockSecureWriteFileSync = secureWriteFileSync as jest.MockedFunction<typeof secureWriteFileSync>;
+const mockSecureMkdirSync = secureMkdirSync as jest.MockedFunction<typeof secureMkdirSync>;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -47,17 +57,15 @@ describe("file-based fallback (no keyring)", () => {
 
       expect(setToken("hetzner", "my-token")).toBe(true);
 
-      expect(mockMkdirSync).toHaveBeenCalledWith(
+      expect(mockSecureMkdirSync).toHaveBeenCalledWith(
         expect.stringContaining(".kastell"),
-        { recursive: true },
       );
-      expect(mockWriteFileSync).toHaveBeenCalledWith(
+      expect(mockSecureWriteFileSync).toHaveBeenCalledWith(
         expect.stringContaining("tokens.json"),
         expect.any(String),
-        { mode: 0o600 },
       );
       // Verify the written content is an encrypted payload
-      const written = JSON.parse(mockWriteFileSync.mock.calls[0][1] as string);
+      const written = JSON.parse(mockSecureWriteFileSync.mock.calls[0][1] as string);
       expect(written.encrypted).toBe(true);
       expect(written.version).toBe(1);
     });
@@ -77,7 +85,7 @@ describe("file-based fallback (no keyring)", () => {
       expect(setToken("hetzner", "h-token")).toBe(true);
 
       // The written content should be encrypted and contain both tokens
-      expect(mockWriteFileSync).toHaveBeenCalled();
+      expect(mockSecureWriteFileSync).toHaveBeenCalled();
     });
 
     it("should return false for unknown provider", () => {
@@ -86,7 +94,7 @@ describe("file-based fallback (no keyring)", () => {
 
     it("should return false when write fails", () => {
       mockExistsSync.mockReturnValue(false);
-      mockMkdirSync.mockImplementation(() => {
+      mockSecureMkdirSync.mockImplementation(() => {
         throw new Error("permission denied");
       });
 
@@ -158,7 +166,7 @@ describe("file-based fallback (no keyring)", () => {
 
       expect(removeToken("hetzner")).toBe(true);
 
-      expect(mockWriteFileSync).toHaveBeenCalled();
+      expect(mockSecureWriteFileSync).toHaveBeenCalled();
     });
 
     it("should return false for unknown provider", () => {

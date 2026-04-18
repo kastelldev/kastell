@@ -8,16 +8,27 @@ import {
 } from "../../src/utils/config";
 import { KASTELL_DIR } from "../../src/utils/paths";
 import * as fs from "fs";
+import * as secureWriteModule from "../../src/utils/secureWrite";
 
 jest.mock("fs");
 jest.mock("os", () => ({
   homedir: () => "/mock-home",
+  userInfo: () => ({ username: "testuser", uid: 1000, gid: 1000, shell: "/bin/bash", homedir: "/mock-home" }),
 }));
 jest.mock("../../src/utils/fileLock", () => ({
   withFileLock: jest.fn((_path: string, fn: () => any) => fn()),
 }));
+jest.mock("../../src/utils/secureWrite", () => {
+  const actual = jest.requireActual("../../src/utils/secureWrite") as typeof import("../../src/utils/secureWrite");
+  return {
+    __esModule: true,
+    secureWriteFileSync: jest.fn(actual.secureWriteFileSync),
+    secureMkdirSync: jest.fn(actual.secureMkdirSync),
+  };
+});
 
 const mockedFs = fs as jest.Mocked<typeof fs>;
+const { secureWriteFileSync } = secureWriteModule;
 
 describe("config", () => {
   beforeEach(() => {
@@ -134,11 +145,10 @@ describe("config", () => {
       mockedFs.existsSync.mockReturnValue(true);
       mockedFs.readFileSync.mockReturnValue(JSON.stringify(servers));
       getServers();
-      // Should write via atomic pattern (writeFileSync + renameSync)
-      expect(mockedFs.writeFileSync).toHaveBeenCalledWith(
+      // Should write via atomic pattern (secureWriteFileSync + renameSync)
+      expect(secureWriteFileSync).toHaveBeenCalledWith(
         expect.stringContaining("servers.json.tmp"),
         expect.any(String),
-        expect.objectContaining({ mode: 0o600 }),
       );
       expect(mockedFs.renameSync).toHaveBeenCalled();
     });
@@ -183,10 +193,9 @@ describe("config", () => {
       await saveServer(record);
 
       expect(mockedFs.mkdirSync).toHaveBeenCalled();
-      expect(mockedFs.writeFileSync).toHaveBeenCalledWith(
+      expect(secureWriteFileSync).toHaveBeenCalledWith(
         expect.stringContaining("servers.json"),
         expect.stringContaining('"1.2.3.4"'),
-        expect.objectContaining({ mode: 0o600 }),
       );
     });
 
@@ -218,7 +227,7 @@ describe("config", () => {
       };
       await saveServer(record);
 
-      const writtenData = JSON.parse((mockedFs.writeFileSync as jest.Mock).mock.calls[0][1]);
+      const writtenData = JSON.parse((secureWriteFileSync as jest.Mock).mock.calls[0][1]);
       expect(writtenData).toHaveLength(2);
       expect(writtenData[1].ip).toBe("2.2.2.2");
     });
@@ -285,7 +294,7 @@ describe("config", () => {
       const result = await removeServer("1");
 
       expect(result).toBe(true);
-      const writtenData = JSON.parse((mockedFs.writeFileSync as jest.Mock).mock.calls[0][1]);
+      const writtenData = JSON.parse((secureWriteFileSync as jest.Mock).mock.calls[0][1]);
       expect(writtenData).toHaveLength(1);
       expect(writtenData[0].id).toBe("2");
     });
@@ -317,10 +326,9 @@ describe("config", () => {
       await removeServer("1");
 
       // Should use atomic write: write to .tmp then rename
-      expect(mockedFs.writeFileSync).toHaveBeenCalledWith(
+      expect(secureWriteFileSync).toHaveBeenCalledWith(
         expect.stringContaining("servers.json.tmp"),
         expect.any(String),
-        expect.objectContaining({ mode: 0o600 }),
       );
       expect(mockedFs.renameSync).toHaveBeenCalledWith(
         expect.stringContaining("servers.json.tmp"),

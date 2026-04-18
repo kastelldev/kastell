@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import {
   storeNotifySecret,
   readNotifySecret,
@@ -12,6 +12,7 @@ import {
 } from "../../src/core/notifyStore.js";
 import type { NotifyConfig } from "../../src/core/notify.js";
 import { __resetStore, __setAvailable } from "../__mocks__/@napi-rs/keyring.js";
+import { secureWriteFileSync, secureMkdirSync } from "../../src/utils/secureWrite";
 
 // ─── Module mocks ─────────────────────────────────────────────────────────────
 
@@ -34,10 +35,17 @@ jest.mock("../../src/utils/encryption.js", () =>
 );
 import { restoreEncryptionMock } from "../helpers/encryption-factories";
 
+jest.mock("../../src/utils/secureWrite", () => ({
+  secureWriteFileSync: jest.fn(),
+  secureMkdirSync: jest.fn(),
+  ensureSecureDir: jest.fn(),
+  clearCache: jest.fn(),
+}));
+
 const mockedExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;
 const mockedReadFileSync = readFileSync as jest.MockedFunction<typeof readFileSync>;
-const mockedWriteFileSync = writeFileSync as jest.MockedFunction<typeof writeFileSync>;
-const mockedMkdirSync = mkdirSync as jest.MockedFunction<typeof mkdirSync>;
+const mockSecureWriteFileSync = secureWriteFileSync as jest.MockedFunction<typeof secureWriteFileSync>;
+const mockSecureMkdirSync = secureMkdirSync as jest.MockedFunction<typeof secureMkdirSync>;
 
 import { storeToken as mockedStoreToken, readToken as mockedReadToken } from "../../src/core/tokenBuffer.js";
 const storeTokenMock = mockedStoreToken as jest.Mock;
@@ -156,14 +164,14 @@ describe("storeNotifySecret / readNotifySecret — fallback path", () => {
 
     storeNotifySecret("telegram", "botToken", "bot123");
 
-    expect(mockedWriteFileSync).toHaveBeenCalledWith(
+    expect(mockSecureWriteFileSync).toHaveBeenCalledWith(
       expect.stringContaining("notify-secrets.json"),
       expect.any(String),
-      { mode: 0o600 },
+
     );
     // Verify the written content is encrypted
     const written = JSON.parse(
-      mockedWriteFileSync.mock.calls.find(
+      mockSecureWriteFileSync.mock.calls.find(
         (c) => typeof c[0] === "string" && (c[0] as string).includes("notify-secrets.json"),
       )![1] as string,
     );
@@ -218,7 +226,7 @@ describe("saveNotifyChannel", () => {
 
     saveNotifyChannel("telegram", { botToken: "bot123", chatId: "-100456" });
 
-    const call = mockedWriteFileSync.mock.calls.find(
+    const call = mockSecureWriteFileSync.mock.calls.find(
       (c) => typeof c[0] === "string" && (c[0] as string).includes("notify-channels.json"),
     );
     expect(call).toBeDefined();
@@ -239,7 +247,7 @@ describe("saveNotifyChannel", () => {
 
     saveNotifyChannel("telegram", { botToken: "tok", chatId: "123" });
 
-    const call = mockedWriteFileSync.mock.calls.find(
+    const call = mockSecureWriteFileSync.mock.calls.find(
       (c) => typeof c[0] === "string" && (c[0] as string).includes("notify-channels.json"),
     );
     const parsed = JSON.parse(call![1] as string) as Record<string, boolean>;
@@ -324,7 +332,7 @@ describe("removeNotifyChannel", () => {
 
     removeNotifyChannel("telegram");
 
-    const call = mockedWriteFileSync.mock.calls.find(
+    const call = mockSecureWriteFileSync.mock.calls.find(
       (c) => typeof c[0] === "string" && (c[0] as string).includes("notify-channels.json"),
     );
     const parsed = JSON.parse(call![1] as string) as Record<string, boolean>;
@@ -381,13 +389,12 @@ describe("loadAllowedChatIds / saveAllowedChatIds", () => {
 
     saveAllowedChatIds(["123"]);
 
-    const call = mockedWriteFileSync.mock.calls.find(
+    const call = mockSecureWriteFileSync.mock.calls.find(
       (c) => typeof c[0] === "string" && (c[0] as string).includes("notify-channels.json"),
     );
     expect(call).toBeDefined();
     const content = JSON.parse(call![1] as string) as Record<string, unknown>;
     expect(content.allowedChatIds).toEqual(["123"]);
-    expect(call![2]).toEqual({ mode: 0o600 });
   });
 
   it("saveAllowedChatIds preserves existing channel flags (telegram: true not lost)", () => {
@@ -398,7 +405,7 @@ describe("loadAllowedChatIds / saveAllowedChatIds", () => {
 
     saveAllowedChatIds(["456"]);
 
-    const call = mockedWriteFileSync.mock.calls.find(
+    const call = mockSecureWriteFileSync.mock.calls.find(
       (c) => typeof c[0] === "string" && (c[0] as string).includes("notify-channels.json"),
     );
     const content = JSON.parse(call![1] as string) as Record<string, unknown>;
@@ -486,10 +493,10 @@ describe("removeNotifySecret — fallback path (keychain unavailable)", () => {
     const result = removeNotifySecret("telegram", "botToken");
 
     expect(result).toBe(true);
-    expect(mockedWriteFileSync).toHaveBeenCalledWith(
+    expect(mockSecureWriteFileSync).toHaveBeenCalledWith(
       expect.stringContaining("notify-secrets.json"),
       expect.any(String),
-      { mode: 0o600 },
+
     );
   });
 });
@@ -526,7 +533,7 @@ describe("writeSecretsFile — error handling", () => {
   it("silently handles write errors when persisting secrets", () => {
     __setAvailable(false);
     mockedExistsSync.mockReturnValue(false);
-    mockedMkdirSync.mockImplementation(() => { throw new Error("EPERM"); });
+    mockSecureMkdirSync.mockImplementation(() => { throw new Error("EPERM"); });
 
     // Should not throw — writeSecretsFile catches errors
     expect(() => storeNotifySecret("telegram", "botToken", "val")).not.toThrow();
@@ -567,7 +574,7 @@ describe("saveNotifyChannel — unknown channel", () => {
     saveNotifyChannel("unknown", { webhookUrl: "x" } as any);
 
     // No channels.json write for unknown channel
-    const channelsWrite = mockedWriteFileSync.mock.calls.find(
+    const channelsWrite = mockSecureWriteFileSync.mock.calls.find(
       (c) => typeof c[0] === "string" && (c[0] as string).includes("notify-channels.json"),
     );
     expect(channelsWrite).toBeUndefined();
@@ -625,7 +632,7 @@ describe("loadNotifyChannels — migration from legacy notify.json", () => {
 
     loadNotifyChannels();
 
-    const channelsWrite = mockedWriteFileSync.mock.calls.find(
+    const channelsWrite = mockSecureWriteFileSync.mock.calls.find(
       (c) => typeof c[0] === "string" && (c[0] as string).includes("notify-channels.json"),
     );
     expect(channelsWrite).toBeDefined();
@@ -693,7 +700,7 @@ describe("loadNotifyChannels — migration from legacy notify.json", () => {
 
     // Should write to notify.json to strip secrets (or not write if deleted)
     // Either way, the content written to notify.json should NOT contain botToken value
-    const notifyWrite = mockedWriteFileSync.mock.calls.find(
+    const notifyWrite = mockSecureWriteFileSync.mock.calls.find(
       (c) => typeof c[0] === "string" && (c[0] as string).includes("notify.json") &&
         !(c[0] as string).includes("notify-channels"),
     );

@@ -1,4 +1,5 @@
-import { readFileSync, writeFileSync, mkdirSync } from "fs";
+import { readFileSync } from "fs";
+import { secureMkdirSync, secureWriteFileSync } from "../utils/secureWrite.js";
 import { platform } from "os";
 import { join } from "path";
 import { storeToken, readToken } from "./tokenBuffer.js";
@@ -50,9 +51,9 @@ function readSecretsFile(): Record<string, string> {
 
 function writeSecretsFile(data: Record<string, string>): void {
   try {
-    mkdirSync(KASTELL_DIR, { recursive: true });
+    secureMkdirSync(KASTELL_DIR);
     const payload = encryptData(JSON.stringify(data), getMachineKey());
-    writeFileSync(NOTIFY_SECRETS_FILE, JSON.stringify(payload, null, 2), { mode: 0o600 });
+    secureWriteFileSync(NOTIFY_SECRETS_FILE, JSON.stringify(payload, null, 2));
   } catch { /* ignore */ }
 }
 
@@ -67,8 +68,8 @@ function readChannelMetadata(): Record<string, boolean> {
 }
 
 function writeChannelMetadata(metadata: Record<string, boolean>): void {
-  mkdirSync(KASTELL_DIR, { recursive: true });
-  writeFileSync(NOTIFY_CHANNELS_FILE, JSON.stringify(metadata, null, 2), { mode: 0o600 });
+  secureMkdirSync(KASTELL_DIR);
+  secureWriteFileSync(NOTIFY_CHANNELS_FILE, JSON.stringify(metadata, null, 2));
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -256,10 +257,10 @@ export function loadAllowedChatIds(): string[] {
  * Persist allowedChatIds to notify-channels.json, preserving existing channel flags.
  */
 export function saveAllowedChatIds(ids: string[]): void {
-  mkdirSync(KASTELL_DIR, { recursive: true });
+  secureMkdirSync(KASTELL_DIR);
   const existing = readChannelMetadata() as Record<string, unknown>;
   existing.allowedChatIds = ids;
-  writeFileSync(NOTIFY_CHANNELS_FILE, JSON.stringify(existing, null, 2), { mode: 0o600 });
+  secureWriteFileSync(NOTIFY_CHANNELS_FILE, JSON.stringify(existing, null, 2));
 }
 
 // ─── Migration ────────────────────────────────────────────────────────────────
@@ -302,7 +303,7 @@ function migrateFromLegacyNotifyJson(): Record<string, boolean> | undefined {
     if (raw.telegram) stripped.telegram = true;
     if (raw.discord) stripped.discord = true;
     if (raw.slack) stripped.slack = true;
-    writeFileSync(NOTIFY_LEGACY_FILE, JSON.stringify(stripped, null, 2), { mode: 0o600 });
+    secureWriteFileSync(NOTIFY_LEGACY_FILE, JSON.stringify(stripped, null, 2));
 
     return metadata;
   } catch {

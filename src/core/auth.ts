@@ -1,6 +1,7 @@
 import { platform } from "os";
 import { join } from "path";
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
+import { readFileSync, existsSync } from "fs";
+import { secureMkdirSync, secureWriteFileSync } from "../utils/secureWrite.js";
 import { SUPPORTED_PROVIDERS, PROVIDER_ENV_KEYS } from "../constants.js";
 import type { SupportedProvider } from "../constants.js";
 import { IS_ANDROID, loadKeyring, isKeychainAvailable as _isKeychainAvailable, getKeychainEntry as _getKeychainEntry } from "../utils/keyring.js";
@@ -32,9 +33,9 @@ function readTokensFile(): Record<string, string> {
 
 function writeTokensFile(data: Record<string, string>): boolean {
   try {
-    if (!existsSync(KASTELL_DIR)) mkdirSync(KASTELL_DIR, { recursive: true });
+    if (!existsSync(KASTELL_DIR)) secureMkdirSync(KASTELL_DIR);
     const payload = encryptData(JSON.stringify(data), getMachineKey());
-    writeFileSync(TOKENS_FILE, JSON.stringify(payload, null, 2), { mode: 0o600 });
+    secureWriteFileSync(TOKENS_FILE, JSON.stringify(payload, null, 2));
     return true;
   } catch { return false; }
 }

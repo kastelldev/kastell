@@ -4,10 +4,19 @@ import * as fs from "fs";
 jest.mock("fs");
 jest.mock("os", () => ({
   homedir: () => "/mock-home",
+  userInfo: () => ({ username: "testuser", uid: 1000, gid: 1000, shell: "/bin/bash", homedir: "/mock-home" }),
 }));
 jest.mock("../../src/utils/fileLock", () => ({
   withFileLock: jest.fn((_path: string, fn: () => any) => fn()),
 }));
+jest.mock("../../src/utils/secureWrite", () => {
+  const actual = jest.requireActual("../../src/utils/secureWrite") as typeof import("../../src/utils/secureWrite");
+  return {
+    __esModule: true,
+    secureWriteFileSync: jest.fn(actual.secureWriteFileSync),
+    secureMkdirSync: jest.fn(actual.secureMkdirSync),
+  };
+});
 
 const mockedFs = fs as jest.Mocked<typeof fs>;
 
@@ -62,7 +71,7 @@ describe("config edge cases", () => {
       };
       await saveServer(record);
 
-      expect(mockedFs.mkdirSync).toHaveBeenCalledWith(expect.any(String), { recursive: true, mode: 0o700 });
+      expect(mockedFs.mkdirSync).toHaveBeenCalledWith(expect.any(String), { recursive: true });
       expect(mockedFs.writeFileSync).toHaveBeenCalled();
     });
   });

@@ -4,18 +4,19 @@ import type { ServerRecord } from "../types/index.js";
 import { withFileLock } from "./fileLock.js";
 import { KASTELL_DIR } from "./paths.js";
 import { SUPPORTED_PROVIDERS } from "../constants.js";
+import { secureMkdirSync, secureWriteFileSync } from "./secureWrite.js";
 
 const SERVERS_FILE = join(KASTELL_DIR, "servers.json");
 
 
 function ensureConfigDir(): void {
-  mkdirSync(KASTELL_DIR, { recursive: true, mode: 0o700 });
+  secureMkdirSync(KASTELL_DIR, { recursive: true });
 }
 
 /** Atomic write: write to tmp file, then rename to prevent corruption on crash */
 function atomicWriteServers(servers: ServerRecord[]): void {
   const tmpFile = SERVERS_FILE + ".tmp";
-  writeFileSync(tmpFile, JSON.stringify(servers, null, 2), { mode: 0o600 });
+  secureWriteFileSync(tmpFile, JSON.stringify(servers, null, 2));
   renameSync(tmpFile, SERVERS_FILE);
 }
 

@@ -1,5 +1,6 @@
 import { randomBytes, createCipheriv, createDecipheriv, scryptSync, randomUUID } from "crypto";
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
+import { readFileSync, existsSync } from "fs";
+import { secureMkdirSync, secureWriteFileSync } from "./secureWrite.js";
 import { spawnSync } from "child_process";
 import { platform } from "os";
 import { join } from "path";
@@ -65,7 +66,7 @@ const FALLBACK_ID_FILE = join(KASTELL_DIR, ".machine-id");
 let _cachedKey: Buffer | null = null;
 
 function ensureKastellDir(): void {
-  if (!existsSync(KASTELL_DIR)) mkdirSync(KASTELL_DIR, { recursive: true });
+  if (!existsSync(KASTELL_DIR)) secureMkdirSync(KASTELL_DIR);
 }
 
 /** Read persisted value or generate, write, and return a new one. */
@@ -77,7 +78,7 @@ function getOrCreatePersistedValue(filePath: string, generate: () => string): st
   } catch { /* regenerate */ }
   ensureKastellDir();
   const value = generate();
-  writeFileSync(filePath, value, { mode: 0o600 });
+  secureWriteFileSync(filePath, value);
   return value;
 }
 
