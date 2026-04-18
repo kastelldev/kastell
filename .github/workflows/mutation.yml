@@ -34,7 +34,8 @@ jobs:
   mutate:
     name: Stryker Incremental
     runs-on: ubuntu-latest
-    permissions: contents: read
+    permissions:
+      contents: read
     timeout-minutes: 360  # 6h — cache varsa ~15dk, yoksa kısmi ilerleme kaydedip sonraki gece devam eder
 
     steps:
