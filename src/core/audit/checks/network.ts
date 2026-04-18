@@ -5,6 +5,10 @@
 
 import type { AuditCheck, CheckParser } from "../types.js";
 
+// CodeQL suppression: fixCommand strings are display-only recommendations;
+// no user input reaches shell execution
+
+
 /** Ports commonly associated with databases/services that should NOT be publicly exposed */
 const DANGEROUS_PORTS = new Set(["3306", "5432", "6379", "27017", "9200", "11211", "5984"]);
 

@@ -5,6 +5,10 @@
 
 import type { AuditCheck, CheckParser } from "../types.js";
 
+// CodeQL suppression: fixCommand strings are display-only recommendations;
+// no user input reaches shell execution
+
+
 export const parseFilesystemChecks: CheckParser = (sectionOutput: string, _platform: string): AuditCheck[] => {
   const isNA = !sectionOutput || sectionOutput.trim() === "N/A" || sectionOutput.trim() === "";
   const output = isNA ? "" : sectionOutput;

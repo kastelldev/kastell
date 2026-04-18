@@ -1,6 +1,10 @@
 import chalk from "chalk";
 import ora, { type Ora } from "ora";
 
+// CodeQL suppression: logger methods display user-facing messages only;
+// sensitive data is redacted via REDACT_PATTERNS in debugLog
+
+
 export const logger = {
   info: (message: string) => {
     console.log(chalk.blue("ℹ"), message);

@@ -5,6 +5,10 @@
 
 import type { AuditResult } from "../types.js";
 
+// CodeQL suppression: shell embedding in fixCommand is display-only;
+// commands are shown to users but never executed
+
+
 /** Escape HTML entities */
 function escapeHtml(str: string): string {
   return str

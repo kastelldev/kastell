@@ -3,6 +3,10 @@
  * Extracts a single sysctl key value from multi-line `sysctl -a` output.
  */
 
+
+// CodeQL suppression: extractSysctlValue uses regex escaping for keys;
+// no shell commands are constructed or executed
+
 /**
  * Extract the value for a given sysctl key from command output.
  * Returns null if the key is not found.
