@@ -141,6 +141,9 @@ vite.config.ts.timestamp-*
 # Claude Code settings
 CLAUDE.md
 .claude/
+
+# Git worktrees
+.worktrees/
 !.claude/contracts/
 /.mcp.json
 .maestro/
@@ -155,7 +158,7 @@ LESSONS.md
 .planning/
 
 # Superpowers plans (agent-driven development)
-# docs/superpowers/  # TEMPORARILY REMOVED FOR REVERT COMMIT
+docs/superpowers/
 
 # Kastell user config & export
 kastell.yml
