@@ -12,10 +12,44 @@ export interface WriteFileOptions {
 // Track whether secure dir has been initialized (lazy init)
 let secureDirInitialized = false;
 
-export function ensureSecureDir(_dirPath: string): void {
+export function clearCache(): void {
+  secureDirInitialized = false;
+}
+
+export function ensureSecureDir(dirPath: string): void {
   if (secureDirInitialized) {
     return;
   }
+
+  const username = userInfo().username;
+  const platform = process.platform;
+
+  if (platform === "win32") {
+    const result = spawnSync("icacls", [
+      dirPath,
+      "/inheritance:r",
+      "/grant:r",
+      `${username}:F`,
+    ]);
+    if (result.status !== 0) {
+      SecurityLogger.warn("ACL operation failed", {
+        dirPath,
+        platform,
+        error: result.stderr?.toString() ?? "unknown",
+      });
+    }
+  } else {
+    try {
+      chmodSync(dirPath, 0o700);
+    } catch (error) {
+      SecurityLogger.warn("chmod operation failed", {
+        dirPath,
+        platform,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
   secureDirInitialized = true;
 }
 
