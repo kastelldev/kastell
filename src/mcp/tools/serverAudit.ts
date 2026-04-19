@@ -16,6 +16,7 @@ import { getErrorMessage, sanitizeStderr } from "../../utils/errorMapper.js";
 import { calculateComplianceDetail } from "../../core/audit/compliance/scoring.js";
 import { FRAMEWORK_KEY_MAP } from "../../core/audit/compliance/types.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { filterChecksByProfile, isValidProfile, listAllProfileNames } from "../../core/audit/profiles.js";
 
 
 export const serverAuditSchema = {
@@ -43,6 +44,8 @@ export async function handleServerAudit(params: {
   severity?: "critical" | "warning" | "info";
   snapshot?: boolean | string;
   compare?: string;
+  threshold?: number;
+  profile?: string;
 }, mcpServer?: McpServer): Promise<McpResponse> {
   try {
     const servers = getServers();
@@ -114,6 +117,34 @@ export async function handleServerAudit(params: {
       if (params.category) filter.category = params.category;
       if (params.severity) filter.severity = params.severity;
       filteredResult = filterAuditResult(auditResult, filter);
+    }
+
+    // Apply profile filter after category/severity filter
+    if (params.profile !== undefined) {
+      if (!isValidProfile(params.profile)) {
+        return mcpError(
+          "Invalid profile: " + params.profile,
+          "Available profiles: " + listAllProfileNames().join(", "),
+        );
+      }
+      filteredResult = {
+        ...filteredResult,
+        categories: filteredResult.categories
+          .map((cat) => ({
+            ...cat,
+            checks: filterChecksByProfile(cat.checks, params.profile!),
+          }))
+          .filter((cat) => cat.checks.length > 0),
+      };
+    }
+
+    // Threshold check (uses unfiltered auditResult.overallScore)
+    if (params.threshold !== undefined && auditResult.overallScore < params.threshold) {
+      return mcpError(
+        "Score " + auditResult.overallScore + " is below threshold " + params.threshold,
+        "Run server_fix to improve the score",
+        [{ command: "server_fix { server: '" + server.name + "', dryRun: true }", reason: "Preview available fixes" }],
+      );
     }
 
     const format = params.format ?? "summary";

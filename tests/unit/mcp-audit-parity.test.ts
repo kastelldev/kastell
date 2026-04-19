@@ -146,4 +146,32 @@ describe("MCP server_audit parity", () => {
       expect(result.isError).toBe(true);
     });
   });
+
+  describe("threshold", () => {
+    it("returns error when score is below threshold", async () => {
+      const result = await handleServerAudit({ threshold: 80 });
+      expect(result.isError).toBe(true);
+      const text = (result.content as Array<{ text: string }>)[0].text;
+      expect(text).toContain("below threshold");
+    });
+
+    it("returns success when score meets threshold", async () => {
+      const result = await handleServerAudit({ threshold: 50 });
+      expect(result.isError).toBeFalsy();
+    });
+  });
+
+  describe("profile", () => {
+    it("filters checks by profile", async () => {
+      const result = await handleServerAudit({ profile: "web-server", format: "json" });
+      expect(result.isError).toBeFalsy();
+    });
+
+    it("returns error for invalid profile", async () => {
+      const result = await handleServerAudit({ profile: "nonexistent-profile" });
+      expect(result.isError).toBe(true);
+      const text = (result.content as Array<{ text: string }>)[0].text;
+      expect(text).toContain("Invalid profile");
+    });
+  });
 });
