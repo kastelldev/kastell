@@ -7,12 +7,12 @@ import ora, { type Ora } from "ora";
 
 export const logger = {
   info: (message: string) => {
-    // eslint-disable-next-line no-secrets/no-secrets -- intentionally displays user-facing messages only; sensitive data is redacted in debugLog
+     
     console.log(chalk.blue("ℹ"), message);
   },
 
   success: (message: string) => {
-    // eslint-disable-next-line no-secrets/no-secrets -- intentionally displays user-facing messages only; sensitive data is redacted in debugLog
+     
     console.log(chalk.green("✔"), message);
   },
 
@@ -21,7 +21,7 @@ export const logger = {
   },
 
   warning: (message: string) => {
-    // eslint-disable-next-line no-secrets/no-secrets -- intentionally displays user-facing messages only; sensitive data is redacted in debugLog
+     
     console.log(chalk.yellow("⚠"), message);
   },
 

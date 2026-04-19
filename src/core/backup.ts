@@ -1,4 +1,4 @@
-import { mkdirSync, existsSync, readFileSync, readdirSync, rmSync } from "fs";
+import { existsSync, readFileSync, readdirSync, rmSync } from "fs";
 import { join, resolve } from "path";
 import { sshExec, assertValidIp } from "../utils/ssh.js";
 import { BACKUPS_DIR } from "../utils/paths.js";

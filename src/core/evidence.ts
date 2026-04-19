@@ -6,7 +6,6 @@
 
 import { createHash } from "crypto";
 import {
-  mkdirSync,
   existsSync,
   renameSync,
   rmSync,

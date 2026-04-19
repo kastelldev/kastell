@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, mkdirSync, renameSync } from "fs";
+import { readFileSync, renameSync } from "fs";
 import { join } from "path";
 import type { ServerRecord } from "../types/index.js";
 import { withFileLock } from "./fileLock.js";
