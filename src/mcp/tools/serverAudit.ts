@@ -2,6 +2,7 @@ import { z } from "zod";
 import { getServers } from "../../utils/config.js";
 import { runAudit } from "../../core/audit/index.js";
 import { filterAuditResult } from "../../core/audit/filter.js";
+import { saveSnapshot } from "../../core/audit/snapshot.js";
 import type { AuditFilter } from "../../core/audit/filter.js";
 import {
   resolveServerForMcp,
@@ -27,6 +28,8 @@ export const serverAuditSchema = {
   ),
   category: z.string().optional().describe("Filter results to a specific category (e.g. 'SSH', 'Firewall', 'Docker')."),
   severity: z.enum(["critical", "warning", "info"]).optional().describe("Filter checks by severity level."),
+  snapshot: z.union([z.boolean(), z.string()]).optional()
+    .describe("Save audit snapshot. true for auto-name, string for custom name."),
 };
 
 export async function handleServerAudit(params: {
@@ -36,6 +39,7 @@ export async function handleServerAudit(params: {
   explain?: boolean;
   category?: string;
   severity?: "critical" | "warning" | "info";
+  snapshot?: boolean | string;
 }, mcpServer?: McpServer): Promise<McpResponse> {
   try {
     const servers = getServers();
@@ -89,7 +93,7 @@ export async function handleServerAudit(params: {
       const jsonResult: Record<string, unknown> = { ...filteredResult };
       if (params.framework) {
         const fw = FRAMEWORK_KEY_MAP[params.framework];
-        const detail = calculateComplianceDetail(auditResult.categories);
+        const detail = calculateComplianceDetail(filteredResult.categories);
         jsonResult.complianceDetail = detail.filter((d) => d.framework === fw);
       }
       return mcpSuccess(jsonResult, { largeResult: true });
@@ -169,6 +173,12 @@ export async function handleServerAudit(params: {
 
     if (filteredResult.skippedCategories && filteredResult.skippedCategories.length > 0) {
       responseData.skippedCategories = filteredResult.skippedCategories;
+    }
+
+    // Save snapshot if requested (uses unfiltered auditResult)
+    if (params.snapshot !== undefined) {
+      const snapshotName = typeof params.snapshot === "string" ? params.snapshot : undefined;
+      await saveSnapshot(auditResult, snapshotName);
     }
 
     return mcpSuccess(responseData, { largeResult: true });

@@ -82,4 +82,30 @@ describe("MCP server_audit parity", () => {
       expect(allChecks.every((ch: { severity: string }) => ch.severity === "critical")).toBe(true);
     });
   });
+
+  describe('snapshot', () => {
+    it('saves snapshot when snapshot param is true', async () => {
+      const { saveSnapshot } = await import('../../src/core/audit/snapshot.js');
+      await handleServerAudit({ snapshot: true });
+      expect(saveSnapshot).toHaveBeenCalledWith(
+        expect.objectContaining({ serverName: 'test-srv' }),
+        undefined,
+      );
+    });
+
+    it('saves snapshot with custom name when snapshot is string', async () => {
+      const { saveSnapshot } = await import('../../src/core/audit/snapshot.js');
+      await handleServerAudit({ snapshot: 'pre-upgrade' });
+      expect(saveSnapshot).toHaveBeenCalledWith(
+        expect.objectContaining({ serverName: 'test-srv' }),
+        'pre-upgrade',
+      );
+    });
+
+    it('does not save snapshot when param is not provided', async () => {
+      const { saveSnapshot } = await import('../../src/core/audit/snapshot.js');
+      await handleServerAudit({});
+      expect(saveSnapshot).not.toHaveBeenCalled();
+    });
+  });
 });
