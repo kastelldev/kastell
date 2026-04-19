@@ -49,3 +49,38 @@ export function assertValidChecks(checks: unknown): void {
     if (typeof c.passed !== "boolean") throw new Error(`Check missing passed: ${JSON.stringify(c)}`);
   }
 }
+
+// UFW status output arbitrary
+export const ufwStatusArb = fc.tuple(
+  fc.constantFrom("Status: active", "Status: inactive", ""),
+  fc.array(
+    fc.tuple(
+      fc.integer({ min: 1, max: 65535 }),
+      fc.constantFrom("tcp", "udp"),
+      fc.constantFrom("ALLOW", "DENY", "REJECT", "LIMIT"),
+      fc.constantFrom("Anywhere", "0.0.0.0/0", "192.168.1.0/24", "10.0.0.0/8"),
+    ).map(([port, proto, action, from]) => `${port}/${proto}                    ${action} IN    ${from}`),
+    { minLength: 0, maxLength: 10 },
+  ),
+).map(([status, rules]) => `${status}\n\nTo                         Action      From\n--                         ------      ----\n${rules.join("\n")}`);
+
+// Mount output arbitrary
+export const mountOutputArb = fc.array(
+  fc.tuple(
+    fc.constantFrom("/dev/sda1", "/dev/sdb1", "tmpfs", "proc"),
+    fc.constantFrom("/", "/tmp", "/var", "/home", "/var/tmp", "/boot"),
+    fc.constantFrom("ext4", "tmpfs", "xfs", "btrfs"),
+    fc.array(
+      fc.constantFrom("rw", "nosuid", "noexec", "nodev", "relatime", "defaults"),
+      { minLength: 1, maxLength: 4 },
+    ).map((opts) => opts.join(",")),
+  ).map(([dev, mount, fs, opts]) => `${dev} on ${mount} type ${fs} (${opts})`),
+  { minLength: 0, maxLength: 8 },
+).map((lines) => lines.join("\n"));
+
+// stat output arbitrary (for /tmp)
+export const statOutputArb = fc.tuple(
+  fc.stringMatching(/^[01]?[0-7]{3}$/),
+  fc.constantFrom("root", "www-data", "nobody"),
+  fc.constantFrom("root", "www-data", "nogroup"),
+).map(([perms, user, group]) => `${perms} ${user} ${group}`);
