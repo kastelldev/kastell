@@ -2,6 +2,7 @@ import { z } from "zod";
 import { isSafeMode } from "../../core/manage.js";
 import { provisionServer } from "../../core/provision.js";
 import { mcpSuccess, mcpError, mcpLog } from "../utils.js";
+import { getErrorMessage, sanitizeStderr } from "../../utils/errorMapper.js";
 import { SUPPORTED_PROVIDERS } from "../../constants.js";
 import type { SupportedProvider } from "../../constants.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -153,7 +154,7 @@ export async function handleServerProvision(params: {
     });
   } catch (error: unknown) {
     return mcpError(
-      error instanceof Error ? error.message : String(error),
+      sanitizeStderr(getErrorMessage(error)),
     );
   }
 }

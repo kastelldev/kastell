@@ -7,6 +7,7 @@ import {
   destroyCloudServer,
 } from "../../core/manage.js";
 import { mcpSuccess, mcpError } from "../utils.js";
+import { getErrorMessage, sanitizeStderr } from "../../utils/errorMapper.js";
 import { SUPPORTED_PROVIDERS } from "../../constants.js";
 
 export const serverManageSchema = {
@@ -263,7 +264,7 @@ export async function handleServerManage(params: {
     }
   } catch (error: unknown) {
     return mcpError(
-      error instanceof Error ? error.message : String(error),
+      sanitizeStderr(getErrorMessage(error)),
     );
   }
 }
