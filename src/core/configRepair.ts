@@ -1,11 +1,11 @@
 import { readFileSync, existsSync, copyFileSync, readdirSync, unlinkSync, renameSync } from "fs";
-import { dirname, basename } from "path";
+import { dirname, basename, join } from "path";
 import { secureWriteFileSync } from "../utils/secureWrite.js";
 import { SUPPORTED_PROVIDERS } from "../constants.js";
 
-// mode is NOT required — legacy entries without mode are auto-fixed to "coolify" (matching getServers() behavior)
 const REQUIRED_FIELDS = ["id", "name", "provider", "ip", "region", "size", "createdAt"] as const;
 const AUTO_FIX_DEFAULTS: Record<string, string> = { mode: "coolify" };
+const VALID_PROVIDERS = new Set<string>(SUPPORTED_PROVIDERS);
 const MAX_BACKUPS = 3;
 
 export interface ConfigIssue {
@@ -55,7 +55,6 @@ export function diagnoseConfig(filePath: string): DiagnoseResult {
     };
   }
 
-  const validProviders = new Set(SUPPORTED_PROVIDERS as readonly string[]);
   const issues: ConfigIssue[] = [];
   let validCount = 0;
   let invalidCount = 0;
@@ -74,7 +73,7 @@ export function diagnoseConfig(filePath: string): DiagnoseResult {
       continue;
     }
 
-    if (entry.provider && !validProviders.has(entry.provider as string)) {
+    if (entry.provider && !VALID_PROVIDERS.has(entry.provider as string)) {
       issues.push({
         type: "unknown_provider",
         message: `Entry ${i} ("${entry.name}") has unknown provider "${entry.provider}"`,
@@ -84,7 +83,6 @@ export function diagnoseConfig(filePath: string): DiagnoseResult {
       continue;
     }
 
-    // Check auto-fixable fields (e.g. missing mode)
     const fixable = Object.keys(AUTO_FIX_DEFAULTS).filter((f) => !entry[f]);
     if (fixable.length > 0) {
       issues.push({
@@ -98,7 +96,7 @@ export function diagnoseConfig(filePath: string): DiagnoseResult {
     }
   }
 
-  const status = invalidCount > 0 ? "degraded" : autoFixableCount > 0 ? "degraded" : issues.length === 0 ? "healthy" : "degraded";
+  const status = (invalidCount > 0 || autoFixableCount > 0 || issues.length > 0) ? "degraded" : "healthy";
   return { status, issues, validCount, invalidCount, autoFixableCount, totalCount: parsed.length };
 }
 
@@ -108,37 +106,28 @@ export function repairConfig(filePath: string): RepairResult {
   copyFileSync(filePath, backupPath);
 
   const raw = readFileSync(filePath, "utf-8");
-  let parsed: unknown;
+  let entries: Record<string, unknown>[];
   try {
-    parsed = JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    entries = Array.isArray(parsed) ? parsed : [];
   } catch {
-    atomicWrite(filePath, "[]");
-    pruneBackups(filePath);
-    return { backupPath, recoveredCount: 0, droppedCount: 0, autoFixedCount: 0 };
+    entries = [];
   }
 
-  if (!Array.isArray(parsed)) {
-    atomicWrite(filePath, "[]");
-    pruneBackups(filePath);
-    return { backupPath, recoveredCount: 0, droppedCount: 0, autoFixedCount: 0 };
-  }
-
-  const validProviders = new Set(SUPPORTED_PROVIDERS as readonly string[]);
   const recovered: Record<string, unknown>[] = [];
   let droppedCount = 0;
   let autoFixedCount = 0;
 
-  for (const entry of parsed as Record<string, unknown>[]) {
+  for (const entry of entries) {
     const missing = REQUIRED_FIELDS.filter((f) => !entry[f]);
     if (missing.length > 0) {
       droppedCount++;
       continue;
     }
-    if (entry.provider && !validProviders.has(entry.provider as string)) {
+    if (entry.provider && !VALID_PROVIDERS.has(entry.provider as string)) {
       droppedCount++;
       continue;
     }
-    // Auto-fix defaults (e.g. mode)
     for (const [field, defaultVal] of Object.entries(AUTO_FIX_DEFAULTS)) {
       if (!entry[field]) {
         entry[field] = defaultVal;
@@ -167,6 +156,6 @@ function pruneBackups(filePath: string): void {
     .sort();
   while (backups.length > MAX_BACKUPS) {
     const oldest = backups.shift()!;
-    try { unlinkSync(`${dir}/${oldest}`); } catch { /* best-effort */ }
+    try { unlinkSync(join(dir, oldest)); } catch { /* best-effort */ }
   }
 }
