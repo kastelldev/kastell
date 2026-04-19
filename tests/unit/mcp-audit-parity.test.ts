@@ -83,29 +83,67 @@ describe("MCP server_audit parity", () => {
     });
   });
 
-  describe('snapshot', () => {
-    it('saves snapshot when snapshot param is true', async () => {
-      const { saveSnapshot } = await import('../../src/core/audit/snapshot.js');
+  describe("snapshot", () => {
+    it("saves snapshot when snapshot param is true", async () => {
+      const { saveSnapshot } = await import("../../src/core/audit/snapshot.js");
       await handleServerAudit({ snapshot: true });
       expect(saveSnapshot).toHaveBeenCalledWith(
-        expect.objectContaining({ serverName: 'test-srv' }),
+        expect.objectContaining({ serverName: "test-srv" }),
         undefined,
       );
     });
 
-    it('saves snapshot with custom name when snapshot is string', async () => {
-      const { saveSnapshot } = await import('../../src/core/audit/snapshot.js');
-      await handleServerAudit({ snapshot: 'pre-upgrade' });
+    it("saves snapshot with custom name when snapshot is string", async () => {
+      const { saveSnapshot } = await import("../../src/core/audit/snapshot.js");
+      await handleServerAudit({ snapshot: "pre-upgrade" });
       expect(saveSnapshot).toHaveBeenCalledWith(
-        expect.objectContaining({ serverName: 'test-srv' }),
-        'pre-upgrade',
+        expect.objectContaining({ serverName: "test-srv" }),
+        "pre-upgrade",
       );
     });
 
-    it('does not save snapshot when param is not provided', async () => {
-      const { saveSnapshot } = await import('../../src/core/audit/snapshot.js');
+    it("does not save snapshot when param is not provided", async () => {
+      const { saveSnapshot } = await import("../../src/core/audit/snapshot.js");
       await handleServerAudit({});
       expect(saveSnapshot).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("compare", () => {
+    it("returns diff between two snapshots", async () => {
+      const { resolveSnapshotRef, diffAudits, formatDiffJson } = await import("../../src/core/audit/diff.js");
+      const mockAudit = { overallScore: 50, categories: [] };
+      (resolveSnapshotRef as jest.Mock)
+        .mockResolvedValueOnce({ audit: mockAudit })
+        .mockResolvedValueOnce({ audit: { ...mockAudit, overallScore: 70 } });
+      (diffAudits as jest.Mock).mockReturnValue({
+        scoreDelta: 20,
+        regressions: [],
+        improvements: [],
+        before: { label: "before" },
+        after: { label: "after" },
+      });
+      (formatDiffJson as jest.Mock).mockReturnValue(JSON.stringify({ scoreDelta: 20 }));
+
+      const result = await handleServerAudit({ compare: "before:after", format: "json" });
+      expect(result.isError).toBeFalsy();
+      expect(resolveSnapshotRef).toHaveBeenCalledTimes(2);
+      expect(diffAudits).toHaveBeenCalled();
+    });
+
+    it("returns error for invalid compare format", async () => {
+      const result = await handleServerAudit({ compare: "invalid" });
+      expect(result.isError).toBe(true);
+      const text = (result.content as Array<{ text: string }>)[0].text;
+      expect(text).toContain("before:after");
+    });
+
+    it("returns error when snapshot not found", async () => {
+      const { resolveSnapshotRef } = await import("../../src/core/audit/diff.js");
+      (resolveSnapshotRef as jest.Mock).mockResolvedValue(null);
+
+      const result = await handleServerAudit({ compare: "snap1:snap2" });
+      expect(result.isError).toBe(true);
     });
   });
 });

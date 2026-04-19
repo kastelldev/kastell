@@ -2,6 +2,7 @@ import { z } from "zod";
 import { getServers } from "../../utils/config.js";
 import { runAudit } from "../../core/audit/index.js";
 import { filterAuditResult } from "../../core/audit/filter.js";
+import { resolveSnapshotRef, diffAudits, formatDiffJson } from "../../core/audit/diff.js";
 import { saveSnapshot } from "../../core/audit/snapshot.js";
 import type { AuditFilter } from "../../core/audit/filter.js";
 import {
@@ -30,6 +31,7 @@ export const serverAuditSchema = {
   severity: z.enum(["critical", "warning", "info"]).optional().describe("Filter checks by severity level."),
   snapshot: z.union([z.boolean(), z.string()]).optional()
     .describe("Save audit snapshot. true for auto-name, string for custom name."),
+  compare: z.string().optional().describe("Compare two snapshots: format before:after (e.g. pre-upgrade:latest)"),
 };
 
 export async function handleServerAudit(params: {
@@ -40,6 +42,7 @@ export async function handleServerAudit(params: {
   category?: string;
   severity?: "critical" | "warning" | "info";
   snapshot?: boolean | string;
+  compare?: string;
 }, mcpServer?: McpServer): Promise<McpResponse> {
   try {
     const servers = getServers();
@@ -61,6 +64,32 @@ export async function handleServerAudit(params: {
         "Multiple servers found. Specify which server to audit.",
         `Available: ${servers.map((s) => s.name).join(", ")}`,
       );
+    }
+
+    // Compare mode: early return with diff of two snapshots
+    if (params.compare !== undefined) {
+      const parts = params.compare.split(":");
+      if (parts.length !== 2) {
+        return mcpError(
+          "--compare requires format: before:after",
+          "Example: server_audit { server: 'my-server', compare: 'pre-upgrade:latest' }",
+        );
+      }
+      const [beforeRef, afterRef] = parts;
+      const beforeSnap = await resolveSnapshotRef(server.ip, beforeRef);
+      if (!beforeSnap) {
+        return mcpError(`Snapshot not found: '${beforeRef}'`, "Use server_audit with snapshot:true to create one");
+      }
+      const afterSnap = await resolveSnapshotRef(server.ip, afterRef);
+      if (!afterSnap) {
+        return mcpError(`Snapshot not found: '${afterRef}'`, "Use server_audit with snapshot:true to create one");
+      }
+      const diff = diffAudits(beforeSnap.audit, afterSnap.audit, { before: beforeRef, after: afterRef });
+      const format = params.format ?? "summary";
+      if (format === "json") {
+        return mcpSuccess(diff as unknown as Record<string, unknown>);
+      }
+      return mcpSuccess({ summary: formatDiffJson(diff), scoreDelta: diff.scoreDelta });
     }
 
     await mcpLog(mcpServer, `Starting 457-check audit on ${server.name}`);
