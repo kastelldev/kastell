@@ -80,13 +80,56 @@ export async function configCommand(subcommand?: string, args?: string[]): Promi
       }
       break;
     }
+    case "repair": {
+      const { diagnoseConfig, repairConfig } = await import("../core/configRepair.js");
+      const { join } = await import("path");
+      const { KASTELL_DIR } = await import("../utils/paths.js");
+      const inquirer = await import("inquirer");
+      const serversFile = join(KASTELL_DIR, "servers.json");
+
+      const diagnosis = diagnoseConfig(serversFile);
+
+      if (diagnosis.status === "missing") {
+        logger.info("No servers.json found — nothing to repair");
+        return;
+      }
+
+      if (diagnosis.status === "healthy") {
+        logger.success(`servers.json is healthy (${diagnosis.validCount} servers)`);
+        return;
+      }
+
+      logger.warning(`Config status: ${diagnosis.status}`);
+      logger.info(`  Total: ${diagnosis.totalCount}, Valid: ${diagnosis.validCount}, Invalid: ${diagnosis.invalidCount}, Auto-fixable: ${diagnosis.autoFixableCount}`);
+      for (const issue of diagnosis.issues) {
+        logger.warning(`  ${issue.message}`);
+      }
+
+      const { proceed } = await inquirer.default.prompt([{
+        type: "confirm",
+        name: "proceed",
+        message: `Repair will drop ${diagnosis.invalidCount} invalid entries and auto-fix ${diagnosis.autoFixableCount}. Continue?`,
+        default: false,
+      }]);
+
+      if (!proceed) {
+        logger.info("Repair cancelled");
+        return;
+      }
+
+      const result = repairConfig(serversFile);
+      logger.success(`Repair complete: ${result.recoveredCount} recovered, ${result.autoFixedCount} auto-fixed, ${result.droppedCount} dropped`);
+      logger.info(`Backup saved: ${result.backupPath}`);
+      break;
+    }
     default:
-      logger.error("Usage: kastell config <set|get|list|reset|validate>");
+      logger.error("Usage: kastell config <set|get|list|reset|validate|repair>");
       logger.info(`  set <key> <value>  Set a default value`);
       logger.info(`  get <key>          Get a default value`);
       logger.info(`  list               Show all defaults`);
       logger.info(`  reset              Clear all defaults`);
       logger.info(`  validate <path>    Validate a kastell.yml config file`);
+      logger.info(`  repair             Diagnose and fix corrupt servers.json`);
       logger.info(``);
       logger.info(`Valid keys: ${VALID_KEYS.join(", ")}`);
       break;
