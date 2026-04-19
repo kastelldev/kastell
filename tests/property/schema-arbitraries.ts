@@ -15,11 +15,13 @@ export const ipArb = fc.tuple(
   fc.integer({ min: 1, max: 254 }),
 ).map(([a, b, c, d]) => `${a}.${b}.${c}.${d}`);
 
-// ISO timestamp arbitrary
-export const isoTimestampArb = fc.date({
-  min: new Date("2020-01-01"),
-  max: new Date("2030-12-31"),
-}).map((d) => d.toISOString());
+// ISO timestamp arbitrary — fc.date() causes stack overflow with wide ranges, use string instead
+export const isoTimestampArb = fc.string({ minLength: 20, maxLength: 30 }).map((s) => {
+  // Generate valid ISO timestamps
+  const base = new Date(2020, 0, 1).getTime();
+  const offset = Math.floor(Math.random() * (new Date(2030, 11, 31).getTime() - base));
+  return new Date(base + offset).toISOString();
+});
 
 // Check ID arbitrary (e.g. "SSH-001", "FW-DENY")
 export const checkIdArb = fc.tuple(
@@ -27,17 +29,19 @@ export const checkIdArb = fc.tuple(
   fc.stringMatching(/^[A-Z0-9-]{1,20}$/),
 ).map(([prefix, suffix]) => `${prefix}-${suffix}`);
 
-// Single audit check arbitrary
+// Helper: non-empty string arbitrary (no whitespace-only strings)
+const nonEmptyString = (maxLength: number) =>
+  fc.string({ minLength: 1, maxLength }).filter((s) => s.trim().length > 0);
+
+// Single audit check arbitrary — simplified, only required fields
 export const auditCheckArb = fc.record({
   id: checkIdArb,
-  category: fc.constantFrom("SSH", "Firewall", "Kernel", "Filesystem", "Auth", "Docker", "Logging", "Crypto"),
-  name: fc.string({ minLength: 3, maxLength: 80 }),
+  category: nonEmptyString(30),
+  name: nonEmptyString(80),
   severity: severityArb,
   passed: fc.boolean(),
-  currentValue: fc.option(fc.string({ maxLength: 50 }), { nil: undefined }),
-  expectedValue: fc.option(fc.string({ maxLength: 50 }), { nil: undefined }),
-  fixCommand: fc.option(fc.string({ maxLength: 200 }), { nil: undefined }),
-  explain: fc.option(fc.string({ maxLength: 500 }), { nil: undefined }),
+  currentValue: nonEmptyString(200),
+  expectedValue: nonEmptyString(200),
 });
 
 // Category arbitrary
@@ -49,7 +53,15 @@ export const categoryArb = fc.record({
   connectionError: fc.option(fc.boolean(), { nil: undefined }),
 });
 
-// Base audit result arbitrary
+// Quick win arbitrary
+export const quickWinArb = fc.record({
+  commands: fc.array(nonEmptyString(200), { minLength: 1, maxLength: 3 }),
+  currentScore: fc.integer({ min: 0, max: 100 }),
+  projectedScore: fc.integer({ min: 0, max: 100 }),
+  description: nonEmptyString(200),
+});
+
+// Base audit result arbitrary — matches baseAuditSchema in snapshot.ts
 export const baseAuditArb = fc.record({
   serverName: fc.stringMatching(/^[a-z][a-z0-9-]{2,62}$/),
   serverIp: ipArb,
@@ -57,24 +69,32 @@ export const baseAuditArb = fc.record({
   timestamp: isoTimestampArb,
   overallScore: fc.integer({ min: 0, max: 100 }),
   categories: fc.array(categoryArb, { minLength: 1, maxLength: 5 }),
+  quickWins: fc.array(quickWinArb),
+  skippedCategories: fc.option(fc.array(nonEmptyString(30), { minLength: 0, maxLength: 10 }), { nil: undefined }),
+  vpsType: fc.option(nonEmptyString(30), { nil: undefined }),
+  vpsAdjustedCount: fc.option(fc.integer({ min: 0, max: 1000 }), { nil: undefined }),
+  warnings: fc.option(fc.array(nonEmptyString(200), { maxLength: 10 }), { nil: undefined }),
 });
 
-// Quick win arbitrary
-export const quickWinArb = fc.record({
-  commands: fc.array(fc.string({ minLength: 5, maxLength: 200 }), { minLength: 1, maxLength: 3 }),
-  currentScore: fc.integer({ min: 0, max: 100 }),
-  projectedScore: fc.integer({ min: 0, max: 100 }),
-  description: fc.string({ minLength: 5, maxLength: 200 }),
-});
-
-// Snapshot V2 arbitrary
+// Snapshot V2 arbitrary — matches snapshotFileV2Schema in snapshot.ts
 export const snapshotV2Arb = fc.record({
   schemaVersion: fc.constant(2),
-  name: fc.option(fc.string({ minLength: 1, maxLength: 50 }), { nil: undefined }),
+  name: fc.option(nonEmptyString(50), { nil: undefined }),
   savedAt: isoTimestampArb,
-  audit: baseAuditArb.chain((audit) =>
-    fc.record({ auditVersion: fc.constant("1.17.1") }).map((extra) => ({ ...audit, ...extra }))
-  ),
+  audit: fc.record({
+    serverName: fc.stringMatching(/^[a-z][a-z0-9-]{2,62}$/),
+    serverIp: ipArb,
+    platform: platformArb,
+    timestamp: isoTimestampArb,
+    overallScore: fc.integer({ min: 0, max: 100 }),
+    categories: fc.array(categoryArb, { minLength: 1, maxLength: 5 }),
+    quickWins: fc.array(quickWinArb),
+    skippedCategories: fc.option(fc.array(nonEmptyString(30), { minLength: 0, maxLength: 10 }), { nil: undefined }),
+    vpsType: fc.option(nonEmptyString(30), { nil: undefined }),
+    vpsAdjustedCount: fc.option(fc.integer({ min: 0, max: 1000 }), { nil: undefined }),
+    warnings: fc.option(fc.array(nonEmptyString(200), { maxLength: 10 }), { nil: undefined }),
+    auditVersion: nonEmptyString(20),
+  }),
 });
 
 // Guard state entry arbitrary

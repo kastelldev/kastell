@@ -29,7 +29,7 @@ const complianceRefSchema = z.object({
   level: z.enum(["L1", "L2"]).optional(),
 });
 
-const auditCheckSchema = z.object({
+export const auditCheckSchema = z.object({
   id: z.string(),
   category: z.string(),
   name: z.string(),
@@ -44,7 +44,7 @@ const auditCheckSchema = z.object({
   vpsIrrelevant: z.boolean().optional(),
 });
 
-const categorySchema = z.object({
+export const categorySchema = z.object({
   name: z.string(),
   checks: z.array(auditCheckSchema),
   score: z.number(),
@@ -52,7 +52,7 @@ const categorySchema = z.object({
   connectionError: z.boolean().optional(),
 });
 
-const quickWinSchema = z.object({
+export const quickWinSchema = z.object({
   commands: z.array(z.string()),
   currentScore: z.number(),
   projectedScore: z.number(),
@@ -80,14 +80,14 @@ const snapshotEnvelopeBase = {
 };
 
 /** Schema v1 — legacy format, no auditVersion field */
-const snapshotFileV1Schema = z.object({
+export const snapshotFileV1Schema = z.object({
   schemaVersion: z.literal(1),
   ...snapshotEnvelopeBase,
   audit: baseAuditSchema,
 });
 
 /** Schema v2 — includes auditVersion in audit object */
-const snapshotFileV2Schema = z.object({
+export const snapshotFileV2Schema = z.object({
   schemaVersion: z.literal(2),
   ...snapshotEnvelopeBase,
   audit: baseAuditSchema.extend({ auditVersion: z.string() }),
