@@ -11,30 +11,36 @@ import { getErrorMessage, sanitizeStderr } from "../../utils/errorMapper.js";
 import { SUPPORTED_PROVIDERS } from "../../constants.js";
 
 export const serverManageSchema = {
-  action: z.enum(["add", "remove", "destroy"]).describe(
-    "Action: 'add' register an existing server, 'remove' unregister from local config (server stays running), 'destroy' permanently delete from cloud provider AND local config",
-  ),
-  server: z.string().optional().describe(
-    "Server name or IP (required for 'remove' and 'destroy' actions)",
-  ),
-  provider: z.enum(SUPPORTED_PROVIDERS).optional().describe(
-    "Cloud provider: 'hetzner', 'digitalocean', 'vultr', 'linode' (required for 'add' action)",
-  ),
-  ip: z.string().optional().describe(
-    "Server public IP address (required for 'add' action)",
-  ),
-  name: z.string().optional().describe(
-    "Server name, 3-63 chars, lowercase alphanumeric and hyphens (required for 'add' action)",
-  ),
-  skipVerify: z.boolean().default(false).describe(
-    "Skip Coolify SSH verification when adding a server (only for 'add' action)",
-  ),
+  action: z
+    .enum(["add", "remove", "destroy"])
+    .describe(
+      "Action: 'add' register an existing server, 'remove' unregister from local config (server stays running), 'destroy' permanently delete from cloud provider AND local config",
+    ),
+  server: z
+    .string()
+    .optional()
+    .describe("Server name or IP (required for 'remove' and 'destroy' actions)"),
+  provider: z
+    .enum(SUPPORTED_PROVIDERS)
+    .optional()
+    .describe(
+      "Cloud provider: 'hetzner', 'digitalocean', 'vultr', 'linode' (required for 'add' action)",
+    ),
+  ip: z.string().optional().describe("Server public IP address (required for 'add' action)"),
+  name: z
+    .string()
+    .optional()
+    .describe(
+      "Server name, 3-63 chars, lowercase alphanumeric and hyphens (required for 'add' action)",
+    ),
+  skipVerify: z
+    .boolean()
+    .default(false)
+    .describe("Skip Coolify SSH verification when adding a server (only for 'add' action)"),
   mode: z
     .enum(["coolify", "dokploy", "bare"])
     .default("coolify")
-    .describe(
-      "Server mode for 'add' action: 'coolify', 'dokploy', or 'bare'. Default: coolify",
-    ),
+    .describe("Server mode for 'add' action: 'coolify', 'dokploy', or 'bare'. Default: coolify"),
 };
 
 export async function handleServerManage(params: {
@@ -79,13 +85,9 @@ export async function handleServerManage(params: {
         });
 
         if (!result.success) {
-          return mcpError(
-            result.error ?? "Add server failed",
-            undefined,
-            [
-              { command: "server_info { action: 'list' }", reason: "Check existing servers" },
-            ],
-          );
+          return mcpError(result.error ?? "Add server failed", undefined, [
+            { command: "server_info { action: 'list' }", reason: "Check existing servers" },
+          ]);
         }
 
         const suggestedActions =
@@ -144,18 +146,21 @@ export async function handleServerManage(params: {
         if (!params.server) {
           const servers = getServers();
           if (servers.length === 0) {
-            return mcpError(
-              "No servers found",
-              undefined,
-              [{ command: "kastell init", reason: "Deploy a server first" }],
-            );
+            return mcpError("No servers found", undefined, [
+              { command: "kastell init", reason: "Deploy a server first" },
+            ]);
           }
           return {
-            content: [{ type: "text", text: JSON.stringify({
-              error: "Missing required parameter: server",
-              available_servers: servers.map((s) => ({ name: s.name, ip: s.ip })),
-              hint: "Specify which server to remove by name or IP",
-            }) }],
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({
+                  error: "Missing required parameter: server",
+                  available_servers: servers.map((s) => ({ name: s.name, ip: s.ip })),
+                  hint: "Specify which server to remove by name or IP",
+                }),
+              },
+            ],
             isError: true,
           };
         }
@@ -165,10 +170,15 @@ export async function handleServerManage(params: {
         if (!result.success) {
           const servers = getServers();
           return {
-            content: [{ type: "text", text: JSON.stringify({
-              error: result.error,
-              available_servers: servers.map((s) => s.name),
-            }) }],
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({
+                  error: result.error,
+                  available_servers: servers.map((s) => s.name),
+                }),
+              },
+            ],
             isError: true,
           };
         }
@@ -206,19 +216,26 @@ export async function handleServerManage(params: {
         if (!params.server) {
           const servers = getServers();
           if (servers.length === 0) {
-            return mcpError(
-              "No servers found",
-              undefined,
-              [{ command: "kastell init", reason: "Deploy a server first" }],
-            );
+            return mcpError("No servers found", undefined, [
+              { command: "kastell init", reason: "Deploy a server first" },
+            ]);
           }
           return {
-            content: [{ type: "text", text: JSON.stringify({
-              error: "Missing required parameter: server",
-              available_servers: servers.map((s) => ({ name: s.name, ip: s.ip, provider: s.provider })),
-              hint: "Specify which server to destroy by name or IP",
-              warning: "This will PERMANENTLY DELETE the server from the cloud provider",
-            }) }],
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({
+                  error: "Missing required parameter: server",
+                  available_servers: servers.map((s) => ({
+                    name: s.name,
+                    ip: s.ip,
+                    provider: s.provider,
+                  })),
+                  hint: "Specify which server to destroy by name or IP",
+                  warning: "This will PERMANENTLY DELETE the server from the cloud provider",
+                }),
+              },
+            ],
             isError: true,
           };
         }
@@ -227,17 +244,31 @@ export async function handleServerManage(params: {
 
         if (!result.success) {
           return {
-            content: [{ type: "text", text: JSON.stringify({
-              error: result.error,
-              ...(result.hint ? { hint: result.hint } : {}),
-              ...(result.server ? {
-                server: { name: result.server.name, ip: result.server.ip, provider: result.server.provider },
-              } : {}),
-              suggested_actions: [
-                { command: `server_manage { action: 'remove', server: '${params.server}' }`, reason: "Remove from local config only" },
-                { command: "kastell doctor --check-tokens", reason: "Verify API tokens" },
-              ],
-            }) }],
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({
+                  error: result.error,
+                  ...(result.hint ? { hint: result.hint } : {}),
+                  ...(result.server
+                    ? {
+                        server: {
+                          name: result.server.name,
+                          ip: result.server.ip,
+                          provider: result.server.provider,
+                        },
+                      }
+                    : {}),
+                  suggested_actions: [
+                    {
+                      command: `server_manage { action: 'remove', server: '${params.server}' }`,
+                      reason: "Remove from local config only",
+                    },
+                    { command: "kastell doctor --check-tokens", reason: "Verify API tokens" },
+                  ],
+                }),
+              },
+            ],
             isError: true,
           };
         }
@@ -263,8 +294,6 @@ export async function handleServerManage(params: {
       }
     }
   } catch (error: unknown) {
-    return mcpError(
-      sanitizeStderr(getErrorMessage(error)),
-    );
+    return mcpError(sanitizeStderr(getErrorMessage(error)));
   }
 }

@@ -10,9 +10,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 // ─── Schema ──────────────────────────────────────────────────────────────────
 
 export const serverProvisionSchema = {
-  provider: z
-    .enum(SUPPORTED_PROVIDERS)
-    .describe("Cloud provider to create server on"),
+  provider: z.enum(SUPPORTED_PROVIDERS).describe("Cloud provider to create server on"),
   region: z
     .string()
     .optional()
@@ -46,14 +44,17 @@ export const serverProvisionSchema = {
 
 // ─── Handler ─────────────────────────────────────────────────────────────────
 
-export async function handleServerProvision(params: {
-  provider: SupportedProvider;
-  region?: string;
-  size?: string;
-  name: string;
-  template?: "starter" | "production" | "dev";
-  mode?: "coolify" | "dokploy" | "bare";
-}, mcpServer?: McpServer): Promise<{ content: Array<{ type: "text"; text: string }>; isError?: boolean }> {
+export async function handleServerProvision(
+  params: {
+    provider: SupportedProvider;
+    region?: string;
+    size?: string;
+    name: string;
+    template?: "starter" | "production" | "dev";
+    mode?: "coolify" | "dokploy" | "bare";
+  },
+  mcpServer?: McpServer,
+): Promise<{ content: Array<{ type: "text"; text: string }>; isError?: boolean }> {
   const mode = params.mode ?? "coolify";
 
   // SAFE_MODE guard
@@ -77,16 +78,12 @@ export async function handleServerProvision(params: {
     });
 
     if (!result.success) {
-      return mcpError(
-        result.error ?? "Provision failed",
-        result.hint,
-        [
-          {
-            command: "server_info { action: 'list' }",
-            reason: "Check existing servers",
-          },
-        ],
-      );
+      return mcpError(result.error ?? "Provision failed", result.hint, [
+        {
+          command: "server_info { action: 'list' }",
+          reason: "Check existing servers",
+        },
+      ]);
     }
 
     if (!result.server) {
@@ -118,7 +115,8 @@ export async function handleServerProvision(params: {
         : [
             {
               command: `server_info { action: 'health', server: '${server.name}' }`,
-              reason: "Check Coolify health (wait 3-5 minutes after creation for Coolify to initialize)",
+              reason:
+                "Check Coolify health (wait 3-5 minutes after creation for Coolify to initialize)",
             },
             {
               command: `server_secure { action: 'secure-setup', server: '${server.name}' }`,
@@ -153,8 +151,6 @@ export async function handleServerProvision(params: {
       suggested_actions: suggestedActions,
     });
   } catch (error: unknown) {
-    return mcpError(
-      sanitizeStderr(getErrorMessage(error)),
-    );
+    return mcpError(sanitizeStderr(getErrorMessage(error)));
   }
 }

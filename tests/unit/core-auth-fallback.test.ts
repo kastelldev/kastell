@@ -48,6 +48,7 @@ const mockSecureMkdirSync = secureMkdirSync as jest.MockedFunction<typeof secure
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockSecureMkdirSync.mockReturnValue(undefined);
 });
 
 describe("file-based fallback (no keyring)", () => {
