@@ -93,10 +93,10 @@ jobs:
           HETZNER_TOKEN: ${{ secrets.HETZNER_TOKEN }}
         run: |
           node dist/index.js audit "$SERVER_NAME" --format json > audit-result.json
-          SCORE=$(node -e "console.log(JSON.parse(require('fs').readFileSync('audit-result.json','utf8')).overallScore)")
+          SCORE=$(node -e "try{console.log(JSON.parse(require('fs').readFileSync('audit-result.json','utf8')).overallScore)}catch(e){console.log('-1')}")
           echo "Audit score: $SCORE"
-          if [ "$SCORE" -lt 60 ]; then
-            echo "::error::Audit score $SCORE is below minimum 60"
+          if [ "$SCORE" -lt 0 ] || [ "$SCORE" -lt 60 ]; then
+            echo "::error::Audit score $SCORE is below minimum 60 (or JSON parse failed)"
             exit 1
           fi
 

@@ -294,7 +294,12 @@ export async function rollbackFix(
   }
 
   if (safeFiles.length > 0) {
-    const cpCmds = safeFiles.map((relPath) => `cp ${backupPath}/${relPath} /${relPath}`).join(" && ");
+    // Server-side path traversal guard: reject any path containing ..
+    // Client-side SAFE_PATH filter is defense-in-depth; SSH command is the primary guard
+    const cpCmds = safeFiles.map((relPath) => {
+      if (relPath.includes("..") || relPath.startsWith("/")) return "true";
+      return `cp ${backupPath}/${relPath} /${relPath}`;
+    }).join(" && ");
     const batchResult = await sshExec(ip, raw(cpCmds));
     if (batchResult.code === 0) {
       restored.push(...safeFiles.map((r) => `/${r}`));
