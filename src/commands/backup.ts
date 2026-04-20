@@ -4,7 +4,7 @@ import { getServers } from "../utils/config.js";
 import { resolveServer } from "../utils/serverSelect.js";
 import { checkSshAvailable } from "../utils/ssh.js";
 import { logger, createSpinner } from "../utils/logger.js";
-import { getErrorMessage, mapSshError, classifyError } from "../utils/errorMapper.js";
+import { mapSshError, classifyError } from "../utils/errorMapper.js";
 import { resolvePlatform } from "../adapters/factory.js";
 import type { ServerRecord } from "../types/index.js";
 import {
