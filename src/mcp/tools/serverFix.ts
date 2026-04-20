@@ -17,6 +17,7 @@ import { filterChecksByProfile, isValidProfile, listAllProfileNames } from "../.
 import { writeFixReport } from "../../utils/fixReport.js";
 import { backupServer } from "../../core/backup.js";
 import { isSafeMode } from "../../core/manage.js";
+import { logSafeModeBlock } from "../../utils/safeMode.js";
 import { sshExec, sshMasterOpen, sshMasterClose } from "../../utils/ssh.js";
 import { raw } from "../../utils/sshCommand.js";
 import {
@@ -542,6 +543,7 @@ export async function handleServerFix(
 
 function guardRollbackSafeMode(): ReturnType<typeof mcpError> | null {
   if (isSafeMode()) {
+    logSafeModeBlock("fix-rollback", { category: "destructive" });
     return mcpError(
       "Rollback blocked: KASTELL_SAFE_MODE=true",
       "Set SAFE_MODE=false to allow rollback operations",

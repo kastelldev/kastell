@@ -2,6 +2,7 @@ import { z } from "zod";
 import { getServers } from "../../utils/config.js";
 import { getProviderToken } from "../../core/tokens.js";
 import { isSafeMode } from "../../core/manage.js";
+import { logSafeModeBlock } from "../../utils/safeMode.js";
 import {
   rebootAndWait,
   maintainServer,
@@ -64,6 +65,16 @@ export async function handleServerMaintain(params: {
           return mcpError(modeError, "Use SSH to manage bare servers directly");
         }
 
+        // SAFE_MODE guard
+        if (isSafeMode()) {
+          logSafeModeBlock("maintain-update", { category: "destructive" });
+          return mcpError(
+            "Update is disabled in SAFE_MODE",
+            "Set KASTELL_SAFE_MODE=false to enable platform updates",
+            [{ command: `server_info { action: 'health', server: '${server.name}' }`, reason: "Check server health status" }],
+          );
+        }
+
         const platform = resolvePlatform(server);
         if (!platform) {
           return mcpError("No platform adapter available for this server");
@@ -103,6 +114,7 @@ export async function handleServerMaintain(params: {
 
       case "restart": {
         if (isSafeMode()) {
+          logSafeModeBlock("maintain-restart", { category: "destructive" });
           return mcpError(
             "Restart is disabled in SAFE_MODE",
             "Set KASTELL_SAFE_MODE=false to enable server reboot",

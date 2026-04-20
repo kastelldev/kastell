@@ -7,6 +7,7 @@ import { isBareServer } from "../utils/modeGuard.js";
 import { logger, createSpinner } from "../utils/logger.js";
 import { mapSshError, classifyError } from "../utils/errorMapper.js";
 import { isSafeMode } from "../core/manage.js";
+import { logSafeModeBlock } from "../utils/safeMode.js";
 import { getAdapter } from "../adapters/factory.js";
 import { adapterDisplayName } from "../adapters/shared.js";
 import {
@@ -35,6 +36,7 @@ export async function restoreCommand(
 
   // SAFE_MODE check — applies before mode routing (blocks ALL restore operations)
   if (isSafeMode()) {
+    logSafeModeBlock("restore", { category: "destructive" });
     logger.error(
       "Restore is blocked by SAFE_MODE. Set KASTELL_SAFE_MODE=false to allow restore operations.",
     );
