@@ -4,7 +4,7 @@ import { getServers } from "../utils/config.js";
 import { resolveServer } from "../utils/serverSelect.js";
 import { checkSshAvailable } from "../utils/ssh.js";
 import { logger, createSpinner } from "../utils/logger.js";
-import { getErrorMessage } from "../utils/errorMapper.js";
+import { getErrorMessage, mapSshError, classifyError } from "../utils/errorMapper.js";
 import { resolvePlatform } from "../adapters/factory.js";
 import type { ServerRecord } from "../types/index.js";
 import {
@@ -49,7 +49,13 @@ async function backupSingleServer(server: ServerRecord, dryRun: boolean): Promis
     }
   } catch (error: unknown) {
     spinner.fail(`[${server.name}] Backup failed`);
-    logger.error(getErrorMessage(error));
+    const classified = classifyError(error);
+    logger.error(classified.message);
+    if (classified.hint) logger.info(classified.hint);
+    if (!classified.isTyped) {
+      const hint = mapSshError(error, server.ip);
+      if (hint) logger.info(hint);
+    }
     return false;
   }
 }
@@ -298,6 +304,12 @@ export async function backupCommand(
     }
   } catch (error: unknown) {
     spinner.fail("Backup failed");
-    logger.error(getErrorMessage(error));
+    const classified = classifyError(error);
+    logger.error(classified.message);
+    if (classified.hint) logger.info(classified.hint);
+    if (!classified.isTyped) {
+      const hint = mapSshError(error, server.ip);
+      if (hint) logger.info(hint);
+    }
   }
 }
