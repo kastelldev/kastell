@@ -5,8 +5,9 @@ import { resolveServer } from "../utils/serverSelect.js";
 import { checkSshAvailable } from "../utils/ssh.js";
 import { isBareServer } from "../utils/modeGuard.js";
 import { logger, createSpinner } from "../utils/logger.js";
-import { getErrorMessage, mapSshError } from "../utils/errorMapper.js";
+import { mapSshError, classifyError } from "../utils/errorMapper.js";
 import { isSafeMode } from "../core/manage.js";
+import { logSafeModeBlock } from "../utils/safeMode.js";
 import { getAdapter } from "../adapters/factory.js";
 import { adapterDisplayName } from "../adapters/shared.js";
 import {
@@ -35,6 +36,7 @@ export async function restoreCommand(
 
   // SAFE_MODE check — applies before mode routing (blocks ALL restore operations)
   if (isSafeMode()) {
+    logSafeModeBlock("restore", { category: "destructive" });
     logger.error(
       "Restore is blocked by SAFE_MODE. Set KASTELL_SAFE_MODE=false to allow restore operations.",
     );
@@ -232,8 +234,12 @@ export async function restoreCommand(
     }
   } catch (error: unknown) {
     restoreSpinner.fail(`${platformLabel} restore failed`);
-    logger.error(getErrorMessage(error));
-    const hint = mapSshError(error, server.ip);
-    if (hint) logger.info(hint);
+    const classified = classifyError(error);
+    logger.error(classified.message);
+    if (classified.hint) logger.info(classified.hint);
+    if (!classified.isTyped) {
+      const hint = mapSshError(error, server.ip);
+      if (hint) logger.info(hint);
+    }
   }
 }

@@ -21,7 +21,7 @@ import { buildImpactContext } from "../core/audit/scoring.js";
 import { filterChecksByProfile, isValidProfile, listAllProfileNames } from "../core/audit/profiles.js";
 import { writeFixReport } from "../utils/fixReport.js";
 import { backupServer } from "../core/backup.js";
-import { getErrorMessage } from "../utils/errorMapper.js";
+import { classifyError } from "../utils/errorMapper.js";
 import {
   loadFixHistory,
   saveFixHistory,
@@ -455,7 +455,9 @@ export async function fixSafeCommand(
         }
       }
     } catch (err) {
-      errors.push(`${check.id}: ${getErrorMessage(err)}`);
+      const classified = classifyError(err);
+        const detail = classified.hint ? `${classified.message} (${classified.hint})` : classified.message;
+        errors.push(`${check.id}: ${detail}`);
     }
   }
   fixSpinner.stop();

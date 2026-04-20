@@ -13,6 +13,7 @@ import {
   restoreSnapshot,
 } from "../../core/snapshot.js";
 import { isSafeMode } from "../../core/manage.js";
+import { logSafeModeBlock } from "../../utils/safeMode.js";
 import { isBareServer } from "../../utils/modeGuard.js";
 import { join } from "path";
 import {
@@ -98,6 +99,7 @@ export async function handleBackupRestore(
   backupId: string | undefined,
 ): Promise<McpResponse> {
   if (isSafeMode()) {
+    logSafeModeBlock("backup-restore", { category: "destructive" });
     return mcpError(
       "Restore disabled in SAFE_MODE",
       "Set KASTELL_SAFE_MODE=false to enable restore operations",
@@ -156,6 +158,7 @@ export async function handleBackupRestore(
 
 export async function handleSnapshotCreate(server: ServerRecord): Promise<McpResponse> {
   if (isSafeMode()) {
+    logSafeModeBlock("snapshot-create", { category: "destructive" });
     return mcpError(
       "Snapshot creation is disabled in SAFE_MODE",
       "Set KASTELL_SAFE_MODE=false to enable snapshot creation (billable operation)",
@@ -253,6 +256,7 @@ export async function handleSnapshotDelete(
   snapshotId: string | undefined,
 ): Promise<McpResponse> {
   if (isSafeMode()) {
+    logSafeModeBlock("snapshot-delete", { category: "destructive" });
     return mcpError(
       "Snapshot delete disabled in SAFE_MODE",
       "Set KASTELL_SAFE_MODE=false to enable snapshot deletion",
@@ -309,6 +313,7 @@ export async function handleSnapshotRestore(
   snapshotId: string | undefined,
 ): Promise<McpResponse> {
   if (isSafeMode()) {
+    logSafeModeBlock("snapshot-restore", { category: "destructive" });
     return mcpError(
       "Snapshot restore disabled in SAFE_MODE",
       "Set KASTELL_SAFE_MODE=false to enable snapshot restore (destructive operation)",

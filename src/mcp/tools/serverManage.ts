@@ -6,6 +6,7 @@ import {
   removeServerRecord,
   destroyCloudServer,
 } from "../../core/manage.js";
+import { logSafeModeBlock } from "../../utils/safeMode.js";
 import { mcpSuccess, mcpError } from "../utils.js";
 import { getErrorMessage, sanitizeStderr } from "../../utils/errorMapper.js";
 import { SUPPORTED_PROVIDERS } from "../../constants.js";
@@ -138,6 +139,7 @@ export async function handleServerManage(params: {
 
       case "remove": {
         if (isSafeMode()) {
+          logSafeModeBlock("server-manage", { category: "destructive" });
           return mcpError(
             "Remove is disabled in SAFE_MODE",
             "Set KASTELL_SAFE_MODE=false to enable server removal from local config.",
@@ -201,6 +203,7 @@ export async function handleServerManage(params: {
       case "destroy": {
         // SAFE_MODE check
         if (isSafeMode()) {
+          logSafeModeBlock("server-destroy", { category: "destructive" });
           return mcpError(
             "Destroy is disabled in SAFE_MODE (enabled by default for safety)",
             "Set KASTELL_SAFE_MODE=false to enable destructive operations. WARNING: This will permanently delete the server from the cloud provider.",

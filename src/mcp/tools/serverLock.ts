@@ -10,6 +10,7 @@ import {
 } from "../utils.js";
 import { getErrorMessage, sanitizeStderr } from "../../utils/errorMapper.js";
 import { isSafeMode } from "../../core/manage.js";
+import { logSafeModeBlock } from "../../utils/safeMode.js";
 import type { Platform } from "../../types/index.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
@@ -54,6 +55,7 @@ export async function handleServerLock(params: {
 
     // SAFE_MODE guard: block actual hardening, allow preview
     if (production && !dryRun && isSafeMode()) {
+      logSafeModeBlock("lock-production", { category: "destructive" });
       return mcpError(
         "Server hardening is disabled in SAFE_MODE",
         "Set KASTELL_SAFE_MODE=false to enable production hardening. Use dryRun=true to preview changes safely.",

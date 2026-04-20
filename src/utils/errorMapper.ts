@@ -1,4 +1,10 @@
 import axios from "axios";
+import {
+  ValidationError,
+  PermissionError,
+  TransientError,
+  BusinessError,
+} from "./errors.js";
 import { PROVIDER_DISPLAY_NAMES } from "../constants.js";
 
 interface ProviderUrls {
@@ -186,6 +192,29 @@ const FS_ERROR_CODES: Record<string, string> = {
   EPERM: "Permission denied. Check file permissions or run with elevated privileges.",
   ENOSPC: "Disk full. Free up space and try again.",
 };
+
+export interface ClassifiedError {
+  message: string;
+  hint?: string;
+  isTyped: boolean;
+}
+
+export function classifyError(error: unknown): ClassifiedError {
+  if (error == null) return { message: "Unknown error", isTyped: false };
+  if (error instanceof ValidationError) {
+    return { message: error.hint ?? error.message, isTyped: true };
+  }
+  if (error instanceof PermissionError) {
+    return { message: error.message, hint: 'Check API token permissions or server access', isTyped: true };
+  }
+  if (error instanceof TransientError) {
+    return { message: error.message, hint: 'This may be temporary — retry in a few minutes', isTyped: true };
+  }
+  if (error instanceof BusinessError) {
+    return { message: error.message, hint: error.hint, isTyped: true };
+  }
+  return { message: getErrorMessage(error), isTyped: false };
+}
 
 export function mapFileSystemError(error: unknown): string {
   if (error instanceof Error && "code" in error) {

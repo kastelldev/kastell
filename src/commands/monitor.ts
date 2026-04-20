@@ -1,7 +1,7 @@
 import { resolveServer } from "../utils/serverSelect.js";
 import { checkSshAvailable, sshExec } from "../utils/ssh.js";
 import { logger, createSpinner } from "../utils/logger.js";
-import { getErrorMessage, mapSshError } from "../utils/errorMapper.js";
+import { mapSshError, classifyError } from "../utils/errorMapper.js";
 import { buildMonitorCommand, parseMetrics } from "../core/logs.js";
 import type { SystemMetrics } from "../core/logs.js";
 
@@ -55,8 +55,12 @@ export async function monitorCommand(
     }
   } catch (error: unknown) {
     spinner.fail("Failed to fetch metrics");
-    logger.error(getErrorMessage(error));
-    const hint = mapSshError(error, server.ip);
-    if (hint) logger.info(hint);
+    const classified = classifyError(error);
+    logger.error(classified.message);
+    if (classified.hint) logger.info(classified.hint);
+    if (!classified.isTyped) {
+      const hint = mapSshError(error, server.ip);
+      if (hint) logger.info(hint);
+    }
   }
 }

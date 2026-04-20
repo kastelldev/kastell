@@ -4,6 +4,7 @@ import { resolveServer, promptApiToken, collectProviderTokens } from "../utils/s
 import { logger, createSpinner } from "../utils/logger.js";
 import { createSnapshot, listSnapshots, deleteSnapshot, restoreSnapshot } from "../core/snapshot.js";
 import { isSafeMode } from "../core/manage.js";
+import { logSafeModeBlock } from "../utils/safeMode.js";
 import { createProviderWithToken } from "../utils/providerFactory.js";
 
 interface SnapshotOptions {
@@ -17,6 +18,7 @@ async function snapshotCreate(
   options?: SnapshotOptions,
 ): Promise<void> {
   if (isSafeMode()) {
+    logSafeModeBlock("snapshot-create", { category: "destructive" });
     logger.error("Snapshot creation is blocked in SAFE_MODE (billable operation). Set KASTELL_SAFE_MODE=false to allow.");
     return;
   }
@@ -223,6 +225,7 @@ async function snapshotRestore(
   options?: SnapshotOptions,
 ): Promise<void> {
   if (isSafeMode()) {
+    logSafeModeBlock("snapshot-restore", { category: "destructive" });
     logger.error(
       "Snapshot restore is blocked by SAFE_MODE. Set KASTELL_SAFE_MODE=false to allow restore operations.",
     );

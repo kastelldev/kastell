@@ -10,6 +10,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { requireManagedMode } from "../../utils/modeGuard.js";
 import { getErrorMessage, sanitizeStderr } from "../../utils/errorMapper.js";
 import { isSafeMode } from "../../core/manage.js";
+import { logSafeModeBlock } from "../../utils/safeMode.js";
 import {
   handleSecureSetup,
   handleSecureAudit,
@@ -85,6 +86,7 @@ export async function handleServerSecure(params: {
 
     // SAFE_MODE guard: block mutating actions, allow read-only
     if (!READ_ONLY_ACTIONS.includes(params.action) && isSafeMode()) {
+      logSafeModeBlock("secure-modify", { category: "destructive" });
       return mcpError(
         `${params.action} is disabled in SAFE_MODE`,
         "Set KASTELL_SAFE_MODE=false to enable server modifications. Read-only actions (secure-audit, firewall-status, domain-check, domain-info) remain available.",

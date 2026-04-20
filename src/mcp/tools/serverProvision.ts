@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isSafeMode } from "../../core/manage.js";
+import { logSafeModeBlock } from "../../utils/safeMode.js";
 import { provisionServer } from "../../core/provision.js";
 import { mcpSuccess, mcpError, mcpLog } from "../utils.js";
 import { getErrorMessage, sanitizeStderr } from "../../utils/errorMapper.js";
@@ -59,6 +60,7 @@ export async function handleServerProvision(
 
   // SAFE_MODE guard
   if (isSafeMode()) {
+    logSafeModeBlock("provision", { category: "destructive" });
     return mcpError(
       "Provision is disabled in SAFE_MODE",
       "Set KASTELL_SAFE_MODE=false to enable server provisioning. WARNING: This creates billable cloud resources.",

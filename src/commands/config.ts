@@ -6,7 +6,7 @@ import {
   VALID_KEYS,
 } from "../utils/defaults.js";
 import { logger } from "../utils/logger.js";
-import { getErrorMessage } from "../utils/errorMapper.js";
+import { classifyError } from "../utils/errorMapper.js";
 
 export async function configCommand(subcommand?: string, args?: string[]): Promise<void> {
   switch (subcommand) {
@@ -20,7 +20,9 @@ export async function configCommand(subcommand?: string, args?: string[]): Promi
         setDefault(key, value);
         logger.success(`Set ${key} = ${value}`);
       } catch (error: unknown) {
-        logger.error(getErrorMessage(error));
+        const classified = classifyError(error);
+        logger.error(classified.message);
+        if (classified.hint) logger.info(classified.hint);
       }
       break;
     }

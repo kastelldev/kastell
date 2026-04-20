@@ -1,7 +1,7 @@
 import { resolveServer } from "../utils/serverSelect.js";
 import { checkSshAvailable, sshExec } from "../utils/ssh.js";
 import { logger, createSpinner } from "../utils/logger.js";
-import { getErrorMessage, mapSshError } from "../utils/errorMapper.js";
+import { mapSshError, classifyError } from "../utils/errorMapper.js";
 import {
   parseSshdConfig,
   parseAuditResult,
@@ -88,9 +88,13 @@ async function secureStatus(ip: string, name: string): Promise<void> {
     logger.info(`SSH Port:       ${audit.sshPort}`);
   } catch (error: unknown) {
     spinner.fail("Failed to check security status");
-    logger.error(getErrorMessage(error));
-    const hint = mapSshError(error, ip);
-    if (hint) logger.info(hint);
+    const classified = classifyError(error);
+    logger.error(classified.message);
+    if (classified.hint) logger.info(classified.hint);
+    if (!classified.isTyped) {
+      const hint = mapSshError(error, ip);
+      if (hint) logger.info(hint);
+    }
   }
 }
 
@@ -142,8 +146,12 @@ async function secureAudit(ip: string, name: string): Promise<void> {
     }
   } catch (error: unknown) {
     spinner.fail("Failed to run security audit");
-    logger.error(getErrorMessage(error));
-    const hint = mapSshError(error, ip);
-    if (hint) logger.info(hint);
+    const classified = classifyError(error);
+    logger.error(classified.message);
+    if (classified.hint) logger.info(classified.hint);
+    if (!classified.isTyped) {
+      const hint = mapSshError(error, ip);
+      if (hint) logger.info(hint);
+    }
   }
 }

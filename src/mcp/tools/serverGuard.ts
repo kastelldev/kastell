@@ -9,6 +9,7 @@ import {
 } from "../utils.js";
 import { getErrorMessage, sanitizeStderr } from "../../utils/errorMapper.js";
 import { isSafeMode } from "../../core/manage.js";
+import { logSafeModeBlock } from "../../utils/safeMode.js";
 
 export const serverGuardSchema = {
   server: z.string().optional().describe("Server name or IP. Auto-selected if only one server exists."),
@@ -43,6 +44,7 @@ export async function handleServerGuard(params: {
 
     // SAFE_MODE guard: block start/stop, allow status
     if (params.action !== "status" && isSafeMode()) {
+      logSafeModeBlock("guard-modify", { category: "destructive" });
       return mcpError(
         `Guard ${params.action} is disabled in SAFE_MODE`,
         "Set KASTELL_SAFE_MODE=false to enable guard start/stop. Use action:'status' to check guard state safely.",

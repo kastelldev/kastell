@@ -2,7 +2,7 @@ import { getServers } from "../utils/config.js";
 import { resolveServer, promptApiToken, collectProviderTokens } from "../utils/serverSelect.js";
 import { checkSshAvailable } from "../utils/ssh.js";
 import { logger, createSpinner } from "../utils/logger.js";
-import { getErrorMessage, mapProviderError } from "../utils/errorMapper.js";
+import { mapProviderError, classifyError } from "../utils/errorMapper.js";
 import {
   getCloudServerStatus,
   checkAllServersStatus,
@@ -154,8 +154,12 @@ export async function statusCommand(query?: string, options?: StatusOptions): Pr
     }
   } catch (error: unknown) {
     spinner.fail("Failed to check status");
-    logger.error(getErrorMessage(error));
-    const hint = mapProviderError(error, server.provider);
-    if (hint) logger.info(hint);
+    const classified = classifyError(error);
+    logger.error(classified.message);
+    if (classified.hint) logger.info(classified.hint);
+    if (!classified.isTyped) {
+      const hint = mapProviderError(error, server.provider);
+      if (hint) logger.info(hint);
+    }
   }
 }
