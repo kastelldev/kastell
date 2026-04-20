@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0] - 2026-04-20
+
+### Added
+- **`classifyError` helper** — unified instanceof-based error branching for KastellError hierarchy (TransientError, ValidationError, BusinessError, PermissionError)
+- **`logSafeModeBlock`** — structured security logging wired into all 9 `isSafeMode()` guard sites in commands/ and MCP tools
+- **`secureWriteFileSync` / `secureMkdirSync` / `ensureSecureDir`** — platform-aware secure file operations with POSIX permission enforcement
+- **`configRepair` core + CLI** — `kastell config repair` diagnoses and repairs corrupted config files
+- **MCP audit enhancements** — snapshot save/compare, category/severity filter, threshold gate, profile filter for `server_audit`
+- **`--checks` flag** — `kastell fix --checks KERN-SYNCOOKIES,...` for specific check IDs
+- **Property-based tests** — fast-check arbitraries for MCP and config Zod schemas
+- **Fuzz tests** — kernel, firewall, and filesystem parser fuzzing with fast-check
+- **E2E nightly workflow** — CI provision→lock→audit→destroy end-to-end pipeline
+- **Schema exports** — property-based snapshot tests for Zod schema stability
+
+### Changed
+- **Structured error migration (P107+P113)** — all 9 commands/ catch blocks use `instanceof` branching instead of string matching; mappers (mapProviderError, mapSshError, mapFileSystemError) preserved for backward compat
+- **Security logging (P107)** — SecurityLogger module with JSON audit trail, throw-point migration
+- **Audit DRY (P106)** — shared sysctl utility, typed audit categories, v1.12 review backlog closed
+- **CONFIG_DIR→KASTELL_DIR (P105)** — unified path constant, inline paths eliminated
+- **Code quality** — template literals, cleaner conditionals, import cleanup across codebase
+- **MCP parity** — CLI/MCP feature gap closed (parity matrix verification tests added)
+
+### Security
+- **secureWrite migration (SEC-06)** — all credential files use `secureWriteFileSync` with 0o600 permissions
+- **TOCTOU fix** — removed `existsSync` guard before `secureMkdirSync` in auth.ts
+- **Path traversal guard** — server-side validation in `rollbackFix` for E2E JSON parse errors
+- **ESLint security plugins (P108)** — Zod schemas for all 4 providers, shellEscape utility, retry resilience (502/503/ETIMEDOUT)
+- **CI hardening** — explicit permissions blocks in all workflows, SHA-pinned checkout actions
+- **Dependency updates** — axios 1.15.0 (CVE-2025-62718), follow-redirects 1.16.0, hono 4.12.14, actions/cache 5.0.5
+
+### Tests
+- 240 suites, 10127 tests, 12 snapshots (up from ~9500 in v1.17.1)
+- Coverage threshold: 90% global, 95% audit, 90% provider, 90% MCP
+
 ## [1.17.1] - 2026-04-01
 
 ### Security
