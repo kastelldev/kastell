@@ -39,6 +39,7 @@ import {
   type McpResponse,
 } from "../utils.js";
 import { getErrorMessage, sanitizeStderr } from "../../utils/errorMapper.js";
+import { saveBaseline, loadBaseline, checkRegression } from "../../core/audit/regression.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 export const serverFixSchema = {
@@ -283,6 +284,20 @@ export async function handleServerFix(
     }
     const auditResult = result.data;
 
+    // Regression check — warn-only, included in response
+    const baseline = loadBaseline(auditResult.serverIp);
+    let regressionInfo: { regressions: string[]; newPasses: string[]; baselineScore: number } | null = null;
+    if (baseline) {
+      const regression = checkRegression(baseline, auditResult);
+      if (regression.regressions.length > 0 || regression.newPasses.length > 0) {
+        regressionInfo = {
+          regressions: regression.regressions,
+          newPasses: regression.newPasses,
+          baselineScore: regression.baselineScore,
+        };
+      }
+    }
+
     // ── Build check index for O(1) lookups (used by FORBIDDEN rejection + affectedCats) ──
     const checkIndex = new Map<string, { categoryName: string }>();
     for (const cat of auditResult.categories) {
@@ -396,6 +411,7 @@ export async function handleServerFix(
         guardedCount,
         forbiddenCount,
         scoreBefore: auditResult.overallScore,
+        ...(regressionInfo ? { regressionInfo } : {}),
       }, { largeResult: true });
     }
 
@@ -495,6 +511,11 @@ export async function handleServerFix(
       backupPath: remoteBackupPath,
     });
 
+    // Promote new passes to baseline after successful fix
+    if (applied.length > 0) {
+      await saveBaseline(auditResult).catch(() => {});
+    }
+
     // ── LIVE FIX — prune old backups ──────────────────────────────────────
     await backupRemoteCleanup(server.ip);
 
@@ -535,6 +556,7 @@ export async function handleServerFix(
       ...(targetWarning ? { targetWarning } : {}),
       ...(diffSummary ? { diffSummary } : {}),
       ...(reportFile ? { reportFile } : {}),
+      ...(regressionInfo ? { regressionInfo } : {}),
     }, { largeResult: true });
   } catch (error: unknown) {
     return mcpError(sanitizeStderr(getErrorMessage(error)));

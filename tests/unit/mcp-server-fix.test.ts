@@ -25,6 +25,7 @@ jest.mock("../../src/core/backup");
 jest.mock("../../src/core/manage");
 jest.mock("../../src/utils/ssh");
 jest.mock("../../src/core/audit/handlers/index");
+jest.mock("../../src/core/audit/regression");
 jest.mock("../../src/utils/errorMapper", () => ({
   getErrorMessage: (e: unknown) => (e instanceof Error ? e.message : String(e)),
 }));
@@ -41,6 +42,7 @@ import * as manage from "../../src/core/manage";
 import * as ssh from "../../src/utils/ssh";
 import * as handlers from "../../src/core/audit/handlers/index";
 import * as profiles from "../../src/core/audit/profiles";
+import * as regressionRunner from "../../src/core/audit/regression";
 import { handleServerFix } from "../../src/mcp/tools/serverFix";
 import type { FixHistoryEntry } from "../../src/core/audit/types";
 
@@ -54,6 +56,7 @@ const mockedManage = manage as jest.Mocked<typeof manage>;
 const mockedSsh = ssh as jest.Mocked<typeof ssh>;
 const mockedHandlers = handlers as jest.Mocked<typeof handlers>;
 const mockedProfiles = profiles as jest.Mocked<typeof profiles>;
+const mockedRegression = regressionRunner as jest.Mocked<typeof regressionRunner>;
 
 // ─── Test fixtures ────────────────────────────────────────────────────────────
 
@@ -225,6 +228,11 @@ beforeEach(() => {
   mockedProfiles.isValidProfile.mockReturnValue(true);
   mockedProfiles.filterChecksByProfile.mockImplementation((checks) => checks);
   mockedProfiles.listAllProfileNames.mockReturnValue(["web-server", "database", "mail-server"]);
+
+  // Default regression mocks
+  mockedRegression.saveBaseline.mockResolvedValue();
+  mockedRegression.loadBaseline.mockReturnValue(null);
+  mockedRegression.checkRegression.mockReturnValue({ regressions: [], newPasses: [], baselineScore: 0, currentScore: 0 });
 });
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
@@ -1066,6 +1074,50 @@ describe("MCP server_fix tool", () => {
         expect.any(Array),
         "my-custom",
       );
+    });
+  });
+
+  // ── regression baseline ──────────────────────────────────────────────────────
+
+  describe("regression baseline", () => {
+    it("should include regressionInfo in dry-run response when baseline exists", async () => {
+      mockedRegression.loadBaseline.mockReturnValue({
+        version: 1,
+        serverIp: "1.2.3.4",
+        lastUpdated: "2026-04-20T10:00:00Z",
+        bestScore: 80,
+        passedChecks: ["KERN-SYNCOOKIES"],
+      });
+      mockedRegression.checkRegression.mockReturnValue({
+        regressions: [],
+        newPasses: ["KERN-RANDOMIZE"],
+        baselineScore: 80,
+        currentScore: 65,
+      });
+
+      const result = await handleServerFix({ dryRun: true });
+
+      expect(result.isError).toBeUndefined();
+      const parsed = JSON.parse(result.content[0].text) as Record<string, unknown>;
+      expect(parsed.regressionInfo).toBeDefined();
+      expect((parsed.regressionInfo as any).newPasses).toEqual(["KERN-RANDOMIZE"]);
+    });
+
+    it("should call saveBaseline after successful live fix", async () => {
+      const result = await handleServerFix({ dryRun: false });
+
+      expect(result.isError).toBeUndefined();
+      expect(mockedRegression.saveBaseline).toHaveBeenCalled();
+    });
+
+    it("should not call saveBaseline when no fixes applied", async () => {
+      mockedSsh.sshExec.mockResolvedValue({ stdout: "", stderr: "", code: 0 });
+      mockedFix.isFixCommandAllowed.mockReturnValue(false);
+
+      const result = await handleServerFix({ dryRun: false });
+
+      expect(result.isError).toBeUndefined();
+      expect(mockedRegression.saveBaseline).not.toHaveBeenCalled();
     });
   });
 });
