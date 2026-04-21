@@ -28,7 +28,7 @@ import { checkSshAvailable, sshExec } from "../../src/utils/ssh.js";
 import { runAudit } from "../../src/core/audit/index.js";
 import {
   previewSafeFixes,
-  runScoreCheck,
+  runPostFixReAudit,
   isFixCommandAllowed,
   fixCommandsFromChecks,
   sortChecksByImpact,
@@ -64,7 +64,7 @@ const mockedCheckSsh = checkSshAvailable as jest.MockedFunction<typeof checkSshA
 const mockedSshExec = sshExec as jest.MockedFunction<typeof sshExec>;
 const mockedRunAudit = runAudit as jest.MockedFunction<typeof runAudit>;
 const mockedPreviewSafeFixes = previewSafeFixes as jest.MockedFunction<typeof previewSafeFixes>;
-const mockedRunScoreCheck = runScoreCheck as jest.MockedFunction<typeof runScoreCheck>;
+const mockedRunScoreCheck = runPostFixReAudit as jest.MockedFunction<typeof runPostFixReAudit>;
 const mockedBackupServer = backupServer as jest.MockedFunction<typeof backupServer>;
 const mockedPrompt = inquirer.prompt as jest.MockedFunction<typeof inquirer.prompt>;
 const mockedLogger = logger as jest.Mocked<typeof logger>;
@@ -372,7 +372,7 @@ describe("fixSafeCommand", () => {
     expect(fixCommands.some((cmd) => cmd.includes("restart rsyslog"))).toBe(false);
   });
 
-  it("Test 6: calls runScoreCheck after successful fixes and logs score delta", async () => {
+  it("Test 6: calls runPostFixReAudit after successful fixes and logs score delta", async () => {
     mockedResolveServer.mockResolvedValue(testServer);
     mockedCheckSsh.mockReturnValue(true);
 
@@ -402,7 +402,7 @@ describe("fixSafeCommand", () => {
     );
   });
 
-  it("Test 7: does NOT call runScoreCheck when no fixes were applied", async () => {
+  it("Test 7: does NOT call runPostFixReAudit when no fixes were applied", async () => {
     mockedResolveServer.mockResolvedValue(testServer);
     mockedCheckSsh.mockReturnValue(true);
 

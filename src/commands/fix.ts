@@ -33,7 +33,7 @@ import {
   rollbackAllFixes,
   rollbackToFix,
 } from "../core/audit/fix-history.js";
-import { saveBaselineSafe, loadBaseline, checkRegression } from "../core/audit/regression.js";
+import { saveBaselineSafe, loadBaseline, checkRegression, formatRegressionSummary, extractPassedCheckIds } from "../core/audit/regression.js";
 
 /**
  * `kastell fix --safe` command.
@@ -261,13 +261,9 @@ export async function fixSafeCommand(
   const baseline = loadBaseline(auditResult.serverIp);
   if (baseline) {
     const regression = checkRegression(baseline, auditResult);
-    if (regression.regressions.length > 0) {
-      logger.warning(
-        `Regression: ${regression.regressions.length} check(s) previously passed now fail: ${regression.regressions.join(", ")}`,
-      );
-    }
-    if (regression.newPasses.length > 0) {
-      logger.info(`New passes: ${regression.newPasses.length} check(s) now passing: ${regression.newPasses.join(", ")}`);
+    for (const line of formatRegressionSummary(regression)) {
+      if (line.severity === "warn") logger.warning(line.text);
+      else logger.info(line.text);
     }
   }
 
@@ -513,7 +509,7 @@ export async function fixSafeCommand(
       const sign = delta >= 0 ? "+" : "";
       const skippedCount = allSafeChecks.length - selectedChecks.length;
       logger.success(
-        `Score: ${auditResult.overallScore} \u2192 ${newScore} (${sign}${delta}) | Applied: ${applied.length} | Skipped: ${skippedCount} (GUARDED: ${guardedCount}, FORBIDDEN: ${forbiddenCount})`,
+        `Score: ${auditResult.overallScore} \→ ${newScore} (${sign}${delta}) | Applied: ${applied.length} | Skipped: ${skippedCount} (GUARDED: ${guardedCount}, FORBIDDEN: ${forbiddenCount})`,
       );
       // D-06: --target unreachable warning
       if (parsedTarget !== undefined && newScore < parsedTarget) {

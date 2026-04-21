@@ -48,7 +48,7 @@ jest.mock("../../src/core/audit/fix.js", () => ({
     forbiddenCount: 0,
     guardedIds: [],
   })),
-  runScoreCheck: jest.fn(),
+  runPostFixReAudit: jest.fn(),
   isFixCommandAllowed: jest.fn(() => true),
   sortChecksByImpact: jest.fn((checks) => checks),
   selectChecksForTop: jest.fn((checks) => checks),

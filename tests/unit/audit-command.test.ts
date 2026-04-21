@@ -39,6 +39,8 @@ const mockedWatch = watchModule as jest.Mocked<typeof watchModule>;
 const mockedComplianceScoring = complianceScoringModule as jest.Mocked<typeof complianceScoringModule>;
 const mockedComplianceFormatter = complianceFormatterModule as jest.Mocked<typeof complianceFormatterModule>;
 const mockedRegression = regressionModule as jest.Mocked<typeof regressionModule>;
+mockedRegression.formatRegressionSummary;
+mockedRegression.extractPassedCheckIds;
 
 // Mock AuditResult for testing
 const mockAuditResult = {
@@ -146,12 +148,14 @@ describe("auditCommand", () => {
 
     // Default fix mocks
     mockedFix.runFix.mockResolvedValue({ applied: [], skipped: [], errors: [] });
-    mockedFix.runScoreCheck.mockResolvedValue(null);
+    mockedFix.runPostFixReAudit.mockResolvedValue(null);
 
     // Default regression mocks
     mockedRegression.saveBaselineSafe.mockResolvedValue();
     mockedRegression.loadBaseline.mockReturnValue(null);
+    mockedRegression.extractPassedCheckIds.mockReturnValue([]);
     mockedRegression.checkRegression.mockReturnValue({ regressions: [], newPasses: [], baselineScore: 0, currentScore: 0 });
+    mockedRegression.formatRegressionSummary.mockReturnValue([{ severity: "info", text: "Best score: 0" }]);
   });
 
   afterEach(() => {
@@ -472,7 +476,7 @@ describe("auditCommand", () => {
       skipped: [],
       errors: [],
     });
-    mockedFix.runScoreCheck.mockResolvedValue(85);
+    mockedFix.runPostFixReAudit.mockResolvedValue({...mockAuditResult, overallScore: 85});
 
     const { auditCommand } = await import("../../src/commands/audit");
     await auditCommand(undefined, { fix: true });
@@ -481,7 +485,7 @@ describe("auditCommand", () => {
     expect(output).toContain("\u2192 85");
   });
 
-  it("does not call runScoreCheck on dry-run", async () => {
+  it("does not call runPostFixReAudit on dry-run", async () => {
     mockedFix.runFix.mockResolvedValue({
       applied: [],
       skipped: [],
@@ -492,10 +496,10 @@ describe("auditCommand", () => {
     const { auditCommand } = await import("../../src/commands/audit");
     await auditCommand(undefined, { fix: true, dryRun: true });
 
-    expect(mockedFix.runScoreCheck).not.toHaveBeenCalled();
+    expect(mockedFix.runPostFixReAudit).not.toHaveBeenCalled();
   });
 
-  it("does not call runScoreCheck when zero fixes applied", async () => {
+  it("does not call runPostFixReAudit when zero fixes applied", async () => {
     mockedFix.runFix.mockResolvedValue({
       applied: [],
       skipped: ["SSH-ROOT-LOGIN"],
@@ -505,16 +509,16 @@ describe("auditCommand", () => {
     const { auditCommand } = await import("../../src/commands/audit");
     await auditCommand(undefined, { fix: true });
 
-    expect(mockedFix.runScoreCheck).not.toHaveBeenCalled();
+    expect(mockedFix.runPostFixReAudit).not.toHaveBeenCalled();
   });
 
-  it("handles runScoreCheck returning null gracefully", async () => {
+  it("handles runPostFixReAudit returning null gracefully", async () => {
     mockedFix.runFix.mockResolvedValue({
       applied: ["SSH-ROOT-LOGIN"],
       skipped: [],
       errors: [],
     });
-    mockedFix.runScoreCheck.mockResolvedValue(null);
+    mockedFix.runPostFixReAudit.mockResolvedValue(null);
 
     const { auditCommand } = await import("../../src/commands/audit");
     // Should not throw
