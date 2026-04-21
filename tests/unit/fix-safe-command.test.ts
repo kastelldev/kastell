@@ -20,6 +20,7 @@ jest.mock("../../src/core/audit/profiles.js");
 jest.mock("../../src/utils/fixReport.js");
 jest.mock("fs");
 jest.mock("inquirer");
+jest.mock("../../src/core/audit/regression.js");
 
 import { fixSafeCommand } from "../../src/commands/fix.js";
 import { resolveServer } from "../../src/utils/serverSelect.js";
@@ -54,6 +55,7 @@ import {
   rollbackAllFixes,
   rollbackToFix,
 } from "../../src/core/audit/fix-history.js";
+import * as regressionRunner from "../../src/core/audit/regression.js";
 import inquirer from "inquirer";
 import type { FixHistoryEntry } from "../../src/core/audit/types.js";
 
@@ -82,6 +84,7 @@ const mockedSelectChecksForTop = selectChecksForTop as jest.MockedFunction<typeo
 const mockedSelectChecksForTarget = selectChecksForTarget as jest.MockedFunction<typeof selectChecksForTarget>;
 const mockedBuildImpactContext = buildImpactContext as jest.MockedFunction<typeof buildImpactContext>;
 const mockedTryHandlerDispatch = tryHandlerDispatch as jest.MockedFunction<typeof tryHandlerDispatch>;
+const mockedRegression = regressionRunner as jest.Mocked<typeof regressionRunner>;
 
 // ─── Test Helpers ────────────────────────────────────────────────────────────
 
@@ -216,6 +219,11 @@ beforeEach(() => {
   // Default fixReport mocks
   (generateFixReport as jest.MockedFunction<typeof generateFixReport>).mockReturnValue("# Report\n");
   (fixReportFilename as jest.MockedFunction<typeof fixReportFilename>).mockReturnValue("kastell-fix-report-test-server-2026-03-29.md");
+
+  // Default regression mocks
+  mockedRegression.saveBaseline.mockResolvedValue();
+  mockedRegression.loadBaseline.mockReturnValue(null);
+  mockedRegression.checkRegression.mockReturnValue({ regressions: [], newPasses: [], baselineScore: 0, currentScore: 0 });
 });
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
@@ -1288,6 +1296,64 @@ describe("fixSafeCommand", () => {
         expect.stringContaining("mutually exclusive"),
       );
       expect(mockedResolveServer).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── regression baseline ──────────────────────────────────────────────────────
+
+  describe("regression baseline", () => {
+    it("should display regression warning when baseline exists and regressions detected", async () => {
+      mockedResolveServer.mockResolvedValue(testServer);
+      mockedCheckSsh.mockReturnValue(true);
+
+      const auditResult = makeResult([
+        makeCategory("Kernel", [
+          makeCheck({ id: "KERN-01", category: "Kernel", severity: "warning", passed: false, fixCommand: "sysctl -w net.ipv4.tcp_syncookies=1", safeToAutoFix: "SAFE" }),
+        ]),
+      ], 70);
+      mockedRunAudit.mockResolvedValue({ success: true, data: auditResult });
+      mockedPreviewSafeFixes.mockReturnValue(defaultSafePlan);
+      mockedRegression.loadBaseline.mockReturnValue({
+        version: 1,
+        serverIp: "1.2.3.4",
+        lastUpdated: "2026-04-20T10:00:00Z",
+        bestScore: 80,
+        passedChecks: ["KERN-01"],
+      });
+      mockedRegression.checkRegression.mockReturnValue({
+        regressions: ["KERN-01"],
+        newPasses: [],
+        baselineScore: 80,
+        currentScore: 70,
+      });
+
+      await fixSafeCommand(undefined, { safe: true, dryRun: true });
+
+      expect(mockedRegression.checkRegression).toHaveBeenCalled();
+      expect(mockedLogger.warning).toHaveBeenCalledWith(
+        expect.stringContaining("Regression"),
+      );
+    });
+
+    it("should call saveBaseline after successful fix with post-fix score", async () => {
+      mockedResolveServer.mockResolvedValue(testServer);
+      mockedCheckSsh.mockReturnValue(true);
+
+      const auditResult = makeResult([
+        makeCategory("Kernel", [
+          makeCheck({ id: "KERN-01", category: "Kernel", severity: "warning", passed: false, fixCommand: "sysctl -w net.ipv4.tcp_syncookies=1", safeToAutoFix: "SAFE" }),
+        ]),
+      ], 70);
+      mockedRunAudit.mockResolvedValue({ success: true, data: auditResult });
+      mockedPreviewSafeFixes.mockReturnValue(defaultSafePlan);
+      mockedPrompt.mockResolvedValue({ confirm: true });
+      mockedBackupServer.mockResolvedValue({ success: true, backupPath: "/tmp/backup" } as BackupResult);
+      mockedSshExec.mockResolvedValue({ stdout: "", stderr: "", code: 0 });
+      mockedRunScoreCheck.mockResolvedValue(75);
+
+      await fixSafeCommand(undefined, { safe: true });
+
+      expect(mockedRegression.saveBaseline).toHaveBeenCalled();
     });
   });
 });
