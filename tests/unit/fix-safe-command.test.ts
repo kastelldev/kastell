@@ -224,6 +224,7 @@ beforeEach(() => {
   mockedRegression.saveBaselineSafe.mockResolvedValue();
   mockedRegression.loadBaseline.mockReturnValue(null);
   mockedRegression.checkRegression.mockReturnValue({ regressions: [], newPasses: [], baselineScore: 0, currentScore: 0 });
+  mockedRegression.formatRegressionSummary.mockReturnValue([{ severity: "info", text: "Best score: 0" }]);
 });
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
@@ -361,7 +362,7 @@ describe("fixSafeCommand", () => {
     mockedPrompt.mockResolvedValue({ confirm: true });
     mockedBackupServer.mockResolvedValue({ success: true, backupPath: "/tmp/backup" } as BackupResult);
     mockedSshExec.mockResolvedValue({ stdout: "", stderr: "", code: 0 });
-    mockedRunScoreCheck.mockResolvedValue(75);
+    mockedRunScoreCheck.mockResolvedValue({...makeResult([]), overallScore:75});
 
     await fixSafeCommand(undefined, { safe: true });
 
@@ -386,7 +387,7 @@ describe("fixSafeCommand", () => {
     mockedPrompt.mockResolvedValue({ confirm: true });
     mockedBackupServer.mockResolvedValue({ success: true, backupPath: "/tmp/backup" } as BackupResult);
     mockedSshExec.mockResolvedValue({ stdout: "", stderr: "", code: 0 });
-    mockedRunScoreCheck.mockResolvedValue(85);
+    mockedRunScoreCheck.mockResolvedValue({...makeResult([]), overallScore:85});
 
     await fixSafeCommand(undefined, { safe: true });
 
@@ -705,7 +706,7 @@ describe("fixSafeCommand", () => {
       mockedPrompt.mockResolvedValue({ confirm: true });
       mockedBackupServer.mockResolvedValue({ success: true, backupPath: "/tmp/backup" } as BackupResult);
       mockedSshExec.mockResolvedValue({ stdout: "", stderr: "", code: 0 });
-      mockedRunScoreCheck.mockResolvedValue(75);
+      mockedRunScoreCheck.mockResolvedValue({...makeResult([]), overallScore:75});
       mockedGenerateFixId.mockReturnValue("fix-2026-03-29-001");
       mockedBackupFilesBeforeFix.mockResolvedValue("/root/.kastell/fix-backups/fix-2026-03-29-001");
 
@@ -901,7 +902,7 @@ describe("fixSafeCommand", () => {
       mockedBackupServer.mockResolvedValue({ success: true, backupPath: "/tmp/backup" } as BackupResult);
       mockedSshExec.mockResolvedValue({ stdout: "", stderr: "", code: 0 });
       // After fix, score is still well below target 99
-      mockedRunScoreCheck.mockResolvedValue(53);
+      mockedRunScoreCheck.mockResolvedValue({...makeResult([]), overallScore:53});
 
       await fixSafeCommand(undefined, { safe: true, target: "99" });
 
@@ -1326,6 +1327,10 @@ describe("fixSafeCommand", () => {
         baselineScore: 80,
         currentScore: 70,
       });
+      mockedRegression.formatRegressionSummary.mockReturnValue([
+        { severity: "warn", text: "Regression: 1 check(s) regressed: KERN-01" },
+        { severity: "info", text: "Best score: 80" },
+      ]);
 
       await fixSafeCommand(undefined, { safe: true, dryRun: true });
 
@@ -1349,7 +1354,7 @@ describe("fixSafeCommand", () => {
       mockedPrompt.mockResolvedValue({ confirm: true });
       mockedBackupServer.mockResolvedValue({ success: true, backupPath: "/tmp/backup" } as BackupResult);
       mockedSshExec.mockResolvedValue({ stdout: "", stderr: "", code: 0 });
-      mockedRunScoreCheck.mockResolvedValue(75);
+      mockedRunScoreCheck.mockResolvedValue({...makeResult([]), overallScore:75});
 
       await fixSafeCommand(undefined, { safe: true });
 
