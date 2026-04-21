@@ -108,6 +108,39 @@ export interface SnapshotListEntry {
   corrupt?: boolean;
 }
 
+// ─── Snapshot index types ─────────────────────────────────────────────────────
+
+export interface SnapshotIndexEntry {
+  filename: string;
+  savedAt: string;
+  name?: string;
+  overallScore: number;
+  checkCount: number;
+  serverIp: string;
+}
+
+export interface SnapshotIndex {
+  version: 1;
+  entries: SnapshotIndexEntry[];
+}
+
+// ─── Regression types ───────────────────────────────────────────────────────
+
+export interface RegressionBaseline {
+  version: 1;
+  serverIp: string;
+  lastUpdated: string;
+  bestScore: number;
+  passedChecks: string[];
+}
+
+export interface RegressionResult {
+  regressions: string[];
+  newPasses: string[];
+  baselineScore: number;
+  currentScore: number;
+}
+
 // ─── Trend types ─────────────────────────────────────────────────────────────
 
 export interface TrendCauseLine {
