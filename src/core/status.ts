@@ -11,6 +11,7 @@ export interface StatusResult {
   serverStatus: string;
   platformStatus: string;
   error?: string;
+  errorSource?: "provider" | "platform";
 }
 
 export async function getCloudServerStatus(
@@ -31,19 +32,34 @@ export async function checkServerStatus(
   server: ServerRecord,
   apiToken: string,
 ): Promise<StatusResult> {
+  let serverStatus: string;
   try {
-    const serverStatus = await getCloudServerStatus(server, apiToken);
-    const platform = resolvePlatform(server);
-    const platformStatus = platform
-      ? (await getAdapter(platform).healthCheck(server.ip, server.domain)).status
-      : "n/a";
-    return { server, serverStatus, platformStatus };
+    serverStatus = await getCloudServerStatus(server, apiToken);
   } catch (error: unknown) {
     return {
       server,
       serverStatus: "error",
       platformStatus: "unknown",
       error: getErrorMessage(error),
+      errorSource: "provider",
+    };
+  }
+
+  const platform = resolvePlatform(server);
+  if (!platform) {
+    return { server, serverStatus, platformStatus: "n/a" };
+  }
+
+  try {
+    const health = await getAdapter(platform).healthCheck(server.ip, server.domain);
+    return { server, serverStatus, platformStatus: health.status };
+  } catch (error: unknown) {
+    return {
+      server,
+      serverStatus,
+      platformStatus: "error",
+      error: getErrorMessage(error),
+      errorSource: "platform",
     };
   }
 }
