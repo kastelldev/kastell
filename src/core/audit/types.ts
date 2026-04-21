@@ -141,6 +141,11 @@ export interface RegressionResult {
   currentScore: number;
 }
 
+export interface RegressionLine {
+  severity: "warn" | "info";
+  text: string;
+}
+
 // ─── Trend types ─────────────────────────────────────────────────────────────
 
 export interface TrendCauseLine {

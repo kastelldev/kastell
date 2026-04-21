@@ -3,7 +3,7 @@ import { join } from "path";
 import { secureMkdirSync, secureWriteFileSync } from "../../utils/secureWrite.js";
 import { KASTELL_DIR } from "../../utils/paths.js";
 import { withFileLock } from "../../utils/fileLock.js";
-import type { AuditResult, RegressionBaseline, RegressionResult } from "./types.js";
+import type { AuditResult, RegressionBaseline, RegressionResult, RegressionLine } from "./types.js";
 
 const REGRESSION_DIR = join(KASTELL_DIR, "regression");
 
@@ -25,7 +25,7 @@ export function loadBaseline(serverIp: string): RegressionBaseline | null {
   }
 }
 
-function extractPassedCheckIds(audit: AuditResult): string[] {
+export function extractPassedCheckIds(audit: AuditResult): string[] {
   const ids: string[] = [];
   for (const category of audit.categories) {
     for (const check of category.checks) {
@@ -38,11 +38,12 @@ function extractPassedCheckIds(audit: AuditResult): string[] {
 export async function saveBaseline(
   audit: AuditResult,
   existing?: RegressionBaseline | null,
+  passedCheckIds?: string[],
 ): Promise<void> {
   const filePath = getBaselinePath(audit.serverIp);
   await withFileLock(filePath, () => {
     const prev = existing ?? loadBaseline(audit.serverIp);
-    const passedChecks = extractPassedCheckIds(audit);
+    const passedChecks = passedCheckIds ?? extractPassedCheckIds(audit);
     const bestScore = prev
       ? Math.max(prev.bestScore, audit.overallScore)
       : audit.overallScore;
@@ -65,15 +66,17 @@ export async function saveBaseline(
 export async function saveBaselineSafe(
   audit: AuditResult,
   existing?: RegressionBaseline | null,
+  passedCheckIds?: string[],
 ): Promise<void> {
-  await saveBaseline(audit, existing).catch(() => {});
+  await saveBaseline(audit, existing, passedCheckIds).catch(() => {});
 }
 
 export function checkRegression(
   baseline: RegressionBaseline,
   audit: AuditResult,
+  passedCheckIds?: string[],
 ): RegressionResult {
-  const currentPassed = new Set(extractPassedCheckIds(audit));
+  const currentPassed = new Set(passedCheckIds ?? extractPassedCheckIds(audit));
   const baselinePassed = new Set(baseline.passedChecks);
 
   const regressions: string[] = [];
@@ -92,4 +95,22 @@ export function checkRegression(
     baselineScore: baseline.bestScore,
     currentScore: audit.overallScore,
   };
+}
+
+export function formatRegressionSummary(result: RegressionResult): RegressionLine[] {
+  const lines: RegressionLine[] = [];
+  if (result.regressions.length > 0) {
+    lines.push({
+      severity: "warn",
+      text: `Regression: ${result.regressions.length} check(s) regressed: ${result.regressions.join(", ")}`,
+    });
+  }
+  if (result.newPasses.length > 0) {
+    lines.push({
+      severity: "info",
+      text: `New passes: ${result.newPasses.length} check(s) now passing: ${result.newPasses.join(", ")}`,
+    });
+  }
+  lines.push({ severity: "info", text: `Best score: ${result.baselineScore}` });
+  return lines;
 }
