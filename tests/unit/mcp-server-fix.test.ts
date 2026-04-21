@@ -193,7 +193,7 @@ beforeEach(() => {
 
   mockedSsh.sshExec.mockResolvedValue({ stdout: "", stderr: "", code: 0 });
 
-  mockedFix.runPostFixReAudit.mockResolvedValue(72);
+  mockedFix.runPostFixReAudit.mockResolvedValue({ ...defaultAuditResult, overallScore: 72 });
 
   // Default fix-history mocks
   mockedFixHistory.loadFixHistory.mockReturnValue([]);

@@ -532,7 +532,7 @@ describe("auditCommand", () => {
     const { auditCommand } = await import("../../src/commands/audit");
     await auditCommand("test-server", {});
 
-    expect(mockedRegression.saveBaselineSafe).toHaveBeenCalledWith(mockAuditResult, null);
+    expect(mockedRegression.saveBaselineSafe).toHaveBeenCalledWith(mockAuditResult, null, []);
   });
 
   it("should call checkRegression when baseline exists and display regressions", async () => {
@@ -551,6 +551,10 @@ describe("auditCommand", () => {
       baselineScore: 80,
       currentScore: 72,
     });
+    mockedRegression.formatRegressionSummary.mockReturnValue([
+      { severity: "warn", text: "Regression: 1 check(s) regressed: SSH-ROOT-LOGIN" },
+      { severity: "info", text: "Best score: 80" },
+    ]);
 
     const { auditCommand } = await import("../../src/commands/audit");
     await auditCommand("test-server", {});
@@ -577,6 +581,10 @@ describe("auditCommand", () => {
       baselineScore: 70,
       currentScore: 72,
     });
+    mockedRegression.formatRegressionSummary.mockReturnValue([
+      { severity: "info", text: "New passes: 1 check(s) now passing: FW-UFW-ACTIVE" },
+      { severity: "info", text: "Best score: 70" },
+    ]);
 
     const { auditCommand } = await import("../../src/commands/audit");
     await auditCommand("test-server", {});
