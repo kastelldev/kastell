@@ -285,7 +285,8 @@ export async function handleServerFix(
     const auditResult = result.data;
 
     const baseline = loadBaseline(auditResult.serverIp);
-    const regression = baseline ? checkRegression(baseline, auditResult) : null;
+    const passedIds = extractPassedCheckIds(auditResult);
+    const regression = baseline ? checkRegression(baseline, auditResult, passedIds) : null;
     const baselineRegression = regression ? {
       regressions: regression.regressions,
       newPasses: regression.newPasses,

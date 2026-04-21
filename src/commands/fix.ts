@@ -260,7 +260,8 @@ export async function fixSafeCommand(
 
   const baseline = loadBaseline(auditResult.serverIp);
   if (baseline) {
-    const regression = checkRegression(baseline, auditResult);
+    const passedIds = extractPassedCheckIds(auditResult);
+    const regression = checkRegression(baseline, auditResult, passedIds);
     for (const line of formatRegressionSummary(regression)) {
       if (line.severity === "warn") logger.warning(line.text);
       else logger.info(line.text);
