@@ -8,7 +8,7 @@ import { logger, createSpinner } from "../utils/logger.js";
 import { runAudit } from "../core/audit/index.js";
 import {
   previewSafeFixes,
-  runScoreCheck,
+  runPostFixReAudit,
   isFixCommandAllowed,
   sortChecksByImpact,
   selectChecksForTop,
@@ -500,13 +500,14 @@ export async function fixSafeCommand(
           .filter((n): n is string => n !== undefined),
       ),
     ];
-    newScore = await runScoreCheck(
+    const postFixResult = await runPostFixReAudit(
       ip,
       platform,
       auditResult,
       affectedCats,
     );
     scoreSpinner.stop();
+    newScore = postFixResult?.overallScore ?? null;
     if (newScore !== null) {
       const delta = newScore - auditResult.overallScore;
       const sign = delta >= 0 ? "+" : "";
@@ -522,7 +523,7 @@ export async function fixSafeCommand(
       }
     }
 
-    await saveBaselineSafe(auditResult);
+    await saveBaselineSafe(postFixResult ?? auditResult);
   }
 
   // Save to fix history (FIXPRO-02)

@@ -3,7 +3,7 @@ import { getServers } from "../../utils/config.js";
 import { runAudit } from "../../core/audit/index.js";
 import {
   previewSafeFixes,
-  runScoreCheck,
+  runPostFixReAudit,
   isFixCommandAllowed,
   resolveTier,
   sortChecksByImpact,
@@ -485,12 +485,13 @@ export async function handleServerFix(
             .filter((n): n is string => n !== undefined),
         ),
       ];
-      scoreAfter = await runScoreCheck(
+      const postFixResult = await runPostFixReAudit(
         server.ip,
         platform,
         auditResult,
         affectedCats,
       );
+      scoreAfter = postFixResult?.overallScore ?? null;
     }
 
     // ── LIVE FIX — save history entry (FIXPRO-02) ────────────────────────

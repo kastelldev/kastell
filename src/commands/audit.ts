@@ -12,7 +12,7 @@ import { selectFormatter } from "../core/audit/formatters/index.js";
 import { saveAuditHistory, loadAuditHistory, detectTrend, computeTrend } from "../core/audit/history.js";
 import { formatTrendTerminal, formatTrendJson } from "../core/audit/formatters/trend.js";
 import { saveSnapshot, listSnapshots } from "../core/audit/snapshot.js";
-import { runFix, runScoreCheck } from "../core/audit/fix.js";
+import { runFix, runPostFixReAudit } from "../core/audit/fix.js";
 import { watchAudit } from "../core/audit/watch.js";
 import { diffAudits, resolveSnapshotRef, formatDiffTerminal, formatDiffJson } from "../core/audit/diff.js";
 import { getServers } from "../utils/config.js";
@@ -351,7 +351,8 @@ export async function auditCommand(
           ),
         ];
 
-        const newScore = await runScoreCheck(ip, platform, auditResult, affectedCats);
+        const postFixResult = await runPostFixReAudit(ip, platform, auditResult, affectedCats);
+        const newScore = postFixResult?.overallScore ?? null;
         if (newScore !== null) {
           const delta = newScore - auditResult.overallScore;
           const sign = delta >= 0 ? "+" : "";

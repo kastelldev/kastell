@@ -383,16 +383,15 @@ export function fixCommandsFromChecks(
 }
 
 /**
- * Lightweight post-fix re-audit.
- * Re-runs all SSH batches, but only replaces scores for affected categories.
- * Returns new overall score, or null on failure or when nothing to check.
+ * Run a post-fix re-audit on affected categories and return the merged AuditResult.
+ * Returns null on failure or when nothing to check.
  */
-export async function runScoreCheck(
+export async function runPostFixReAudit(
   ip: string,
   platform: string,
   originalResult: AuditResult,
   affectedCategories: string[],
-): Promise<number | null> {
+): Promise<AuditResult | null> {
   if (affectedCategories.length === 0) return null;
 
   try {
@@ -409,7 +408,6 @@ export async function runScoreCheck(
 
     const freshCategories = parseAllChecks(batchOutputs, platform);
 
-    // Merge: replace only affected categories, keep others from original
     const mergedCategories = originalResult.categories.map((original) => {
       if (!affectedCategories.includes(original.name)) return original;
       const fresh = freshCategories.find((c) => c.name === original.name);
@@ -418,9 +416,16 @@ export async function runScoreCheck(
       return { ...fresh, score, maxScore };
     });
 
-    return calculateOverallScore(mergedCategories);
+    const overallScore = calculateOverallScore(mergedCategories);
+
+    return {
+      ...originalResult,
+      categories: mergedCategories,
+      overallScore,
+      timestamp: new Date().toISOString(),
+    };
   } catch (err) {
-    logger.warning(`Score re-audit failed: ${getErrorMessage(err)}`);
+    logger.warning(`Post-fix re-audit failed: ${getErrorMessage(err)}`);
     return null;
   }
 }

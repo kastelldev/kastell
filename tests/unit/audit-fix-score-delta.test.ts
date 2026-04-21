@@ -44,47 +44,36 @@ function makeResult(categories: AuditCategory[], overallScore = 53): AuditResult
   };
 }
 
-describe("runScoreCheck", () => {
+describe("runPostFixReAudit", () => {
   beforeEach(() => {
     jest.resetAllMocks();
 
-    // Default batch setup: 3 tiers
     mockedBuildBatches.mockReturnValue([
       { tier: "fast", command: "echo fast" },
       { tier: "medium", command: "echo medium" },
       { tier: "slow", command: "echo slow" },
     ]);
 
-    // Default SSH: returns empty output for each batch
     mockedSshExec.mockResolvedValue({ stdout: "output", stderr: "", code: 0 });
   });
 
-  it("returns new overall score after successful SSH re-audit", async () => {
+  it("returns full AuditResult with merged categories instead of just score", async () => {
     const originalResult = makeResult([
       makeCategory("SSH", [makeCheck({ id: "SSH-01", severity: "critical", passed: false })], 0),
     ], 0);
 
-    // After fix, SSH check now passes
     mockedParseAllChecks.mockReturnValue([
       makeCategory("SSH", [makeCheck({ id: "SSH-01", severity: "critical", passed: true })], 100),
     ]);
 
-    const newScore = await fix.runScoreCheck("1.2.3.4", "bare", originalResult, ["SSH"]);
+    const result = await fix.runPostFixReAudit("1.2.3.4", "bare", originalResult, ["SSH"]);
 
-    expect(newScore).not.toBeNull();
-    expect(newScore).toBeGreaterThan(0);
-  });
-
-  it("returns null when SSH fails", async () => {
-    const originalResult = makeResult([
-      makeCategory("SSH", [makeCheck()], 50),
-    ]);
-
-    mockedSshExec.mockRejectedValue(new Error("Connection refused"));
-
-    const result = await fix.runScoreCheck("1.2.3.4", "bare", originalResult, ["SSH"]);
-
-    expect(result).toBeNull();
+    expect(result).not.toBeNull();
+    expect(result).toHaveProperty("serverIp", "1.2.3.4");
+    expect(result).toHaveProperty("categories");
+    expect(result).toHaveProperty("overallScore");
+    expect(typeof result!.overallScore).toBe("number");
+    expect(result!.timestamp).toBeDefined();
   });
 
   it("returns null when affectedCategories is empty", async () => {
@@ -92,10 +81,22 @@ describe("runScoreCheck", () => {
       makeCategory("SSH", [makeCheck()], 50),
     ]);
 
-    const result = await fix.runScoreCheck("1.2.3.4", "bare", originalResult, []);
+    const result = await fix.runPostFixReAudit("1.2.3.4", "bare", originalResult, []);
 
     expect(result).toBeNull();
     expect(mockedSshExec).not.toHaveBeenCalled();
+  });
+
+  it("returns null on SSH failure", async () => {
+    const originalResult = makeResult([
+      makeCategory("SSH", [makeCheck()], 50),
+    ]);
+
+    mockedSshExec.mockRejectedValue(new Error("Connection refused"));
+
+    const result = await fix.runPostFixReAudit("1.2.3.4", "bare", originalResult, ["SSH"]);
+
+    expect(result).toBeNull();
   });
 
   it("replaces only affected categories, keeps others unchanged", async () => {
@@ -104,22 +105,21 @@ describe("runScoreCheck", () => {
 
     const originalResult = makeResult([sshCategory, firewallCategory], 50);
 
-    // Fresh parse returns both categories but SSH is now fixed
     mockedParseAllChecks.mockReturnValue([
       makeCategory("SSH", [makeCheck({ id: "SSH-01", severity: "critical", passed: true })], 100),
-      makeCategory("Firewall", [makeCheck({ id: "FW-01", category: "Firewall", severity: "critical", passed: false })], 0), // degraded
+      makeCategory("Firewall", [makeCheck({ id: "FW-01", category: "Firewall", severity: "critical", passed: false })], 0),
     ]);
 
-    // Only SSH affected — Firewall should keep original score
-    const result = await fix.runScoreCheck("1.2.3.4", "bare", originalResult, ["SSH"]);
+    const result = await fix.runPostFixReAudit("1.2.3.4", "bare", originalResult, ["SSH"]);
 
-    // Result should be non-null
     expect(result).not.toBeNull();
+    expect(result!.overallScore).toBeGreaterThan(50);
 
-    // The Firewall category was NOT in affectedCategories so its original score (100) is kept
-    // SSH improved from 0 to 100 — overall should increase
-    // SSH weight=3, Firewall weight=3 → (100*3 + 100*3) / (3+3) = 100
-    expect(result).toBeGreaterThan(50);
+    const sshCat = result!.categories.find(c => c.name === "SSH");
+    expect(sshCat!.score).toBe(100);
+
+    const fwCat = result!.categories.find(c => c.name === "Firewall");
+    expect(fwCat!.score).toBe(100);
   });
 
   it("calls buildAuditBatchCommands with correct platform", async () => {
@@ -131,7 +131,7 @@ describe("runScoreCheck", () => {
       makeCategory("SSH", [makeCheck({ passed: true })], 100),
     ]);
 
-    await fix.runScoreCheck("1.2.3.4", "coolify", originalResult, ["SSH"]);
+    await fix.runPostFixReAudit("1.2.3.4", "coolify", originalResult, ["SSH"]);
 
     expect(mockedBuildBatches).toHaveBeenCalledWith("coolify");
   });
@@ -145,7 +145,7 @@ describe("runScoreCheck", () => {
       makeCategory("SSH", [makeCheck({ passed: true })], 100),
     ]);
 
-    await fix.runScoreCheck("1.2.3.4", "bare", originalResult, ["SSH"]);
+    await fix.runPostFixReAudit("1.2.3.4", "bare", originalResult, ["SSH"]);
 
     expect(mockedSshExec).toHaveBeenCalledTimes(3);
   });
