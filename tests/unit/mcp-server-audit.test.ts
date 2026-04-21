@@ -1,13 +1,16 @@
 import * as config from "../../src/utils/config";
 import * as auditRunner from "../../src/core/audit/index";
+import * as regressionRunner from "../../src/core/audit/regression";
 import { handleServerAudit } from "../../src/mcp/tools/serverAudit";
 import type { AuditResult } from "../../src/core/audit/types";
 
 jest.mock("../../src/utils/config");
 jest.mock("../../src/core/audit/index");
+jest.mock("../../src/core/audit/regression");
 
 const mockedConfig = config as jest.Mocked<typeof config>;
 const mockedAuditRunner = auditRunner as jest.Mocked<typeof auditRunner>;
+const mockedRegression = regressionRunner as jest.Mocked<typeof regressionRunner>;
 
 const sampleServer = {
   id: "123",
@@ -74,6 +77,9 @@ const sampleAuditResult: AuditResult = {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockedRegression.saveBaseline.mockResolvedValue();
+  mockedRegression.loadBaseline.mockReturnValue(null);
+  mockedRegression.checkRegression.mockReturnValue({ regressions: [], newPasses: [], baselineScore: 0, currentScore: 0 });
 });
 
 describe("MCP server_audit tool", () => {
@@ -281,5 +287,68 @@ describe("malformed params", () => {
   it("returns mcpError for unmatched server string", async () => {
     const result = await handleServerAudit({ server: "999.999.999.999" });
     expect(result.isError).toBe(true);
+  });
+});
+
+describe("regression baseline", () => {
+  beforeEach(() => {
+    mockedConfig.getServers.mockReturnValue([sampleServer] as never);
+    mockedConfig.findServer.mockReturnValue(sampleServer as never);
+    mockedAuditRunner.runAudit.mockResolvedValue({
+      success: true,
+      data: sampleAuditResult,
+    });
+  });
+
+  it("should call saveBaseline after successful audit", async () => {
+    const result = await handleServerAudit({ server: "coolify-test" });
+    expect(mockedRegression.saveBaseline).toHaveBeenCalledWith(sampleAuditResult);
+  });
+
+  it("should include baselineRegression in summary when baseline exists", async () => {
+    mockedRegression.loadBaseline.mockReturnValue({
+      version: 1,
+      serverIp: "1.2.3.4",
+      lastUpdated: "2026-04-20T10:00:00Z",
+      bestScore: 80,
+      passedChecks: ["SSH-PASSWORD-AUTH"],
+    });
+    mockedRegression.checkRegression.mockReturnValue({
+      regressions: ["FW-UFW-ACTIVE"],
+      newPasses: [],
+      baselineScore: 80,
+      currentScore: 72,
+    });
+
+    const result = await handleServerAudit({ server: "coolify-test", format: "summary" });
+
+    expect(result.isError).toBeUndefined();
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.summary).toContain("Regression");
+    expect(parsed.summary).toContain("FW-UFW-ACTIVE");
+  });
+
+  it("should include baselineRegression in json response when baseline exists", async () => {
+    mockedRegression.loadBaseline.mockReturnValue({
+      version: 1,
+      serverIp: "1.2.3.4",
+      lastUpdated: "2026-04-20T10:00:00Z",
+      bestScore: 80,
+      passedChecks: ["SSH-PASSWORD-AUTH"],
+    });
+    mockedRegression.checkRegression.mockReturnValue({
+      regressions: [],
+      newPasses: ["FW-UFW-ACTIVE"],
+      baselineScore: 70,
+      currentScore: 72,
+    });
+
+    const result = await handleServerAudit({ server: "coolify-test", format: "json" });
+
+    expect(result.isError).toBeUndefined();
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.baselineRegression).toBeDefined();
+    expect((parsed.baselineRegression as any).regressions).toEqual([]);
+    expect((parsed.baselineRegression as any).newPasses).toEqual(["FW-UFW-ACTIVE"]);
   });
 });
