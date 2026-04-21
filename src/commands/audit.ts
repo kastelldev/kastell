@@ -25,6 +25,7 @@ import type { AuditCliOptions } from "../core/audit/formatters/index.js";
 import type { AuditDiffResult } from "../core/audit/types.js";
 import { filterAuditResult, buildFilterAnnotation, parseSeverity } from "../core/audit/filter.js";
 import type { AuditFilter } from "../core/audit/filter.js";
+import { saveBaseline, loadBaseline, checkRegression } from "../core/audit/regression.js";
 
 function printDiff(diff: AuditDiffResult, json?: boolean): void {
   console.log(json ? formatDiffJson(diff) : formatDiffTerminal(diff));
@@ -225,6 +226,25 @@ export async function auditCommand(
     logger.warning("Score methodology updated. New baseline established.");
   } else if (trend !== "first audit") {
     logger.info(`Trend: ${trend}`);
+  }
+
+  // Regression baseline — load before save so regression compares against previous state
+  const baseline = loadBaseline(auditResult.serverIp);
+  await saveBaseline(auditResult).catch(() => {
+    // Baseline save failure is non-fatal — don't break audit flow
+  });
+  if (baseline) {
+    const regression = checkRegression(baseline, auditResult);
+    if (regression.regressions.length > 0) {
+      logger.warning(
+        `Regression: ${regression.regressions.length} check(s) that previously passed now fail: ${regression.regressions.join(", ")}`,
+      );
+    }
+    if (regression.newPasses.length > 0) {
+      logger.success(
+        `New passes: ${regression.newPasses.length} check(s) now passing: ${regression.newPasses.join(", ")}`,
+      );
+    }
   }
 
   // --compliance: detailed Framework>Control>Check grouped report
