@@ -80,7 +80,8 @@ beforeEach(() => {
   mockedRegression.saveBaselineSafe.mockResolvedValue();
   mockedRegression.loadBaseline.mockReturnValue(null);
   mockedRegression.checkRegression.mockReturnValue({ regressions: [], newPasses: [], baselineScore: 0, currentScore: 0 });
-    mockedRegression.formatRegressionSummary.mockReturnValue([{ severity: "info", text: "Best score: 0" }]);
+  mockedRegression.formatRegressionSummary.mockReturnValue([{ severity: "info", text: "Best score: 0" }]);
+  mockedRegression.extractPassedCheckIds.mockReturnValue([]);
 });
 
 describe("MCP server_audit tool", () => {
@@ -303,7 +304,7 @@ describe("regression baseline", () => {
 
   it("should call saveBaseline after successful audit", async () => {
     const result = await handleServerAudit({ server: "coolify-test" });
-    expect(mockedRegression.saveBaselineSafe).toHaveBeenCalledWith(sampleAuditResult, null);
+    expect(mockedRegression.saveBaselineSafe).toHaveBeenCalledWith(sampleAuditResult, null, []);
   });
 
   it("should include baselineRegression in summary when baseline exists", async () => {
