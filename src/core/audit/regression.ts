@@ -1,7 +1,8 @@
-import { readFileSync, existsSync } from "fs";
+import { readFileSync, existsSync, renameSync } from "fs";
 import { join } from "path";
 import { secureMkdirSync, secureWriteFileSync } from "../../utils/secureWrite.js";
 import { KASTELL_DIR } from "../../utils/paths.js";
+import { withFileLock } from "../../utils/fileLock.js";
 import type { AuditResult, RegressionBaseline, RegressionResult } from "./types.js";
 
 const REGRESSION_DIR = join(KASTELL_DIR, "regression");
@@ -34,25 +35,28 @@ function extractPassedCheckIds(audit: AuditResult): string[] {
   return ids.sort();
 }
 
-export function saveBaseline(audit: AuditResult): void {
-  const existing = loadBaseline(audit.serverIp);
-  const passedChecks = extractPassedCheckIds(audit);
-  const bestScore = existing
-    ? Math.max(existing.bestScore, audit.overallScore)
-    : audit.overallScore;
+export async function saveBaseline(audit: AuditResult): Promise<void> {
+  const filePath = getBaselinePath(audit.serverIp);
+  await withFileLock(filePath, () => {
+    const existing = loadBaseline(audit.serverIp);
+    const passedChecks = extractPassedCheckIds(audit);
+    const bestScore = existing
+      ? Math.max(existing.bestScore, audit.overallScore)
+      : audit.overallScore;
 
-  const baseline: RegressionBaseline = {
-    version: 1,
-    serverIp: audit.serverIp,
-    lastUpdated: new Date().toISOString(),
-    bestScore,
-    passedChecks,
-  };
+    const baseline: RegressionBaseline = {
+      version: 1,
+      serverIp: audit.serverIp,
+      lastUpdated: new Date().toISOString(),
+      bestScore,
+      passedChecks,
+    };
 
-  if (!existsSync(REGRESSION_DIR)) {
     secureMkdirSync(REGRESSION_DIR, { recursive: true });
-  }
-  secureWriteFileSync(getBaselinePath(audit.serverIp), JSON.stringify(baseline, null, 2));
+    const tmpFile = filePath + ".tmp";
+    secureWriteFileSync(tmpFile, JSON.stringify(baseline, null, 2), { encoding: "utf-8" });
+    renameSync(tmpFile, filePath);
+  });
 }
 
 export function checkRegression(

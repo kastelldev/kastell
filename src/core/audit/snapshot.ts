@@ -121,9 +121,7 @@ function loadIndex(serverIp: string): SnapshotIndex | null {
 function saveIndex(serverIp: string, index: SnapshotIndex): void {
   const indexPath = getIndexPath(serverIp);
   const dir = getSnapshotDir(serverIp);
-  if (!existsSync(dir)) {
-    secureMkdirSync(dir, { recursive: true });
-  }
+  secureMkdirSync(dir, { recursive: true });
   secureWriteFileSync(indexPath, JSON.stringify(index, null, 2));
 }
 

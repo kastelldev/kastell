@@ -16,6 +16,9 @@ jest.mock("../../src/utils/secureWrite", () => ({
   secureMkdirSync: jest.fn(),
   clearCache: jest.fn(),
 }));
+jest.mock("../../src/utils/fileLock", () => ({
+  withFileLock: jest.fn((_path: string, fn: () => unknown) => fn()),
+}));
 
 const mockedSecureWrite = require("../../src/utils/secureWrite") as {
   secureMkdirSync: jest.Mock;
@@ -90,10 +93,10 @@ describe("regression suite", () => {
   });
 
   describe("saveBaseline", () => {
-    it("should extract passed check IDs from audit result", () => {
+    it("should extract passed check IDs from audit result", async () => {
       (fs.existsSync as jest.Mock).mockReturnValue(false);
 
-      saveBaseline(makeAuditResult());
+      await saveBaseline(makeAuditResult());
 
       expect(mockedSecureWrite.secureWriteFileSync).toHaveBeenCalled();
       const written = JSON.parse(
@@ -104,7 +107,7 @@ describe("regression suite", () => {
       expect(written.serverIp).toBe("1.2.3.4");
     });
 
-    it("should preserve bestScore if current is lower", () => {
+    it("should preserve bestScore if current is lower", async () => {
       const existingBaseline = {
         version: 1,
         serverIp: "1.2.3.4",
@@ -115,7 +118,7 @@ describe("regression suite", () => {
       (fs.existsSync as jest.Mock).mockReturnValue(true);
       (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(existingBaseline));
 
-      saveBaseline(makeAuditResult({ overallScore: 66 }));
+      await saveBaseline(makeAuditResult({ overallScore: 66 }));
 
       const written = JSON.parse(
         mockedSecureWrite.secureWriteFileSync.mock.calls[0][1] as string
