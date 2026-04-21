@@ -10,13 +10,26 @@ import {
   buildUfwStatusCommand,
   parseUfwStatus,
   PROTECTED_PORTS,
-  COOLIFY_PORTS,
   BARE_PORTS,
+  getPortsForPlatform,
 } from "../../src/core/firewall";
 import { firewallCommand } from "../../src/commands/firewall";
+import type { Platform } from "../../src/types/index.js";
 
 jest.mock("../../src/utils/config");
 jest.mock("../../src/utils/ssh");
+jest.mock("../../src/adapters/factory.js", () => ({
+  getAdapter: jest.fn((platform: string) => {
+    if (platform === "coolify") return { name: "coolify", platformPorts: [80, 443, 8000, 6001, 6002] };
+    if (platform === "dokploy") return { name: "dokploy", platformPorts: [80, 443, 3000] };
+    return { name: "bare", platformPorts: [80, 443] };
+  }),
+  resolvePlatform: jest.fn((server: { mode?: string; platform?: string }) => {
+    if (server.platform) return server.platform as "coolify" | "dokploy";
+    if (server.mode === "bare") return undefined;
+    return "coolify";
+  }),
+}));
 
 const mockedConfig = config as jest.Mocked<typeof config>;
 const mockedSsh = sshUtils as jest.Mocked<typeof sshUtils>;
@@ -103,8 +116,8 @@ describe("firewall", () => {
     });
 
     it("should include all Coolify ports", () => {
-      const cmd = buildFirewallSetupCommand();
-      for (const port of COOLIFY_PORTS) {
+      const cmd = buildFirewallSetupCommand("coolify" as Platform);
+      for (const port of [80, 443, 8000, 6001, 6002]) {
         expect(cmd).toContain(`ufw allow ${port}/tcp`);
       }
     });
@@ -193,9 +206,25 @@ describe("firewall", () => {
     });
   });
 
-  describe("COOLIFY_PORTS", () => {
-    it("should include standard Coolify ports", () => {
-      expect(COOLIFY_PORTS).toEqual(expect.arrayContaining([80, 443, 8000, 6001, 6002]));
+  describe("getPortsForPlatform", () => {
+    it("should return coolify adapter ports for coolify platform", () => {
+      const ports = getPortsForPlatform("coolify" as Platform);
+      expect(ports).toEqual([80, 443, 8000, 6001, 6002]);
+    });
+
+    it("should return dokploy adapter ports for dokploy platform", () => {
+      const ports = getPortsForPlatform("dokploy" as Platform);
+      expect(ports).toEqual([80, 443, 3000]);
+    });
+
+    it("should return bare ports when no platform specified", () => {
+      const ports = getPortsForPlatform(undefined);
+      expect(ports).toEqual([80, 443]);
+    });
+
+    it("should return bare ports for bare platform", () => {
+      const ports = getPortsForPlatform("bare" as Platform);
+      expect(ports).toEqual([80, 443]);
     });
   });
 

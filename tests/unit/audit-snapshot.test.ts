@@ -344,7 +344,10 @@ describe("listSnapshots", () => {
   });
 
   it("should return list sorted chronologically (oldest first)", async () => {
-    mockedFs.existsSync.mockReturnValue(true);
+    mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
+      if (String(p).endsWith("snapshots.index.json")) return false;
+      return true;
+    });
     mockedFs.readdirSync.mockReturnValue([
       "2026-03-08T12-00-00-000Z.json",
       "2026-03-06T10-00-00-000Z.json",
@@ -370,7 +373,10 @@ describe("listSnapshots", () => {
   });
 
   it("should include savedAt, overallScore in each entry", async () => {
-    mockedFs.existsSync.mockReturnValue(true);
+    mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
+      if (String(p).endsWith("snapshots.index.json")) return false;
+      return true;
+    });
     mockedFs.readdirSync.mockReturnValue([
       "2026-03-08T10-00-00-000Z.json",
     ] as unknown as ReturnType<typeof fs.readdirSync>);
@@ -389,7 +395,10 @@ describe("listSnapshots", () => {
   });
 
   it("should include name in entry when snapshot was named", async () => {
-    mockedFs.existsSync.mockReturnValue(true);
+    mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
+      if (String(p).endsWith("snapshots.index.json")) return false;
+      return true;
+    });
     mockedFs.readdirSync.mockReturnValue([
       "2026-03-08T10-00-00-000Z_pre-upgrade.json",
     ] as unknown as ReturnType<typeof fs.readdirSync>);
@@ -406,20 +415,26 @@ describe("listSnapshots", () => {
     expect(entries[0].name).toBe("pre-upgrade");
   });
 
-  it("should mark corrupt files with corrupt flag instead of crashing", async () => {
-    mockedFs.existsSync.mockReturnValue(true);
+  it("should not include corrupt files in results", async () => {
+    mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
+      if (String(p).endsWith("snapshots.index.json")) return false;
+      return true;
+    });
     mockedFs.readdirSync.mockReturnValue([
       "2026-03-08T10-00-00-000Z.json",
     ] as unknown as ReturnType<typeof fs.readdirSync>);
     mockedFs.readFileSync.mockReturnValue("not valid json {{{");
 
     const entries = await listSnapshots("1.2.3.4");
-    expect(entries).toHaveLength(1);
-    expect(entries[0].corrupt).toBe(true);
+    // corrupt files are silently skipped during index rebuild, not included with corrupt:true
+    expect(entries).toHaveLength(0);
   });
 
   it("should skip non-.json files", async () => {
-    mockedFs.existsSync.mockReturnValue(true);
+    mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
+      if (String(p).endsWith("snapshots.index.json")) return false;
+      return true;
+    });
     mockedFs.readdirSync.mockReturnValue([
       "2026-03-08T10-00-00-000Z.json",
       "not-a-snapshot.txt",
@@ -435,5 +450,100 @@ describe("listSnapshots", () => {
 
     const entries = await listSnapshots("1.2.3.4");
     expect(entries).toHaveLength(1);
+  });
+});
+
+describe("snapshot index", () => {
+  const INDEX_FILENAME = "snapshots.index.json";
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("listSnapshots should read from index when available", async () => {
+    const indexData = {
+      version: 1,
+      entries: [
+        { filename: "2026-04-01.json", savedAt: "2026-04-01T10:00:00Z", overallScore: 70, checkCount: 50, serverIp: "1.2.3.4" },
+        { filename: "2026-04-02.json", savedAt: "2026-04-02T10:00:00Z", overallScore: 75, checkCount: 50, serverIp: "1.2.3.4" },
+      ],
+    };
+
+    mockedFs.existsSync.mockReturnValue(true);
+    mockedFs.readFileSync.mockReturnValue(JSON.stringify(indexData));
+
+    const entries = await listSnapshots("1.2.3.4");
+    expect(entries).toHaveLength(2);
+    expect(entries[0].overallScore).toBe(70);
+    expect(entries[1].overallScore).toBe(75);
+    expect(mockedFs.readdirSync).not.toHaveBeenCalled();
+  });
+
+  it("listSnapshots should fallback to file scan when index missing", async () => {
+    mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
+      if (String(p).includes(INDEX_FILENAME)) return false;
+      return true;
+    });
+    mockedFs.readdirSync.mockReturnValue(["2026-04-01.json"] as unknown as ReturnType<typeof fs.readdirSync>);
+    mockedFs.readFileSync.mockReturnValue(JSON.stringify({
+      schemaVersion: 2,
+      savedAt: "2026-04-01T10:00:00Z",
+      audit: {
+        serverName: "test",
+        serverIp: "1.2.3.4",
+        platform: "bare",
+        timestamp: "2026-04-01T10:00:00Z",
+        auditVersion: "1.0.0",
+        overallScore: 70,
+        categories: [],
+        quickWins: [],
+      },
+    }));
+
+    const entries = await listSnapshots("1.2.3.4");
+    expect(entries).toHaveLength(1);
+    expect(mockedFs.readdirSync).toHaveBeenCalled();
+  });
+
+  it("listSnapshots should rebuild index after fallback scan", async () => {
+    mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
+      if (String(p).includes(INDEX_FILENAME)) return false;
+      return true;
+    });
+    mockedFs.readdirSync.mockReturnValue(["2026-04-01.json"] as unknown as ReturnType<typeof fs.readdirSync>);
+    mockedFs.readFileSync.mockReturnValue(JSON.stringify({
+      schemaVersion: 2,
+      savedAt: "2026-04-01T10:00:00Z",
+      audit: {
+        serverName: "test",
+        serverIp: "1.2.3.4",
+        platform: "bare",
+        timestamp: "2026-04-01T10:00:00Z",
+        auditVersion: "1.0.0",
+        overallScore: 70,
+        categories: [],
+        quickWins: [],
+      },
+    }));
+
+    await listSnapshots("1.2.3.4");
+    expect(mockedSecureWrite.secureWriteFileSync).toHaveBeenCalled();
+    const writeCall = mockedSecureWrite.secureWriteFileSync.mock.calls.find(
+      (c: unknown[]) => typeof c[0] === "string" && (c[0] as string).includes(INDEX_FILENAME)
+    );
+    expect(writeCall).toBeDefined();
+  });
+
+  it("saveSnapshot should update index", async () => {
+    mockedFs.existsSync.mockReturnValue(true);
+    mockedFs.readFileSync.mockReturnValue(JSON.stringify({ version: 1, entries: [] }));
+    mockedFs.renameSync.mockImplementation(() => {});
+
+    await saveSnapshot(makeAuditResult());
+
+    const indexWrites = mockedSecureWrite.secureWriteFileSync.mock.calls.filter(
+      (c: unknown[]) => typeof c[0] === "string" && (c[0] as string).includes(INDEX_FILENAME)
+    );
+    expect(indexWrites.length).toBeGreaterThanOrEqual(1);
   });
 });

@@ -4,13 +4,11 @@ import { logger, createSpinner } from "../utils/logger.js";
 import { cmd, raw, and, type SshCommand } from "../utils/sshCommand.js";
 import type { FirewallStatus, FirewallRule, FirewallProtocol } from "../types/index.js";
 import type { Platform } from "../types/index.js";
-import { COOLIFY_PORT, DOKPLOY_PORT } from "../constants.js";
+import { getAdapter } from "../adapters/factory.js";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
 export const PROTECTED_PORTS = [22];
-export const COOLIFY_PORTS = [80, 443, COOLIFY_PORT, 6001, 6002];
-export const DOKPLOY_PORTS = [80, 443, DOKPLOY_PORT];
 export const BARE_PORTS = [80, 443];
 
 // ─── Pure Functions ─────────────────────────────────────────────────────────
@@ -23,13 +21,13 @@ export function isProtectedPort(port: number): boolean {
   return PROTECTED_PORTS.includes(port);
 }
 
-export function getPortsForPlatform(platform?: Platform): number[] {
-  if (platform === "dokploy") return DOKPLOY_PORTS;
-  return COOLIFY_PORTS;
+export function getPortsForPlatform(platform?: Platform | "bare"): readonly number[] {
+  if (!platform || platform === "bare") return BARE_PORTS;
+  return getAdapter(platform).platformPorts;
 }
 
 export function buildFirewallSetupCommand(platform?: Platform): SshCommand {
-  const ports = platform ? getPortsForPlatform(platform) : COOLIFY_PORTS;
+  const ports = getPortsForPlatform(platform ?? "coolify");
   const parts: SshCommand[] = [
     cmd("apt-get", "install", "-y", "ufw"),
     cmd("ufw", "default", "deny", "incoming"),
@@ -89,12 +87,19 @@ export function parseUfwStatus(stdout: string): FirewallStatus {
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function getPlatformPortWarning(port: number, platform?: Platform): string | undefined {
-  if (platform === "coolify" && COOLIFY_PORTS.includes(port))
-    return `Port ${port} is used by Coolify. Removing it may break Coolify access.`;
-  if (platform === "dokploy" && DOKPLOY_PORTS.includes(port))
-    return `Port ${port} is used by Dokploy. Removing it may break Dokploy access.`;
-  if (!platform && (COOLIFY_PORTS.includes(port) || DOKPLOY_PORTS.includes(port)))
+  if (platform) {
+    const ports = getPortsForPlatform(platform);
+    if (ports.includes(port)) {
+      const name = platform.charAt(0).toUpperCase() + platform.slice(1);
+      return `Port ${port} is used by ${name}. Removing it may break ${name} access.`;
+    }
+    return undefined;
+  }
+  const coolifyPorts = getAdapter("coolify").platformPorts;
+  const dokployPorts = getAdapter("dokploy").platformPorts;
+  if (coolifyPorts.includes(port) || dokployPorts.includes(port)) {
     return `Port ${port} is commonly used by platform services. Removing it may break access.`;
+  }
   return undefined;
 }
 
@@ -267,7 +272,7 @@ export async function firewallSetup(
       logger.success(`UFW enabled with web ports (${BARE_PORTS.join(", ")}) + SSH (22)`);
     } else {
       const platformLabel = platform === "dokploy" ? "Dokploy" : "Coolify";
-      const platformPorts = platform === "dokploy" ? DOKPLOY_PORTS : COOLIFY_PORTS;
+      const platformPorts = getPortsForPlatform(platform);
       logger.success(`UFW enabled with ${platformLabel} ports (${platformPorts.join(", ")}) + SSH (22)`);
     }
   } catch (error: unknown) {

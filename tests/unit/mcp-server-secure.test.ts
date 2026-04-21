@@ -41,8 +41,15 @@ jest.mock("../../src/core/manage", () => ({
 }));
 jest.mock("../../src/adapters/factory", () => ({
   resolvePlatform: jest.fn().mockReturnValue("coolify"),
-  getAdapter: jest.fn().mockReturnValue({
-    healthCheck: jest.fn().mockResolvedValue({ status: "running" }),
+  getAdapter: jest.fn((platform?: string) => {
+    if (platform === "dokploy") return {
+      healthCheck: jest.fn().mockResolvedValue({ status: "running" }),
+      platformPorts: [80, 443, 3000],
+    };
+    return {
+      healthCheck: jest.fn().mockResolvedValue({ status: "running" }),
+      platformPorts: [80, 443, 8000, 6001, 6002],
+    };
   }),
 }));
 

@@ -16,9 +16,11 @@ import { secureMkdirSync, secureWriteFileSync } from "../../utils/secureWrite.js
 import { z } from "zod";
 import { KASTELL_DIR } from "../../utils/paths.js";
 import { withFileLock } from "../../utils/fileLock.js";
-import type { AuditResult, SnapshotFile, SnapshotListEntry } from "./types.js";
+import type { AuditResult, SnapshotFile, SnapshotListEntry, SnapshotIndex, SnapshotIndexEntry } from "./types.js";
 
 const SCHEMA_VERSION = 2;
+
+const INDEX_FILENAME = "snapshots.index.json";
 
 const complianceRefSchema = z.object({
   framework: z.string(),
@@ -99,6 +101,70 @@ function getSnapshotDir(serverIp: string): string {
   return join(KASTELL_DIR, "snapshots", safeIp);
 }
 
+function getIndexPath(serverIp: string): string {
+  return join(getSnapshotDir(serverIp), INDEX_FILENAME);
+}
+
+function loadIndex(serverIp: string): SnapshotIndex | null {
+  const indexPath = getIndexPath(serverIp);
+  if (!existsSync(indexPath)) return null;
+  try {
+    const raw = readFileSync(indexPath, "utf-8");
+    const parsed = JSON.parse(raw) as SnapshotIndex;
+    if (parsed.version !== 1 || !Array.isArray(parsed.entries)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function saveIndex(serverIp: string, index: SnapshotIndex): void {
+  const indexPath = getIndexPath(serverIp);
+  const dir = getSnapshotDir(serverIp);
+  secureMkdirSync(dir, { recursive: true });
+  secureWriteFileSync(indexPath, JSON.stringify(index, null, 2));
+}
+
+function withIndexLock<T>(serverIp: string, fn: () => T): Promise<T> {
+  return withFileLock(getIndexPath(serverIp), fn);
+}
+
+function rebuildIndex(serverIp: string): SnapshotIndex {
+  const snapshotDir = getSnapshotDir(serverIp);
+  const entries: SnapshotIndexEntry[] = [];
+
+  if (!existsSync(snapshotDir)) {
+    return { version: 1 as const, entries };
+  }
+
+  const files = readdirSync(snapshotDir);
+  const jsonFiles = files.filter((f) => f.endsWith(".json") && f !== INDEX_FILENAME);
+
+  for (const filename of jsonFiles) {
+    try {
+      const content = readFileSync(join(snapshotDir, filename), "utf-8");
+      const data = parseSnapshotFile(content);
+      if (!data) continue;
+      const checkCount = data.audit.categories.reduce((sum, c) => sum + c.checks.length, 0);
+      entries.push({
+        filename,
+        savedAt: data.savedAt,
+        overallScore: data.audit.overallScore,
+        checkCount,
+        serverIp,
+        ...(data.name !== undefined ? { name: data.name } : {}),
+      });
+    } catch {
+      // skip corrupt files
+    }
+  }
+
+  entries.sort((a, b) => a.savedAt.localeCompare(b.savedAt));
+  const index: SnapshotIndex = { version: 1 as const, entries };
+  saveIndex(serverIp, index);
+  return index;
+}
+
 /** Sanitize a snapshot name: only [a-zA-Z0-9_-], max 64 chars */
 function sanitizeSnapshotName(name: string): string {
   return name.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64);
@@ -158,7 +224,7 @@ export async function saveSnapshot(
   const filename = buildFilename(result.timestamp, sanitizedName);
   const filePath = join(snapshotDir, filename);
 
-  await withFileLock(filePath, () => {
+  await withFileLock(filePath, async () => {
     secureMkdirSync(snapshotDir, { recursive: true });
 
     const snapshotFile: SnapshotFile = {
@@ -173,6 +239,23 @@ export async function saveSnapshot(
     const tmpFile = filePath + ".tmp";
     secureWriteFileSync(tmpFile, JSON.stringify(snapshotFile, null, 2), { encoding: "utf-8" });
     renameSync(tmpFile, filePath);
+
+    // Update index (locked to prevent concurrent audit race)
+    await withIndexLock(result.serverIp, () => {
+      const index = loadIndex(result.serverIp) ?? { version: 1 as const, entries: [] };
+      const checkCount = result.categories.reduce((sum, c) => sum + c.checks.length, 0);
+      const newEntry: SnapshotIndexEntry = {
+        filename,
+        savedAt: new Date().toISOString(),
+        overallScore: result.overallScore,
+        checkCount,
+        serverIp: result.serverIp,
+        ...(sanitizedName !== undefined ? { name: sanitizedName } : {}),
+      };
+      index.entries.push(newEntry);
+      index.entries.sort((a, b) => a.savedAt.localeCompare(b.savedAt));
+      saveIndex(result.serverIp, index);
+    });
   });
 }
 
@@ -202,34 +285,12 @@ export async function loadSnapshot(
  * Returns empty array if no snapshots directory exists.
  */
 export async function listSnapshots(serverIp: string): Promise<SnapshotListEntry[]> {
-  const snapshotDir = getSnapshotDir(serverIp);
+  const index = loadIndex(serverIp) ?? rebuildIndex(serverIp);
 
-  if (!existsSync(snapshotDir)) {
-    return [];
-  }
-
-  const files = readdirSync(snapshotDir);
-  const jsonFiles = files.filter((f) => f.endsWith(".json"));
-
-  const entries: SnapshotListEntry[] = jsonFiles.map((filename) => {
-    try {
-      const raw = readFileSync(join(snapshotDir, filename), "utf-8");
-      const data = parseSnapshotFile(raw);
-      if (!data) {
-        return { filename, savedAt: "", overallScore: 0, corrupt: true };
-      }
-      return {
-        filename,
-        savedAt: data.savedAt,
-        overallScore: data.audit.overallScore,
-        ...(data.name !== undefined ? { name: data.name } : {}),
-      };
-    } catch {
-      return { filename, savedAt: "", overallScore: 0, corrupt: true };
-    }
-  });
-
-  entries.sort((a, b) => a.savedAt.localeCompare(b.savedAt));
-
-  return entries;
+  return index.entries.map((e) => ({
+    filename: e.filename,
+    savedAt: e.savedAt,
+    overallScore: e.overallScore,
+    ...(e.name !== undefined ? { name: e.name } : {}),
+  }));
 }
