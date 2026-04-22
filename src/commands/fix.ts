@@ -510,7 +510,7 @@ export async function fixSafeCommand(
       const sign = delta >= 0 ? "+" : "";
       const skippedCount = allSafeChecks.length - selectedChecks.length;
       logger.success(
-        `Score: ${auditResult.overallScore} \→ ${newScore} (${sign}${delta}) | Applied: ${applied.length} | Skipped: ${skippedCount} (GUARDED: ${guardedCount}, FORBIDDEN: ${forbiddenCount})`,
+        `Score: ${auditResult.overallScore} → ${newScore} (${sign}${delta}) | Applied: ${applied.length} | Skipped: ${skippedCount} (GUARDED: ${guardedCount}, FORBIDDEN: ${forbiddenCount})`,
       );
       // D-06: --target unreachable warning
       if (parsedTarget !== undefined && newScore < parsedTarget) {

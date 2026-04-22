@@ -351,7 +351,7 @@ export async function auditCommand(
         if (newScore !== null) {
           const delta = newScore - auditResult.overallScore;
           const sign = delta >= 0 ? "+" : "";
-          logger.success(`Score: ${auditResult.overallScore} \→ ${newScore} (${sign}${delta})`);
+          logger.success(`Score: ${auditResult.overallScore} → ${newScore} (${sign}${delta})`);
         }
       }
     }

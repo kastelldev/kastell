@@ -39,7 +39,7 @@ import {
   type McpResponse,
 } from "../utils.js";
 import { getErrorMessage, sanitizeStderr } from "../../utils/errorMapper.js";
-import { saveBaselineSafe, loadBaseline, checkRegression, formatRegressionSummary, extractPassedCheckIds } from "../../core/audit/regression.js";
+import { saveBaselineSafe, loadBaseline, checkRegression, extractPassedCheckIds } from "../../core/audit/regression.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 export const serverFixSchema = {
