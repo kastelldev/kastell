@@ -4,7 +4,7 @@
  */
 
 import chalk from "chalk";
-import { listAllChecks } from "./listChecks.js";
+import { listAllChecks, CLOUDMETA_CATALOG_INPUT } from "./listChecks.js";
 import { CHECK_REGISTRY } from "./checks/index.js";
 import { resolveTier } from "./fix.js";
 import type { ComplianceRef, Severity, FixTier } from "./types.js";
@@ -25,8 +25,17 @@ export interface FindCheckResult {
   suggestions: string[];
 }
 
+// Module-level cache — catalog is static data, rebuilt only when explicitly cleared
+let _catalogCache: ExplainResult[] | null = null;
+
+export function clearCheckCatalogCache(): void {
+  _catalogCache = null;
+}
+
 function levenshtein(a: string, b: string): number {
   const m = a.length, n = b.length;
+  // Length cap prevents DoS via pathological input (max 200 chars)
+  if (m > 200 || n > 200) return Math.abs(m - n) + Math.min(m, n);
   const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
   for (let i = 0; i <= m; i++) dp[i][0] = i;
   for (let j = 0; j <= n; j++) dp[0][j] = j;
@@ -40,27 +49,42 @@ function levenshtein(a: string, b: string): number {
   return dp[m][n];
 }
 
-function getFullCheckCatalog(): ExplainResult[] {
+function buildCheckCatalog(): ExplainResult[] {
   const catalogEntries = listAllChecks();
-  const fullChecks = CHECK_REGISTRY.flatMap((entry) => {
-    const input = entry.sectionName === "CLOUDMETA"
-      ? ["IS_VPS", "METADATA_BLOCKED", "CLOUDINIT_CLEAN", "CLOUDINIT_NO_SENSITIVE_ENV", "IMDSV2_AVAILABLE", "METADATA_FIREWALL_OK"].join("\n")
-      : "";
-    return entry.parser(input, "bare");
-  });
+  const fullChecksById = new Map<string, ExplainResult>();
 
+  // First pass: build full checks from CHECK_REGISTRY
+  for (const entry of CHECK_REGISTRY) {
+    const input = entry.sectionName === "CLOUDMETA" ? CLOUDMETA_CATALOG_INPUT : "";
+    const checks = entry.parser(input, "bare");
+    for (const fc of checks) {
+      fullChecksById.set(fc.id, {
+        id: fc.id,
+        name: fc.name,
+        category: entry.name,
+        severity: fc.severity,
+        explain: fc.explain ?? "",
+        fixCommand: fc.fixCommand,
+        fixTier: resolveTier(fc, entry.name),
+        complianceRefs: fc.complianceRefs ?? [],
+      });
+    }
+  }
+
+  // Second pass: build catalog with compliance refs from listAllChecks (COMPLIANCE_MAP)
   return catalogEntries.map((ce) => {
-    const full = fullChecks.find((fc) => fc.id === ce.id);
-    const registryEntry = CHECK_REGISTRY.find((r) => r.name === ce.category);
-    const tier = full ? resolveTier(full, registryEntry?.name ?? ce.category) : "GUARDED";
+    const full = fullChecksById.get(ce.id);
+    if (full) {
+      // Enrich with compliance refs from catalog (COMPLIANCE_MAP)
+      return { ...full, complianceRefs: ce.complianceRefs };
+    }
     return {
       id: ce.id,
       name: ce.name,
       category: ce.category,
       severity: ce.severity,
       explain: ce.explain,
-      fixCommand: full?.fixCommand,
-      fixTier: tier,
+      fixTier: "GUARDED" as FixTier,
       complianceRefs: ce.complianceRefs,
     };
   });
@@ -68,9 +92,8 @@ function getFullCheckCatalog(): ExplainResult[] {
 
 export function findCheckById(checkId: string): FindCheckResult {
   const catalog = getFullCheckCatalog();
-  const ids = catalog.map((c) => c.id);
 
-  // 1. Exact match
+  // 1. Exact match — O(n) scan on 457 items is fast enough
   const exact = catalog.find((c) => c.id === checkId);
   if (exact) return { match: exact, suggestions: [] };
 
@@ -80,8 +103,8 @@ export function findCheckById(checkId: string): FindCheckResult {
   if (ci) return { match: ci, suggestions: [] };
 
   // 3. Levenshtein ≤ 3
-  const scored = ids
-    .map((id) => ({ id, dist: levenshtein(upper, id.toUpperCase()) }))
+  const scored = catalog
+    .map((c) => ({ id: c.id, dist: levenshtein(upper, c.id.toUpperCase()) }))
     .filter((s) => s.dist <= 3)
     .sort((a, b) => a.dist - b.dist);
 
@@ -89,6 +112,12 @@ export function findCheckById(checkId: string): FindCheckResult {
     match: null,
     suggestions: scored.slice(0, 3).map((s) => s.id),
   };
+}
+
+function getFullCheckCatalog(): ExplainResult[] {
+  if (_catalogCache) return _catalogCache;
+  _catalogCache = buildCheckCatalog();
+  return _catalogCache;
 }
 
 function severityLabel(severity: Severity): string {

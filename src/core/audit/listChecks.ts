@@ -28,7 +28,7 @@ export interface ListChecksFilter {
  */
 /** Synthetic input for Cloud Metadata parser so it returns all checks in catalog mode.
  *  Uses newline-separated sentinels matching actual SSH batch output format. */
-const CLOUDMETA_CATALOG_INPUT = [
+export const CLOUDMETA_CATALOG_INPUT = [
   "IS_VPS",
   "METADATA_BLOCKED",
   "CLOUDINIT_CLEAN",
