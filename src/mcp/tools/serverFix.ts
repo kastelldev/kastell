@@ -110,6 +110,11 @@ export const serverFixSchema = {
     .optional()
     .default(false)
     .describe("Generate markdown fix report file in current directory"),
+  force: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe("Bypass regression gate and force baseline update"),
 };
 
 /** Severity ordering for display (critical first) */
@@ -132,6 +137,7 @@ export async function handleServerFix(
     profile?: string;
     diff?: boolean;
     report?: boolean;
+    force?: boolean;
   },
   mcpServer?: McpServer,
 ): Promise<McpResponse> {
@@ -288,6 +294,18 @@ export async function handleServerFix(
     const preFixPassedIds = extractPassedCheckIds(auditResult);
     const regression = baseline ? checkRegression(baseline, auditResult, preFixPassedIds) : null;
     const baselineRegression = regression ?? null;
+
+    const hasRegressionFlag = regression
+      ? regression.regressions.length > 0 || regression.scoreRegressed
+      : false;
+
+    const regressionWarning = hasRegressionFlag && !params.force
+      ? {
+          regressions: regression!.regressions,
+          scoreRegressed: regression!.scoreRegressed,
+          message: `Regression detected: ${regression!.regressions.length} check(s) regressed, score ${regression!.scoreRegressed ? "dropped" : "stable"}. Use force:true to override.`,
+        }
+      : undefined;
 
     // ── Build check index for O(1) lookups (used by FORBIDDEN rejection + affectedCats) ──
     const checkIndex = new Map<string, { categoryName: string }>();
@@ -511,7 +529,7 @@ export async function handleServerFix(
       const postFixBaseline = loadBaseline(resultToSave.serverIp);
       const postFixRegression = postFixBaseline ? checkRegression(postFixBaseline, resultToSave, passedIdsToSave) : null;
 
-      if (shouldUpdateBaseline(postFixRegression, false)) {
+      if (shouldUpdateBaseline(postFixRegression, Boolean(params.force))) {
         await saveBaselineSafe(resultToSave, undefined, passedIdsToSave);
       }
     }
@@ -557,6 +575,7 @@ export async function handleServerFix(
       ...(diffSummary ? { diffSummary } : {}),
       ...(reportFile ? { reportFile } : {}),
       ...(baselineRegression ? { baselineRegression } : {}),
+      ...(regressionWarning ? { regressionWarning } : {}),
     }, { largeResult: true });
   } catch (error: unknown) {
     return mcpError(sanitizeStderr(getErrorMessage(error)));
