@@ -39,7 +39,7 @@ import {
   type McpResponse,
 } from "../utils.js";
 import { getErrorMessage, sanitizeStderr } from "../../utils/errorMapper.js";
-import { saveBaselineSafe, loadBaseline, checkRegression, extractPassedCheckIds, shouldUpdateBaseline } from "../../core/audit/regression.js";
+import { saveBaselineSafe, loadBaseline, checkRegression, extractPassedCheckIds, shouldUpdateBaseline, hasRegression } from "../../core/audit/regression.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 export const serverFixSchema = {
@@ -295,7 +295,7 @@ export async function handleServerFix(
     const regression = baseline ? checkRegression(baseline, auditResult, preFixPassedIds) : null;
     const baselineRegression = regression ?? null;
 
-    const regressionWarning = regression && (regression.regressions.length > 0 || regression.scoreRegressed) && !params.force
+    const regressionWarning = regression && hasRegression(regression) && !params.force
       ? {
           regressions: regression.regressions,
           scoreRegressed: regression.scoreRegressed,
@@ -417,6 +417,7 @@ export async function handleServerFix(
         forbiddenCount,
         scoreBefore: auditResult.overallScore,
         ...(baselineRegression ? { baselineRegression } : {}),
+        ...(regressionWarning ? { regressionWarning } : {}),
       }, { largeResult: true });
     }
 

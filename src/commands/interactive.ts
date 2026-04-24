@@ -2,7 +2,7 @@ import inquirer from "inquirer";
 import chalk from "chalk";
 import { listAllProfileNames } from "../core/audit/profiles.js";
 import { isValidPort } from "../core/firewall.js";
-import { regressionStatusCommand, regressionResetCommand } from "./regression.js";
+
 
 const BACK = "__back__";
 
@@ -1049,6 +1049,8 @@ export async function interactiveMenu(): Promise<string[] | null> {
 
     // Special compound commands
     if (action === "backup-list") return ["backup", "list"];
+    if (action === "regression-status") return ["regression", "status"];
+    if (action === "regression-reset") return ["regression", "reset"];
     if (action === "bot") return ["bot", "start"];
     if (action in SCHEDULE_COMMANDS) return ["schedule", SCHEDULE_COMMANDS[action]];
 

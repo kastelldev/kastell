@@ -228,6 +228,8 @@ beforeEach(() => {
   mockedRegression.saveBaselineSafe.mockResolvedValue();
   mockedRegression.loadBaseline.mockReturnValue(null);
   mockedRegression.checkRegression.mockReturnValue({ regressions: [], newPasses: [], baselineScore: 0, currentScore: 0, scoreRegressed: false });
+  mockedRegression.hasRegression.mockReturnValue(false);
+  mockedRegression.shouldUpdateBaseline.mockReturnValue(true);
   mockedRegression.formatRegressionSummary.mockReturnValue([{ severity: "info", text: "Best score: 0" }]);
 });
 

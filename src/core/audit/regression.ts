@@ -98,6 +98,10 @@ export function checkRegression(
   };
 }
 
+export function hasRegression(result: RegressionResult): boolean {
+  return result.regressions.length > 0 || result.scoreRegressed;
+}
+
 export function shouldUpdateBaseline(
   regression: RegressionResult | null,
   forced: boolean,
@@ -169,7 +173,7 @@ export function deleteBaseline(serverIp: string): void {
     unlinkSync(filePath);
   } catch (err) {
     if ((err as { code?: string }).code === "ENOENT") {
-      throw new Error(`No baseline found for ${serverIp}`);
+      throw new Error(`No baseline found for ${serverIp}`, { cause: err });
     }
     throw err;
   }

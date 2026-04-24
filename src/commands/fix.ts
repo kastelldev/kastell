@@ -34,7 +34,7 @@ import {
   rollbackAllFixes,
   rollbackToFix,
 } from "../core/audit/fix-history.js";
-import { saveBaselineSafe, loadBaseline, checkRegression, formatRegressionSummary, extractPassedCheckIds, shouldUpdateBaseline } from "../core/audit/regression.js";
+import { saveBaselineSafe, loadBaseline, checkRegression, formatRegressionSummary, extractPassedCheckIds, shouldUpdateBaseline, hasRegression } from "../core/audit/regression.js";
 
 /**
  * `kastell fix --safe` command.
@@ -269,8 +269,7 @@ export async function fixSafeCommand(
       else logger.info(line.text);
     }
 
-    const hasRegression = regression.regressions.length > 0 || regression.scoreRegressed;
-    if (hasRegression && !(options as { force?: boolean }).force) {
+    if (hasRegression(regression) && !force) {
       if (process.stdin.isTTY) {
         const { confirm } = await import("@inquirer/prompts");
         const proceed = await confirm({

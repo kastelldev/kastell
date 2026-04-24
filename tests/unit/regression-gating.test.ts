@@ -1,4 +1,4 @@
-import { checkRegression, shouldUpdateBaseline } from "../../src/core/audit/regression.js";
+import { checkRegression, shouldUpdateBaseline, hasRegression } from "../../src/core/audit/regression.js";
 import type { RegressionBaseline, RegressionResult } from "../../src/core/audit/types.js";
 
 function makeBaseline(overrides: Partial<RegressionBaseline> = {}): RegressionBaseline {
@@ -159,10 +159,6 @@ describe("conditional save integration scenarios", () => {
 });
 
 describe("pre-fix soft gate decision", () => {
-  function hasRegression(result: RegressionResult): boolean {
-    return result.regressions.length > 0 || result.scoreRegressed;
-  }
-
   it("detects regression when checks regressed", () => {
     const result: RegressionResult = {
       regressions: ["SSH-KEY-AUTH"],
