@@ -139,7 +139,8 @@ describe("encryptData + decryptData", () => {
     const key = randomBytes(32);
 
     const encrypted = encryptData("secret", key);
-    const tampered = { ...encrypted, data: "ff" + encrypted.data.slice(2) };
+    const flipped = encrypted.data.split("").map((c: string) => c === "0" ? "f" : "0").join("");
+    const tampered = { ...encrypted, data: flipped };
 
     expect(() => decryptData(tampered, key)).toThrow(/decryption failed/i);
   });
