@@ -1,4 +1,4 @@
-import { readFileSync, existsSync, renameSync } from "fs";
+import { readFileSync, existsSync, renameSync, readdirSync, unlinkSync } from "fs";
 import { join } from "path";
 import { secureMkdirSync, secureWriteFileSync } from "../../utils/secureWrite.js";
 import { KASTELL_DIR } from "../../utils/paths.js";
@@ -123,4 +123,45 @@ export function formatRegressionSummary(result: RegressionResult): RegressionLin
   }
   lines.push({ severity: "info", text: `Best score: ${result.baselineScore}` });
   return lines;
+}
+
+export function listBaselines(): RegressionBaseline[] {
+  if (!existsSync(REGRESSION_DIR)) return [];
+
+  const files = readdirSync(REGRESSION_DIR, { withFileTypes: true })
+    .filter((f) => f.isFile() && f.name.endsWith(".json"));
+
+  const baselines: RegressionBaseline[] = [];
+  for (const file of files) {
+    try {
+      const raw = readFileSync(join(REGRESSION_DIR, file.name), "utf-8");
+      const parsed = JSON.parse(raw) as RegressionBaseline;
+      if (parsed.version === 1) baselines.push(parsed);
+    } catch {
+      // skip corrupt files
+    }
+  }
+  return baselines;
+}
+
+export function formatBaselineStatus(baseline: RegressionBaseline): string {
+  const age = Date.now() - new Date(baseline.lastUpdated).getTime();
+  const days = Math.floor(age / 86_400_000);
+  const lastUpdated = days === 0 ? "today" : days === 1 ? "1 day ago" : `${days} days ago`;
+
+  return [
+    `Server: ${baseline.serverIp}`,
+    `Baseline: ${baseline.lastUpdated}`,
+    `Best Score: ${baseline.bestScore}`,
+    `Tracked Checks: ${baseline.passedChecks.length}`,
+    `Last Updated: ${lastUpdated}`,
+  ].join("\n");
+}
+
+export function deleteBaseline(serverIp: string): void {
+  const filePath = getBaselinePath(serverIp);
+  if (!existsSync(filePath)) {
+    throw new Error(`No baseline found for ${serverIp}`);
+  }
+  unlinkSync(filePath);
 }

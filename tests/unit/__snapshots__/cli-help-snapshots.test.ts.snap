@@ -45,6 +45,7 @@ Commands:
   fleet [options]                          Show health and security posture of all registered servers
   bot                                      Telegram bot management
   changelog [options] [version]            Show release notes from CHANGELOG.md
+  regression                               Manage regression baselines
   auth                                     Manage provider API tokens (OS keychain)
   help [command]                           display help for command"
 `;

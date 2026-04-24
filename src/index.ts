@@ -409,6 +409,8 @@ notifyCommand(program);
 fleetCommand(program);
 botCommand(program);
 
+import { regressionStatusCommand, regressionResetCommand } from "./commands/regression.js";
+
 program
   .command("changelog [version]")
   .description("Show release notes from CHANGELOG.md")
@@ -416,6 +418,27 @@ program
   .action((version?: string, options?: { all?: boolean }) =>
     changelogCommand(version, options),
   );
+
+const regressionCmd = program
+  .command("regression")
+  .description("Manage regression baselines");
+
+regressionCmd
+  .command("status")
+  .description("Show baseline status for all or specific server")
+  .argument("[server]", "Server IP to check")
+  .action(async (server?: string) => {
+    await regressionStatusCommand(server);
+  });
+
+regressionCmd
+  .command("reset")
+  .description("Delete baseline for a server")
+  .requiredOption("--server <ip>", "Server IP to reset")
+  .option("--force", "Skip confirmation prompt")
+  .action(async (options: { server: string; force?: boolean }) => {
+    await regressionResetCommand(options.server, options);
+  });
 
 registerAuthCommands(program);
 

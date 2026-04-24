@@ -1,0 +1,62 @@
+import chalk from "chalk";
+import { loadBaseline, listBaselines, formatBaselineStatus, deleteBaseline } from "../core/audit/regression.js";
+import { logger } from "../utils/logger.js";
+
+export async function regressionStatusCommand(server?: string): Promise<void> {
+  if (server) {
+    const baseline = loadBaseline(server);
+    if (!baseline) {
+      logger.info(`No baseline found for ${server}`);
+      return;
+    }
+    console.log(formatBaselineStatus(baseline));
+    return;
+  }
+
+  const baselines = listBaselines();
+  if (baselines.length === 0) {
+    logger.info("No baselines found. Run an audit to create one.");
+    return;
+  }
+
+  const header = `${"Server".padEnd(20)} ${"Best Score".padEnd(12)} ${"Checks".padEnd(8)} Last Updated`;
+  console.log(chalk.bold(header));
+
+  for (const b of baselines) {
+    const age = Date.now() - new Date(b.lastUpdated).getTime();
+    const days = Math.floor(age / 86_400_000);
+    const lastUpdated = days === 0 ? "today" : days === 1 ? "1 day ago" : `${days} days ago`;
+
+    console.log(
+      `${b.serverIp.padEnd(20)} ${String(b.bestScore).padEnd(12)} ${String(b.passedChecks.length).padEnd(8)} ${lastUpdated}`
+    );
+  }
+}
+
+export async function regressionResetCommand(server: string, options: { force?: boolean }): Promise<void> {
+  const baseline = loadBaseline(server);
+  if (!baseline) {
+    logger.info(`No baseline found for ${server}`);
+    return;
+  }
+
+  if (!options.force) {
+    if (process.stdin.isTTY) {
+      const { confirm } = await import("@inquirer/prompts");
+      const proceed = await confirm({
+        message: `Delete baseline for ${server}? (Best Score: ${baseline.bestScore}, ${baseline.passedChecks.length} checks)`,
+        default: false,
+      });
+      if (!proceed) {
+        logger.info("Reset cancelled.");
+        return;
+      }
+    } else {
+      logger.warning("Use --force to reset baseline in non-interactive mode.");
+      return;
+    }
+  }
+
+  deleteBaseline(server);
+  logger.info(`Baseline for ${server} has been deleted.`);
+}
