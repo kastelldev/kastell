@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import { loadBaseline, listBaselines, formatBaselineStatus, deleteBaseline } from "../core/audit/regression.js";
+import { loadBaseline, listBaselines, formatBaselineStatus, deleteBaseline, formatRelativeTime } from "../core/audit/regression.js";
 import { logger } from "../utils/logger.js";
 
 export async function regressionStatusCommand(server?: string): Promise<void> {
@@ -23,12 +23,8 @@ export async function regressionStatusCommand(server?: string): Promise<void> {
   console.log(chalk.bold(header));
 
   for (const b of baselines) {
-    const age = Date.now() - new Date(b.lastUpdated).getTime();
-    const days = Math.floor(age / 86_400_000);
-    const lastUpdated = days === 0 ? "today" : days === 1 ? "1 day ago" : `${days} days ago`;
-
     console.log(
-      `${b.serverIp.padEnd(20)} ${String(b.bestScore).padEnd(12)} ${String(b.passedChecks.length).padEnd(8)} ${lastUpdated}`
+      `${b.serverIp.padEnd(20)} ${String(b.bestScore).padEnd(12)} ${String(b.passedChecks.length).padEnd(8)} ${formatRelativeTime(b.lastUpdated)}`
     );
   }
 }

@@ -144,10 +144,15 @@ export function listBaselines(): RegressionBaseline[] {
   return baselines;
 }
 
+export function formatRelativeTime(date: Date | string): string {
+  const days = Math.floor((Date.now() - new Date(date).getTime()) / 86_400_000);
+  if (days === 0) return "today";
+  if (days === 1) return "1 day ago";
+  return `${days} days ago`;
+}
+
 export function formatBaselineStatus(baseline: RegressionBaseline): string {
-  const age = Date.now() - new Date(baseline.lastUpdated).getTime();
-  const days = Math.floor(age / 86_400_000);
-  const lastUpdated = days === 0 ? "today" : days === 1 ? "1 day ago" : `${days} days ago`;
+  const lastUpdated = formatRelativeTime(baseline.lastUpdated);
 
   return [
     `Server: ${baseline.serverIp}`,
@@ -160,8 +165,12 @@ export function formatBaselineStatus(baseline: RegressionBaseline): string {
 
 export function deleteBaseline(serverIp: string): void {
   const filePath = getBaselinePath(serverIp);
-  if (!existsSync(filePath)) {
-    throw new Error(`No baseline found for ${serverIp}`);
+  try {
+    unlinkSync(filePath);
+  } catch (err) {
+    if ((err as { code?: string }).code === "ENOENT") {
+      throw new Error(`No baseline found for ${serverIp}`);
+    }
+    throw err;
   }
-  unlinkSync(filePath);
 }

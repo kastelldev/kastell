@@ -258,6 +258,7 @@ export async function fixSafeCommand(
   }
 
   const auditResult = result.data;
+  const force = (options as { force?: boolean }).force === true;
 
   const baseline = loadBaseline(auditResult.serverIp);
   const preFixPassedIds = extractPassedCheckIds(auditResult);
@@ -529,10 +530,9 @@ export async function fixSafeCommand(
 
     const resultToSave = postFixResult ?? auditResult;
     const passedIdsToSave = postFixResult ? extractPassedCheckIds(postFixResult) : preFixPassedIds;
-    const postFixBaseline = loadBaseline(resultToSave.serverIp);
-    const postFixRegression = postFixBaseline ? checkRegression(postFixBaseline, resultToSave, passedIdsToSave) : null;
+    const postFixRegression = baseline ? checkRegression(baseline, resultToSave, passedIdsToSave) : null;
 
-    if (shouldUpdateBaseline(postFixRegression, (options as { force?: boolean }).force === true)) {
+    if (shouldUpdateBaseline(postFixRegression, force)) {
       await saveBaselineSafe(resultToSave, undefined, passedIdsToSave);
     }
   }

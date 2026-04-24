@@ -295,15 +295,11 @@ export async function handleServerFix(
     const regression = baseline ? checkRegression(baseline, auditResult, preFixPassedIds) : null;
     const baselineRegression = regression ?? null;
 
-    const hasRegressionFlag = regression
-      ? regression.regressions.length > 0 || regression.scoreRegressed
-      : false;
-
-    const regressionWarning = hasRegressionFlag && !params.force
+    const regressionWarning = regression && (regression.regressions.length > 0 || regression.scoreRegressed) && !params.force
       ? {
-          regressions: regression!.regressions,
-          scoreRegressed: regression!.scoreRegressed,
-          message: `Regression detected: ${regression!.regressions.length} check(s) regressed, score ${regression!.scoreRegressed ? "dropped" : "stable"}. Use force:true to override.`,
+          regressions: regression.regressions,
+          scoreRegressed: regression.scoreRegressed,
+          message: `Regression detected: ${regression.regressions.length} check(s) regressed, score ${regression.scoreRegressed ? "dropped" : "stable"}. Use force:true to override.`,
         }
       : undefined;
 
@@ -526,8 +522,7 @@ export async function handleServerFix(
     if (applied.length > 0) {
       const resultToSave = postFixResult ?? auditResult;
       const passedIdsToSave = postFixResult ? extractPassedCheckIds(postFixResult) : preFixPassedIds;
-      const postFixBaseline = loadBaseline(resultToSave.serverIp);
-      const postFixRegression = postFixBaseline ? checkRegression(postFixBaseline, resultToSave, passedIdsToSave) : null;
+      const postFixRegression = baseline ? checkRegression(baseline, resultToSave, passedIdsToSave) : null;
 
       if (shouldUpdateBaseline(postFixRegression, Boolean(params.force))) {
         await saveBaselineSafe(resultToSave, undefined, passedIdsToSave);

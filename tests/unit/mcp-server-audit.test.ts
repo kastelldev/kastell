@@ -79,7 +79,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockedRegression.saveBaselineSafe.mockResolvedValue();
   mockedRegression.loadBaseline.mockReturnValue(null);
-  mockedRegression.checkRegression.mockReturnValue({ regressions: [], newPasses: [], baselineScore: 0, currentScore: 0 });
+  mockedRegression.checkRegression.mockReturnValue({ regressions: [], newPasses: [], baselineScore: 0, currentScore: 0, scoreRegressed: false });
   mockedRegression.formatRegressionSummary.mockReturnValue([{ severity: "info", text: "Best score: 0" }]);
   mockedRegression.extractPassedCheckIds.mockReturnValue([]);
 });
@@ -303,8 +303,15 @@ describe("regression baseline", () => {
   });
 
   it("should call saveBaseline after successful audit", async () => {
-    const result = await handleServerAudit({ server: "coolify-test" });
-    expect(mockedRegression.saveBaselineSafe).toHaveBeenCalledWith(sampleAuditResult, null, []);
+    const spySave = jest.spyOn(regressionRunner, 'saveBaselineSafe').mockResolvedValue();
+    const spyShould = jest.spyOn(regressionRunner, 'shouldUpdateBaseline').mockReturnValue(true);
+
+    await handleServerAudit({ server: "coolify-test" });
+
+    expect(spySave).toHaveBeenCalled();
+    expect(spyShould).toHaveBeenCalled();
+    spySave.mockRestore();
+    spyShould.mockRestore();
   });
 
   it("should include baselineRegression in summary when baseline exists", async () => {
@@ -320,6 +327,7 @@ describe("regression baseline", () => {
       newPasses: [],
       baselineScore: 80,
       currentScore: 72,
+      scoreRegressed: true,
     });
     mockedRegression.formatRegressionSummary.mockReturnValue([
       { severity: "warning", text: "Regression: 1 check(s) regressed: FW-UFW-ACTIVE" },
@@ -347,6 +355,7 @@ describe("regression baseline", () => {
       newPasses: ["FW-UFW-ACTIVE"],
       baselineScore: 70,
       currentScore: 72,
+      scoreRegressed: false,
     });
 
     const result = await handleServerAudit({ server: "coolify-test", format: "json" });

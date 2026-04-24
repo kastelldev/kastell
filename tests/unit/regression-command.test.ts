@@ -63,7 +63,6 @@ describe("formatBaselineStatus", () => {
 
 describe("deleteBaseline", () => {
   it("deletes baseline file for given server", () => {
-    mockFs.existsSync.mockReturnValue(true);
     mockFs.unlinkSync.mockImplementation(() => {});
     deleteBaseline("1.2.3.4");
     expect(mockFs.unlinkSync).toHaveBeenCalledWith(
@@ -72,7 +71,11 @@ describe("deleteBaseline", () => {
   });
 
   it("throws when baseline does not exist", () => {
-    mockFs.existsSync.mockReturnValue(false);
-    expect(() => deleteBaseline("1.2.3.4")).toThrow();
+    mockFs.unlinkSync.mockImplementation(() => {
+      const err = new Error("ENOENT") as Error & { code: string };
+      err.code = "ENOENT";
+      throw err;
+    });
+    expect(() => deleteBaseline("1.2.3.4")).toThrow("No baseline found for 1.2.3.4");
   });
 });

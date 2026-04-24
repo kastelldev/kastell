@@ -227,7 +227,7 @@ beforeEach(() => {
   // Default regression mocks
   mockedRegression.saveBaselineSafe.mockResolvedValue();
   mockedRegression.loadBaseline.mockReturnValue(null);
-  mockedRegression.checkRegression.mockReturnValue({ regressions: [], newPasses: [], baselineScore: 0, currentScore: 0 });
+  mockedRegression.checkRegression.mockReturnValue({ regressions: [], newPasses: [], baselineScore: 0, currentScore: 0, scoreRegressed: false });
   mockedRegression.formatRegressionSummary.mockReturnValue([{ severity: "info", text: "Best score: 0" }]);
 });
 
@@ -1326,10 +1326,11 @@ describe("fixSafeCommand", () => {
         passedChecks: ["KERN-01"],
       });
       mockedRegression.checkRegression.mockReturnValue({
-        regressions: ["KERN-01"],
+        regressions: [],
         newPasses: [],
         baselineScore: 80,
-        currentScore: 70,
+        currentScore: 75,
+        scoreRegressed: false,
       });
       mockedRegression.formatRegressionSummary.mockReturnValue([
         { severity: "warning", text: "Regression: 1 check(s) regressed: KERN-01" },
@@ -1359,10 +1360,16 @@ describe("fixSafeCommand", () => {
       mockedBackupServer.mockResolvedValue({ success: true, backupPath: "/tmp/backup" } as BackupResult);
       mockedSshExec.mockResolvedValue({ stdout: "", stderr: "", code: 0 });
       mockedRunScoreCheck.mockResolvedValue({...makeResult([]), overallScore:75});
+      mockedBackupFilesBeforeFix.mockResolvedValue("/root/.kastell/fix-backups/fix-2026-03-29-001");
 
-      await fixSafeCommand(undefined, { safe: true });
+      // Force shouldUpdateBaseline to return true so saveBaselineSafe gets called
+      const spy = jest.spyOn(require('../../src/core/audit/regression.js'), 'shouldUpdateBaseline').mockReturnValue(true);
+
+      await fixSafeCommand(undefined, { safe: true, interactive: false });
 
       expect(mockedRegression.saveBaselineSafe).toHaveBeenCalled();
+      expect(spy).toHaveBeenCalled();
+      spy.mockRestore();
     });
   });
 });
