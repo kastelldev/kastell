@@ -11,6 +11,8 @@ import type {
   CheckDiffEntry,
   CheckDiffStatus,
   SnapshotFile,
+  CategoryDiffEntry,
+  AuditCompareSummary,
 } from "./types.js";
 import { loadSnapshot, listSnapshots } from "./snapshot.js";
 
@@ -199,4 +201,105 @@ export function formatDiffTerminal(diff: AuditDiffResult): string {
  */
 export function formatDiffJson(diff: AuditDiffResult): string {
   return JSON.stringify(diff, null, 2);
+}
+
+// ─── buildCategorySummary ────────────────────────────────────────────────────
+
+export function buildCategorySummary(
+  before: AuditResult,
+  after: AuditResult,
+  labels?: { before?: string; after?: string },
+): AuditCompareSummary {
+  const beforeMap = new Map(before.categories.map((c) => [c.name, c]));
+  const afterMap = new Map(after.categories.map((c) => [c.name, c]));
+  const allNames = new Set([...beforeMap.keys(), ...afterMap.keys()]);
+
+  const categories: CategoryDiffEntry[] = [];
+  for (const name of allNames) {
+    const b = beforeMap.get(name);
+    const a = afterMap.get(name);
+    categories.push({
+      category: name,
+      scoreBefore: b?.score ?? 0,
+      scoreAfter: a?.score ?? 0,
+      delta: (a?.score ?? 0) - (b?.score ?? 0),
+      passedBefore: b ? b.checks.filter((c) => c.passed).length : 0,
+      passedAfter: a ? a.checks.filter((c) => c.passed).length : 0,
+      totalBefore: b?.checks.length ?? 0,
+      totalAfter: a?.checks.length ?? 0,
+    });
+  }
+
+  categories.sort((a, b) => a.category.localeCompare(b.category));
+
+  const beforeLabel = labels?.before ?? before.serverName;
+  const afterLabel = labels?.after ?? after.serverName;
+
+  let weakestCategory: AuditCompareSummary["weakestCategory"] = null;
+  for (const cat of categories) {
+    const minScore = Math.min(cat.scoreBefore, cat.scoreAfter);
+    const minLabel = cat.scoreBefore <= cat.scoreAfter ? beforeLabel : afterLabel;
+    if (weakestCategory === null || minScore < weakestCategory.score) {
+      weakestCategory = { label: minLabel, category: cat.category, score: minScore };
+    }
+  }
+
+  return {
+    beforeLabel,
+    afterLabel,
+    scoreBefore: before.overallScore,
+    scoreAfter: after.overallScore,
+    scoreDelta: after.overallScore - before.overallScore,
+    categories,
+    weakestCategory,
+  };
+}
+
+// ─── formatCompareSummaryTerminal ────────────────────────────────────────────
+
+export function formatCompareSummaryTerminal(summary: AuditCompareSummary): string {
+  const lines: string[] = [];
+  const { beforeLabel, afterLabel } = summary;
+
+  const deltaStr = summary.scoreDelta >= 0 ? `+${summary.scoreDelta}` : String(summary.scoreDelta);
+  const deltaColor = summary.scoreDelta >= 0 ? chalk.green : chalk.red;
+
+  lines.push(chalk.cyan.bold("── Kastell Server Compare ──────────────────────────────"));
+  lines.push(`  ${beforeLabel.padEnd(20)} score: ${summary.scoreBefore}`);
+  lines.push(`  ${afterLabel.padEnd(20)} score: ${summary.scoreAfter}`);
+  lines.push(`  ${"Delta".padEnd(20)} ${deltaColor(deltaStr)}`);
+  lines.push("");
+
+  const colW = 12;
+  const header = `  ${"Category".padEnd(22)} ${beforeLabel.padEnd(colW)} ${afterLabel.padEnd(colW)} Delta`;
+  lines.push(chalk.dim(header));
+  lines.push(chalk.dim("  " + "─".repeat(header.length - 2)));
+
+  for (const cat of summary.categories) {
+    const dStr = cat.delta === 0 ? "=" : cat.delta > 0 ? chalk.green(`+${cat.delta}`) : chalk.red(String(cat.delta));
+    const bScore = cat.totalBefore === 0 ? "--" : String(cat.scoreBefore);
+    const aScore = cat.totalAfter === 0 ? "--" : String(cat.scoreAfter);
+    lines.push(`  ${cat.category.padEnd(22)} ${bScore.padEnd(colW)} ${aScore.padEnd(colW)} ${dStr}`);
+  }
+
+  lines.push(chalk.dim("  " + "─".repeat(header.length - 2)));
+  lines.push(
+    `  ${"Overall".padEnd(22)} ${String(summary.scoreBefore).padEnd(colW)} ${String(summary.scoreAfter).padEnd(colW)} ${deltaColor(deltaStr)}`,
+  );
+
+  if (summary.weakestCategory) {
+    lines.push("");
+    lines.push(
+      chalk.yellow(`  Weakest: ${summary.weakestCategory.category} on ${summary.weakestCategory.label} (${summary.weakestCategory.score})`),
+    );
+  }
+
+  lines.push(chalk.cyan("────────────────────────────────────────────────────────"));
+  return lines.join("\n");
+}
+
+// ─── formatCompareSummaryJson ────────────────────────────────────────────────
+
+export function formatCompareSummaryJson(summary: AuditCompareSummary): string {
+  return JSON.stringify(summary, null, 2);
 }
