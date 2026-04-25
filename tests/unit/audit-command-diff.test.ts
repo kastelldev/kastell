@@ -31,6 +31,7 @@ jest.mock("../../src/utils/logger", () => ({
   },
   createSpinner: jest.fn(() => ({
     start: jest.fn(),
+    stop: jest.fn(),
     succeed: jest.fn(),
     fail: jest.fn(),
   })),
@@ -42,6 +43,7 @@ const mockedServerSelect = serverSelect as jest.Mocked<typeof serverSelect>;
 const mockedHistory = auditHistory as jest.Mocked<typeof auditHistory>;
 const mockedFormatters = formatters as jest.Mocked<typeof formatters>;
 const mockedSnapshot = snapshotModule as jest.Mocked<typeof snapshotModule>;
+const mockedAudit = auditCore as jest.Mocked<typeof auditCore>;
 
 const mockAuditResult = {
   serverName: "server-a",
@@ -59,6 +61,17 @@ const makeSnapshotFile = (name?: string, score = 80) => ({
   name,
   savedAt: "2026-03-11T00:00:00.000Z",
   audit: { ...mockAuditResult, overallScore: score },
+});
+
+const makeAuditResult = (name: string, score: number) => ({
+  serverName: name,
+  serverIp: name === "server-a" ? "1.2.3.4" : "5.6.7.8",
+  platform: "bare" as const,
+  timestamp: "2026-03-11T00:00:00.000Z",
+  auditVersion: "1.0.0",
+  categories: [],
+  overallScore: score,
+  quickWins: [],
 });
 
 const makeDiffResult = (regressionCount = 0) => ({
@@ -390,33 +403,46 @@ describe("auditCommand --compare wiring", () => {
   });
 
   describe("no snapshots", () => {
-    it("shows error when server-a has no snapshots", async () => {
+    it("falls back to live audit when server-a has no snapshots", async () => {
       mockedDiff.resolveSnapshotRef.mockResolvedValueOnce(null);
-      const loggerMock = await import("../../src/utils/logger");
+      mockedDiff.resolveSnapshotRef.mockResolvedValueOnce(makeSnapshotFile(undefined, 70));
+      mockedAudit.runAudit.mockResolvedValueOnce({ success: true, data: makeAuditResult("server-a", 80) });
+      mockedDiff.buildCategorySummary.mockReturnValue({
+        beforeLabel: "server-a", afterLabel: "server-b", scoreBefore: 80, scoreAfter: 70,
+        scoreDelta: -10, categories: [], weakestCategory: null,
+      });
+      mockedDiff.diffAudits.mockReturnValue({
+        beforeLabel: "server-a", afterLabel: "server-b", scoreBefore: 80, scoreAfter: 70,
+        scoreDelta: -10, improvements: [], regressions: [], unchanged: [], added: [], removed: [],
+      });
 
       const { auditCommand } = await import("../../src/commands/audit");
       await auditCommand(undefined, { compare: "server-a:server-b" });
 
-      expect(loggerMock.logger.error).toHaveBeenCalledWith(
-        expect.stringContaining("No snapshots for server-a"),
-      );
-      expect(mockedDiff.diffAudits).not.toHaveBeenCalled();
+      expect(mockedAudit.runAudit).toHaveBeenCalled();
+      expect(mockedDiff.buildCategorySummary).toHaveBeenCalled();
     });
 
-    it("shows error when server-b has no snapshots", async () => {
-      const snapA = makeSnapshotFile();
+    it("falls back to live audit when server-b has no snapshots", async () => {
+      const snapA = makeSnapshotFile(undefined, 80);
       mockedDiff.resolveSnapshotRef
         .mockResolvedValueOnce(snapA)
         .mockResolvedValueOnce(null);
-      const loggerMock = await import("../../src/utils/logger");
+      mockedAudit.runAudit.mockResolvedValueOnce({ success: true, data: makeAuditResult("server-b", 70) });
+      mockedDiff.buildCategorySummary.mockReturnValue({
+        beforeLabel: "server-a", afterLabel: "server-b", scoreBefore: 80, scoreAfter: 70,
+        scoreDelta: -10, categories: [], weakestCategory: null,
+      });
+      mockedDiff.diffAudits.mockReturnValue({
+        beforeLabel: "server-a", afterLabel: "server-b", scoreBefore: 80, scoreAfter: 70,
+        scoreDelta: -10, improvements: [], regressions: [], unchanged: [], added: [], removed: [],
+      });
 
       const { auditCommand } = await import("../../src/commands/audit");
       await auditCommand(undefined, { compare: "server-a:server-b" });
 
-      expect(loggerMock.logger.error).toHaveBeenCalledWith(
-        expect.stringContaining("No snapshots for server-b"),
-      );
-      expect(mockedDiff.diffAudits).not.toHaveBeenCalled();
+      expect(mockedAudit.runAudit).toHaveBeenCalled();
+      expect(mockedDiff.buildCategorySummary).toHaveBeenCalled();
     });
   });
 

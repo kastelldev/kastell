@@ -10,7 +10,7 @@ import {
   mcpError,
   type McpResponse,
 } from "../utils.js";
-import { getErrorMessage } from "../../utils/errorMapper.js";
+import { getErrorMessage, sanitizeStderr } from "../../utils/errorMapper.js";
 
 export const serverCompareSchema = {
   serverA: z.string().describe("First server name or IP."),
@@ -109,6 +109,6 @@ export async function handleServerCompare(params: {
     const summary = buildCategorySummary(auditA, auditB, { before: serverA.name, after: serverB.name });
     return mcpSuccess(summary as unknown as Record<string, unknown>);
   } catch (error: unknown) {
-    return mcpError(getErrorMessage(error));
+    return mcpError(sanitizeStderr(getErrorMessage(error)));
   }
 }

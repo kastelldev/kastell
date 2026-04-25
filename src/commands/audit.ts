@@ -244,7 +244,11 @@ export async function auditCommand(
       // Category summary table (new default)
       const summary = buildCategorySummary(auditA, auditB, { before: serverA.name, after: serverB.name });
       console.log(options.json ? formatCompareSummaryJson(summary) : formatCompareSummaryTerminal(summary));
+      // Preserve exit code behavior for regressions
+      const diff = diffAudits(auditA, auditB, { before: serverA.name, after: serverB.name });
+      printDiff(diff, options.json);
     }
+    return;
     return;
   }
 
