@@ -15,6 +15,7 @@ import { z } from "zod";
 import { KASTELL_DIR } from "../../utils/paths.js";
 import { withFileLock } from "../../utils/fileLock.js";
 import { secureWriteFileSync, secureMkdirSync } from "../../utils/secureWrite.js";
+import { MS_PER_DAY } from "../../utils/dates.js";
 import type {
   AuditResult,
   AuditHistoryEntry,
@@ -183,7 +184,7 @@ export function computeTrend(
 
   // Apply days filter
   if (options?.days !== undefined) {
-    const cutoff = new Date(Date.now() - options.days * 86_400_000).toISOString();
+    const cutoff = new Date(Date.now() - options.days * MS_PER_DAY).toISOString();
     filtered = filtered.filter((e) => e.timestamp >= cutoff);
   }
 

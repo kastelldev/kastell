@@ -17,6 +17,7 @@ import { serverLockSchema, handleServerLock } from "./tools/serverLock.js";
 import { serverFleetSchema, handleServerFleet } from "./tools/serverFleet.js";
 import { serverFixSchema, handleServerFix } from "./tools/serverFix.js";
 import { serverExplainSchema, serverExplainHandler } from "./tools/serverExplain.js";
+import { serverCompareSchema, handleServerCompare } from "./tools/serverCompare.js";
 import { setMcpVersion } from "./utils.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -279,6 +280,21 @@ Bare servers: use service 'system' or 'docker' for logs (not 'coolify'). server_
     },
   }, async (params) => {
     return serverExplainHandler(params);
+  });
+
+  server.registerTool("server_compare", {
+    description:
+      "Compare two servers side-by-side. Returns category-level score comparison (default) or check-level diff (detail mode). Uses cached snapshots when available, falls back to live SSH audit. Requires two registered servers.",
+    inputSchema: serverCompareSchema,
+    annotations: {
+      title: "Compare Servers",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+  }, async (params) => {
+    return handleServerCompare(params);
   });
 
   return server;

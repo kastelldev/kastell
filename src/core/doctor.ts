@@ -11,6 +11,7 @@ import { KASTELL_DIR } from "../utils/paths.js";
 import { secureWriteFileSync, secureMkdirSync } from "../utils/secureWrite.js";
 import { assertValidIp, sshExec } from "../utils/ssh.js";
 import { raw } from "../utils/sshCommand.js";
+import { MS_PER_DAY } from "../utils/dates.js";
 import { loadAuditHistory } from "./audit/history.js";
 import type { MetricSnapshot, KastellResult } from "../types/index.js";
 import type { AuditHistoryEntry } from "./audit/types.js";
@@ -249,7 +250,7 @@ export function checkBackupAge(
   const lastTs = Date.parse(trimmed);
   if (isNaN(lastTs)) return null;
 
-  const daysOld = (Date.now() - lastTs) / 86_400_000;
+  const daysOld = (Date.now() - lastTs) / MS_PER_DAY;
   if (daysOld <= 7) return null;
 
   const severity: DoctorSeverity = daysOld > 30 ? "critical" : "warning";

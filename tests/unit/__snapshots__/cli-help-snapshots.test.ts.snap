@@ -70,7 +70,11 @@ Options:
   --snapshot [name]            Save audit result as snapshot (optionally named)
   --snapshots                  List saved snapshots for the server
   --diff <before:after>        Compare two snapshots (e.g. pre-upgrade:latest)
-  --compare <server1:server2>  Compare latest snapshots from two servers
+  --compare <server1:server2>  Compare two servers (uses snapshots, falls back
+                               to live audit)
+  --fresh                      Force live audit for --compare (skip snapshots)
+  --detail                     Show check-level diff instead of category summary
+                               in --compare
   --trend                      Show audit score trend over time
   --days <n>                   Limit trend to last N days
   --list-checks                List all audit checks without running audit

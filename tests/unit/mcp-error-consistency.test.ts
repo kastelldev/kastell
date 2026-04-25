@@ -35,8 +35,8 @@ describe("MCP tool annotations (SC#5)", () => {
     const serverTs = readFileSync(join(__dirname, "../../src/mcp/server.ts"), "utf-8");
     const registerCalls = serverTs.match(/server\.registerTool\(/g) || [];
     const annotationBlocks = serverTs.match(/readOnlyHint:/g) || [];
-    expect(registerCalls.length).toBe(15);
-    expect(annotationBlocks.length).toBe(15);
+    expect(registerCalls.length).toBe(16);
+    expect(annotationBlocks.length).toBe(16);
   });
 
   it("read-only tools have readOnlyHint: true", () => {

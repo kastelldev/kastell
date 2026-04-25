@@ -769,7 +769,8 @@ describe("promptAudit — new modes", () => {
     mockedInquirer.prompt
       .mockResolvedValueOnce({ action: "audit" })
       .mockResolvedValueOnce({ answer: "compare" })
-      .mockResolvedValueOnce({ compareRef: "srv1:srv2" });
+      .mockResolvedValueOnce({ compareRef: "srv1:srv2" })
+      .mockResolvedValueOnce({ answer: "summary" });
 
     expect(await interactiveMenu()).toEqual(["audit", "--compare", "srv1:srv2"]);
   });

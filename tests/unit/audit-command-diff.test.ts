@@ -31,6 +31,7 @@ jest.mock("../../src/utils/logger", () => ({
   },
   createSpinner: jest.fn(() => ({
     start: jest.fn(),
+    stop: jest.fn(),
     succeed: jest.fn(),
     fail: jest.fn(),
   })),
@@ -42,6 +43,7 @@ const mockedServerSelect = serverSelect as jest.Mocked<typeof serverSelect>;
 const mockedHistory = auditHistory as jest.Mocked<typeof auditHistory>;
 const mockedFormatters = formatters as jest.Mocked<typeof formatters>;
 const mockedSnapshot = snapshotModule as jest.Mocked<typeof snapshotModule>;
+const mockedAudit = auditCore as jest.Mocked<typeof auditCore>;
 
 const mockAuditResult = {
   serverName: "server-a",
@@ -59,6 +61,17 @@ const makeSnapshotFile = (name?: string, score = 80) => ({
   name,
   savedAt: "2026-03-11T00:00:00.000Z",
   audit: { ...mockAuditResult, overallScore: score },
+});
+
+const makeAuditResult = (name: string, score: number) => ({
+  serverName: name,
+  serverIp: name === "server-a" ? "1.2.3.4" : "5.6.7.8",
+  platform: "bare" as const,
+  timestamp: "2026-03-11T00:00:00.000Z",
+  auditVersion: "1.0.0",
+  categories: [],
+  overallScore: score,
+  quickWins: [],
 });
 
 const makeDiffResult = (regressionCount = 0) => ({
@@ -325,25 +338,73 @@ describe("auditCommand --compare wiring", () => {
   });
 
   describe("happy path", () => {
-    it("loads latest snapshot for each server and outputs diff", async () => {
-      const snapA = makeSnapshotFile(undefined, 80);
-      const snapB = makeSnapshotFile(undefined, 70);
-      mockedDiff.resolveSnapshotRef
-        .mockResolvedValueOnce(snapA)
-        .mockResolvedValueOnce(snapB);
+    it("uses category summary by default (not check-level diff)", async () => {
+      const auditA = makeAuditResult("server-a", 80);
+      const auditB = makeAuditResult("server-b", 70);
+      mockedDiff.resolveAuditPair.mockResolvedValue({
+        success: true, data: { auditA, auditB },
+      });
+      mockedDiff.buildCategorySummary.mockReturnValue({
+        beforeLabel: "server-a", afterLabel: "server-b", scoreBefore: 80, scoreAfter: 70,
+        scoreDelta: -10, categories: [], weakestCategory: null,
+      });
+      mockedDiff.formatCompareSummaryTerminal.mockReturnValue("category summary output");
 
       const { auditCommand } = await import("../../src/commands/audit");
       await auditCommand(undefined, { compare: "server-a:server-b" });
 
-      expect(mockedConfig.getServers).toHaveBeenCalled();
-      expect(mockedDiff.resolveSnapshotRef).toHaveBeenCalledWith("1.2.3.4", "latest");
-      expect(mockedDiff.resolveSnapshotRef).toHaveBeenCalledWith("5.6.7.8", "latest");
-      expect(mockedDiff.diffAudits).toHaveBeenCalledWith(
-        snapA.audit,
-        snapB.audit,
-        { before: "server-a", after: "server-b" },
-      );
+      expect(mockedDiff.resolveAuditPair).toHaveBeenCalledWith(serverA, serverB, false);
+      expect(mockedDiff.buildCategorySummary).toHaveBeenCalled();
+      expect(mockedDiff.formatCompareSummaryTerminal).toHaveBeenCalled();
+      expect(mockedDiff.diffAudits).not.toHaveBeenCalled();
+    });
+
+    it("uses check-level diff when --detail is set", async () => {
+      const auditA = makeAuditResult("server-a", 80);
+      const auditB = makeAuditResult("server-b", 70);
+      mockedDiff.resolveAuditPair.mockResolvedValue({
+        success: true, data: { auditA, auditB },
+      });
+
+      const { auditCommand } = await import("../../src/commands/audit");
+      await auditCommand(undefined, { compare: "server-a:server-b", detail: true });
+
+      expect(mockedDiff.diffAudits).toHaveBeenCalled();
       expect(mockedDiff.formatDiffTerminal).toHaveBeenCalled();
+      expect(mockedDiff.buildCategorySummary).not.toHaveBeenCalled();
+    });
+
+    it("outputs JSON when --json is set in summary mode", async () => {
+      const auditA = makeAuditResult("server-a", 80);
+      const auditB = makeAuditResult("server-b", 70);
+      mockedDiff.resolveAuditPair.mockResolvedValue({
+        success: true, data: { auditA, auditB },
+      });
+      mockedDiff.buildCategorySummary.mockReturnValue({
+        beforeLabel: "server-a", afterLabel: "server-b", scoreBefore: 80, scoreAfter: 70,
+        scoreDelta: -10, categories: [], weakestCategory: null,
+      });
+      mockedDiff.formatCompareSummaryJson.mockReturnValue('{"summary": true}');
+
+      const { auditCommand } = await import("../../src/commands/audit");
+      await auditCommand(undefined, { compare: "server-a:server-b", json: true });
+
+      expect(mockedDiff.formatCompareSummaryJson).toHaveBeenCalled();
+      expect(mockedDiff.formatCompareSummaryTerminal).not.toHaveBeenCalled();
+    });
+
+    it("outputs JSON when --json is set in detail mode", async () => {
+      const auditA = makeAuditResult("server-a", 80);
+      const auditB = makeAuditResult("server-b", 70);
+      mockedDiff.resolveAuditPair.mockResolvedValue({
+        success: true, data: { auditA, auditB },
+      });
+
+      const { auditCommand } = await import("../../src/commands/audit");
+      await auditCommand(undefined, { compare: "server-a:server-b", detail: true, json: true });
+
+      expect(mockedDiff.formatDiffJson).toHaveBeenCalled();
+      expect(mockedDiff.formatDiffTerminal).not.toHaveBeenCalled();
     });
   });
 
@@ -357,7 +418,7 @@ describe("auditCommand --compare wiring", () => {
       expect(loggerMock.logger.error).toHaveBeenCalledWith(
         expect.stringContaining("--compare requires format"),
       );
-      expect(mockedDiff.resolveSnapshotRef).not.toHaveBeenCalled();
+      expect(mockedDiff.resolveAuditPair).not.toHaveBeenCalled();
     });
   });
 
@@ -372,7 +433,7 @@ describe("auditCommand --compare wiring", () => {
       expect(loggerMock.logger.error).toHaveBeenCalledWith(
         expect.stringContaining("Server not found: server-a"),
       );
-      expect(mockedDiff.resolveSnapshotRef).not.toHaveBeenCalled();
+      expect(mockedDiff.resolveAuditPair).not.toHaveBeenCalled();
     });
 
     it("shows error when second server is not in config", async () => {
@@ -385,54 +446,61 @@ describe("auditCommand --compare wiring", () => {
       expect(loggerMock.logger.error).toHaveBeenCalledWith(
         expect.stringContaining("Server not found: server-b"),
       );
-      expect(mockedDiff.resolveSnapshotRef).not.toHaveBeenCalled();
+      expect(mockedDiff.resolveAuditPair).not.toHaveBeenCalled();
     });
   });
 
-  describe("no snapshots", () => {
-    it("shows error when server-a has no snapshots", async () => {
-      mockedDiff.resolveSnapshotRef.mockResolvedValueOnce(null);
+  describe("resolveAuditPair failure", () => {
+    it("reports error when resolveAuditPair fails", async () => {
+      mockedDiff.resolveAuditPair.mockResolvedValue({
+        success: false, error: "Audit failed for server-a: SSH timeout",
+      });
       const loggerMock = await import("../../src/utils/logger");
 
       const { auditCommand } = await import("../../src/commands/audit");
       await auditCommand(undefined, { compare: "server-a:server-b" });
 
       expect(loggerMock.logger.error).toHaveBeenCalledWith(
-        expect.stringContaining("No snapshots for server-a"),
+        expect.stringContaining("Audit failed for server-a"),
       );
-      expect(mockedDiff.diffAudits).not.toHaveBeenCalled();
     });
+  });
 
-    it("shows error when server-b has no snapshots", async () => {
-      const snapA = makeSnapshotFile();
-      mockedDiff.resolveSnapshotRef
-        .mockResolvedValueOnce(snapA)
-        .mockResolvedValueOnce(null);
-      const loggerMock = await import("../../src/utils/logger");
+  describe("--fresh flag", () => {
+    it("passes fresh=true to resolveAuditPair", async () => {
+      const auditA = makeAuditResult("server-a", 80);
+      const auditB = makeAuditResult("server-b", 70);
+      mockedDiff.resolveAuditPair.mockResolvedValue({
+        success: true, data: { auditA, auditB },
+      });
+      mockedDiff.buildCategorySummary.mockReturnValue({
+        beforeLabel: "server-a", afterLabel: "server-b", scoreBefore: 80, scoreAfter: 70,
+        scoreDelta: -10, categories: [], weakestCategory: null,
+      });
 
       const { auditCommand } = await import("../../src/commands/audit");
-      await auditCommand(undefined, { compare: "server-a:server-b" });
+      await auditCommand(undefined, { compare: "server-a:server-b", fresh: true });
 
-      expect(loggerMock.logger.error).toHaveBeenCalledWith(
-        expect.stringContaining("No snapshots for server-b"),
-      );
-      expect(mockedDiff.diffAudits).not.toHaveBeenCalled();
+      expect(mockedDiff.resolveAuditPair).toHaveBeenCalledWith(serverA, serverB, true);
     });
   });
 
   describe("exit code behavior", () => {
-    it("sets process.exitCode = 1 when regressions exist", async () => {
-      const snapA = makeSnapshotFile();
-      const snapB = makeSnapshotFile();
-      mockedDiff.resolveSnapshotRef
-        .mockResolvedValueOnce(snapA)
-        .mockResolvedValueOnce(snapB);
-      mockedDiff.diffAudits.mockReturnValue(makeDiffResult(3));
+    it("does NOT set process.exitCode in compare mode", async () => {
+      const auditA = makeAuditResult("server-a", 80);
+      const auditB = makeAuditResult("server-b", 60);
+      mockedDiff.resolveAuditPair.mockResolvedValue({
+        success: true, data: { auditA, auditB },
+      });
+      mockedDiff.buildCategorySummary.mockReturnValue({
+        beforeLabel: "server-a", afterLabel: "server-b", scoreBefore: 80, scoreAfter: 60,
+        scoreDelta: -20, categories: [], weakestCategory: null,
+      });
 
       const { auditCommand } = await import("../../src/commands/audit");
       await auditCommand(undefined, { compare: "server-a:server-b" });
 
-      expect(process.exitCode).toBe(1);
+      expect(process.exitCode).toBeUndefined();
     });
   });
 });

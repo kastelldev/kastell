@@ -195,3 +195,24 @@ export interface AuditDiffResult {
   added: CheckDiffEntry[];
   removed: CheckDiffEntry[];
 }
+
+export interface CategoryDiffEntry {
+  category: string;
+  scoreBefore: number;
+  scoreAfter: number;
+  delta: number;
+  passedBefore: number;
+  passedAfter: number;
+  totalBefore: number;
+  totalAfter: number;
+}
+
+export interface AuditCompareSummary {
+  beforeLabel: string;
+  afterLabel: string;
+  scoreBefore: number;
+  scoreAfter: number;
+  scoreDelta: number;
+  categories: CategoryDiffEntry[];
+  weakestCategory: { label: string; category: string; score: number } | null;
+}

@@ -597,7 +597,14 @@ async function promptAudit(): Promise<string[] | null> {
         validate: validateColonPair("Format: server1:server2"),
       },
     ]);
-    return ["audit", "--compare", compareRef];
+    const compareMode = await promptList("Compare mode:", [
+      { name: "Category summary (default)", value: "summary" },
+      { name: "Check-level diff (detailed)", value: "detail" },
+    ]);
+    if (!compareMode) return null;
+    const args = ["audit", "--compare", compareRef];
+    if (compareMode === "detail") args.push("--detail");
+    return args;
   }
 
   if (mode === "trend") {

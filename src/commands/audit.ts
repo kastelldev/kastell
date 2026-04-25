@@ -14,7 +14,7 @@ import { formatTrendTerminal, formatTrendJson } from "../core/audit/formatters/t
 import { saveSnapshot, listSnapshots } from "../core/audit/snapshot.js";
 import { runFix, runPostFixReAudit, extractAffectedCategories } from "../core/audit/fix.js";
 import { watchAudit } from "../core/audit/watch.js";
-import { diffAudits, resolveSnapshotRef, formatDiffTerminal, formatDiffJson } from "../core/audit/diff.js";
+import { diffAudits, resolveSnapshotRef, formatDiffTerminal, formatDiffJson, buildCategorySummary, formatCompareSummaryTerminal, formatCompareSummaryJson, resolveAuditPair } from "../core/audit/diff.js";
 import { getServers } from "../utils/config.js";
 import { listAllChecks, formatListChecksTerminal, formatListChecksJson } from "../core/audit/listChecks.js";
 import { filterByProfile, calculateComplianceDetail } from "../core/audit/compliance/scoring.js";
@@ -51,6 +51,8 @@ export interface AuditCommandOptions extends AuditCliOptions {
   listChecks?: boolean;
   profile?: string;
   compliance?: string;
+  fresh?: boolean;
+  detail?: boolean;
 }
 
 /**
@@ -158,7 +160,7 @@ export async function auditCommand(
     return;
   }
 
-  // --compare mode: compare latest snapshots from two servers
+  // --compare mode: compare two servers
   if (options.compare) {
     const parts = options.compare.split(":");
     if (parts.length !== 2) {
@@ -171,15 +173,21 @@ export async function auditCommand(
     const serverB = servers.find((s) => s.name === serverBRef || s.ip === serverBRef);
     if (!serverA) { logger.error(`Server not found: ${serverARef}`); return; }
     if (!serverB) { logger.error(`Server not found: ${serverBRef}`); return; }
-    const snapA = await resolveSnapshotRef(serverA.ip, "latest");
-    const snapB = await resolveSnapshotRef(serverB.ip, "latest");
-    if (!snapA) { logger.error(`No snapshots for ${serverA.name}`); return; }
-    if (!snapB) { logger.error(`No snapshots for ${serverB.name}`); return; }
-    const diff = diffAudits(snapA.audit, snapB.audit, {
-      before: serverA.name,
-      after: serverB.name,
-    });
-    printDiff(diff, options.json);
+
+    const spinner = createSpinner("Comparing servers...");
+    spinner.start();
+    const pairResult = await resolveAuditPair(serverA, serverB, !!options.fresh);
+    spinner.stop();
+    if (!pairResult.success) { logger.error(pairResult.error ?? "Compare failed"); return; }
+    const { auditA, auditB } = pairResult.data!;
+
+    if (options.detail) {
+      const diff = diffAudits(auditA, auditB, { before: serverA.name, after: serverB.name });
+      console.log(options.json ? formatDiffJson(diff) : formatDiffTerminal(diff));
+    } else {
+      const summary = buildCategorySummary(auditA, auditB, { before: serverA.name, after: serverB.name });
+      console.log(options.json ? formatCompareSummaryJson(summary) : formatCompareSummaryTerminal(summary));
+    }
     return;
   }
 
