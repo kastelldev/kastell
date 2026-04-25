@@ -295,11 +295,12 @@ export async function handleServerFix(
     const regression = baseline ? checkRegression(baseline, auditResult, preFixPassedIds) : null;
     const baselineRegression = regression;
 
+    const scoreDropped = regression ? regression.currentScore < regression.baselineScore : false;
     const regressionWarning = regression && hasRegression(regression) && !params.force
       ? {
           regressions: regression.regressions,
-          scoreRegressed: regression.currentScore < regression.baselineScore,
-          message: `Regression detected: ${regression.regressions.length} check(s) regressed, score ${regression.currentScore < regression.baselineScore ? "dropped" : "stable"}. Use force:true to override.`,
+          scoreRegressed: scoreDropped,
+          message: `Regression detected: ${regression.regressions.length} check(s) regressed, score ${scoreDropped ? "dropped" : "stable"}. Use force:true to override.`,
         }
       : undefined;
 

@@ -278,7 +278,7 @@ export async function fixSafeCommand(
         "Regression detected. Use --force to proceed in non-interactive mode.",
       );
       if (!proceed) {
-        logger.info("Fix cancelled by user.");
+        logger.info("Fix cancelled.");
         return;
       }
     }
