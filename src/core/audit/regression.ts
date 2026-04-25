@@ -3,6 +3,7 @@ import { join } from "path";
 import { secureMkdirSync, secureWriteFileSync } from "../../utils/secureWrite.js";
 import { KASTELL_DIR } from "../../utils/paths.js";
 import { withFileLock } from "../../utils/fileLock.js";
+import { formatRelativeTime } from "../../utils/dates.js";
 import type { AuditResult, RegressionBaseline, RegressionResult, RegressionLine } from "./types.js";
 
 const REGRESSION_DIR = join(KASTELL_DIR, "regression");
@@ -147,12 +148,7 @@ export function listBaselines(): RegressionBaseline[] {
   return baselines;
 }
 
-export function formatRelativeTime(date: Date | string): string {
-  const days = Math.floor((Date.now() - new Date(date).getTime()) / 86_400_000);
-  if (days === 0) return "today";
-  if (days === 1) return "1 day ago";
-  return `${days} days ago`;
-}
+export { formatRelativeTime } from "../../utils/dates.js";
 
 export function formatBaselineStatus(baseline: RegressionBaseline): string {
   const lastUpdated = formatRelativeTime(baseline.lastUpdated);
