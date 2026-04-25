@@ -39,26 +39,26 @@ function makeAuditResult(score: number, passedIds: string[]) {
   };
 }
 
-describe("scoreRegressed detection", () => {
-  it("sets scoreRegressed=true when current < baseline", () => {
+describe("score regression detection", () => {
+  it("detects regression when current < baseline", () => {
     const baseline = makeBaseline({ bestScore: 80 });
     const audit = makeAuditResult(75, ["SSH-KEY-AUTH", "UFW-ENABLED", "KERN-SYNCOOKIES"]);
     const result = checkRegression(baseline, audit);
-    expect(result.scoreRegressed).toBe(true);
+    expect(result.currentScore < result.baselineScore).toBe(true);
   });
 
-  it("sets scoreRegressed=false when current >= baseline", () => {
+  it("detects no regression when current >= baseline", () => {
     const baseline = makeBaseline({ bestScore: 80 });
     const audit = makeAuditResult(85, ["SSH-KEY-AUTH", "UFW-ENABLED", "KERN-SYNCOOKIES"]);
     const result = checkRegression(baseline, audit);
-    expect(result.scoreRegressed).toBe(false);
+    expect(result.currentScore < result.baselineScore).toBe(false);
   });
 
-  it("sets scoreRegressed=false when scores are equal", () => {
+  it("detects no regression when scores are equal", () => {
     const baseline = makeBaseline({ bestScore: 80 });
     const audit = makeAuditResult(80, ["SSH-KEY-AUTH", "UFW-ENABLED", "KERN-SYNCOOKIES"]);
     const result = checkRegression(baseline, audit);
-    expect(result.scoreRegressed).toBe(false);
+    expect(result.currentScore < result.baselineScore).toBe(false);
   });
 });
 
@@ -73,7 +73,6 @@ describe("shouldUpdateBaseline", () => {
       newPasses: [],
       baselineScore: 80,
       currentScore: 70,
-      scoreRegressed: true,
     };
     expect(shouldUpdateBaseline(regression, true)).toBe(true);
   });
@@ -84,7 +83,6 @@ describe("shouldUpdateBaseline", () => {
       newPasses: ["NEW-CHECK"],
       baselineScore: 80,
       currentScore: 85,
-      scoreRegressed: false,
     };
     expect(shouldUpdateBaseline(regression, false)).toBe(true);
   });
@@ -95,7 +93,6 @@ describe("shouldUpdateBaseline", () => {
       newPasses: [],
       baselineScore: 80,
       currentScore: 80,
-      scoreRegressed: false,
     };
     expect(shouldUpdateBaseline(regression, false)).toBe(false);
   });
@@ -106,7 +103,6 @@ describe("shouldUpdateBaseline", () => {
       newPasses: [],
       baselineScore: 80,
       currentScore: 75,
-      scoreRegressed: true,
     };
     expect(shouldUpdateBaseline(regression, false)).toBe(false);
   });
@@ -117,7 +113,6 @@ describe("shouldUpdateBaseline", () => {
       newPasses: [],
       baselineScore: 80,
       currentScore: 70,
-      scoreRegressed: true,
     };
     expect(shouldUpdateBaseline(regression, false)).toBe(false);
   });
@@ -130,7 +125,6 @@ describe("conditional save integration scenarios", () => {
       newPasses: ["NEW-CHECK"],
       baselineScore: 70,
       currentScore: 80,
-      scoreRegressed: false,
     };
     expect(shouldUpdateBaseline(regression, false)).toBe(true);
   });
@@ -141,7 +135,6 @@ describe("conditional save integration scenarios", () => {
       newPasses: [],
       baselineScore: 80,
       currentScore: 75,
-      scoreRegressed: true,
     };
     expect(shouldUpdateBaseline(regression, false)).toBe(false);
   });
@@ -152,7 +145,6 @@ describe("conditional save integration scenarios", () => {
       newPasses: [],
       baselineScore: 80,
       currentScore: 70,
-      scoreRegressed: true,
     };
     expect(shouldUpdateBaseline(regression, true)).toBe(true);
   });
@@ -165,7 +157,6 @@ describe("pre-fix soft gate decision", () => {
       newPasses: [],
       baselineScore: 80,
       currentScore: 80,
-      scoreRegressed: false,
     };
     expect(hasRegression(result)).toBe(true);
   });
@@ -176,7 +167,6 @@ describe("pre-fix soft gate decision", () => {
       newPasses: [],
       baselineScore: 80,
       currentScore: 75,
-      scoreRegressed: true,
     };
     expect(hasRegression(result)).toBe(true);
   });
@@ -187,7 +177,6 @@ describe("pre-fix soft gate decision", () => {
       newPasses: ["NEW"],
       baselineScore: 80,
       currentScore: 85,
-      scoreRegressed: false,
     };
     expect(hasRegression(result)).toBe(false);
   });

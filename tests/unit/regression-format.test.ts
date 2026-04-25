@@ -8,7 +8,6 @@ describe("formatRegressionSummary", () => {
       newPasses: [],
       baselineScore: 72,
       currentScore: 68,
-      scoreRegressed: false,
     };
     const lines = formatRegressionSummary(result);
     expect(lines).toContainEqual({
@@ -27,7 +26,6 @@ describe("formatRegressionSummary", () => {
       newPasses: ["KERN-01", "KERN-02"],
       baselineScore: 60,
       currentScore: 65,
-      scoreRegressed: false,
     };
     const lines = formatRegressionSummary(result);
     expect(lines).toContainEqual({
@@ -46,7 +44,6 @@ describe("formatRegressionSummary", () => {
       newPasses: ["KERN-01"],
       baselineScore: 60,
       currentScore: 62,
-      scoreRegressed: false,
     };
     const lines = formatRegressionSummary(result);
     expect(lines.length).toBe(3);
@@ -61,7 +58,6 @@ describe("formatRegressionSummary", () => {
       newPasses: [],
       baselineScore: 70,
       currentScore: 70,
-      scoreRegressed: false,
     };
     const lines = formatRegressionSummary(result);
     expect(lines).toEqual([{ severity: "info", text: "Best score: 70" }]);

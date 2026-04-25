@@ -139,7 +139,6 @@ export interface RegressionResult {
   newPasses: string[];
   baselineScore: number;
   currentScore: number;
-  scoreRegressed: boolean;
 }
 
 export interface RegressionLine {

@@ -227,7 +227,7 @@ beforeEach(() => {
   // Default regression mocks
   mockedRegression.saveBaselineSafe.mockResolvedValue();
   mockedRegression.loadBaseline.mockReturnValue(null);
-  mockedRegression.checkRegression.mockReturnValue({ regressions: [], newPasses: [], baselineScore: 0, currentScore: 0, scoreRegressed: false });
+  mockedRegression.checkRegression.mockReturnValue({ regressions: [], newPasses: [], baselineScore: 0, currentScore: 0 });
   mockedRegression.hasRegression.mockReturnValue(false);
   mockedRegression.shouldUpdateBaseline.mockReturnValue(true);
   mockedRegression.formatRegressionSummary.mockReturnValue([{ severity: "info", text: "Best score: 0" }]);
@@ -1332,7 +1332,6 @@ describe("fixSafeCommand", () => {
         newPasses: [],
         baselineScore: 80,
         currentScore: 75,
-        scoreRegressed: false,
       });
       mockedRegression.formatRegressionSummary.mockReturnValue([
         { severity: "warning", text: "Regression: 1 check(s) regressed: KERN-01" },
@@ -1401,7 +1400,6 @@ describe("fixSafeCommand", () => {
         newPasses: [],
         baselineScore: 80,
         currentScore: 70,
-        scoreRegressed: true,
       });
       mockedRegression.hasRegression.mockReturnValue(true);
       mockedRegression.formatRegressionSummary.mockReturnValue([
@@ -1437,7 +1435,6 @@ describe("fixSafeCommand", () => {
         newPasses: [],
         baselineScore: 80,
         currentScore: 70,
-        scoreRegressed: true,
       });
       mockedRegression.hasRegression.mockReturnValue(true);
       mockedRegression.formatRegressionSummary.mockReturnValue([
@@ -1480,7 +1477,6 @@ describe("fixSafeCommand", () => {
         newPasses: [],
         baselineScore: 80,
         currentScore: 70,
-        scoreRegressed: true,
       });
       mockedRegression.hasRegression.mockReturnValue(true);
       mockedRegression.formatRegressionSummary.mockReturnValue([

@@ -23,6 +23,7 @@ import { filterChecksByProfile, isValidProfile, listAllProfileNames } from "../c
 import { writeFixReport } from "../utils/fixReport.js";
 import { backupServer } from "../core/backup.js";
 import { classifyError } from "../utils/errorMapper.js";
+import { confirmOrCancel } from "../utils/prompts.js";
 import {
   loadFixHistory,
   saveFixHistory,
@@ -270,19 +271,14 @@ export async function fixSafeCommand(
       else logger.info(line.text);
     }
 
-    if (hasRegression(preFixRegression) && !force) {
-      if (process.stdin.isTTY) {
-        const { confirm } = await import("@inquirer/prompts");
-        const proceed = await confirm({
-          message: "Regression detected. Continue with fix?",
-          default: false,
-        });
-        if (!proceed) {
-          logger.info("Fix cancelled by user.");
-          return;
-        }
-      } else {
-        logger.warning("Regression detected. Use --force to proceed in non-interactive mode.");
+    if (hasRegression(preFixRegression)) {
+      const proceed = await confirmOrCancel(
+        "Regression detected. Continue with fix?",
+        force,
+        "Regression detected. Use --force to proceed in non-interactive mode.",
+      );
+      if (!proceed) {
+        logger.info("Fix cancelled.");
         return;
       }
     }

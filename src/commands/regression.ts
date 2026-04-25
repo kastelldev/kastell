@@ -1,6 +1,7 @@
 import chalk from "chalk";
 import { loadBaseline, listBaselines, formatBaselineStatus, deleteBaseline, formatRelativeTime } from "../core/audit/regression.js";
 import { logger } from "../utils/logger.js";
+import { confirmOrCancel } from "../utils/prompts.js";
 
 export async function regressionStatusCommand(server?: string): Promise<void> {
   if (server) {
@@ -36,21 +37,14 @@ export async function regressionResetCommand(server: string, options: { force?: 
     return;
   }
 
-  if (!options.force) {
-    if (process.stdin.isTTY) {
-      const { confirm } = await import("@inquirer/prompts");
-      const proceed = await confirm({
-        message: `Delete baseline for ${server}? (Best Score: ${baseline.bestScore}, ${baseline.passedChecks.length} checks)`,
-        default: false,
-      });
-      if (!proceed) {
-        logger.info("Reset cancelled.");
-        return;
-      }
-    } else {
-      logger.warning("Use --force to reset baseline in non-interactive mode.");
-      return;
-    }
+  const proceed = await confirmOrCancel(
+    `Delete baseline for ${server}? (Best Score: ${baseline.bestScore}, ${baseline.passedChecks.length} checks)`,
+    !!options.force,
+    "Use --force to reset baseline in non-interactive mode.",
+  );
+  if (!proceed) {
+    logger.info("Reset cancelled.");
+    return;
   }
 
   deleteBaseline(server);

@@ -232,7 +232,7 @@ beforeEach(() => {
   // Default regression mocks
   mockedRegression.saveBaselineSafe.mockResolvedValue();
   mockedRegression.loadBaseline.mockReturnValue(null);
-  mockedRegression.checkRegression.mockReturnValue({ regressions: [], newPasses: [], baselineScore: 0, currentScore: 0, scoreRegressed: false });
+  mockedRegression.checkRegression.mockReturnValue({ regressions: [], newPasses: [], baselineScore: 0, currentScore: 0 });
   mockedRegression.hasRegression.mockReturnValue(false);
   mockedRegression.shouldUpdateBaseline.mockReturnValue(true);
 });
@@ -1095,7 +1095,6 @@ describe("MCP server_fix tool", () => {
         newPasses: ["KERN-RANDOMIZE"],
         baselineScore: 80,
         currentScore: 65,
-        scoreRegressed: false,
       });
 
       const result = await handleServerFix({ dryRun: true });
@@ -1119,7 +1118,6 @@ describe("MCP server_fix tool", () => {
         newPasses: [],
         baselineScore: 80,
         currentScore: 70,
-        scoreRegressed: true,
       });
       mockedRegression.hasRegression.mockReturnValue(true);
 
@@ -1147,7 +1145,6 @@ describe("MCP server_fix tool", () => {
         newPasses: [],
         baselineScore: 80,
         currentScore: 70,
-        scoreRegressed: true,
       });
       mockedRegression.hasRegression.mockReturnValue(true);
 
@@ -1171,7 +1168,6 @@ describe("MCP server_fix tool", () => {
         newPasses: ["KERN-RANDOMIZE"],
         baselineScore: 80,
         currentScore: 85,
-        scoreRegressed: false,
       });
 
       const result = await handleServerFix({ dryRun: true });
@@ -1194,7 +1190,6 @@ describe("MCP server_fix tool", () => {
         newPasses: ["KERN-RANDOMIZE"],
         baselineScore: 80,
         currentScore: 85,
-        scoreRegressed: false,
       });
       mockedRegression.hasRegression.mockReturnValue(false);
       mockedRegression.shouldUpdateBaseline.mockReturnValue(true);

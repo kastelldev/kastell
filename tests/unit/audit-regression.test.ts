@@ -143,7 +143,7 @@ describe("regression suite", () => {
       expect(result.newPasses).toEqual([]);
       expect(result.baselineScore).toBe(80);
       expect(result.currentScore).toBe(66);
-      expect(result.scoreRegressed).toBe(true);
+      expect(result.currentScore < result.baselineScore).toBe(true);
     });
 
     it("should detect new passes", () => {
@@ -159,7 +159,7 @@ describe("regression suite", () => {
       const result = checkRegression(baseline, audit);
       expect(result.regressions).toEqual([]);
       expect(result.newPasses).toEqual(["SSH-002"]);
-      expect(result.scoreRegressed).toBe(false); // currentScore 66 > baseline 50
+      expect(result.currentScore < result.baselineScore).toBe(false); // currentScore 66 > baseline 50
     });
 
     it("should return empty arrays when no changes", () => {
@@ -175,7 +175,7 @@ describe("regression suite", () => {
       const result = checkRegression(baseline, audit);
       expect(result.regressions).toEqual([]);
       expect(result.newPasses).toEqual([]);
-      expect(result.scoreRegressed).toBe(false); // 66 >= 66
+      expect(result.currentScore < result.baselineScore).toBe(false); // 66 >= 66
     });
   });
 });

@@ -2,6 +2,7 @@ import inquirer from "inquirer";
 import type { CloudProvider } from "../providers/base.js";
 import type { DeploymentConfig, ServerMode } from "../types/index.js";
 import { SUPPORTED_PROVIDERS, PROVIDER_DISPLAY_NAMES } from "../constants.js";
+import { logger } from "./logger.js";
 
 export const BACK_SIGNAL = "__BACK__";
 
@@ -173,5 +174,24 @@ export async function confirmDeployment(
 
   if (confirm === "yes") return true;
   if (confirm === BACK_SIGNAL) return BACK_SIGNAL;
+  return false;
+}
+
+type ConfirmFn = (opts: { message: string; default: boolean }) => Promise<boolean>;
+
+export async function confirmOrCancel(
+  message: string,
+  force: boolean,
+  cancelMessage = "Use --force to proceed in non-interactive mode.",
+  confirmFn?: ConfirmFn,
+): Promise<boolean> {
+  if (force) return true;
+
+  if (process.stdin.isTTY) {
+    const fn = confirmFn ?? (await import("@inquirer/prompts")).confirm;
+    return fn({ message, default: false });
+  }
+
+  logger.warning(cancelMessage);
   return false;
 }
