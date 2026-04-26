@@ -7,7 +7,8 @@ export function fleetCommand(program: Command): void {
     .description("Show health and security posture of all registered servers")
     .option("--json", "Output machine-readable JSON")
     .option("--sort <field>", "Sort by: score, name, provider", "name")
-    .action(async (options: { json?: boolean; sort?: string }) => {
+    .option("--categories", "Show weakest audit category per server")
+    .action(async (options: { json?: boolean; sort?: string; categories?: boolean }) => {
       await runFleet(options);
     });
 }

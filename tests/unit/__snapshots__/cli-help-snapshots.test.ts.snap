@@ -66,6 +66,8 @@ Options:
   --watch [interval]           Watch mode with optional interval in seconds
   --host <user@ip>             Audit an unregistered server by IP
   --threshold <score>          Exit with code 1 if score is below threshold
+  --ci                         CI mode: JSON output, no spinner, requires
+                               --threshold
   --category <list>            Comma-separated list of categories to audit
   --snapshot [name]            Save audit result as snapshot (optionally named)
   --snapshots                  List saved snapshots for the server

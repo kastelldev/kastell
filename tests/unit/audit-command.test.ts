@@ -11,6 +11,7 @@ import * as watchModule from "../../src/core/audit/watch";
 import * as complianceScoringModule from "../../src/core/audit/compliance/scoring";
 import * as complianceFormatterModule from "../../src/core/audit/formatters/compliance";
 import * as regressionModule from "../../src/core/audit/regression";
+import * as loggerModule from "../../src/utils/logger.js";
 
 jest.mock("../../src/core/audit/index");
 jest.mock("../../src/core/audit/regression");
@@ -25,6 +26,20 @@ jest.mock("../../src/core/audit/filter");
 jest.mock("../../src/core/audit/listChecks");
 jest.mock("../../src/core/audit/compliance/scoring");
 jest.mock("../../src/core/audit/formatters/compliance");
+jest.mock("../../src/utils/logger.js", () => ({
+  createSpinner: jest.fn(() => ({
+    start: jest.fn(),
+    stop: jest.fn(),
+    succeed: jest.fn(),
+    fail: jest.fn(),
+  })),
+  logger: {
+    info: jest.fn(),
+    error: jest.fn((msg: string) => console.log(`✖ ${msg}`)),
+    success: jest.fn(),
+    warning: jest.fn(),
+  },
+}));
 
 const mockedAuditCore = auditCore as jest.Mocked<typeof auditCore>;
 const mockedServerSelect = serverSelect as jest.Mocked<typeof serverSelect>;
@@ -39,6 +54,7 @@ const mockedWatch = watchModule as jest.Mocked<typeof watchModule>;
 const mockedComplianceScoring = complianceScoringModule as jest.Mocked<typeof complianceScoringModule>;
 const mockedComplianceFormatter = complianceFormatterModule as jest.Mocked<typeof complianceFormatterModule>;
 const mockedRegression = regressionModule as jest.Mocked<typeof regressionModule>;
+const mockedCreateSpinner = loggerModule.createSpinner as jest.Mocked<typeof loggerModule.createSpinner>;
 mockedRegression.formatRegressionSummary;
 mockedRegression.extractPassedCheckIds;
 
@@ -1029,5 +1045,118 @@ describe("auditCommand --profile", () => {
     const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("8/10 controls");
     expect(output).toContain("80%");
+  });
+});
+
+describe("--ci flag", () => {
+  let consoleSpy: jest.SpyInstance;
+  let exitSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    exitSpy = jest.spyOn(process, "exit").mockImplementation(() => undefined as never);
+    process.exitCode = undefined;
+    jest.clearAllMocks();
+
+    mockedServerSelect.resolveServer.mockResolvedValue({
+      id: "srv-1",
+      name: "test-server",
+      provider: "hetzner",
+      ip: "1.2.3.4",
+      region: "fsn1",
+      size: "cx11",
+      createdAt: "2026-01-01",
+      mode: "bare",
+    });
+
+    mockedAuditCore.runAudit.mockResolvedValue({
+      success: true,
+      data: mockAuditResult,
+    });
+
+    mockedHistory.loadAuditHistory.mockReturnValue([]);
+    mockedHistory.detectTrend.mockReturnValue("first audit");
+    mockedHistory.saveAuditHistory.mockImplementation(() => Promise.resolve());
+
+    mockedFormatters.selectFormatter.mockResolvedValue(
+      (result) => JSON.stringify(result, null, 2),
+    );
+
+    mockedFilter.filterAuditResult.mockImplementation((result) => result);
+    mockedFilter.buildFilterAnnotation.mockReturnValue("");
+    mockedFilter.parseSeverity.mockImplementation((raw) => raw as ReturnType<typeof auditFilter.parseSeverity>);
+
+    mockedFix.runFix.mockResolvedValue({ applied: [], skipped: [], errors: [] });
+    mockedFix.runPostFixReAudit.mockResolvedValue(null);
+
+    mockedRegression.saveBaselineSafe.mockResolvedValue();
+    mockedRegression.loadBaseline.mockReturnValue(null);
+    mockedRegression.extractPassedCheckIds.mockReturnValue([]);
+    mockedRegression.checkRegression.mockReturnValue({ regressions: [], newPasses: [], baselineScore: 0, currentScore: 0 });
+    mockedRegression.formatRegressionSummary.mockReturnValue([{ severity: "info", text: "Best score: 0" }]);
+  });
+
+  afterEach(() => {
+    consoleSpy.mockRestore();
+    exitSpy.mockRestore();
+  });
+
+  it("should require --threshold when --ci is used", async () => {
+    const { auditCommand } = await import("../../src/commands/audit");
+    await auditCommand("test-server", { ci: true });
+
+    // --ci without --threshold shows error and returns early after resolving server
+    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    expect(output).toContain("--ci requires --threshold");
+  });
+
+  it("should imply --json when --ci is set with threshold", async () => {
+    const { auditCommand } = await import("../../src/commands/audit");
+    await auditCommand("test-server", { ci: true, threshold: "70" });
+
+    expect(mockedFormatters.selectFormatter).toHaveBeenCalledWith(
+      expect.objectContaining({ json: true }),
+    );
+  });
+
+  it("should suppress spinner when --ci is set", async () => {
+    const { createSpinner } = await import("../../src/utils/logger.js");
+    const { auditCommand } = await import("../../src/commands/audit");
+    await auditCommand("test-server", { ci: true, threshold: "70" });
+
+    // createSpinner should not be called when ci is true
+    expect(mockedCreateSpinner).not.toHaveBeenCalled();
+  });
+
+  it("should set exitCode 1 when score below threshold in ci mode", async () => {
+    const lowScoreResult = {
+      ...mockAuditResult,
+      overallScore: 50,
+    };
+    mockedAuditCore.runAudit.mockResolvedValue({
+      success: true,
+      data: lowScoreResult,
+    });
+
+    const { auditCommand } = await import("../../src/commands/audit");
+    await auditCommand("test-server", { ci: true, threshold: "70" });
+
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("should not set exitCode when score meets threshold in ci mode", async () => {
+    const highScoreResult = {
+      ...mockAuditResult,
+      overallScore: 85,
+    };
+    mockedAuditCore.runAudit.mockResolvedValue({
+      success: true,
+      data: highScoreResult,
+    });
+
+    const { auditCommand } = await import("../../src/commands/audit");
+    await auditCommand("test-server", { ci: true, threshold: "70" });
+
+    expect(process.exitCode).toBeUndefined();
   });
 });

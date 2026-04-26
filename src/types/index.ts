@@ -187,9 +187,12 @@ export interface FleetRow {
   auditScore: number | null;
   responseTime: number | null;
   errorReason: string | null;
+  weakestCategory?: string;
+  weakestCategoryScore?: number;
 }
 
 export interface FleetOptions {
   json?: boolean;
   sort?: string;
+  categories?: boolean;
 }

@@ -4,6 +4,7 @@ import { getServers } from "../utils/config.js";
 import { createSpinner } from "../utils/logger.js";
 import { checkServerHealth } from "./health.js";
 import { loadAuditHistory } from "./audit/history.js";
+import { listSnapshots, loadSnapshot } from "./audit/snapshot.js";
 import type { FleetRow, FleetOptions, ServerRecord } from "../types/index.js";
 
 const VALID_SORT_FIELDS = ["score", "name", "provider"];
@@ -19,6 +20,33 @@ export function getLatestAuditScore(serverIp: string): number | null {
   if (history.length === 0) return null;
   const sorted = [...history].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
   return sorted[0].overallScore;
+}
+
+/**
+ * Get the lowest-scoring audit category from the latest snapshot for a server.
+ * Returns null when no snapshots exist or snapshot has no categories.
+ */
+export async function getWeakestCategory(
+  serverIp: string,
+): Promise<{ name: string; score: number } | null> {
+  try {
+    const snapshots = await listSnapshots(serverIp);
+    if (snapshots.length === 0) return null;
+
+    const latest = snapshots[snapshots.length - 1];
+    const snap = await loadSnapshot(serverIp, latest.filename);
+    if (!snap?.audit?.categories?.length) return null;
+
+    let weakest = snap.audit.categories[0];
+    for (const cat of snap.audit.categories) {
+      if (cat.score < weakest.score) {
+        weakest = cat;
+      }
+    }
+    return { name: weakest.name, score: weakest.score };
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -65,7 +93,8 @@ export async function runFleet(options: FleetOptions): Promise<FleetRow[]> {
     limit(async () => {
       const health = await checkServerHealth(server);
       const auditScore = getLatestAuditScore(server.ip);
-      return { health, auditScore };
+      const weakest = options.categories ? await getWeakestCategory(server.ip) : undefined;
+      return { health, auditScore, weakest };
     }),
   );
 
@@ -88,7 +117,7 @@ export async function runFleet(options: FleetOptions): Promise<FleetRow[]> {
       } satisfies FleetRow;
     }
 
-    const { health, auditScore } = result.value;
+    const { health, auditScore, weakest } = result.value;
 
     let status: FleetRow["status"];
     if (health.status === "healthy") {
@@ -107,6 +136,7 @@ export async function runFleet(options: FleetOptions): Promise<FleetRow[]> {
       auditScore,
       responseTime: health.responseTime,
       errorReason: null,
+      ...(weakest ? { weakestCategory: weakest.name, weakestCategoryScore: weakest.score } : {}),
     } satisfies FleetRow;
   });
 
@@ -133,18 +163,37 @@ export async function runFleet(options: FleetOptions): Promise<FleetRow[]> {
 }
 
 function renderTable(rows: FleetRow[]): void {
-  const header = `${"Name".padEnd(20)} ${"IP".padEnd(16)} ${"Provider".padEnd(14)} ${"Status".padEnd(12)} ${"Score".padEnd(8)} ${"Response".padEnd(10)}`;
+  const hasCategories = rows.some((r) => r.weakestCategory);
+
+  let header = `${"Name".padEnd(20)} ${"IP".padEnd(16)} ${"Provider".padEnd(14)} ${"Status".padEnd(12)} ${"Score".padEnd(8)} ${"Response".padEnd(10)}`;
+  if (hasCategories) header += ` ${"Weakest Category".padEnd(25)}`;
+
   console.log(header);
   console.log("─".repeat(header.length));
 
+  const scores = rows.map((r) => r.auditScore).filter((s): s is number => s !== null);
+  const avg = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+
   for (const row of rows) {
     const statusColored = colorStatus(row.status);
-    const score = row.auditScore !== null ? String(row.auditScore) : "--";
+    const scoreStr = row.auditScore !== null ? String(row.auditScore) : "--";
     const response = row.responseTime !== null ? `${row.responseTime}ms` : "--";
 
-    console.log(
-      `${row.name.padEnd(20)} ${row.ip.padEnd(16)} ${row.provider.padEnd(14)} ${statusColored.padEnd(12)} ${score.padEnd(8)} ${response.padEnd(10)}`,
-    );
+    let line = `${row.name.padEnd(20)} ${row.ip.padEnd(16)} ${row.provider.padEnd(14)} ${statusColored.padEnd(12)} ${scoreStr.padEnd(8)} ${response.padEnd(10)}`;
+
+    if (hasCategories && row.weakestCategory) {
+      const catStr = `${row.weakestCategory} (${row.weakestCategoryScore})`;
+      line += ` ${catStr.padEnd(25)}`;
+    } else if (hasCategories) {
+      line += ` ${"--".padEnd(25)}`;
+    }
+
+    console.log(line);
+  }
+
+  if (avg !== null) {
+    console.log();
+    console.log(chalk.dim(`Fleet average score: ${avg}`));
   }
 
   console.log();
