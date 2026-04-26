@@ -38,9 +38,9 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && vars.E2E_ENABLED == 'true') }}
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
@@ -102,7 +102,7 @@ jobs:
 
       - name: Upload audit result
         if: steps.provision.outputs.provisioned == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-audit-result
           path: audit-result.json
