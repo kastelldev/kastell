@@ -82,11 +82,11 @@ export async function auditCommand(
   }
 
   // --ci mode: validate threshold requirement early (before server resolution)
-  if (options.ci && options.threshold === undefined) {
-    logger.error("--ci requires --threshold (e.g. --ci --threshold 70)");
-    return;
-  }
   if (options.ci) {
+    if (options.threshold === undefined) {
+      logger.error("--ci requires --threshold (e.g. --ci --threshold 70)");
+      return;
+    }
     options.json = true;
   }
 

@@ -181,11 +181,11 @@ function renderTable(rows: FleetRow[]): void {
 
     let line = `${row.name.padEnd(20)} ${row.ip.padEnd(16)} ${row.provider.padEnd(14)} ${statusColored.padEnd(12)} ${scoreStr.padEnd(8)} ${response.padEnd(10)}`;
 
-    if (hasCategories && row.weakestCategory) {
-      const catStr = `${row.weakestCategory} (${row.weakestCategoryScore})`;
+    if (hasCategories) {
+      const catStr = row.weakestCategory
+        ? `${row.weakestCategory} (${row.weakestCategoryScore})`
+        : "--";
       line += ` ${catStr.padEnd(25)}`;
-    } else if (hasCategories) {
-      line += ` ${"--".padEnd(25)}`;
     }
 
     console.log(line);
