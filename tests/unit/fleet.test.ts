@@ -16,6 +16,12 @@ jest.mock("../../src/core/audit/history.js", () => ({
   loadAuditHistory: jest.fn(),
 }));
 
+jest.mock("../../src/core/audit/snapshot.js", () => ({
+  listSnapshots: jest.fn(),
+  loadSnapshot: jest.fn(),
+  saveSnapshot: jest.fn(),
+}));
+
 jest.mock("../../src/utils/logger.js", () => ({
   createSpinner: jest.fn(),
   logger: {
@@ -26,16 +32,19 @@ jest.mock("../../src/utils/logger.js", () => ({
   },
 }));
 
-import { runFleet, sortRows, getLatestAuditScore } from "../../src/core/fleet.js";
+import { runFleet, sortRows, getLatestAuditScore, getWeakestCategory } from "../../src/core/fleet.js";
 import { getServers } from "../../src/utils/config.js";
 import { checkServerHealth } from "../../src/core/health.js";
 import { loadAuditHistory } from "../../src/core/audit/history.js";
+import { listSnapshots, loadSnapshot } from "../../src/core/audit/snapshot.js";
 import { createSpinner } from "../../src/utils/logger.js";
 
 const mockedGetServers = getServers as jest.MockedFunction<typeof getServers>;
 const mockedCheckServerHealth = checkServerHealth as jest.MockedFunction<typeof checkServerHealth>;
 const mockedLoadAuditHistory = loadAuditHistory as jest.MockedFunction<typeof loadAuditHistory>;
 const mockedCreateSpinner = createSpinner as jest.MockedFunction<typeof createSpinner>;
+const mockedListSnapshots = listSnapshots as jest.MockedFunction<typeof listSnapshots>;
+const mockedLoadSnapshot = loadSnapshot as jest.MockedFunction<typeof loadSnapshot>;
 
 const makeSpinner = () => ({
   start: jest.fn(),
@@ -180,6 +189,38 @@ describe("runFleet", () => {
     expect(rows[0].errorReason).toBe("Error: unexpected crash");
   });
 
+  it("renders Weakest Category column in terminal when categories option is set", async () => {
+    const server = makeServer();
+    mockedGetServers.mockReturnValue([server]);
+    mockedCheckServerHealth.mockResolvedValue({ server, status: "healthy", responseTime: 10 });
+    mockedLoadAuditHistory.mockReturnValue([
+      { serverIp: "1.2.3.4", serverName: "web-01", timestamp: "2026-01-10T00:00:00.000Z", overallScore: 72, categoryScores: {} },
+    ]);
+    mockedListSnapshots.mockResolvedValue([
+      { filename: "snap.json", savedAt: "2026-04-26T10:00:00Z", overallScore: 72 },
+    ]);
+    mockedLoadSnapshot.mockResolvedValue({
+      version: 2,
+      audit: {
+        overallScore: 72,
+        categories: [
+          { name: "SSH", score: 90, maxScore: 100, checks: [] },
+          { name: "Firewall", score: 45, maxScore: 100, checks: [] },
+        ],
+      },
+    } as never);
+
+    const consoleSpy = jest.spyOn(console, "log").mockImplementation();
+
+    await runFleet({ categories: true });
+
+    const output = consoleSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("Weakest Category");
+    expect(output).toContain("Firewall (45)");
+
+    consoleSpy.mockRestore();
+  });
+
   it("outputs JSON to stdout when json option is set", async () => {
     const server = makeServer();
     mockedGetServers.mockReturnValue([server]);
@@ -267,5 +308,71 @@ describe("getLatestAuditScore", () => {
     const score = getLatestAuditScore("1.2.3.4");
 
     expect(score).toBe(80);
+  });
+});
+
+// ─── getWeakestCategory ──────────────────────────────────────────────────────
+
+describe("getWeakestCategory", () => {
+  it("should return the lowest scoring category from latest snapshot", async () => {
+    mockedListSnapshots.mockResolvedValue([
+      { filename: "2026-04-26-auto.json", savedAt: "2026-04-26T10:00:00Z", overallScore: 72 },
+    ]);
+    mockedLoadSnapshot.mockResolvedValue({
+      version: 2,
+      audit: {
+        overallScore: 72,
+        categories: [
+          { name: "SSH", score: 90, maxScore: 100, checks: [] },
+          { name: "Firewall", score: 45, maxScore: 100, checks: [] },
+          { name: "Kernel", score: 80, maxScore: 100, checks: [] },
+        ],
+      },
+    } as never);
+
+    const result = await getWeakestCategory("1.2.3.4");
+
+    expect(result).toEqual({ name: "Firewall", score: 45 });
+  });
+
+  it("should return null when no snapshots exist", async () => {
+    mockedListSnapshots.mockResolvedValue([]);
+
+    const result = await getWeakestCategory("1.2.3.4");
+
+    expect(result).toBeNull();
+  });
+
+  it("should return null when snapshot has no categories", async () => {
+    mockedListSnapshots.mockResolvedValue([
+      { filename: "snap.json", savedAt: "2026-04-26T10:00:00Z", overallScore: 0 },
+    ]);
+    mockedLoadSnapshot.mockResolvedValue({
+      version: 2,
+      audit: { overallScore: 0, categories: [] },
+    } as never);
+
+    const result = await getWeakestCategory("1.2.3.4");
+
+    expect(result).toBeNull();
+  });
+
+  it("should return null when loadSnapshot returns null", async () => {
+    mockedListSnapshots.mockResolvedValue([
+      { filename: "corrupt.json", savedAt: "2026-04-26T10:00:00Z", overallScore: 0 },
+    ]);
+    mockedLoadSnapshot.mockResolvedValue(null);
+
+    const result = await getWeakestCategory("1.2.3.4");
+
+    expect(result).toBeNull();
+  });
+
+  it("should return null when listSnapshots throws", async () => {
+    mockedListSnapshots.mockRejectedValue(new Error("disk error"));
+
+    const result = await getWeakestCategory("1.2.3.4");
+
+    expect(result).toBeNull();
   });
 });

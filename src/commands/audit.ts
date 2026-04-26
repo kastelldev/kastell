@@ -53,6 +53,7 @@ export interface AuditCommandOptions extends AuditCliOptions {
   compliance?: string;
   fresh?: boolean;
   detail?: boolean;
+  ci?: boolean;
 }
 
 /**
@@ -78,6 +79,15 @@ export async function auditCommand(
       console.log(formatListChecksTerminal(checks));
     }
     return;
+  }
+
+  // --ci mode: validate threshold requirement early (before server resolution)
+  if (options.ci) {
+    if (options.threshold === undefined) {
+      logger.error("--ci requires --threshold (e.g. --ci --threshold 70)");
+      return;
+    }
+    options.json = true;
   }
 
   let ip: string;
@@ -207,20 +217,20 @@ export async function auditCommand(
     return;
   }
 
-  const spinner = createSpinner(`Running security audit on ${name}...`);
-  spinner.start();
+  const spinner = options.ci ? null : createSpinner(`Running security audit on ${name}...`);
+  spinner?.start();
 
   const result = await runAudit(ip, name, platform);
 
   if (!result.success || !result.data) {
-    spinner.fail(result.error ?? "Audit failed");
+    spinner?.fail(result.error ?? "Audit failed");
     if (result.hint) {
       logger.info(result.hint);
     }
     return;
   }
 
-  spinner.succeed(`Audit complete for ${name}`);
+  spinner?.succeed(`Audit complete for ${name}`);
 
   const auditResult = result.data;
 

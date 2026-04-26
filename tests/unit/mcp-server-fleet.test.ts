@@ -85,6 +85,24 @@ describe("MCP server_fleet tool", () => {
       expect(mockedFleet.runFleet).toHaveBeenCalledWith({ json: true, sort: "name" });
     });
 
+    it("should include weakestCategory when categories param is true", async () => {
+      const rowsWithCategory: FleetRow[] = [
+        { ...sampleRows[0], weakestCategory: "Firewall", weakestCategoryScore: 45 },
+      ];
+      mockedConfig.getServers.mockReturnValue([sampleServer] as never);
+      mockedFleet.runFleet.mockResolvedValue(rowsWithCategory);
+
+      const result = await handleServerFleet({ sort: "name", categories: true });
+
+      expect(result.isError).toBeUndefined();
+      expect(mockedFleet.runFleet).toHaveBeenCalledWith(
+        expect.objectContaining({ categories: true }),
+      );
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.rows[0].weakestCategory).toBe("Firewall");
+      expect(parsed.rows[0].weakestCategoryScore).toBe(45);
+    });
+
     it("returns rows matching FleetRow shape with all fields", async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer] as never);
       mockedFleet.runFleet.mockResolvedValue([sampleRows[0]]);

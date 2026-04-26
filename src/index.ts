@@ -351,6 +351,7 @@ program
   .option("--watch [interval]", "Watch mode with optional interval in seconds")
   .option("--host <user@ip>", "Audit an unregistered server by IP")
   .option("--threshold <score>", "Exit with code 1 if score is below threshold")
+  .option("--ci", "CI mode: JSON output, no spinner, requires --threshold")
   .option("--category <list>", "Comma-separated list of categories to audit")
   .option("--snapshot [name]", "Save audit result as snapshot (optionally named)")
   .option("--snapshots", "List saved snapshots for the server")

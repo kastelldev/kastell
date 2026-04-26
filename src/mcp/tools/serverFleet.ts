@@ -10,10 +10,16 @@ export const serverFleetSchema = {
     .optional()
     .default("name")
     .describe("Sort field: score (descending), name (A-Z), provider (A-Z). Default: name."),
+  categories: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe("Include weakest audit category per server. Default: false."),
 };
 
 export async function handleServerFleet(params: {
   sort?: "score" | "name" | "provider";
+  categories?: boolean;
 }): Promise<McpResponse> {
   try {
     const servers = getServers();
@@ -23,7 +29,11 @@ export async function handleServerFleet(params: {
       ]);
     }
 
-    const rows = await runFleet({ json: true, sort: params.sort ?? "name" });
+    const rows = await runFleet({
+      json: true,
+      sort: params.sort ?? "name",
+      categories: params.categories,
+    });
 
     return mcpSuccess({ servers: rows.length, rows });
   } catch (error: unknown) {
