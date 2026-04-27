@@ -161,9 +161,10 @@ describe("initCommand — 3-way wizard", () => {
 
   describe("register path", () => {
     it("should call addServerRecord and offer audit prompt", async () => {
+      mockedPrompts.getProviderConfig.mockResolvedValue({ provider: "hetzner" });
+
       mockedInquirer.prompt
         .mockResolvedValueOnce({ wizardPath: "register" })
-        .mockResolvedValueOnce({ provider: "hetzner" })
         .mockResolvedValueOnce({ apiToken: "test-token" })
         .mockResolvedValueOnce({ ip: "1.2.3.4" })
         .mockResolvedValueOnce({ name: "my-server" })
@@ -186,6 +187,7 @@ describe("initCommand — 3-way wizard", () => {
       });
 
       mockedManage.validateIpAddress.mockReturnValue(null);
+      mockedManage.validateServerName.mockReturnValue(null);
 
       await initCommand();
 

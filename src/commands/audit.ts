@@ -82,13 +82,14 @@ export async function auditCommand(
     return;
   }
 
-  // Apply defaults.json fallback BEFORE --ci validation (CLI flags always override)
-  const userDefaults = loadDefaults();
-  if (options.threshold === undefined && userDefaults.threshold !== undefined) {
-    options.threshold = String(userDefaults.threshold);
-  }
-  if (options.compliance === undefined && userDefaults.framework !== undefined) {
-    options.compliance = userDefaults.framework;
+  if (options.threshold === undefined || options.compliance === undefined) {
+    const userDefaults = loadDefaults();
+    if (options.threshold === undefined && userDefaults.threshold !== undefined) {
+      options.threshold = String(userDefaults.threshold);
+    }
+    if (options.compliance === undefined && userDefaults.framework !== undefined) {
+      options.compliance = userDefaults.framework;
+    }
   }
 
   // --ci mode: validate threshold requirement early (before server resolution)

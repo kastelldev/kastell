@@ -17,8 +17,8 @@ import { SUPPORTED_PROVIDERS, PROVIDER_ENV_KEYS, invalidProviderError, PROVIDER_
 import { deployServer } from "../core/deploy.js";
 import inquirer from "inquirer";
 import chalk from "chalk";
-import { isServerMode } from "../types/index.js";
-import { addServerRecord, validateIpAddress } from "../core/manage.js";
+import type { DefaultsConfig } from "../types/index.js";
+import { addServerRecord, validateIpAddress, validateServerName } from "../core/manage.js";
 import { saveDefaults } from "../core/defaults.js";
 import { getServers } from "../utils/config.js";
 
@@ -32,23 +32,13 @@ function applyMergedConfig(options: InitOptions, merged: Partial<InitOptions>): 
 }
 
 async function runRegisterPath(): Promise<void> {
-  const { provider: providerName } = await inquirer.prompt([
-    {
-      type: "list",
-      name: "provider",
-      message: "Select cloud provider:",
-      choices: SUPPORTED_PROVIDERS.map((p) => ({
-        name: PROVIDER_DISPLAY_NAMES[p],
-        value: p,
-      })),
-    },
-  ]);
+  const { provider: providerName } = await getProviderConfig();
 
   const { apiToken } = await inquirer.prompt([
     {
       type: "password",
       name: "apiToken",
-      message: `Enter your ${PROVIDER_DISPLAY_NAMES[providerName as keyof typeof PROVIDER_DISPLAY_NAMES] ?? providerName} API token:`,
+      message: `Enter your ${PROVIDER_DISPLAY_NAMES[providerName as keyof typeof PROVIDER_DISPLAY_NAMES]} API token:`,
       validate: (input: string) => (input.trim().length > 0 ? true : "API token is required"),
     },
   ]);
@@ -71,15 +61,7 @@ async function runRegisterPath(): Promise<void> {
       name: "name",
       message: "Server name:",
       default: "my-server",
-      validate: (input: string) => {
-        const trimmed = input.trim();
-        if (!trimmed) return "Server name is required";
-        if (trimmed.length < 3 || trimmed.length > 63)
-          return "Server name must be 3-63 characters";
-        if (!/^[a-z][a-z0-9-]*[a-z0-9]$/.test(trimmed))
-          return "Must start with a letter, end with letter/number, only lowercase letters, numbers, hyphens";
-        return true;
-      },
+      validate: (input: string) => validateServerName(input.trim()) ?? true,
     },
   ]);
 
@@ -104,7 +86,7 @@ async function runRegisterPath(): Promise<void> {
     ip: ip.trim(),
     name: name.trim(),
     apiToken: apiToken.trim(),
-    ...(isServerMode(mode) ? { mode } : {}),
+    mode,
   });
 
   if (!result.success) {
@@ -177,12 +159,12 @@ async function runConfigurePath(): Promise<void> {
     },
   ]);
 
-  const config: Record<string, unknown> = {};
-  if (framework) config.framework = framework;
+  const config: DefaultsConfig = {};
+  if (framework) config.framework = framework as DefaultsConfig["framework"];
   const threshold = parseInt(thresholdStr, 10);
   if (!isNaN(threshold)) config.threshold = threshold;
 
-  saveDefaults(config as { threshold?: number; framework?: string });
+  saveDefaults(config);
   logger.success("Defaults saved to ~/.kastell/defaults.json");
 
   const servers = getServers();
@@ -230,7 +212,6 @@ export async function initCommand(options: InitOptions = {}): Promise<void> {
 
   logger.title("Kastell - Self-hosting, fully managed");
 
-  // === 3-WAY WIZARD (interactive only) ===
   if (!isNonInteractive) {
     const { wizardPath } = await inquirer.prompt([
       {
