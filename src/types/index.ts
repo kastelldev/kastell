@@ -27,9 +27,9 @@ export interface ServerResult {
   status: string;
 }
 
-export type ServerMode = "coolify" | "bare";
+export type ServerMode = "coolify" | "dokploy" | "bare";
 
-const SERVER_MODES: readonly string[] = ["coolify", "bare"];
+const SERVER_MODES: readonly string[] = ["coolify", "dokploy", "bare"];
 export function isServerMode(value: unknown): value is ServerMode {
   return typeof value === "string" && SERVER_MODES.includes(value);
 }
@@ -76,6 +76,11 @@ export interface InitOptions {
   template?: string;
   noOpen?: boolean;
   mode?: ServerMode;
+}
+
+export interface DefaultsConfig {
+  threshold?: number;
+  framework?: string;
 }
 
 // Templates

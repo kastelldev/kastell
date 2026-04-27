@@ -58,11 +58,27 @@ jest.mock("../../src/core/deploy", () => ({
   deployServer: jest.fn().mockResolvedValue(undefined),
 }));
 
+jest.mock("../../src/core/manage", () => ({
+  addServerRecord: jest.fn(),
+  validateIpAddress: jest.fn().mockReturnValue(null),
+}));
+
+jest.mock("inquirer", () => {
+  const mockPrompt = jest.fn().mockResolvedValue({ wizardPath: "provision" });
+  return {
+    default: { prompt: mockPrompt, createPromptModule: () => mockPrompt },
+    __esModule: true,
+  };
+});
+
 const BACK = prompts.BACK_SIGNAL;
 
 describe("init wizard back-navigation", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Reset the inquirer prompt mock to default wizard -> provision
+    const inquirer = jest.requireMock("inquirer") as { default: { prompt: jest.Mock } };
+    inquirer.default.prompt.mockResolvedValue({ wizardPath: "provision" });
     // Default happy path
     (prompts.getProviderConfig as jest.Mock).mockResolvedValue({ provider: "hetzner" });
     (prompts.getDeploymentConfig as jest.Mock).mockResolvedValue({ apiToken: "test-token" });

@@ -24,6 +24,16 @@ jest.mock("../../src/utils/openBrowser", () => ({
   openBrowser: jest.fn(),
 }));
 
+jest.mock("../../src/core/manage", () => ({
+  addServerRecord: jest.fn(),
+  validateIpAddress: jest.fn().mockReturnValue(null),
+}));
+
+jest.mock("../../src/core/defaults", () => ({
+  loadDefaults: jest.fn().mockReturnValue({}),
+  saveDefaults: jest.fn(),
+}));
+
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 const mockedInquirer = inquirer as jest.Mocked<typeof inquirer>;
 
@@ -88,6 +98,13 @@ describe("initCommand E2E", () => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
     processExitSpy = jest.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit);
     jest.clearAllMocks();
+    // Prepend wizard "provision" to inquirer mock queue
+    const originalPrompt = mockedInquirer.prompt;
+    mockedInquirer.prompt = Object.assign(
+      (...args: Parameters<typeof originalPrompt>) => originalPrompt(...args),
+      originalPrompt
+    );
+    mockedInquirer.prompt.mockResolvedValueOnce({ wizardPath: "provision" });
     // Save and clear provider tokens so promptApiToken/initCommand doesn't pick them up
     for (const key of ["HETZNER_TOKEN", "DIGITALOCEAN_TOKEN", "VULTR_TOKEN", "LINODE_TOKEN"]) {
       savedEnv[key] = process.env[key];

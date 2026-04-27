@@ -40,6 +40,16 @@ jest.mock("../../src/commands/secure", () => ({
   secureCommand: jest.fn(),
 }));
 
+jest.mock("../../src/core/manage", () => ({
+  addServerRecord: jest.fn(),
+  validateIpAddress: jest.fn().mockReturnValue(null),
+}));
+
+jest.mock("../../src/core/defaults", () => ({
+  loadDefaults: jest.fn().mockReturnValue({}),
+  saveDefaults: jest.fn(),
+}));
+
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 const mockedInquirer = inquirer as jest.Mocked<typeof inquirer>;
 const mockedChildProcess = childProcess as jest.Mocked<typeof childProcess>;
@@ -55,6 +65,15 @@ describe("security-init E2E", () => {
     processExitSpy = jest.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit);
     originalProcessTitle = process.title;
     jest.clearAllMocks();
+
+    // Wizard prepend — first prompt in interactive mode returns wizardPath
+    const originalPrompt = mockedInquirer.prompt;
+    mockedInquirer.prompt = Object.assign(
+      (...args: Parameters<typeof originalPrompt>) => originalPrompt(...args),
+      originalPrompt
+    );
+    mockedInquirer.prompt.mockResolvedValueOnce({ wizardPath: "provision" });
+
     global.setTimeout = ((fn: () => void) => {
       fn();
       return 0;
@@ -126,6 +145,9 @@ describe("security-init E2E", () => {
 
   describe("provider validation", () => {
     it("should throw error for unknown provider in interactive mode", async () => {
+      // Reset prompt mock and set up exact sequence: wizard then provider selection
+      mockedInquirer.prompt.mockReset();
+      mockedInquirer.prompt.mockResolvedValueOnce({ wizardPath: "provision" });
       mockedInquirer.prompt.mockResolvedValueOnce({ provider: "unknown-provider" });
 
       await expect(initCommand()).rejects.toThrow("Unknown provider: unknown-provider");

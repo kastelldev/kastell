@@ -13,8 +13,14 @@ import { logger, createSpinner } from "../utils/logger.js";
 import { loadYamlConfig } from "../utils/yamlConfig.js";
 import { mergeConfig } from "../utils/configMerge.js";
 import { getTemplate, getTemplateDefaults, VALID_TEMPLATE_NAMES } from "../utils/templates.js";
-import { SUPPORTED_PROVIDERS, PROVIDER_ENV_KEYS, invalidProviderError } from "../constants.js";
+import { SUPPORTED_PROVIDERS, PROVIDER_ENV_KEYS, invalidProviderError, PROVIDER_DISPLAY_NAMES } from "../constants.js";
 import { deployServer } from "../core/deploy.js";
+import inquirer from "inquirer";
+import chalk from "chalk";
+import { isServerMode } from "../types/index.js";
+import { addServerRecord, validateIpAddress } from "../core/manage.js";
+import { saveDefaults } from "../core/defaults.js";
+import { getServers } from "../utils/config.js";
 
 function applyMergedConfig(options: InitOptions, merged: Partial<InitOptions>): void {
   if (merged.provider && !options.provider) options.provider = merged.provider;
@@ -23,6 +29,176 @@ function applyMergedConfig(options: InitOptions, merged: Partial<InitOptions>): 
   if (merged.name && !options.name) options.name = merged.name;
   if (merged.fullSetup !== undefined && options.fullSetup === undefined)
     options.fullSetup = merged.fullSetup;
+}
+
+async function runRegisterPath(): Promise<void> {
+  const { provider: providerName } = await inquirer.prompt([
+    {
+      type: "list",
+      name: "provider",
+      message: "Select cloud provider:",
+      choices: SUPPORTED_PROVIDERS.map((p) => ({
+        name: PROVIDER_DISPLAY_NAMES[p],
+        value: p,
+      })),
+    },
+  ]);
+
+  const { apiToken } = await inquirer.prompt([
+    {
+      type: "password",
+      name: "apiToken",
+      message: `Enter your ${PROVIDER_DISPLAY_NAMES[providerName as keyof typeof PROVIDER_DISPLAY_NAMES] ?? providerName} API token:`,
+      validate: (input: string) => (input.trim().length > 0 ? true : "API token is required"),
+    },
+  ]);
+
+  const { ip } = await inquirer.prompt([
+    {
+      type: "input",
+      name: "ip",
+      message: "Enter server IP address:",
+      validate: (input: string) => {
+        const result = validateIpAddress(input.trim());
+        return result === null ? true : result;
+      },
+    },
+  ]);
+
+  const { name } = await inquirer.prompt([
+    {
+      type: "input",
+      name: "name",
+      message: "Server name:",
+      default: "my-server",
+      validate: (input: string) => {
+        const trimmed = input.trim();
+        if (!trimmed) return "Server name is required";
+        if (trimmed.length < 3 || trimmed.length > 63)
+          return "Server name must be 3-63 characters";
+        if (!/^[a-z][a-z0-9-]*[a-z0-9]$/.test(trimmed))
+          return "Must start with a letter, end with letter/number, only lowercase letters, numbers, hyphens";
+        return true;
+      },
+    },
+  ]);
+
+  const { mode } = await inquirer.prompt([
+    {
+      type: "list",
+      name: "mode",
+      message: "Server mode:",
+      choices: [
+        { name: "Coolify", value: "coolify" },
+        { name: "Dokploy", value: "dokploy" },
+        { name: "Bare (no platform)", value: "bare" },
+      ],
+    },
+  ]);
+
+  const spinner = createSpinner("Adding server...");
+  spinner.start();
+
+  const result = await addServerRecord({
+    provider: providerName,
+    ip: ip.trim(),
+    name: name.trim(),
+    apiToken: apiToken.trim(),
+    ...(isServerMode(mode) ? { mode } : {}),
+  });
+
+  if (!result.success) {
+    spinner.fail(result.error ?? "Failed to add server");
+    return;
+  }
+
+  if (result.platformStatus === "ssh_unavailable") {
+    spinner.warn("SSH not available — server added without verification");
+  } else if (result.platformStatus === "running") {
+    spinner.succeed("Platform is running");
+  } else if (result.platformStatus === "containers_detected") {
+    spinner.succeed("Platform containers detected");
+  } else if (result.platformStatus === "skipped") {
+    spinner.succeed("Token validated");
+  } else {
+    spinner.warn("Could not verify platform — server added anyway");
+  }
+
+  const server = result.server!;
+  console.log();
+  console.log(chalk.green("Server added successfully!"));
+  console.log(`  Name: ${server.name}`);
+  console.log(`  IP: ${server.ip}`);
+  console.log(`  Provider: ${server.provider}`);
+  console.log();
+
+  const { runAudit } = await inquirer.prompt([
+    {
+      type: "confirm",
+      name: "runAudit",
+      message: "Run `kastell audit` to check your server's security score?",
+      default: true,
+    },
+  ]);
+
+  if (runAudit) {
+    logger.info(`Run: kastell audit ${server.name}`);
+  }
+}
+
+async function runConfigurePath(): Promise<void> {
+  const { framework } = await inquirer.prompt([
+    {
+      type: "list",
+      name: "framework",
+      message: "Default compliance standard:",
+      choices: [
+        { name: "CIS Level 1 (basic hardening)", value: "cis-level1" },
+        { name: "CIS Level 2 (advanced hardening)", value: "cis-level2" },
+        { name: "PCI-DSS (payment card industry)", value: "pci-dss" },
+        { name: "HIPAA (healthcare)", value: "hipaa" },
+        { name: "None (no default)", value: "" },
+      ],
+    },
+  ]);
+
+  const { threshold: thresholdStr } = await inquirer.prompt([
+    {
+      type: "input",
+      name: "threshold",
+      message: "Default audit threshold (0-100, empty for none):",
+      default: "",
+      validate: (input: string) => {
+        if (!input.trim()) return true;
+        const num = parseInt(input, 10);
+        if (isNaN(num) || num < 0 || num > 100) return "Must be a number between 0 and 100";
+        return true;
+      },
+    },
+  ]);
+
+  const config: Record<string, unknown> = {};
+  if (framework) config.framework = framework;
+  const threshold = parseInt(thresholdStr, 10);
+  if (!isNaN(threshold)) config.threshold = threshold;
+
+  saveDefaults(config as { threshold?: number; framework?: string });
+  logger.success("Defaults saved to ~/.kastell/defaults.json");
+
+  const servers = getServers();
+  if (servers.length > 0) {
+    const { runAudit } = await inquirer.prompt([
+      {
+        type: "confirm",
+        name: "runAudit",
+        message: `Run audit on ${servers.length} existing server(s) with these defaults?`,
+        default: false,
+      },
+    ]);
+    if (runAudit) {
+      logger.info("Run: kastell audit <server-name> for each server");
+    }
+  }
 }
 
 export async function initCommand(options: InitOptions = {}): Promise<void> {
@@ -53,6 +229,34 @@ export async function initCommand(options: InitOptions = {}): Promise<void> {
   const isNonInteractive = options.provider !== undefined;
 
   logger.title("Kastell - Self-hosting, fully managed");
+
+  // === 3-WAY WIZARD (interactive only) ===
+  if (!isNonInteractive) {
+    const { wizardPath } = await inquirer.prompt([
+      {
+        type: "list",
+        name: "wizardPath",
+        message: "What would you like to do?",
+        choices: [
+          { name: "Provision a new server (create on cloud provider)", value: "provision" },
+          { name: "Register an existing server (add by IP)", value: "register" },
+          { name: "Configure defaults (compliance, notifications)", value: "configure" },
+        ],
+      },
+    ]);
+
+    if (wizardPath === "register") {
+      await runRegisterPath();
+      return;
+    }
+
+    if (wizardPath === "configure") {
+      await runConfigurePath();
+      return;
+    }
+
+    // wizardPath === "provision" — fall through to existing provision flow
+  }
 
   let providerChoice: string;
   let apiToken: string;
