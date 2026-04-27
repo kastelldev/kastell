@@ -24,6 +24,11 @@ jest.mock("../../src/utils/openBrowser", () => ({
   openBrowser: jest.fn(),
 }));
 
+jest.mock("../../src/core/manage", () => ({
+  addServerRecord: jest.fn(),
+  validateIpAddress: jest.fn().mockReturnValue(null),
+}));
+
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 const mockedInquirer = inquirer as jest.Mocked<typeof inquirer>;
 
