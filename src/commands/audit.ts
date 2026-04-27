@@ -26,6 +26,7 @@ import type { AuditDiffResult, RegressionResult } from "../core/audit/types.js";
 import { filterAuditResult, buildFilterAnnotation, parseSeverity } from "../core/audit/filter.js";
 import type { AuditFilter } from "../core/audit/filter.js";
 import { saveBaselineSafe, loadBaseline, checkRegression, formatRegressionSummary, extractPassedCheckIds, shouldUpdateBaseline } from "../core/audit/regression.js";
+import { loadDefaults } from "../core/defaults.js";
 
 function printDiff(diff: AuditDiffResult, json?: boolean): void {
   console.log(json ? formatDiffJson(diff) : formatDiffTerminal(diff));
@@ -79,6 +80,15 @@ export async function auditCommand(
       console.log(formatListChecksTerminal(checks));
     }
     return;
+  }
+
+  // Apply defaults.json fallback BEFORE --ci validation (CLI flags always override)
+  const userDefaults = loadDefaults();
+  if (options.threshold === undefined && userDefaults.threshold !== undefined) {
+    options.threshold = String(userDefaults.threshold);
+  }
+  if (options.compliance === undefined && userDefaults.framework !== undefined) {
+    options.compliance = userDefaults.framework;
   }
 
   // --ci mode: validate threshold requirement early (before server resolution)
