@@ -1,3 +1,7 @@
+jest.mock("../../../src/utils/version.js", () => ({
+  KASTELL_VERSION: "2.2.0",
+}));
+
 import { validateManifest } from "../../../src/plugin/validate.js";
 import { ValidationError } from "../../../src/utils/errors.js";
 
@@ -101,6 +105,41 @@ describe("validateManifest", () => {
   describe("strict mode", () => {
     it("rejects extra fields", () => {
       expect(() => validateManifest({ ...VALID_MANIFEST, extraField: "hack" }))
+        .toThrow(ValidationError);
+    });
+  });
+
+  describe("kastell version compatibility", () => {
+    it("accepts compatible version range", () => {
+      const result = validateManifest({ ...VALID_MANIFEST, kastell: ">=2.2.0" });
+      expect(result.kastell).toBe(">=2.2.0");
+    });
+
+    it("accepts exact version match", () => {
+      const result = validateManifest({ ...VALID_MANIFEST, kastell: "2.2.0" });
+      expect(result.kastell).toBe("2.2.0");
+    });
+
+    it("rejects incompatible version range (too high)", () => {
+      expect(() => validateManifest({ ...VALID_MANIFEST, kastell: ">=2.3.0" }))
+        .toThrow(ValidationError);
+    });
+
+    it("rejects incompatible version range (too low)", () => {
+      expect(() => validateManifest({ ...VALID_MANIFEST, kastell: "<2.0.0" }))
+        .toThrow(ValidationError);
+    });
+
+    it("error message includes current and required version", () => {
+      let err: unknown;
+      try { validateManifest({ ...VALID_MANIFEST, kastell: ">=3.0.0" }); } catch (e) { err = e; }
+      expect(err).toBeInstanceOf(ValidationError);
+      expect((err as Error).message).toMatch(/2\.2\.0/);
+      expect((err as Error).message).toMatch(/3\.0\.0/);
+    });
+
+    it("rejects invalid semver range syntax", () => {
+      expect(() => validateManifest({ ...VALID_MANIFEST, kastell: "not-a-range" }))
         .toThrow(ValidationError);
     });
   });

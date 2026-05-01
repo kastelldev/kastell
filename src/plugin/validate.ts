@@ -1,5 +1,7 @@
 import { z } from "zod";
+import semver from "semver";
 import { ValidationError } from "../utils/errors.js";
+import { KASTELL_VERSION } from "../utils/version.js";
 import type { PluginManifest } from "./sdk/types.js";
 
 const PluginManifestSchema = z
@@ -19,5 +21,19 @@ export function validateManifest(manifest: unknown): PluginManifest {
   if (!parsed.success) {
     throw new ValidationError(`Invalid plugin manifest: ${parsed.error.message}`);
   }
+
+  const range = semver.validRange(parsed.data.kastell);
+  if (!range) {
+    throw new ValidationError(
+      `Invalid kastell version range: "${parsed.data.kastell}"`,
+    );
+  }
+
+  if (!semver.satisfies(KASTELL_VERSION, parsed.data.kastell)) {
+    throw new ValidationError(
+      `Plugin requires Kastell ${parsed.data.kastell}, current: ${KASTELL_VERSION}`,
+    );
+  }
+
   return parsed.data;
 }
