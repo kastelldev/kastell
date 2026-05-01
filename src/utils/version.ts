@@ -17,3 +17,7 @@ export function getKastellVersion(): string {
 }
 
 export const KASTELL_VERSION = getKastellVersion();
+
+export function clearVersionCache(): void {
+  cachedVersion = null;
+}
