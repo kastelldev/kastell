@@ -15,6 +15,8 @@ export interface PluginRegistryEntry {
 }
 
 const PLUGIN_REGISTRY: Map<string, PluginRegistryEntry> = new Map();
+const usedPrefixes: Map<string, string> = new Map();
+const usedCheckIds: Set<string> = new Set();
 
 export function registerPlugin(
   manifest: PluginManifest,
@@ -26,12 +28,11 @@ export function registerPlugin(
     );
   }
 
-  for (const [, entry] of PLUGIN_REGISTRY) {
-    if (entry.manifest.checkPrefix === manifest.checkPrefix) {
-      throw new ValidationError(
-        `checkPrefix "${manifest.checkPrefix}" already used by "${entry.manifest.name}"`,
-      );
-    }
+  const prefixOwner = usedPrefixes.get(manifest.checkPrefix);
+  if (prefixOwner) {
+    throw new ValidationError(
+      `checkPrefix "${manifest.checkPrefix}" already used by "${prefixOwner}"`,
+    );
   }
 
   for (const check of checks) {
@@ -40,20 +41,16 @@ export function registerPlugin(
         `Check ID "${check.id}" must start with "${manifest.checkPrefix}-"`,
       );
     }
-  }
-
-  const allCheckIds = new Set<string>();
-  for (const [, entry] of PLUGIN_REGISTRY) {
-    for (const c of entry.checks) {
-      allCheckIds.add(c.id);
-    }
-  }
-  for (const check of checks) {
-    if (allCheckIds.has(check.id)) {
+    if (usedCheckIds.has(check.id)) {
       throw new ValidationError(
         `Check ID "${check.id}" already exists in another plugin`,
       );
     }
+  }
+
+  usedPrefixes.set(manifest.checkPrefix, manifest.name);
+  for (const check of checks) {
+    usedCheckIds.add(check.id);
   }
 
   PLUGIN_REGISTRY.set(manifest.name, {
@@ -77,6 +74,8 @@ export function registerFailedPlugin(
 
 export function clearPluginRegistry(): void {
   PLUGIN_REGISTRY.clear();
+  usedPrefixes.clear();
+  usedCheckIds.clear();
 }
 
 export function getPluginRegistry(): ReadonlyMap<string, PluginRegistryEntry> {
@@ -98,9 +97,15 @@ export function loadPluginCache(): PluginManifest[] {
 }
 
 export function savePluginCache(manifests: PluginManifest[]): void {
+  const content = JSON.stringify(manifests, null, 2);
+  if (existsSync(PLUGIN_CACHE_PATH)) {
+    try {
+      const existing = readFileSync(PLUGIN_CACHE_PATH, "utf-8");
+      if (existing === content) return;
+    } catch {
+      // fall through to write
+    }
+  }
   secureMkdirSync(KASTELL_DIR);
-  secureWriteFileSync(
-    PLUGIN_CACHE_PATH,
-    JSON.stringify(manifests, null, 2),
-  );
+  secureWriteFileSync(PLUGIN_CACHE_PATH, content);
 }
