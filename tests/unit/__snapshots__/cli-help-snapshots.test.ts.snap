@@ -47,6 +47,7 @@ Commands:
   changelog [options] [version]            Show release notes from CHANGELOG.md
   regression                               Manage regression baselines
   auth                                     Manage provider API tokens (OS keychain)
+  plugin                                   Manage kastell plugins
   help [command]                           display help for command"
 `;
 
@@ -166,6 +167,33 @@ Options:
   --dry-run     Preview changes without applying
   --force       Skip confirmation prompt
   -h, --help    display help for command"
+`;
+
+exports[`CLI help text snapshots kastell plugin --help matches snapshot 1`] = `
+"Usage: kastell plugin [options] [command]
+
+Manage kastell plugins
+
+Options:
+  -h, --help                display help for command
+
+Commands:
+  install [options] <name>  Install a plugin from npm registry
+  remove <name>             Remove an installed plugin
+  list                      List installed plugins
+  validate [name]           Validate plugin manifest and entry point
+  help [command]            display help for command"
+`;
+
+exports[`CLI help text snapshots kastell plugin install --help matches snapshot 1`] = `
+"Usage: kastell plugin install [options] <name>
+
+Install a plugin from npm registry
+
+Options:
+  --version <ver>  Specific version to install
+  --force          Skip confirmation prompt
+  -h, --help       display help for command"
 `;
 
 exports[`CLI help text snapshots kastell secure --help matches snapshot 1`] = `
