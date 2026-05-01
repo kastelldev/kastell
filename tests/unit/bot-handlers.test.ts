@@ -10,6 +10,10 @@ jest.mock("../../src/utils/config");
 jest.mock("../../src/core/audit/snapshot");
 jest.mock("../../src/core/guard");
 jest.mock("../../src/core/doctor");
+jest.mock("../../src/utils/version", () => ({
+  KASTELL_VERSION: "2.2.0",
+  clearVersionCache: jest.fn(),
+}));
 
 const mockedConfig = configUtils as jest.Mocked<typeof configUtils>;
 const mockedSnapshot = snapshotModule as jest.Mocked<typeof snapshotModule>;

@@ -2,16 +2,15 @@
 // MCP SDK isolation: This file is the entry point for kastell-mcp binary only.
 // The main kastell CLI (src/index.ts) must NEVER import from this module.
 // See tests/unit/dep-isolation.test.ts for the guard test.
-import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
-import { dirname, join } from "path";
+import { dirname } from "path";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createMcpServer } from "./server.js";
 import { migrateConfigIfNeeded } from "../utils/migration.js";
+import { KASTELL_VERSION } from "../utils/version.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const pkg = JSON.parse(readFileSync(join(__dirname, "..", "..", "package.json"), "utf-8")) as { version: string };
 
 // Graceful handling of unhandled rejections (security audit MEDIUM-007)
 process.on("unhandledRejection", (reason) => {
@@ -34,7 +33,7 @@ async function main(): Promise<void> {
   await server.connect(transport);
   // Server is now listening on stdin/stdout via JSON-RPC
   // All logging must go to stderr (stdout is reserved for MCP protocol)
-  process.stderr.write(`kastell-mcp v${pkg.version} started (SAFE_MODE=${process.env.KASTELL_SAFE_MODE ?? "unset"})\n`);
+  process.stderr.write(`kastell-mcp v${KASTELL_VERSION} started (SAFE_MODE=${process.env.KASTELL_SAFE_MODE ?? "unset"})\n`);
 }
 
 main().catch((error: unknown) => {

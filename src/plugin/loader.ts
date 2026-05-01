@@ -76,7 +76,7 @@ export async function loadPlugins(
         const msg =
           err instanceof Error ? err.message : String(err);
         registerFailedPlugin(manifest, msg);
-        throw new Error(`${dir.name}: import failed — ${msg}`);
+        throw new Error(`${dir.name}: import failed — ${msg}`, { cause: err });
       }
 
       const moduleObj = mod as Record<string, unknown>;
