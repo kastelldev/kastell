@@ -6,6 +6,7 @@ import { loadPlugins } from "../plugin/loader.js";
 import { PLUGINS_DIR, PLUGINS_NODE_MODULES } from "../utils/paths.js";
 
 const PLUGIN_NAME_PATTERN = /^kastell-plugin-[a-z0-9-]+$/;
+const ERROR_STDERR_MAX = 200;
 
 export interface PluginInstallResult {
   success: boolean;
@@ -51,7 +52,7 @@ export async function installPlugin(
     return {
       success: false,
       name,
-      error: `npm install failed (exit ${installResult.code}): ${installResult.stderr.slice(0, 200)}`,
+      error: `npm install failed (exit ${installResult.code}): ${installResult.stderr.slice(0, ERROR_STDERR_MAX)}`,
     };
   }
 
@@ -84,7 +85,7 @@ export async function removePlugin(name: string): Promise<PluginRemoveResult> {
     return {
       success: false,
       name,
-      error: `npm uninstall failed (exit ${result.code}): ${result.stderr.slice(0, 200)}`,
+      error: `npm uninstall failed (exit ${result.code}): ${result.stderr.slice(0, ERROR_STDERR_MAX)}`,
     };
   }
 

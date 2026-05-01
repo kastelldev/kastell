@@ -10,7 +10,8 @@ export const serverPluginSchema = z.object({
 type ServerPluginParams = z.infer<typeof serverPluginSchema>;
 
 export async function handleServerPlugin(params: ServerPluginParams) {
-  if (params.action === "install" || params.action === "remove") {
+  const BLOCKED_MCP_ACTIONS = new Set(["install", "remove"]);
+  if (BLOCKED_MCP_ACTIONS.has(params.action)) {
     return mcpError(
       `Action '${params.action}' is not available via MCP. Use the CLI: kastell plugin ${params.action} <name>`,
       "Plugin install/remove requires explicit user consent and is restricted to CLI usage.",
@@ -30,5 +31,6 @@ export async function handleServerPlugin(params: ServerPluginParams) {
     return mcpSuccess({ results });
   }
 
-  return mcpError(`Unknown action: ${params.action}`);
+  // TypeScript exhaustiveness: Zod enum guarantees all cases handled above
+  return mcpError(`Unexpected action: ${params.action}`);
 }
