@@ -5,34 +5,19 @@
  */
 
 import type { Bot } from "grammy";
-import { readFileSync } from "fs";
-import { join } from "path";
 import { findServer, getServers } from "../../utils/config.js";
 import { listSnapshots, loadSnapshot } from "../audit/snapshot.js";
 import { getGuardStates } from "../guard.js";
 import { loadMetricsHistory, DOCTOR_SEVERITY_WEIGHTS } from "../doctor.js";
 import type { SnapshotListEntry } from "../audit/types.js";
 import type { DoctorFinding } from "../doctor.js";
+import { KASTELL_VERSION } from "../../utils/version.js";
 import {
   formatAuditMessage,
   formatStatusMessage,
   formatHealthMessage,
   formatDoctorMessage,
 } from "./formatter.js";
-
-let cachedVersion: string | null = null;
-
-function getVersion(): string {
-  if (cachedVersion !== null) return cachedVersion;
-  try {
-    const pkg = JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf-8")) as { version: string };
-    cachedVersion = pkg.version;
-    return cachedVersion;
-  } catch {
-    cachedVersion = "0.0.0";
-    return cachedVersion;
-  }
-}
 
 /** Register all bot command handlers on the given Bot instance. */
 export function registerHandlers(bot: Bot): void {
@@ -235,7 +220,7 @@ export function registerHandlers(bot: Bot): void {
       "/doctor <server> -- Doctor findings (cached)",
       "/help -- This message",
       "",
-      `Kastell v${getVersion()} | 4 commands`,
+      `Kastell v${KASTELL_VERSION} | 4 commands`,
     ];
     await ctx.reply(lines.join("\n"));
   });

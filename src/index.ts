@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { checkForUpdate } from "./utils/updateCheck.js";
 import { migrateConfigIfNeeded } from "./utils/migration.js";
+import { loadPlugins } from "./plugin/loader.js";
 import { interactiveMenu } from "./commands/interactive.js";
 import { initCommand } from "./commands/init.js";
 import { listCommand } from "./commands/list.js";
@@ -57,6 +58,13 @@ process.on("unhandledRejection", (reason) => {
 });
 
 migrateConfigIfNeeded();
+
+const pluginResult = await loadPlugins();
+if (pluginResult.errors.length > 0) {
+  for (const err of pluginResult.errors) {
+    console.warn(`[plugin] ${err}`);
+  }
+}
 
 const program = new Command();
 
