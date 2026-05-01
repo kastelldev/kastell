@@ -1,5 +1,11 @@
+import { readFileSync, existsSync } from "fs";
+import { join } from "path";
 import { ValidationError } from "../utils/errors.js";
+import { secureWriteFileSync, secureMkdirSync } from "../utils/secureWrite.js";
+import { KASTELL_DIR } from "../utils/paths.js";
 import type { PluginManifest, PluginCheck } from "./sdk/types.js";
+
+const PLUGIN_CACHE_PATH = join(KASTELL_DIR, "plugin-manifests.json");
 
 export interface PluginRegistryEntry {
   manifest: PluginManifest;
@@ -75,4 +81,26 @@ export function clearPluginRegistry(): void {
 
 export function getPluginRegistry(): ReadonlyMap<string, PluginRegistryEntry> {
   return PLUGIN_REGISTRY;
+}
+
+export function loadPluginCache(): PluginManifest[] {
+  if (!existsSync(PLUGIN_CACHE_PATH)) {
+    return [];
+  }
+  try {
+    const raw = readFileSync(PLUGIN_CACHE_PATH, "utf-8");
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed as PluginManifest[];
+  } catch {
+    return [];
+  }
+}
+
+export function savePluginCache(manifests: PluginManifest[]): void {
+  secureMkdirSync(KASTELL_DIR);
+  secureWriteFileSync(
+    PLUGIN_CACHE_PATH,
+    JSON.stringify(manifests, null, 2),
+  );
 }
