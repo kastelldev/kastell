@@ -2,10 +2,10 @@ import { spawn } from "child_process";
 import { existsSync } from "fs";
 import { join } from "path";
 import { getPluginRegistry } from "../plugin/registry.js";
+import { PLUGIN_NAME_PATTERN } from "../plugin/sdk/constants.js";
 import { loadPlugins } from "../plugin/loader.js";
 import { PLUGINS_DIR, PLUGINS_NODE_MODULES } from "../utils/paths.js";
 
-const PLUGIN_NAME_PATTERN = /^kastell-plugin-[a-z0-9-]+$/;
 const VERSION_PATTERN = /^[a-z0-9.\-+~^*x>=<| ]+$/i;
 const STDERR_CAP = 4096;
 const ERROR_STDERR_MAX = 200;
