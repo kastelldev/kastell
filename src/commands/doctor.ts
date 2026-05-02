@@ -165,10 +165,6 @@ export async function doctorCommand(
       }
 
       if (options.schedule) {
-        if (!options?.autoFix) {
-          logger.error("--schedule requires --auto-fix");
-          return;
-        }
         const installResult = installLocalCron(options.schedule, resolved.name, "doctor-fix");
         if (installResult.success) {
           logger.success(`Doctor+fix scheduled: ${options.schedule}`);

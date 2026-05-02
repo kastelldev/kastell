@@ -102,7 +102,7 @@ export interface FixPlan {
 export interface FixPreview {
   checkId: string;
   command: string;
-  tier: "SAFE" | "GUARDED" | "FORBIDDEN";
+  tier: FixTier;
 }
 
 /** Result of running fixes */
@@ -235,7 +235,7 @@ export function previewSafeFixes(result: AuditResult, options?: { includeForbidd
     groups.push({ severity, checks, estimatedImpact });
   }
 
-  return { safePlan: { groups }, guardedCount, forbiddenCount, guardedIds, forbiddenFixes: forbiddenFixes.length > 0 ? forbiddenFixes : undefined };
+  return { safePlan: { groups }, guardedCount, forbiddenCount, guardedIds, forbiddenFixes };
 }
 
 /**

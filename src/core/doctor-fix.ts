@@ -103,7 +103,7 @@ export async function runDoctorFix(
 
   if (applied.length > 0 && !options.dryRun) {
     await saveFixHistory({
-      fixId: `fix-${new Date().toISOString().slice(0, 10).replace(/-/g, "-")}-${Date.now() % 1000}`,
+      fixId: `doctor-fix-${Date.now()}`,
       serverIp: ip,
       serverName: serverName ?? ip,
       timestamp: new Date().toISOString(),
