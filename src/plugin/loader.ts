@@ -10,7 +10,7 @@ import {
   getPluginRegistry,
   savePluginCache,
 } from "./registry.js";
-import type { PluginCheck } from "./sdk/types.js";
+import type { PluginCheck, PluginManifest } from "./sdk/types.js";
 
 
 interface LoadPluginsOptions {
@@ -53,6 +53,16 @@ export async function loadPlugins(
       try {
         manifestRaw = readFileSync(manifestPath, "utf-8");
       } catch {
+        const minimalManifest: PluginManifest = {
+          name: dir.name,
+          version: "0.0.0",
+          apiVersion: "1",
+          kastell: "*",
+          capabilities: ["audit"],
+          checkPrefix: "ERR",
+          entry: "",
+        };
+        registerFailedPlugin(minimalManifest, `cannot read kastell-plugin.json`);
         throw new Error(`${dir.name}: cannot read kastell-plugin.json`);
       }
 
@@ -60,6 +70,16 @@ export async function loadPlugins(
       try {
         manifestParsed = JSON.parse(manifestRaw);
       } catch {
+        const minimalManifest: PluginManifest = {
+          name: dir.name,
+          version: "0.0.0",
+          apiVersion: "1",
+          kastell: "*",
+          capabilities: ["audit"],
+          checkPrefix: "ERR",
+          entry: "",
+        };
+        registerFailedPlugin(minimalManifest, `invalid JSON in kastell-plugin.json`);
         throw new Error(`${dir.name}: invalid JSON in kastell-plugin.json`);
       }
 
