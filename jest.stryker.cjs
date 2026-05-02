@@ -22,6 +22,7 @@ module.exports = {
       tsconfig: 'tsconfig.test.json',
     }],
   },
+  testPathIgnorePatterns: ['/tests/integration/'],
   coverageProvider: 'v8',
   maxWorkers: 1,
 };
