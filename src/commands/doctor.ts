@@ -75,6 +75,11 @@ export async function doctorCommand(
   },
   version?: string,
 ): Promise<void> {
+  if (options?.schedule && !options?.autoFix) {
+    logger.error("--schedule requires --auto-fix");
+    return;
+  }
+
   if ((options?.fix || options?.autoFix) && !server) {
     logger.error(`${options?.autoFix ? "--auto-fix" : "--fix"} requires a server argument`);
     return;

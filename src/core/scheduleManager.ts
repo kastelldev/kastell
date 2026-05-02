@@ -107,7 +107,7 @@ export function installLocalCron(
   const kastellBin = resolveKastellBin();
   const fixCmd = `${kastellBin} fix --safe --server "${sanitized}" --no-interactive`;
   const auditCmd = `${kastellBin} audit --server "${sanitized}" --json`;
-  const doctorFixCmd = `${kastellBin} doctor --auto-fix --server "${sanitized}" --force --no-interactive`;
+  const doctorFixCmd = `${kastellBin} doctor --auto-fix --server "${sanitized}" --force`;
   const command = type === "fix" ? fixCmd : type === "audit" ? auditCmd : doctorFixCmd;
 
   if (process.platform === "win32") {
