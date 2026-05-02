@@ -6,7 +6,6 @@ import {
   isProtectedPort,
   buildUfwRuleCommand,
   buildFirewallSetupCommand,
-  buildBareFirewallSetupCommand,
   buildUfwStatusCommand,
   parseUfwStatus,
   PROTECTED_PORTS,
@@ -131,6 +130,17 @@ describe("firewall", () => {
       const cmd = buildFirewallSetupCommand();
       expect(cmd).toContain("ufw enable");
     });
+
+    it("should return bare ports when called without platform", () => {
+      const cmd = buildFirewallSetupCommand();
+      expect(cmd).toContain("ufw allow 22/tcp");
+      expect(cmd).toContain("ufw allow 80/tcp");
+      expect(cmd).toContain("ufw allow 443/tcp");
+      // Coolify-specific port'lar olmamalı
+      expect(cmd).not.toContain("ufw allow 8000/tcp");
+      expect(cmd).not.toContain("ufw allow 6001/tcp");
+      expect(cmd).not.toContain("ufw allow 6002/tcp");
+    });
   });
 
   describe("buildUfwStatusCommand", () => {
@@ -237,41 +247,6 @@ describe("firewall", () => {
       expect(BARE_PORTS).not.toContain(8000);
       expect(BARE_PORTS).not.toContain(6001);
       expect(BARE_PORTS).not.toContain(6002);
-    });
-  });
-
-  describe("buildBareFirewallSetupCommand", () => {
-    it("should include apt-get install", () => {
-      const cmd = buildBareFirewallSetupCommand();
-      expect(cmd).toContain("apt-get install -y ufw");
-    });
-
-    it("should include default deny incoming", () => {
-      const cmd = buildBareFirewallSetupCommand();
-      expect(cmd).toContain("ufw default deny incoming");
-    });
-
-    it("should include bare ports (80, 443)", () => {
-      const cmd = buildBareFirewallSetupCommand();
-      expect(cmd).toContain("ufw allow 80/tcp");
-      expect(cmd).toContain("ufw allow 443/tcp");
-    });
-
-    it("should include SSH port 22", () => {
-      const cmd = buildBareFirewallSetupCommand();
-      expect(cmd).toContain("ufw allow 22/tcp");
-    });
-
-    it("should NOT include Coolify-specific ports", () => {
-      const cmd = buildBareFirewallSetupCommand();
-      expect(cmd).not.toContain("ufw allow 8000/tcp");
-      expect(cmd).not.toContain("ufw allow 6001/tcp");
-      expect(cmd).not.toContain("ufw allow 6002/tcp");
-    });
-
-    it("should enable UFW", () => {
-      const cmd = buildBareFirewallSetupCommand();
-      expect(cmd).toContain("ufw enable");
     });
   });
 

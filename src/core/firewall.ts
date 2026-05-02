@@ -27,24 +27,12 @@ export function getPortsForPlatform(platform?: Platform | "bare"): readonly numb
 }
 
 export function buildFirewallSetupCommand(platform?: Platform): SshCommand {
-  const ports = getPortsForPlatform(platform ?? "coolify");
+  const ports = getPortsForPlatform(platform);
   const parts: SshCommand[] = [
     cmd("apt-get", "install", "-y", "ufw"),
     cmd("ufw", "default", "deny", "incoming"),
     cmd("ufw", "default", "allow", "outgoing"),
     ...ports.map((p) => cmd("ufw", "allow", `${p}/tcp`)),
-    cmd("ufw", "allow", "22/tcp"),
-    raw('echo "y" | ufw enable'),
-  ];
-  return and(...parts);
-}
-
-export function buildBareFirewallSetupCommand(): SshCommand {
-  const parts: SshCommand[] = [
-    cmd("apt-get", "install", "-y", "ufw"),
-    cmd("ufw", "default", "deny", "incoming"),
-    cmd("ufw", "default", "allow", "outgoing"),
-    ...BARE_PORTS.map((p) => cmd("ufw", "allow", `${p}/tcp`)),
     cmd("ufw", "allow", "22/tcp"),
     raw('echo "y" | ufw enable'),
   ];
@@ -242,7 +230,7 @@ export async function firewallSetup(
   isBare?: boolean,
   platform?: Platform,
 ): Promise<void> {
-  const command = isBare ? buildBareFirewallSetupCommand() : buildFirewallSetupCommand(platform);
+  const command = buildFirewallSetupCommand(isBare ? undefined : platform);
 
   if (dryRun) {
     logger.title("Dry Run - Firewall Setup");
