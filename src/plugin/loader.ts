@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync } from "fs";
-import { join } from "path";
+import { join, resolve, sep } from "path";
 import { pathToFileURL } from "url";
 import { PLUGINS_NODE_MODULES } from "../utils/paths.js";
 import { validateManifest } from "./validate.js";
@@ -78,7 +78,15 @@ export async function loadPlugins(
       const manifest = validateManifest(manifestParsed);
 
       const entryPath = join(pluginDir, manifest.entry);
-      const entryUrl = pathToFileURL(entryPath).href;
+
+      const resolvedDir = resolve(pluginDir);
+      const resolvedEntry = resolve(resolvedDir, manifest.entry);
+      if (!resolvedEntry.startsWith(resolvedDir + sep) && resolvedEntry !== resolvedDir) {
+        registerFailedPlugin(manifest, `entry escapes plugin directory: ${manifest.entry}`);
+        throw new Error(`${dir.name}: entry escapes plugin directory: ${manifest.entry}`);
+      }
+
+      const entryUrl = pathToFileURL(resolvedEntry).href;
 
       let mod: unknown;
       try {

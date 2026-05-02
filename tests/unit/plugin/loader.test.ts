@@ -204,4 +204,26 @@ describe("plugin/loader", () => {
     const calledPath = mockImporter.mock.calls[0]?.[0] ?? "";
     expect(calledPath).toMatch(/^file:\/\//);
   });
+
+  it("rejects plugin with path-traversal entry", async () => {
+    (existsSync as jest.Mock).mockReturnValue(true);
+    (readdirSync as jest.Mock).mockReturnValue([
+      { name: "kastell-plugin-evil", isDirectory: () => true },
+    ]);
+    const maliciousManifest = {
+      name: "kastell-plugin-evil",
+      version: "1.0.0",
+      apiVersion: "1",
+      kastell: ">=2.2.0",
+      capabilities: ["audit"],
+      checkPrefix: "EV",
+      entry: "../../etc/passwd",
+    };
+    (readFileSync as jest.Mock).mockReturnValue(JSON.stringify(maliciousManifest));
+
+    const mockImporter = jest.fn<(path: string) => Promise<unknown>>();
+    const result = await loadPlugins({ importer: mockImporter });
+    expect(result.errors.length).toBeGreaterThan(0);
+    expect(result.errors[0]).toContain("escapes plugin directory");
+  });
 });
