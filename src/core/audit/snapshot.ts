@@ -11,7 +11,7 @@ import {
   renameSync,
   readdirSync,
 } from "fs";
-import { join } from "path";
+import { join, resolve, sep } from "path";
 import { secureMkdirSync, secureWriteFileSync } from "../../utils/secureWrite.js";
 import { z } from "zod";
 import { KASTELL_DIR } from "../../utils/paths.js";
@@ -268,7 +268,11 @@ export async function loadSnapshot(
   serverIp: string,
   filename: string,
 ): Promise<SnapshotFile | null> {
-  const filePath = join(getSnapshotDir(serverIp), filename);
+  const snapshotDir = resolve(getSnapshotDir(serverIp));
+  const filePath = resolve(snapshotDir, filename);
+  if (!filePath.startsWith(snapshotDir + sep) && filePath !== snapshotDir) {
+    return null;
+  }
 
   try {
     const raw = readFileSync(filePath, "utf-8");
