@@ -1,4 +1,5 @@
 import { MockChildProcess } from "../helpers/ssh-factories.js";
+import { createMockProcess } from "../helpers/mockProcess.js";
 
 jest.mock("child_process", () => ({
   spawn: jest.fn(),
@@ -17,11 +18,6 @@ import { raw } from "../../src/utils/sshCommand";
 
 const mockedSpawn = spawn as jest.MockedFunction<typeof spawn>;
 const mockedSpawnSync = spawnSync as jest.MockedFunction<typeof spawnSync>;
-
-function createMockProcess(exitCode: number = 0) {
-  const cp = new MockChildProcess(exitCode, 0);
-  return cp as unknown as ReturnType<typeof spawn>;
-}
 
 describe("security-ssh E2E", () => {
   const originalEnv = process.env;

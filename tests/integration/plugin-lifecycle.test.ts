@@ -34,20 +34,11 @@ jest.mock("../../src/utils/version.js", () => ({
 import { installPlugin, removePlugin, listPlugins, validatePlugins } from "../../src/core/plugin.js";
 import { loadPlugins } from "../../src/plugin/loader.js";
 import { clearPluginRegistry, getPluginRegistry } from "../../src/plugin/registry.js";
-import type { ChildProcess } from "child_process";
-import { EventEmitter } from "events";
+import { createMockProcess } from "../helpers/mockProcess.js";
 
 const mockedSpawn = spawn as jest.MockedFunction<typeof spawn>;
 
 const FIXTURE_PLUGIN = join(__dirname, "../fixtures/plugins/kastell-plugin-mock");
-
-function createMockProcess(exitCode: number): ChildProcess {
-  const proc = new EventEmitter() as ChildProcess;
-  proc.stdout = new EventEmitter() as ChildProcess["stdout"];
-  proc.stderr = new EventEmitter() as ChildProcess["stderr"];
-  setTimeout(() => proc.emit("close", exitCode), 0);
-  return proc;
-}
 
 function simulateNpmInstall(pluginName: string): void {
   const dest = join(TEMP_NODE_MODULES, pluginName);
