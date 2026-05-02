@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from "fs";
 import { join } from "path";
 import { pathToFileURL } from "url";
-import { KASTELL_DIR } from "../utils/paths.js";
+import { PLUGINS_NODE_MODULES } from "../utils/paths.js";
 import { validateManifest } from "./validate.js";
 import {
   registerPlugin,
@@ -12,7 +12,6 @@ import {
 } from "./registry.js";
 import type { PluginCheck } from "./sdk/types.js";
 
-const PLUGINS_DIR = join(KASTELL_DIR, "plugins", "node_modules");
 
 interface LoadPluginsOptions {
   importer?: (path: string) => Promise<unknown>;
@@ -32,11 +31,11 @@ export async function loadPlugins(
 
   clearPluginRegistry();
 
-  if (!existsSync(PLUGINS_DIR)) {
+  if (!existsSync(PLUGINS_NODE_MODULES)) {
     return { loaded, errors };
   }
 
-  const entries = readdirSync(PLUGINS_DIR, { withFileTypes: true });
+  const entries = readdirSync(PLUGINS_NODE_MODULES, { withFileTypes: true });
   const pluginDirs = entries.filter(
     (e) => e.isDirectory() && e.name.startsWith("kastell-plugin-"),
   );
@@ -47,7 +46,7 @@ export async function loadPlugins(
 
   const results = await Promise.allSettled(
     pluginDirs.map(async (dir) => {
-      const pluginDir = join(PLUGINS_DIR, dir.name);
+      const pluginDir = join(PLUGINS_NODE_MODULES, dir.name);
       const manifestPath = join(pluginDir, "kastell-plugin.json");
 
       let manifestRaw: string;

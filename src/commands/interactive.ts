@@ -127,6 +127,7 @@ const MENU: MenuCategory[] = [
       { name: "Manage defaults", value: "config", description: "Set default provider, region, and server template" },
       { name: "Export server list", value: "export", description: "Export server configuration to a JSON file" },
       { name: "Import server list", value: "import", description: "Import servers from a previously exported JSON file" },
+      { name: "Manage plugins", value: "plugin", description: "Install, remove, list, or validate kastell plugins" },
       { name: "Shell completions", value: "completions", description: "Generate bash, zsh, or fish completion scripts" },
       { name: "Check version", value: "version", description: "Show current Kastell version and check for updates" },
       { name: "View changelog", value: "changelog", description: "Show release notes for the latest or a specific version" },
@@ -1002,6 +1003,31 @@ async function promptCompletions(): Promise<string[] | null> {
   return ["completions", shell];
 }
 
+async function promptPlugin(): Promise<string[] | null> {
+  const sub = await promptList("Plugin action:", [
+    { name: "List installed plugins", value: "list" },
+    { name: "Install a plugin", value: "install" },
+    { name: "Remove a plugin", value: "remove" },
+    { name: "Validate plugins", value: "validate" },
+  ]);
+  if (!sub) return null;
+  if (sub === "install") {
+    const { name } = await inquirer.prompt([
+      { type: "input", name: "name", message: "Plugin name (kastell-plugin-<name>):" },
+    ]);
+    if (!name) return null;
+    return ["plugin", "install", name];
+  }
+  if (sub === "remove") {
+    const { name } = await inquirer.prompt([
+      { type: "input", name: "name", message: "Plugin name to remove:" },
+    ]);
+    if (!name) return null;
+    return ["plugin", "remove", name];
+  }
+  return ["plugin", sub];
+}
+
 // ─── Command → args mapping ─────────────────────────────────────────────────
 
 const SUB_PROMPTS: Record<string, () => Promise<string[] | null>> = {
@@ -1028,6 +1054,7 @@ const SUB_PROMPTS: Record<string, () => Promise<string[] | null>> = {
   fleet: promptFleet,
   notify: promptNotify,
   completions: promptCompletions,
+  plugin: promptPlugin,
 };
 
 const DIRECT_COMMANDS = new Set([

@@ -18,6 +18,7 @@ import { serverFleetSchema, handleServerFleet } from "./tools/serverFleet.js";
 import { serverFixSchema, handleServerFix } from "./tools/serverFix.js";
 import { serverExplainSchema, serverExplainHandler } from "./tools/serverExplain.js";
 import { serverCompareSchema, handleServerCompare } from "./tools/serverCompare.js";
+import { serverPluginSchema, handleServerPlugin } from "./tools/serverPlugin.js";
 import { setMcpVersion } from "./utils.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -295,6 +296,21 @@ Bare servers: use service 'system' or 'docker' for logs (not 'coolify'). server_
     },
   }, async (params) => {
     return handleServerCompare(params);
+  });
+
+  server.registerTool("server_plugin", {
+    description:
+      "Manage kastell plugins. Actions: 'list' shows installed plugins with check counts and status, 'validate' checks manifest integrity and entry point validity. Install/remove not available via MCP — use CLI for security (requires explicit user consent). No SSH connection required.",
+    inputSchema: serverPluginSchema,
+    annotations: {
+      title: "Plugin Management",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
+  }, async (params) => {
+    return handleServerPlugin(params);
   });
 
   return server;

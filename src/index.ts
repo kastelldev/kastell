@@ -45,6 +45,12 @@ import { scheduleCommand } from "./commands/schedule.js";
 import { changelogCommand } from "./commands/changelog.js";
 import { regressionStatusCommand, regressionResetCommand } from "./commands/regression.js";
 import { printHeader, printQuickHelp } from "./cli/header.js";
+import {
+  pluginInstallCommand,
+  pluginRemoveCommand,
+  pluginListCommand,
+  pluginValidateCommand,
+} from "./commands/plugin.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -451,6 +457,34 @@ regressionCmd
   });
 
 registerAuthCommands(program);
+
+const plugin = program
+  .command("plugin")
+  .description("Manage kastell plugins");
+
+plugin
+  .command("install <name>")
+  .description("Install a plugin from npm registry")
+  .option("--ver <version>", "Specific version to install")
+  .option("--force", "Skip confirmation prompt")
+  .action((name: string, options: { ver?: string; force?: boolean }) =>
+    pluginInstallCommand(name, { version: options.ver, force: options.force }),
+  );
+
+plugin
+  .command("remove <name>")
+  .description("Remove an installed plugin")
+  .action((name: string) => pluginRemoveCommand(name));
+
+plugin
+  .command("list")
+  .description("List installed plugins")
+  .action(() => pluginListCommand());
+
+plugin
+  .command("validate [name]")
+  .description("Validate plugin manifest and entry point")
+  .action((name?: string) => pluginValidateCommand(name));
 
 // If --version or -V, print version and await update check before exiting
 const args = process.argv.slice(2);

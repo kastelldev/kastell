@@ -58,4 +58,12 @@ describe("CLI help text snapshots", () => {
   it("kastell fix --help matches snapshot", () => {
     expect(getHelp(["fix", "--help"])).toMatchSnapshot();
   });
+
+  it("kastell plugin --help matches snapshot", () => {
+    expect(getHelp(["plugin", "--help"])).toMatchSnapshot();
+  });
+
+  it("kastell plugin install --help matches snapshot", () => {
+    expect(getHelp(["plugin", "install", "--help"])).toMatchSnapshot();
+  });
 });

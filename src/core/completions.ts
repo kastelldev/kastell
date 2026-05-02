@@ -13,7 +13,7 @@ _kastell() {
   COMPREPLY=()
   cur="\${COMP_WORDS[COMP_CWORD]}"
   prev="\${COMP_WORDS[COMP_CWORD-1]}"
-  commands="init list status destroy config ssh update restart logs monitor health doctor firewall domain secure backup restore export import add remove maintain snapshot completions guard lock audit evidence fleet notify"
+  commands="init list status destroy config ssh update restart logs monitor health doctor firewall domain secure backup restore export import add remove maintain snapshot completions guard lock audit evidence fleet notify plugin"
 
   # Subcommand completions
   case "\${prev}" in
@@ -47,6 +47,10 @@ _kastell() {
       ;;
     notify)
       COMPREPLY=( $(compgen -W "add test" -- "\${cur}") )
+      return 0
+      ;;
+    plugin)
+      COMPREPLY=( $(compgen -W "install remove list validate --force --ver" -- "\${cur}") )
       return 0
       ;;
   esac
@@ -201,6 +205,7 @@ _kastell() {
     'evidence:Collect forensic evidence package from a server'
     'fleet:Show health and security posture of all registered servers'
     'notify:Manage notification channels'
+    'plugin:Manage kastell plugins'
   )
 
   _arguments -C \\
@@ -408,6 +413,14 @@ _kastell() {
             '--webhook-url[Discord or Slack webhook URL]:url:' \\
             '--force[Skip interactive prompts]'
           ;;
+        plugin)
+          local -a subcommands
+          subcommands=('install:Install a plugin from npm registry' 'remove:Remove an installed plugin' 'list:List installed plugins' 'validate:Validate plugin manifest and entry point')
+          _describe 'subcommand' subcommands
+          _arguments \\
+            '--ver[Specific version to install]:version:' \\
+            '--force[Skip confirmation prompt]'
+          ;;
       esac
       ;;
   esac
@@ -466,6 +479,7 @@ complete -c kastell -n '__kastell_no_subcommand' -a 'audit' -d 'Run a security a
 complete -c kastell -n '__kastell_no_subcommand' -a 'evidence' -d 'Collect forensic evidence'
 complete -c kastell -n '__kastell_no_subcommand' -a 'fleet' -d 'Show fleet health and security'
 complete -c kastell -n '__kastell_no_subcommand' -a 'notify' -d 'Manage notification channels'
+complete -c kastell -n '__kastell_no_subcommand' -a 'plugin' -d 'Manage kastell plugins'
 
 # init options
 complete -c kastell -n '__kastell_using_subcommand init' -l provider -d 'Cloud provider'
@@ -622,5 +636,13 @@ complete -c kastell -n '__kastell_using_subcommand notify' -a 'add test'
 complete -c kastell -n '__kastell_using_subcommand notify' -l bot-token -d 'Telegram bot token'
 complete -c kastell -n '__kastell_using_subcommand notify' -l chat-id -d 'Telegram chat ID'
 complete -c kastell -n '__kastell_using_subcommand notify' -l webhook-url -d 'Discord or Slack webhook URL'
-complete -c kastell -n '__kastell_using_subcommand notify' -l force -d 'Skip interactive prompts'`;
+complete -c kastell -n '__kastell_using_subcommand notify' -l force -d 'Skip interactive prompts'
+
+# plugin subcommands and options
+complete -c kastell -n '__kastell_using_subcommand plugin' -a 'install' -d 'Install a plugin from npm registry'
+complete -c kastell -n '__kastell_using_subcommand plugin' -a 'remove' -d 'Remove an installed plugin'
+complete -c kastell -n '__kastell_using_subcommand plugin' -a 'list' -d 'List installed plugins'
+complete -c kastell -n '__kastell_using_subcommand plugin' -a 'validate' -d 'Validate plugin manifest'
+complete -c kastell -n '__kastell_using_subcommand plugin' -l force -d 'Skip confirmation prompt'
+complete -c kastell -n '__kastell_using_subcommand plugin' -l ver -d 'Specific version to install' -r`;
 }
