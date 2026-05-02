@@ -7,11 +7,17 @@ import {
   listPlugins,
   validatePlugins,
 } from "../core/plugin.js";
+import { PLUGIN_NAME_PATTERN } from "../plugin/sdk/constants.js";
 
 export async function pluginInstallCommand(
   name: string,
   options: { version?: string; force?: boolean },
 ): Promise<void> {
+  if (!PLUGIN_NAME_PATTERN.test(name)) {
+    logger.error(`Invalid plugin name: ${name}. Must match kastell-plugin-<name> pattern.`);
+    return;
+  }
+
   if (!options.force) {
     const { confirm } = await inquirer.prompt([
       {

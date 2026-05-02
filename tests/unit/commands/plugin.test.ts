@@ -35,10 +35,21 @@ describe("pluginInstallCommand", () => {
     mockedLogger.createSpinner.mockReturnValue(mockSpinner as any);
   });
 
+  it("should validate name before showing confirm prompt", async () => {
+    const promptSpy = jest.spyOn(inquirer, "prompt");
+
+    await pluginInstallCommand("invalid-name", { force: false });
+
+    expect(promptSpy).not.toHaveBeenCalled();
+    expect(mockedLogger.logger.error).toHaveBeenCalledWith(
+      expect.stringContaining("Invalid plugin name"),
+    );
+  });
+
   it("should prompt for confirmation when force is false", async () => {
     (inquirer.prompt as unknown as jest.Mock).mockResolvedValueOnce({ confirm: false });
 
-    await pluginInstallCommand("my-plugin", { force: false });
+    await pluginInstallCommand("kastell-plugin-my-plugin", { force: false });
 
     expect(inquirer.prompt).toHaveBeenCalledWith([
       expect.objectContaining({
@@ -53,7 +64,7 @@ describe("pluginInstallCommand", () => {
   it("should cancel install when user declines confirmation", async () => {
     (inquirer.prompt as unknown as jest.Mock).mockResolvedValueOnce({ confirm: false });
 
-    await pluginInstallCommand("my-plugin", { force: false });
+    await pluginInstallCommand("kastell-plugin-my-plugin", { force: false });
 
     expect(mockedLogger.logger.info).toHaveBeenCalledWith("Plugin install cancelled.");
     expect(mockedPluginCore.installPlugin).not.toHaveBeenCalled();
@@ -62,27 +73,27 @@ describe("pluginInstallCommand", () => {
   it("should skip confirmation when force is true", async () => {
     mockedPluginCore.installPlugin.mockResolvedValueOnce({ success: true, name: "my-plugin" });
 
-    await pluginInstallCommand("my-plugin", { force: true });
+    await pluginInstallCommand("kastell-plugin-my-plugin", { force: true });
 
     expect(inquirer.prompt).not.toHaveBeenCalled();
-    expect(mockedPluginCore.installPlugin).toHaveBeenCalledWith("my-plugin", undefined);
+    expect(mockedPluginCore.installPlugin).toHaveBeenCalledWith("kastell-plugin-my-plugin", undefined);
   });
 
   it("should install with version option", async () => {
     mockedPluginCore.installPlugin.mockResolvedValueOnce({ success: true, name: "my-plugin" });
 
-    await pluginInstallCommand("my-plugin", { version: "1.0.0", force: true });
+    await pluginInstallCommand("kastell-plugin-my-plugin", { version: "1.0.0", force: true });
 
-    expect(mockedPluginCore.installPlugin).toHaveBeenCalledWith("my-plugin", "1.0.0");
+    expect(mockedPluginCore.installPlugin).toHaveBeenCalledWith("kastell-plugin-my-plugin", "1.0.0");
   });
 
   it("should show success message on install success", async () => {
     mockedPluginCore.installPlugin.mockResolvedValueOnce({ success: true, name: "my-plugin" });
 
-    await pluginInstallCommand("my-plugin", { force: true });
+    await pluginInstallCommand("kastell-plugin-my-plugin", { force: true });
 
     expect(mockedLogger.logger.success).toHaveBeenCalledWith(
-      "Plugin my-plugin installed successfully.",
+      "Plugin kastell-plugin-my-plugin installed successfully.",
     );
   });
 
@@ -93,7 +104,7 @@ describe("pluginInstallCommand", () => {
       error: "network timeout",
     });
 
-    await pluginInstallCommand("my-plugin", { force: true });
+    await pluginInstallCommand("kastell-plugin-my-plugin", { force: true });
 
     expect(mockedLogger.logger.error).toHaveBeenCalledWith("network timeout");
   });
@@ -101,7 +112,7 @@ describe("pluginInstallCommand", () => {
   it("should show generic error when error is undefined", async () => {
     mockedPluginCore.installPlugin.mockResolvedValueOnce({ success: false, name: "my-plugin" });
 
-    await pluginInstallCommand("my-plugin", { force: true });
+    await pluginInstallCommand("kastell-plugin-my-plugin", { force: true });
 
     expect(mockedLogger.logger.error).toHaveBeenCalledWith("Plugin install failed.");
   });
