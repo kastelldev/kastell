@@ -83,7 +83,7 @@ export function deletePlugin(name: string): void {
   PLUGIN_REGISTRY.delete(name);
 }
 
-export function forEachRegistryPlugin<T>(
+export function mapRegistryPlugins<T>(
   callback: (name: string, entry: PluginRegistryEntry) => T,
 ): T[] {
   const results: T[] = [];

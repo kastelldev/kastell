@@ -20,7 +20,7 @@ import {
   loadPluginCache,
   savePluginCache,
   deletePlugin,
-  forEachRegistryPlugin,
+  mapRegistryPlugins,
 } from "../../../src/plugin/registry.js";
 import type { PluginManifest, PluginCheck } from "../../../src/plugin/sdk/types.js";
 
@@ -135,7 +135,7 @@ describe("plugin/registry", () => {
     });
   });
 
-  describe("forEachRegistryPlugin", () => {
+  describe("mapRegistryPlugins", () => {
     it("maps over all registered plugins", () => {
       const otherManifest = { ...mockManifest, name: "kastell-plugin-other", checkPrefix: "OT" };
       const otherChecks: PluginCheck[] = [
@@ -145,7 +145,7 @@ describe("plugin/registry", () => {
       registerPlugin(mockManifest, mockChecks);
       registerPlugin(otherManifest, otherChecks);
 
-      const result = forEachRegistryPlugin((name, entry) => ({
+      const result = mapRegistryPlugins((name, entry) => ({
         name,
         checks: entry.checks.length,
       }));
@@ -160,7 +160,7 @@ describe("plugin/registry", () => {
     });
 
     it("returns empty array when no plugins registered", () => {
-      const result = forEachRegistryPlugin((name) => name);
+      const result = mapRegistryPlugins((name) => name);
       expect(result).toEqual([]);
     });
   });

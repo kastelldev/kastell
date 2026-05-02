@@ -1,7 +1,7 @@
 import { spawn } from "child_process";
 import { existsSync } from "fs";
 import { join } from "path";
-import { getPluginRegistry, forEachRegistryPlugin, deletePlugin as deletePluginFromRegistry, savePluginCache } from "../plugin/registry.js";
+import { getPluginRegistry, mapRegistryPlugins, deletePlugin as deletePluginFromRegistry, savePluginCache } from "../plugin/registry.js";
 import type { PluginManifest } from "../plugin/sdk/types.js";
 import { PLUGIN_NAME_PATTERN } from "../plugin/sdk/constants.js";
 import { loadPlugins } from "../plugin/loader.js";
@@ -95,7 +95,7 @@ export async function removePlugin(name: string): Promise<PluginOperationResult>
 
   deletePluginFromRegistry(name);
 
-  const manifests = forEachRegistryPlugin((_, entry) =>
+  const manifests = mapRegistryPlugins((_, entry) =>
     entry.status === "loaded" ? entry.manifest : null,
   ).filter((m): m is PluginManifest => m !== null);
   savePluginCache(manifests);
@@ -113,7 +113,7 @@ export interface PluginListEntry {
 }
 
 export function listPlugins(): PluginListEntry[] {
-  return forEachRegistryPlugin((_, entry) => ({
+  return mapRegistryPlugins((_, entry) => ({
     name: entry.manifest.name,
     version: entry.manifest.version,
     prefix: entry.manifest.checkPrefix,
@@ -144,7 +144,7 @@ export function validatePlugins(name?: string): PluginValidationResult[] {
     }];
   }
 
-  return forEachRegistryPlugin((_, entry) => ({
+  return mapRegistryPlugins((_, entry) => ({
     name: entry.manifest.name,
     valid: entry.status === "loaded",
     ...(entry.reason ? { reason: entry.reason } : {}),

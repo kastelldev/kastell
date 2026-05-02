@@ -7,7 +7,7 @@ import {
   registerPlugin,
   registerFailedPlugin,
   clearPluginRegistry,
-  getPluginRegistry,
+  mapRegistryPlugins,
   savePluginCache,
 } from "./registry.js";
 import type { PluginCheck, PluginManifest } from "./sdk/types.js";
@@ -119,9 +119,9 @@ export async function loadPlugins(
     }
   }
 
-  const manifests = Array.from(getPluginRegistry().values())
-    .filter((e) => e.status === "loaded")
-    .map((e) => e.manifest);
+  const manifests = mapRegistryPlugins((_, entry) =>
+    entry.status === "loaded" ? entry.manifest : null,
+  ).filter((m): m is PluginManifest => m !== null);
   savePluginCache(manifests);
 
   return { loaded, errors };
