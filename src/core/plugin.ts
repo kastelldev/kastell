@@ -1,7 +1,7 @@
 import { spawn } from "child_process";
 import { existsSync } from "fs";
 import { join } from "path";
-import { getPluginRegistry } from "../plugin/registry.js";
+import { getPluginRegistry, forEachRegistryPlugin } from "../plugin/registry.js";
 import { PLUGIN_NAME_PATTERN } from "../plugin/sdk/constants.js";
 import { loadPlugins } from "../plugin/loader.js";
 import { PLUGINS_DIR, PLUGINS_NODE_MODULES } from "../utils/paths.js";
@@ -106,21 +106,14 @@ export interface PluginListEntry {
 }
 
 export function listPlugins(): PluginListEntry[] {
-  const registry = getPluginRegistry();
-  const entries: PluginListEntry[] = [];
-
-  for (const [, entry] of registry) {
-    entries.push({
-      name: entry.manifest.name,
-      version: entry.manifest.version,
-      prefix: entry.manifest.checkPrefix,
-      checks: entry.checks.length,
-      status: entry.status,
-      ...(entry.reason ? { reason: entry.reason } : {}),
-    });
-  }
-
-  return entries;
+  return forEachRegistryPlugin((_, entry) => ({
+    name: entry.manifest.name,
+    version: entry.manifest.version,
+    prefix: entry.manifest.checkPrefix,
+    checks: entry.checks.length,
+    status: entry.status,
+    ...(entry.reason ? { reason: entry.reason } : {}),
+  }));
 }
 
 export interface PluginValidationResult {
@@ -144,13 +137,9 @@ export function validatePlugins(name?: string): PluginValidationResult[] {
     }];
   }
 
-  const results: PluginValidationResult[] = [];
-  for (const [, entry] of registry) {
-    results.push({
-      name: entry.manifest.name,
-      valid: entry.status === "loaded",
-      ...(entry.reason ? { reason: entry.reason } : {}),
-    });
-  }
-  return results;
+  return forEachRegistryPlugin((_, entry) => ({
+    name: entry.manifest.name,
+    valid: entry.status === "loaded",
+    ...(entry.reason ? { reason: entry.reason } : {}),
+  }));
 }
