@@ -50,7 +50,7 @@ _kastell() {
       return 0
       ;;
     plugin)
-      COMPREPLY=( $(compgen -W "install remove list validate --force --version" -- "\${cur}") )
+      COMPREPLY=( $(compgen -W "install remove list validate --force --ver" -- "\${cur}") )
       return 0
       ;;
   esac
@@ -418,7 +418,7 @@ _kastell() {
           subcommands=('install:Install a plugin from npm registry' 'remove:Remove an installed plugin' 'list:List installed plugins' 'validate:Validate plugin manifest and entry point')
           _describe 'subcommand' subcommands
           _arguments \\
-            '--version[Specific version to install]:version:' \\
+            '--ver[Specific version to install]:version:' \\
             '--force[Skip confirmation prompt]'
           ;;
       esac
@@ -644,5 +644,5 @@ complete -c kastell -n '__kastell_using_subcommand plugin' -a 'remove' -d 'Remov
 complete -c kastell -n '__kastell_using_subcommand plugin' -a 'list' -d 'List installed plugins'
 complete -c kastell -n '__kastell_using_subcommand plugin' -a 'validate' -d 'Validate plugin manifest'
 complete -c kastell -n '__kastell_using_subcommand plugin' -l force -d 'Skip confirmation prompt'
-complete -c kastell -n '__kastell_using_subcommand plugin' -l version -d 'Specific version to install' -r`;
+complete -c kastell -n '__kastell_using_subcommand plugin' -l ver -d 'Specific version to install' -r`;
 }

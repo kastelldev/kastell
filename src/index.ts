@@ -465,10 +465,10 @@ const plugin = program
 plugin
   .command("install <name>")
   .description("Install a plugin from npm registry")
-  .option("--version <ver>", "Specific version to install")
+  .option("--ver <version>", "Specific version to install")
   .option("--force", "Skip confirmation prompt")
-  .action((name: string, options: { version?: string; force?: boolean }) =>
-    pluginInstallCommand(name, options),
+  .action((name: string, options: { ver?: string; force?: boolean }) =>
+    pluginInstallCommand(name, { version: options.ver, force: options.force }),
   );
 
 plugin

@@ -191,7 +191,7 @@ exports[`CLI help text snapshots kastell plugin install --help matches snapshot 
 Install a plugin from npm registry
 
 Options:
-  --version <ver>  Specific version to install
+  --ver <version>  Specific version to install
   --force          Skip confirmation prompt
   -h, --help       display help for command"
 `;

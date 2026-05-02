@@ -150,6 +150,13 @@ describe("installPlugin", () => {
     expect(result.error).toContain("Plugin name must match pattern");
   });
 
+  it("rejects version with shell injection characters", async () => {
+    const { installPlugin } = await import("../../../src/core/plugin.js");
+    const result = await installPlugin("kastell-plugin-foo", "1.0; echo INJECTED");
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("Invalid version specifier");
+  });
+
   it("installs plugin via npm and reloads", async () => {
     mockedSpawn.mockImplementation(() => createMockProcess(0));
     mockedLoadPlugins.mockResolvedValue({ loaded: ["kastell-plugin-wordpress"], errors: [] });
@@ -160,8 +167,8 @@ describe("installPlugin", () => {
     expect(result.success).toBe(true);
     expect(result.name).toBe("kastell-plugin-wordpress");
     expect(mockedSpawn).toHaveBeenCalledWith(
-      "npm",
-      ["install", "kastell-plugin-wordpress", "--prefix", expect.stringContaining("plugins")],
+      expect.stringContaining("npm install kastell-plugin-wordpress --prefix"),
+      [],
       expect.any(Object),
     );
     expect(mockedLoadPlugins).toHaveBeenCalled();
@@ -175,8 +182,8 @@ describe("installPlugin", () => {
     const { installPlugin } = await import("../../../src/core/plugin.js");
     await installPlugin("kastell-plugin-wordpress", "1.2.0");
     expect(mockedSpawn).toHaveBeenCalledWith(
-      "npm",
-      ["install", "kastell-plugin-wordpress@1.2.0", "--prefix", expect.stringContaining("plugins")],
+      expect.stringContaining("npm install kastell-plugin-wordpress@1.2.0 --prefix"),
+      [],
       expect.any(Object),
     );
   });
@@ -207,6 +214,13 @@ describe("installPlugin", () => {
 });
 
 describe("removePlugin", () => {
+  it("rejects invalid plugin name", async () => {
+    const { removePlugin } = await import("../../../src/core/plugin.js");
+    const result = await removePlugin("foo; rm -rf ~/");
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("Plugin name must match pattern");
+  });
+
   it("rejects non-existent plugin", async () => {
     mockedExistsSync.mockReturnValue(false);
     const { removePlugin } = await import("../../../src/core/plugin.js");
@@ -224,8 +238,8 @@ describe("removePlugin", () => {
     const result = await removePlugin("kastell-plugin-wordpress");
     expect(result.success).toBe(true);
     expect(mockedSpawn).toHaveBeenCalledWith(
-      "npm",
-      ["uninstall", "kastell-plugin-wordpress", "--prefix", expect.stringContaining("plugins")],
+      expect.stringContaining("npm uninstall kastell-plugin-wordpress --prefix"),
+      [],
       expect.any(Object),
     );
     expect(mockedLoadPlugins).toHaveBeenCalled();

@@ -6,6 +6,7 @@ import { loadPlugins } from "../plugin/loader.js";
 import { PLUGINS_DIR, PLUGINS_NODE_MODULES } from "../utils/paths.js";
 
 const PLUGIN_NAME_PATTERN = /^kastell-plugin-[a-z0-9-]+$/;
+const VERSION_PATTERN = /^[a-z0-9.\-+~^*x>=<| ]+$/i;
 const STDERR_CAP = 4096;
 const ERROR_STDERR_MAX = 200;
 
@@ -45,6 +46,10 @@ export async function installPlugin(
     return { success: false, name, error: "Plugin name must match pattern: kastell-plugin-<name>" };
   }
 
+  if (version && !VERSION_PATTERN.test(version)) {
+    return { success: false, name, error: "Invalid version specifier" };
+  }
+
   const pkgSpec = version ? `${name}@${version}` : name;
   const installResult = await runNpm(["install", pkgSpec, "--prefix", PLUGINS_DIR]);
 
@@ -68,6 +73,10 @@ export async function installPlugin(
 }
 
 export async function removePlugin(name: string): Promise<PluginOperationResult> {
+  if (!PLUGIN_NAME_PATTERN.test(name)) {
+    return { success: false, name, error: "Plugin name must match pattern: kastell-plugin-<name>" };
+  }
+
   const pluginPath = join(PLUGINS_NODE_MODULES, name);
   if (!existsSync(pluginPath)) {
     return { success: false, name, error: `Plugin "${name}" not installed` };
