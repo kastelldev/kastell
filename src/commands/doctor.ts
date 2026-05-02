@@ -4,6 +4,7 @@ import { runServerDoctor } from "../core/doctor.js";
 import { runDoctorFix } from "../core/doctor-fix.js";
 import { runDoctorChecks, checkProviderTokens } from "../core/doctor-local.js";
 import { scoreColor } from "../core/audit/formatters/shared.js";
+import { installLocalCron } from "../core/scheduleManager.js";
 import type { DoctorFinding, DoctorResult } from "../core/doctor.js";
 
 // ─── Server mode display helpers ──────────────────────────────────────────────
@@ -70,6 +71,7 @@ export async function doctorCommand(
     force?: boolean;
     dryRun?: boolean;
     autoFix?: boolean;
+    schedule?: string;
   },
   version?: string,
 ): Promise<void> {
@@ -111,6 +113,10 @@ export async function doctorCommand(
     }
 
     displayFindings(result.data);
+
+    if (!options?.fix && !options?.autoFix) {
+      return;
+    }
 
     if (options?.autoFix) {
       const findings = result.data.findings;
@@ -157,17 +163,27 @@ export async function doctorCommand(
           logger.error(`  ${entry}`);
         }
       }
-      return;
-    }
 
-    if (!options?.fix) {
+      if (options.schedule) {
+        if (!options?.autoFix) {
+          logger.error("--schedule requires --auto-fix");
+          return;
+        }
+        const installResult = installLocalCron(options.schedule, resolved.name, "doctor-fix");
+        if (installResult.success) {
+          logger.success(`Doctor+fix scheduled: ${options.schedule}`);
+        } else {
+          logger.error(`Schedule failed: ${installResult.error}`);
+        }
+        return;
+      }
       return;
     }
 
     // ── Fix mode ──────────────────────────────────────────────────────────────
     const findings = result.data.findings;
 
-    if (options.dryRun) {
+    if (options?.dryRun) {
       console.log();
       logger.title("Fix Preview (--dry-run — no SSH will be executed)");
       for (const finding of findings) {
@@ -183,7 +199,7 @@ export async function doctorCommand(
 
     const fixResult = await runDoctorFix(resolved.ip, findings, {
       dryRun: false,
-      force: options.force ?? false,
+      force: options?.force ?? false,
     }, resolved.name);
 
     console.log();

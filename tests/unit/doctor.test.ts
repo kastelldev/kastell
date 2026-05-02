@@ -23,6 +23,10 @@ jest.mock("../../src/utils/ssh", () => ({
   checkSshAvailable: jest.fn(),
 }));
 
+jest.mock("../../src/core/audit/fix-history.js", () => ({
+  saveFixHistory: jest.fn(),
+}));
+
 jest.mock("axios");
 
 jest.mock("../../src/utils/serverSelect", () => ({

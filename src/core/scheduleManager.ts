@@ -13,7 +13,7 @@ import { sanitizedEnv } from "../utils/ssh.js";
 import { dispatchWithCooldown } from "../core/notify.js";
 import { ValidationError } from "../utils/errors.js";
 
-export type ScheduleType = "fix" | "audit";
+export type ScheduleType = "fix" | "audit" | "doctor-fix";
 
 const CRONTAB_TMP = join(KASTELL_DIR, ".crontab-tmp");
 
@@ -47,6 +47,7 @@ export interface LocalCronResult {
 export const SCHEDULE_MARKERS = {
   fix: "# kastell-fix-schedule",
   audit: "# kastell-audit-schedule",
+  "doctor-fix": "# kastell-doctor-fix-schedule",
 } as const;
 
 const SCHEDULE_LOGS_DIR = join(KASTELL_DIR, "schedule-logs");
@@ -62,8 +63,8 @@ export function parseScheduleKey(key: string): { server: string; type: ScheduleT
   if (lastColon === -1) return null;
   const server = key.slice(0, lastColon);
   const maybeType = key.slice(lastColon + 1);
-  if (maybeType !== "fix" && maybeType !== "audit") return null;
-  return { server, type: maybeType };
+  if (maybeType !== "fix" && maybeType !== "audit" && maybeType !== "doctor-fix") return null;
+  return { server, type: maybeType as ScheduleType };
 }
 
 
@@ -106,7 +107,8 @@ export function installLocalCron(
   const kastellBin = resolveKastellBin();
   const fixCmd = `${kastellBin} fix --safe --server "${sanitized}" --no-interactive`;
   const auditCmd = `${kastellBin} audit --server "${sanitized}" --json`;
-  const command = type === "fix" ? fixCmd : auditCmd;
+  const doctorFixCmd = `${kastellBin} doctor --auto-fix --server "${sanitized}" --force --no-interactive`;
+  const command = type === "fix" ? fixCmd : type === "audit" ? auditCmd : doctorFixCmd;
 
   if (process.platform === "win32") {
     saveSchedule(scheduleKey(sanitized, type), cronExpr);

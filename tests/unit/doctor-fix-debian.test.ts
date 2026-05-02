@@ -18,6 +18,10 @@ jest.mock("../../src/core/audit/handlers/index.js", () => ({
   executeHandlerChain: jest.fn(),
 }));
 
+jest.mock("../../src/core/audit/fix-history.js", () => ({
+  saveFixHistory: jest.fn(),
+}));
+
 jest.mock("os", () => ({
   homedir: () => "/home/test",
 }));

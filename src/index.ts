@@ -180,6 +180,7 @@ program
   .option("--force", "Skip confirmation prompts (use with --fix)")
   .option("--dry-run", "Show fix commands without executing (use with --fix)")
   .option("--auto-fix", "Run diagnose->fix chain for all actionable findings")
+  .option("--schedule <cron>", "Schedule recurring doctor+fix pipeline (requires --auto-fix)")
   .action(
     (
       server?: string,
@@ -191,6 +192,7 @@ program
         force?: boolean;
         dryRun?: boolean;
         autoFix?: boolean;
+        schedule?: string;
       },
     ) => doctorCommand(server, options, pkg.version),
   );

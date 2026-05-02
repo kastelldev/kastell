@@ -101,8 +101,6 @@ export async function runDoctorFix(
     }
   }
 
-  return { applied, skipped, failed };
-
   if (applied.length > 0 && !options.dryRun) {
     await saveFixHistory({
       fixId: `fix-${new Date().toISOString().slice(0, 10).replace(/-/g, "-")}-${Date.now() % 1000}`,
@@ -116,4 +114,6 @@ export async function runDoctorFix(
       source: "doctor",
     });
   }
+
+  return { applied, skipped, failed };
 }
