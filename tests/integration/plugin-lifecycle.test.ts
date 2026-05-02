@@ -1,4 +1,4 @@
-import { mkdirSync, cpSync, rmSync, existsSync, writeFileSync } from "fs";
+import { mkdirSync, cpSync, rmSync, existsSync, writeFileSync, mkdtempSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 import { spawn } from "child_process";
@@ -16,7 +16,7 @@ jest.mock("../../src/utils/secureWrite.js", () => ({
 }));
 
 // Mock paths to use temp directory
-const TEMP_BASE = join(tmpdir(), `kastell-plugin-test-${Date.now()}`);
+const TEMP_BASE = mkdtempSync(join(tmpdir(), "kastell-plugin-test-"));
 const TEMP_PLUGINS_DIR = join(TEMP_BASE, "plugins");
 const TEMP_NODE_MODULES = join(TEMP_PLUGINS_DIR, "node_modules");
 const TEMP_KASTELL_DIR = join(TEMP_BASE, "kastell");
