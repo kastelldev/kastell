@@ -121,13 +121,14 @@ jobs:
         id: stryker
         if: github.event_name != 'schedule' || steps.changes.outputs.has_changes == 'true'
         run: |
-          CONCURRENCY="${{ github.event.inputs.concurrency || '4' }}"
+          CONCURRENCY="$STRYKER_CONCURRENCY"
           if ! [[ "$CONCURRENCY" =~ ^[0-9]+$ ]]; then
             echo "Invalid concurrency value: $CONCURRENCY"
             exit 1
           fi
           node --max-old-space-size=4096 node_modules/.bin/stryker run --concurrency "$CONCURRENCY"
         env:
+          STRYKER_CONCURRENCY: ${{ github.event.inputs.concurrency || '4' }}
           NODE_OPTIONS: '--experimental-vm-modules'
 
       # Stryker crash olursa backup'tan restore et — bozuk cache kaydetmeyi önle

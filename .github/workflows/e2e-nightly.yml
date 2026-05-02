@@ -63,11 +63,12 @@ jobs:
         id: provision
         env:
           HETZNER_TOKEN: ${{ secrets.HETZNER_TOKEN }}
+          SERVER_SIZE: ${{ inputs.server_size || 'cax11' }}
         run: |
           node dist/index.js provision \
             --provider hetzner \
             --name "$SERVER_NAME" \
-            --size "${{ inputs.server_size || 'cax11' }}" \
+            --size "$SERVER_SIZE" \
             --region nbg1 \
             --mode bare \
             --yes
