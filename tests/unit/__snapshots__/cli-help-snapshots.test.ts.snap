@@ -97,25 +97,26 @@ exports[`CLI help text snapshots kastell fix --help matches snapshot 1`] = `
 Apply safe auto-fixes from security audit (SAFE tier only)
 
 Options:
-  --safe              Apply only SAFE tier fixes (no service restarts)
-  --dry-run           Preview fixes without applying
-  --category <list>   Comma-separated category filter
-  --rollback <id>     Rollback a previous fix (fix ID or 'last')
-  --rollback-all      Rollback all applied fixes for server
-  --rollback-to <id>  Rollback all fixes from newest down to given fix ID
-  --history           Show fix history for the server
-  --top <n>           Apply top N highest-impact SAFE fixes (requires --safe)
-  --target <score>    Apply SAFE fixes until score reaches target (requires
-                      --safe)
-  --checks <ids>      Comma-separated check IDs to fix (e.g.
-                      KERN-SYNCOOKIES,FW-DENY)
-  --profile <name>    Apply only checks matching server profile (web-server,
-                      database, mail-server)
-  --diff              Show per-fix diff preview after applying
-  --report            Generate markdown fix report after applying fixes
-  --no-interactive    Skip confirmation prompt (for scheduled/automated runs)
-  --force             Bypass regression gate and force operation
-  -h, --help          display help for command"
+  --safe               Apply only SAFE tier fixes (no service restarts)
+  --dry-run            Preview fixes without applying
+  --category <list>    Comma-separated category filter
+  --rollback <id>      Rollback a previous fix (fix ID or 'last')
+  --rollback-all       Rollback all applied fixes for server
+  --rollback-to <id>   Rollback all fixes from newest down to given fix ID
+  --history            Show fix history for the server
+  --top <n>            Apply top N highest-impact SAFE fixes (requires --safe)
+  --target <score>     Apply SAFE fixes until score reaches target (requires
+                       --safe)
+  --checks <ids>       Comma-separated check IDs to fix (e.g.
+                       KERN-SYNCOOKIES,FW-DENY)
+  --profile <name>     Apply only checks matching server profile (web-server,
+                       database, mail-server)
+  --diff               Show per-fix diff preview after applying
+  --report             Generate markdown fix report after applying fixes
+  --no-interactive     Skip confirmation prompt (for scheduled/automated runs)
+  --force              Bypass regression gate and force operation
+  --include-forbidden  Include FORBIDDEN tier fixes with confirmation prompt
+  -h, --help           display help for command"
 `;
 
 exports[`CLI help text snapshots kastell guard --help matches snapshot 1`] = `

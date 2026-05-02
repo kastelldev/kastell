@@ -62,23 +62,28 @@ export function pluginListCommand(): void {
     return;
   }
 
-  const header = `${"Name".padEnd(40)} ${"Version".padEnd(10)} ${"Prefix".padEnd(8)} ${"Checks".padEnd(8)} Status`;
-  console.log(chalk.bold(header));
-  console.log("─".repeat(header.length));
+  const maxName = Math.max(40, ...plugins.map((p) => p.name.length)) + 2;
+  const maxVer = Math.max(10, ...plugins.map((p) => p.version.length)) + 2;
+  const maxPrefix = Math.max(8, ...plugins.map((p) => p.prefix.length)) + 2;
+  const maxChecks = 8;
+
+  const header = `${"Name".padEnd(maxName)} ${"Version".padEnd(maxVer)} ${"Prefix".padEnd(maxPrefix)} ${"Checks".padEnd(maxChecks)} Status`;
+  logger.info(chalk.bold(header));
+  logger.info("─".repeat(header.length));
 
   for (const p of plugins) {
     const status =
       p.status === "loaded"
         ? chalk.green(p.status)
         : chalk.red(`${p.status} (${p.reason ?? "unknown"})`);
-    console.log(
-      `${p.name.padEnd(40)} ${p.version.padEnd(10)} ${p.prefix.padEnd(8)} ${String(p.checks).padEnd(8)} ${status}`,
+    logger.info(
+      `${p.name.padEnd(maxName)} ${p.version.padEnd(maxVer)} ${p.prefix.padEnd(maxPrefix)} ${String(p.checks).padEnd(maxChecks)} ${status}`,
     );
   }
 
   const failed = plugins.filter((p) => p.status === "failed");
   if (failed.length > 0) {
-    console.log(
+    logger.info(
       chalk.yellow(`\nRun ${chalk.bold("kastell plugin validate <name>")} for details.`),
     );
   }
