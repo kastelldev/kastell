@@ -17,7 +17,8 @@ export interface PluginOperationResult {
 
 function runNpm(args: string[]): Promise<{ code: number; stderr: string }> {
   return new Promise((resolve) => {
-    const proc = spawn("npm", args, {
+    const command = ["npm", ...args].join(" ");
+    const proc = spawn(command, [], {
       stdio: ["ignore", "pipe", "pipe"],
       shell: true,
     });
