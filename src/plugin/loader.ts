@@ -49,20 +49,21 @@ export async function loadPlugins(
       const pluginDir = join(PLUGINS_NODE_MODULES, dir.name);
       const manifestPath = join(pluginDir, "kastell-plugin.json");
 
+      const failedManifest = (): PluginManifest => ({
+        name: dir.name,
+        version: "0.0.0",
+        apiVersion: "1",
+        kastell: "*",
+        capabilities: ["audit"],
+        checkPrefix: "ERR",
+        entry: "",
+      });
+
       let manifestRaw: string;
       try {
         manifestRaw = readFileSync(manifestPath, "utf-8");
       } catch {
-        const minimalManifest: PluginManifest = {
-          name: dir.name,
-          version: "0.0.0",
-          apiVersion: "1",
-          kastell: "*",
-          capabilities: ["audit"],
-          checkPrefix: "ERR",
-          entry: "",
-        };
-        registerFailedPlugin(minimalManifest, `cannot read kastell-plugin.json`);
+        registerFailedPlugin(failedManifest(), `cannot read kastell-plugin.json`);
         throw new Error(`${dir.name}: cannot read kastell-plugin.json`);
       }
 
@@ -70,16 +71,7 @@ export async function loadPlugins(
       try {
         manifestParsed = JSON.parse(manifestRaw);
       } catch {
-        const minimalManifest: PluginManifest = {
-          name: dir.name,
-          version: "0.0.0",
-          apiVersion: "1",
-          kastell: "*",
-          capabilities: ["audit"],
-          checkPrefix: "ERR",
-          entry: "",
-        };
-        registerFailedPlugin(minimalManifest, `invalid JSON in kastell-plugin.json`);
+        registerFailedPlugin(failedManifest(), `invalid JSON in kastell-plugin.json`);
         throw new Error(`${dir.name}: invalid JSON in kastell-plugin.json`);
       }
 
