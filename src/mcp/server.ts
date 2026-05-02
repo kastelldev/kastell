@@ -230,8 +230,8 @@ Bare servers: use service 'system' or 'docker' for logs (not 'coolify'). server_
     annotations: {
       title: "Server Lock",
       readOnlyHint: false,
-      destructiveHint: false,
-      idempotentHint: true,
+      destructiveHint: true,
+      idempotentHint: false,
       openWorldHint: true,
     },
   }, async (params) => {
