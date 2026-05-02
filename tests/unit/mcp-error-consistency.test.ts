@@ -51,7 +51,7 @@ describe("MCP tool annotations (SC#5)", () => {
 
   it("destructive tools have destructiveHint: true", () => {
     const serverTs = readFileSync(join(__dirname, "../../src/mcp/server.ts"), "utf-8");
-    const destructiveTools = ["server_manage", "server_backup", "server_provision", "server_fix"];
+    const destructiveTools = ["server_manage", "server_backup", "server_provision", "server_fix", "server_lock"];
     for (const tool of destructiveTools) {
       const toolMatch = serverTs.match(new RegExp(`registerTool\\("${tool}"[\\s\\S]*?destructiveHint:\\s*(true|false)`));
       expect(toolMatch).not.toBeNull();
