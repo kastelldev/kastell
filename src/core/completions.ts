@@ -45,11 +45,12 @@ _kastell() {
       COMPREPLY=( $(compgen -W "start stop status" -- "\${cur}") )
       return 0
       ;;
-    plugin)
-      COMPREPLY=( $(compgen -W "install remove list validate --force --version" -- "\${cur}") )
+    notify)
+      COMPREPLY=( $(compgen -W "add test" -- "\${cur}") )
       return 0
       ;;
-      COMPREPLY=( $(compgen -W "add test" -- "\${cur}") )
+    plugin)
+      COMPREPLY=( $(compgen -W "install remove list validate --force --version" -- "\${cur}") )
       return 0
       ;;
   esac

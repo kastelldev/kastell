@@ -1,14 +1,15 @@
 import { spawn } from "child_process";
-import { existsSync, mkdirSync } from "fs";
+import { existsSync } from "fs";
 import { join } from "path";
 import { getPluginRegistry } from "../plugin/registry.js";
 import { loadPlugins } from "../plugin/loader.js";
 import { PLUGINS_DIR, PLUGINS_NODE_MODULES } from "../utils/paths.js";
 
 const PLUGIN_NAME_PATTERN = /^kastell-plugin-[a-z0-9-]+$/;
+const STDERR_CAP = 4096;
 const ERROR_STDERR_MAX = 200;
 
-export interface PluginInstallResult {
+export interface PluginOperationResult {
   success: boolean;
   name: string;
   error?: string;
@@ -18,11 +19,13 @@ function runNpm(args: string[]): Promise<{ code: number; stderr: string }> {
   return new Promise((resolve) => {
     const proc = spawn("npm", args, {
       stdio: ["ignore", "pipe", "pipe"],
-      shell: false,
+      shell: true,
     });
     let stderr = "";
     if (proc.stderr) {
-      proc.stderr.on("data", (data: Buffer) => { stderr += data.toString(); });
+      proc.stderr.on("data", (data: Buffer) => {
+        if (stderr.length < STDERR_CAP) stderr += data.toString();
+      });
     }
     proc.on("close", (code) => {
       resolve({ code: code ?? 1, stderr });
@@ -36,13 +39,9 @@ function runNpm(args: string[]): Promise<{ code: number; stderr: string }> {
 export async function installPlugin(
   name: string,
   version?: string,
-): Promise<PluginInstallResult> {
+): Promise<PluginOperationResult> {
   if (!PLUGIN_NAME_PATTERN.test(name)) {
-    throw new Error("Plugin name must match pattern: kastell-plugin-<name>");
-  }
-
-  if (!existsSync(PLUGINS_DIR)) {
-    mkdirSync(PLUGINS_DIR, { recursive: true });
+    return { success: false, name, error: "Plugin name must match pattern: kastell-plugin-<name>" };
   }
 
   const pkgSpec = version ? `${name}@${version}` : name;
@@ -67,13 +66,7 @@ export async function installPlugin(
   return { success: true, name };
 }
 
-export interface PluginRemoveResult {
-  success: boolean;
-  name: string;
-  error?: string;
-}
-
-export async function removePlugin(name: string): Promise<PluginRemoveResult> {
+export async function removePlugin(name: string): Promise<PluginOperationResult> {
   const pluginPath = join(PLUGINS_NODE_MODULES, name);
   if (!existsSync(pluginPath)) {
     return { success: false, name, error: `Plugin "${name}" not installed` };

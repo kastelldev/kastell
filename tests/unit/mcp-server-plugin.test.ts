@@ -59,17 +59,12 @@ describe("server_plugin MCP tool", () => {
     });
   });
 
-  describe("install/remove actions", () => {
-    it("rejects install action", async () => {
-      const result = await handleServerPlugin({ action: "install", name: "kastell-plugin-test" });
+  describe("unknown action", () => {
+    it("returns error for unexpected action", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- testing runtime guard
+      const result = await handleServerPlugin({ action: "destroy" } as any);
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain("CLI");
-    });
-
-    it("rejects remove action", async () => {
-      const result = await handleServerPlugin({ action: "remove", name: "kastell-plugin-test" });
-      expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain("CLI");
+      expect(result.content[0].text).toContain("Unexpected action");
     });
   });
 });

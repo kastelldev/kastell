@@ -143,11 +143,11 @@ function createMockProcess(exitCode: number, stdout = ""): ChildProcess {
 }
 
 describe("installPlugin", () => {
-  it("rejects invalid plugin name", async () => {
+  it("returns error for invalid plugin name", async () => {
     const { installPlugin } = await import("../../../src/core/plugin.js");
-    await expect(installPlugin("bad-name")).rejects.toThrow(
-      "Plugin name must match pattern: kastell-plugin-<name>"
-    );
+    const result = await installPlugin("bad-name");
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("Plugin name must match pattern");
   });
 
   it("installs plugin via npm and reloads", async () => {
