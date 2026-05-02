@@ -1,3 +1,4 @@
+import { FAILED_PLUGIN_PREFIX } from "./sdk/constants.js";
 import { existsSync, readdirSync, readFileSync } from "fs";
 import { join, resolve, sep } from "path";
 import { pathToFileURL } from "url";
@@ -55,7 +56,7 @@ export async function loadPlugins(
         apiVersion: "1",
         kastell: "*",
         capabilities: ["audit"],
-        checkPrefix: "ERR",
+        checkPrefix: FAILED_PLUGIN_PREFIX,
         entry: "",
       });
 
