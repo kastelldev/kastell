@@ -3,10 +3,11 @@ import semver from "semver";
 import { ValidationError } from "../utils/errors.js";
 import { KASTELL_VERSION } from "../utils/version.js";
 import type { PluginManifest } from "./sdk/types.js";
+import { PLUGIN_NAME_PATTERN } from "./sdk/constants.js";
 
 const PluginManifestSchema = z
   .object({
-    name: z.string().regex(/^kastell-plugin-[a-z0-9-]+$/, "Name must match kastell-plugin-<lowercase>"),
+    name: z.string().regex(PLUGIN_NAME_PATTERN, "Name must match kastell-plugin-<lowercase>"),
     version: z.string().regex(/^\d+\.\d+\.\d+$/, "Version must be semver (X.Y.Z)"),
     apiVersion: z.literal("1"),
     kastell: z.string().min(1, "Kastell version range required"),

@@ -1,11 +1,12 @@
 import { spawn } from "child_process";
 import { existsSync } from "fs";
 import { join } from "path";
-import { getPluginRegistry } from "../plugin/registry.js";
+import { getPluginRegistry, mapRegistryPlugins, deletePlugin as deletePluginFromRegistry, savePluginCache } from "../plugin/registry.js";
+import type { PluginManifest } from "../plugin/sdk/types.js";
+import { PLUGIN_NAME_PATTERN } from "../plugin/sdk/constants.js";
 import { loadPlugins } from "../plugin/loader.js";
 import { PLUGINS_DIR, PLUGINS_NODE_MODULES } from "../utils/paths.js";
 
-const PLUGIN_NAME_PATTERN = /^kastell-plugin-[a-z0-9-]+$/;
 const VERSION_PATTERN = /^[a-z0-9.\-+~^*x>=<| ]+$/i;
 const STDERR_CAP = 4096;
 const ERROR_STDERR_MAX = 200;
@@ -92,7 +93,13 @@ export async function removePlugin(name: string): Promise<PluginOperationResult>
     };
   }
 
-  await loadPlugins();
+  deletePluginFromRegistry(name);
+
+  const manifests = mapRegistryPlugins((_, entry) =>
+    entry.status === "loaded" ? entry.manifest : null,
+  ).filter((m): m is PluginManifest => m !== null);
+  savePluginCache(manifests);
+
   return { success: true, name };
 }
 
@@ -106,21 +113,14 @@ export interface PluginListEntry {
 }
 
 export function listPlugins(): PluginListEntry[] {
-  const registry = getPluginRegistry();
-  const entries: PluginListEntry[] = [];
-
-  for (const [, entry] of registry) {
-    entries.push({
-      name: entry.manifest.name,
-      version: entry.manifest.version,
-      prefix: entry.manifest.checkPrefix,
-      checks: entry.checks.length,
-      status: entry.status,
-      ...(entry.reason ? { reason: entry.reason } : {}),
-    });
-  }
-
-  return entries;
+  return mapRegistryPlugins((_, entry) => ({
+    name: entry.manifest.name,
+    version: entry.manifest.version,
+    prefix: entry.manifest.checkPrefix,
+    checks: entry.checks.length,
+    status: entry.status,
+    ...(entry.reason ? { reason: entry.reason } : {}),
+  }));
 }
 
 export interface PluginValidationResult {
@@ -144,13 +144,9 @@ export function validatePlugins(name?: string): PluginValidationResult[] {
     }];
   }
 
-  const results: PluginValidationResult[] = [];
-  for (const [, entry] of registry) {
-    results.push({
-      name: entry.manifest.name,
-      valid: entry.status === "loaded",
-      ...(entry.reason ? { reason: entry.reason } : {}),
-    });
-  }
-  return results;
+  return mapRegistryPlugins((_, entry) => ({
+    name: entry.manifest.name,
+    valid: entry.status === "loaded",
+    ...(entry.reason ? { reason: entry.reason } : {}),
+  }));
 }

@@ -153,6 +153,43 @@ describe("plugin/loader", () => {
     expect(result.errors[0]).toContain("must start with");
   });
 
+  it("registers plugin as failed when manifest JSON is invalid", async () => {
+    (existsSync as jest.Mock).mockReturnValue(true);
+    (readdirSync as jest.Mock).mockReturnValue([
+      { name: "kastell-plugin-badjson", isDirectory: () => true },
+    ]);
+    (readFileSync as jest.Mock).mockReturnValue("{ invalid json");
+
+    const mockImporter = jest.fn<(path: string) => Promise<unknown>>();
+    const result = await loadPlugins({ importer: mockImporter });
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0]).toContain("invalid JSON");
+
+    const entry = getPluginRegistry().get("kastell-plugin-badjson");
+    expect(entry).toBeDefined();
+    expect(entry!.status).toBe("failed");
+    expect(entry!.reason).toContain("invalid JSON");
+  });
+
+  it("registers plugin as failed when manifest file is missing", async () => {
+    (existsSync as jest.Mock).mockReturnValue(true);
+    (readdirSync as jest.Mock).mockReturnValue([
+      { name: "kastell-plugin-nomanifest", isDirectory: () => true },
+    ]);
+    (readFileSync as jest.Mock).mockImplementation(() => {
+      throw new Error("ENOENT: no such file");
+    });
+
+    const mockImporter = jest.fn<(path: string) => Promise<unknown>>();
+    const result = await loadPlugins({ importer: mockImporter });
+    expect(result.errors).toHaveLength(1);
+
+    const entry = getPluginRegistry().get("kastell-plugin-nomanifest");
+    expect(entry).toBeDefined();
+    expect(entry!.status).toBe("failed");
+    expect(entry!.reason).toContain("cannot read");
+  });
+
   it("converts path to file URL for ESM import", async () => {
     (existsSync as jest.Mock).mockReturnValue(true);
     (readdirSync as jest.Mock).mockReturnValue([

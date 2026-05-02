@@ -7,10 +7,10 @@ import {
   registerPlugin,
   registerFailedPlugin,
   clearPluginRegistry,
-  getPluginRegistry,
+  mapRegistryPlugins,
   savePluginCache,
 } from "./registry.js";
-import type { PluginCheck } from "./sdk/types.js";
+import type { PluginCheck, PluginManifest } from "./sdk/types.js";
 
 
 interface LoadPluginsOptions {
@@ -49,10 +49,21 @@ export async function loadPlugins(
       const pluginDir = join(PLUGINS_NODE_MODULES, dir.name);
       const manifestPath = join(pluginDir, "kastell-plugin.json");
 
+      const failedManifest = (): PluginManifest => ({
+        name: dir.name,
+        version: "0.0.0",
+        apiVersion: "1",
+        kastell: "*",
+        capabilities: ["audit"],
+        checkPrefix: "ERR",
+        entry: "",
+      });
+
       let manifestRaw: string;
       try {
         manifestRaw = readFileSync(manifestPath, "utf-8");
       } catch {
+        registerFailedPlugin(failedManifest(), `cannot read kastell-plugin.json`);
         throw new Error(`${dir.name}: cannot read kastell-plugin.json`);
       }
 
@@ -60,6 +71,7 @@ export async function loadPlugins(
       try {
         manifestParsed = JSON.parse(manifestRaw);
       } catch {
+        registerFailedPlugin(failedManifest(), `invalid JSON in kastell-plugin.json`);
         throw new Error(`${dir.name}: invalid JSON in kastell-plugin.json`);
       }
 
@@ -107,9 +119,9 @@ export async function loadPlugins(
     }
   }
 
-  const manifests = Array.from(getPluginRegistry().values())
-    .filter((e) => e.status === "loaded")
-    .map((e) => e.manifest);
+  const manifests = mapRegistryPlugins((_, entry) =>
+    entry.status === "loaded" ? entry.manifest : null,
+  ).filter((m): m is PluginManifest => m !== null);
   savePluginCache(manifests);
 
   return { loaded, errors };

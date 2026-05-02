@@ -1,4 +1,4 @@
-export const checks = [
+const checks = [
   {
     id: "MOCK-TEST-CHECK",
     name: "Mock Test Check",
@@ -18,3 +18,5 @@ export const checks = [
     passPattern: "MOCK_OK",
   },
 ];
+
+module.exports = { checks };
