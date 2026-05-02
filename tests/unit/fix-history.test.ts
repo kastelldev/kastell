@@ -4,6 +4,8 @@ import {
   generateFixId,
   getLastFixId,
   extractFilePathsFromFixCommand,
+  truncateExecutionLog,
+  fixHistoryEntrySchema,
 } from "../../src/core/audit/fix-history.js";
 import type { FixHistoryEntry } from "../../src/core/audit/types.js";
 import * as fs from "fs";
@@ -18,6 +20,77 @@ jest.mock("../../src/utils/fileLock", () => ({
 }));
 
 const mockedFs = fs as jest.Mocked<typeof fs>;
+
+describe("FixHistoryEntry schema", () => {
+  it("accepts entry with executionLog and source", () => {
+    const entry = {
+      fixId: "fix-2026-05-02-001",
+      serverIp: "1.2.3.4",
+      serverName: "test",
+      timestamp: new Date().toISOString(),
+      checks: ["KERN-SYNCOOKIES"],
+      scoreBefore: 50,
+      scoreAfter: 55,
+      status: "applied",
+      source: "fix",
+      executionLog: [{
+        checkId: "KERN-SYNCOOKIES",
+        command: "sysctl -w net.ipv4.tcp_syncookies=1",
+        stdout: "net.ipv4.tcp_syncookies = 1",
+        stderr: "",
+        durationMs: 120,
+        success: true,
+      }],
+    };
+    expect(fixHistoryEntrySchema.safeParse(entry).success).toBe(true);
+  });
+
+  it("accepts entry without backupPath (doctor fix)", () => {
+    const entry = {
+      fixId: "fix-2026-05-02-002",
+      serverIp: "1.2.3.4",
+      serverName: "test",
+      timestamp: new Date().toISOString(),
+      checks: ["apt-upgrade"],
+      scoreBefore: 50,
+      scoreAfter: null,
+      status: "applied",
+      source: "doctor",
+    };
+    expect(fixHistoryEntrySchema.safeParse(entry).success).toBe(true);
+  });
+
+  it("accepts legacy entry without new fields", () => {
+    const legacy = {
+      fixId: "fix-2026-03-29-001",
+      serverIp: "1.2.3.4",
+      serverName: "test",
+      timestamp: "2026-03-29T00:00:00Z",
+      checks: ["KERN-SYNCOOKIES"],
+      scoreBefore: 50,
+      scoreAfter: 55,
+      status: "applied",
+      backupPath: "/root/.kastell/fix-backups/fix-2026-03-29-001",
+    };
+    expect(fixHistoryEntrySchema.safeParse(legacy).success).toBe(true);
+  });
+});
+
+describe("truncateExecutionLog", () => {
+  it("truncates stdout and stderr beyond limits", () => {
+    const log = [{
+      checkId: "X",
+      command: "y",
+      stdout: "a".repeat(5000),
+      stderr: "b".repeat(2000),
+      durationMs: 100,
+      success: true,
+    }];
+    const result = truncateExecutionLog(log);
+    expect(result[0].stdout.length).toBe(4096);
+    expect(result[0].stderr.length).toBe(1024);
+  });
+});
 
 function makeEntry(overrides: Partial<FixHistoryEntry> = {}): FixHistoryEntry {
   return {

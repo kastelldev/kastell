@@ -76,6 +76,15 @@ export interface AuditHistoryEntry {
   auditVersion?: string;    // Optional for backward compat with legacy on-disk files
 }
 
+export interface FixExecutionLogEntry {
+  checkId: string;
+  command: string;
+  stdout: string;
+  stderr: string;
+  durationMs: number;
+  success: boolean;
+}
+
 export interface FixHistoryEntry {
   fixId: string;           // "fix-2026-03-29-001"
   serverIp: string;
@@ -85,7 +94,9 @@ export interface FixHistoryEntry {
   scoreBefore: number;
   scoreAfter: number | null;
   status: "applied" | "rolled-back" | "failed";
-  backupPath: string;      // remote path: "/root/.kastell/fix-backups/fix-2026-03-29-001"
+  backupPath?: string;    // Optional — doctor fix entries don't create backups
+  executionLog?: FixExecutionLogEntry[];  // Per-command execution detail
+  source?: "fix" | "doctor";  // Which engine generated this entry
 }
 
 /** Check parser function signature — each category module exports this */

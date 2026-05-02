@@ -205,6 +205,9 @@ export async function handleServerFix(
       }
 
       // Execute rollback
+      if (!entry.backupPath) {
+        throw new Error(`${fixId}: cannot roll back — no backup path (doctor fix entry)`);
+      }
       await mcpLog(mcpServer, `Rolling back ${fixId}...`);
       const { restored, errors: rollbackErrors } = await rollbackFix(
         server.ip,

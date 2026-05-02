@@ -160,6 +160,10 @@ export async function fixSafeCommand(
     }
 
     // Rollback
+    if (!entry.backupPath) {
+      logger.error(`Cannot roll back ${fixId}: no backup path (doctor fix entry)`);
+      return;
+    }
     const rollbackSpinner = createSpinner(`Rolling back ${fixId}...`);
     rollbackSpinner.start();
     const { restored, errors: rollbackErrors } = await rollbackFix(

@@ -17,7 +17,10 @@ import { withFileLock, warnIfPermissionError } from "../../utils/fileLock.js";
 import { sshExec } from "../../utils/ssh.js";
 import { raw } from "../../utils/sshCommand.js";
 import { secureWriteFileSync } from "../../utils/secureWrite.js";
-import type { FixHistoryEntry } from "./types.js";
+import type { FixExecutionLogEntry, FixHistoryEntry } from "./types.js";
+
+const MAX_STDOUT_LEN = 4096;
+const MAX_STDERR_LEN = 1024;
 
 const FIX_HISTORY_FILENAME = "fix-history.json";
 
@@ -36,6 +39,15 @@ function getFixHistoryPath(): string {
  * Zod schema for a single fix history entry.
  * Uses .strict() to reject extra fields that would bloat the history file.
  */
+const fixExecutionLogSchema = z.object({
+  checkId: z.string(),
+  command: z.string(),
+  stdout: z.string(),
+  stderr: z.string(),
+  durationMs: z.number(),
+  success: z.boolean(),
+});
+
 export const fixHistoryEntrySchema = z.object({
   fixId: z.string(),
   serverIp: z.string(),
@@ -45,8 +57,18 @@ export const fixHistoryEntrySchema = z.object({
   scoreBefore: z.number(),
   scoreAfter: z.number().nullable(),
   status: z.enum(["applied", "rolled-back", "failed"]),
-  backupPath: z.string().regex(/^\/root\/\.kastell\/fix-backups\/fix-[\d-]+$/, "Invalid backup path format"),
+  backupPath: z.string().regex(/^\/root\/\.kastell\/fix-backups\/fix-[\d-]+$/, "Invalid backup path format").optional(),
+  executionLog: z.array(fixExecutionLogSchema).optional(),
+  source: z.enum(["fix", "doctor"]).optional(),
 }).strict();
+
+export function truncateExecutionLog(log: FixExecutionLogEntry[]): FixExecutionLogEntry[] {
+  return log.map((entry) => ({
+    ...entry,
+    stdout: entry.stdout.slice(0, MAX_STDOUT_LEN),
+    stderr: entry.stderr.slice(0, MAX_STDERR_LEN),
+  }));
+}
 
 const fixHistoryFileSchema = z.array(fixHistoryEntrySchema);
 
@@ -320,6 +342,10 @@ async function executeRollbackLoop(
   const errors: string[] = [];
 
   for (const entry of entries) {
+    if (!entry.backupPath) {
+      errors.push(`${entry.fixId}: No backup path (doctor fix entries cannot be rolled back)`);
+      continue;
+    }
     const { restored, errors: rbErrors } = await rollbackFix(ip, entry.backupPath);
     // Partial success counts — at least one file restored is enough to record as rolled-back
     if (rbErrors.length === 0 || restored.length > 0) {
