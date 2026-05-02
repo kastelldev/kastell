@@ -99,6 +99,12 @@ export interface FixPlan {
   groups: FixGroup[];
 }
 
+export interface FixPreview {
+  checkId: string;
+  command: string;
+  tier: "SAFE" | "GUARDED" | "FORBIDDEN";
+}
+
 /** Result of running fixes */
 export interface FixResult {
   applied: string[];
@@ -181,16 +187,18 @@ export function previewFixes(result: AuditResult): FixPlan {
  * Preview only SAFE tier fixes (no service restarts, no SSH/FW/Docker).
  * Returns a FixPlan with only SAFE checks, plus counts of GUARDED and FORBIDDEN.
  */
-export function previewSafeFixes(result: AuditResult): {
+export function previewSafeFixes(result: AuditResult, options?: { includeForbidden?: boolean }): {
   safePlan: FixPlan;
   guardedCount: number;
   forbiddenCount: number;
   guardedIds: string[];
+  forbiddenFixes?: FixPreview[];
 } {
   const safeChecks: FixCheck[] = [];
   let guardedCount = 0;
   let forbiddenCount = 0;
   const guardedIds: string[] = [];
+  const forbiddenFixes: FixPreview[] = [];
 
   for (const category of result.categories) {
     for (const check of category.checks) {
@@ -210,6 +218,9 @@ export function previewSafeFixes(result: AuditResult): {
           guardedIds.push(check.id);
         } else {
           forbiddenCount++;
+          if (options?.includeForbidden) {
+            forbiddenFixes.push({ checkId: check.id, command: check.fixCommand, tier: "FORBIDDEN" });
+          }
         }
       }
     }
@@ -224,7 +235,7 @@ export function previewSafeFixes(result: AuditResult): {
     groups.push({ severity, checks, estimatedImpact });
   }
 
-  return { safePlan: { groups }, guardedCount, forbiddenCount, guardedIds };
+  return { safePlan: { groups }, guardedCount, forbiddenCount, guardedIds, forbiddenFixes: forbiddenFixes.length > 0 ? forbiddenFixes : undefined };
 }
 
 /**

@@ -417,8 +417,9 @@ program
   .option("--report", "Generate markdown fix report after applying fixes")
   .option("--no-interactive", "Skip confirmation prompt (for scheduled/automated runs)")
   .option("--force", "Bypass regression gate and force operation")
+  .option("--include-forbidden", "Include FORBIDDEN tier fixes with confirmation prompt")
   .action(
-    (server?: string, options?: { safe?: boolean; dryRun?: boolean; category?: string; checks?: string; rollback?: string; rollbackAll?: boolean; rollbackTo?: string; history?: boolean; top?: string; target?: string; profile?: string; diff?: boolean; report?: boolean; interactive?: boolean; force?: boolean }) =>
+    (server?: string, options?: { safe?: boolean; dryRun?: boolean; category?: string; checks?: string; rollback?: string; rollbackAll?: boolean; rollbackTo?: string; history?: boolean; top?: string; target?: string; profile?: string; diff?: boolean; report?: boolean; interactive?: boolean; force?: boolean; includeForbidden?: boolean }) =>
       fixSafeCommand(server, options ?? {}),
   );
 

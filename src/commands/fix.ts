@@ -62,6 +62,7 @@ export async function fixSafeCommand(
     report?: boolean;
     interactive?: boolean;
     force?: boolean;
+    includeForbidden?: boolean;
   },
 ): Promise<void> {
   // ── Flag validation (D-08, D-03, D-11, D-05, D-13) ─────────────────────────
