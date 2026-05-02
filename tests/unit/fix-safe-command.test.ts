@@ -235,6 +235,15 @@ beforeEach(() => {
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
+describe("isFixCommandAllowed", () => {
+  // Use requireActual to test the real function — mock intercepts direct calls
+  const realIsFixCommandAllowed = jest.requireActual("../../src/core/audit/fix.js").isFixCommandAllowed;
+
+  it("rejects command with ampersand metacharacter", () => {
+    expect(realIsFixCommandAllowed("sysctl -w net.ipv4.tcp_syncookies=1 & echo pwned")).toBe(false);
+  });
+});
+
 describe("fixSafeCommand", () => {
   it("Test 1: prints usage help and returns without audit when --safe not set", async () => {
     await fixSafeCommand(undefined, {});

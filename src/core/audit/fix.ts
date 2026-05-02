@@ -41,7 +41,7 @@ export const KNOWN_AUDIT_FIX_PREFIXES = [
 ];
 
 /** Shell metacharacter guard — rejects commands with injection-prone characters */
-const SHELL_METACHAR = /[;&|`$()><\n\r\0&]/;
+const SHELL_METACHAR = /[;&|`$()><\n\r\0]/;
 
 /** Check if a fix command passes whitelist + metachar validation */
 export function isFixCommandAllowed(command: string): boolean {
