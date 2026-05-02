@@ -3,7 +3,7 @@
  * Provides --fix (interactive) and --fix --dry-run (preview) modes.
  */
 
-import type { AuditResult, AuditCheck, Severity, FixTier } from "./types.js";
+import type { AuditResult, AuditCheck, Severity, FixTier, FixExecutionLogEntry } from "./types.js";
 import { SEVERITY_WEIGHTS, CATEGORY_WEIGHTS, DEFAULT_CATEGORY_WEIGHT, buildImpactContext, calculateCategoryScore, calculateOverallScore } from "./scoring.js";
 import type { ImpactContext } from "./scoring.js";
 import { sshExec, sshMasterOpen, sshMasterClose } from "../../utils/ssh.js";
@@ -11,6 +11,7 @@ import { raw } from "../../utils/sshCommand.js";
 import { logger } from "../../utils/logger.js";
 import { getErrorMessage } from "../../utils/errorMapper.js";
 import { tryHandlerDispatch } from "./handlers/index.js";
+import { truncateExecutionLog } from "./fix-history.js";
 import inquirer from "inquirer";
 import { buildAuditBatchCommands, BATCH_TIMEOUTS } from "./commands.js";
 import { parseAllChecks } from "./checks/index.js";
@@ -104,6 +105,7 @@ export interface FixResult {
   skipped: string[];
   errors: string[];
   preview?: FixPlan;
+  executionLog?: FixExecutionLogEntry[];
 }
 
 /** Severity ordering for display (critical first) */
@@ -317,6 +319,7 @@ export async function runFix(
   const applied: string[] = [];
   const skipped: string[] = [];
   const errors: string[] = [];
+  const executionLog: FixExecutionLogEntry[] = [];
 
   for (const group of plan.groups) {
     const checkIds = group.checks.map((c) => c.id).join(", ");
@@ -340,7 +343,17 @@ export async function runFix(
         // Check pre-condition before applying fix (prevents lockout scenarios)
         if (check.preCondition) {
           // preCondition is a hardcoded string from audit check definitions
+          const startMs = Date.now();
           const preCheck = await sshExec(ip, raw(check.preCondition));
+          const durationMs = Date.now() - startMs;
+          executionLog.push({
+            checkId: check.id,
+            command: check.preCondition,
+            stdout: preCheck.stdout,
+            stderr: preCheck.stderr,
+            durationMs,
+            success: preCheck.code === 0,
+          });
           if (preCheck.code !== 0) {
             errors.push(`${check.id}: pre-condition failed — ${check.preCondition}`);
             continue;
@@ -354,7 +367,17 @@ export async function runFix(
           errors.push(`${check.id}: fix command rejected — ${check.fixCommand.slice(0, 60)}`);
           continue;
         }
+        const startMs = Date.now();
         const fixResult = await sshExec(ip, raw(check.fixCommand));
+        const durationMs = Date.now() - startMs;
+        executionLog.push({
+          checkId: check.id,
+          command: check.fixCommand,
+          stdout: fixResult.stdout,
+          stderr: fixResult.stderr,
+          durationMs,
+          success: fixResult.code === 0,
+        });
         if (fixResult.code !== 0) {
           errors.push(`${check.id}: command failed (exit ${fixResult.code})${fixResult.stderr ? ` — ${fixResult.stderr}` : ""}`);
         } else {
@@ -369,7 +392,7 @@ export async function runFix(
   // Close SSH master connection (D-23)
   sshMasterClose(ip);
 
-  return { applied, skipped, errors };
+  return { applied, skipped, errors, executionLog: truncateExecutionLog(executionLog) };
 }
 
 /**
