@@ -334,7 +334,7 @@ describe("core/firewall — parseUfwStatus", () => {
 
 describe("core/firewall — build commands", () => {
   it("should build setup command with Coolify ports", () => {
-    const cmd = buildFirewallSetupCommand();
+    const cmd = buildFirewallSetupCommand("coolify");
     expect(cmd).toContain("ufw allow 80/tcp");
     expect(cmd).toContain("ufw allow 443/tcp");
     expect(cmd).toContain("ufw allow 8000/tcp");
