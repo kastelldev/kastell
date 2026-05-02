@@ -534,6 +534,7 @@ describe("doctorCommand — --fix mode", () => {
       "1.2.3.4",
       fakeResultWithFixable.findings,
       { dryRun: false, force: false },
+      "my-server",
     );
   });
 
@@ -548,6 +549,7 @@ describe("doctorCommand — --fix mode", () => {
       "1.2.3.4",
       fakeResultWithFixable.findings,
       { dryRun: false, force: true },
+      "my-server",
     );
   });
 

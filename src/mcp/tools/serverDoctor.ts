@@ -79,7 +79,7 @@ export async function handleServerDoctor(params: {
       const fixResult = await runDoctorFix(server.ip, findings, {
         dryRun: effectiveDryRun,
         force: params.force ?? false,
-      });
+      }, doctorResult.serverName);
 
       return mcpSuccess({
         server: doctorResult.serverName,

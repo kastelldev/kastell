@@ -279,6 +279,7 @@ describe("autoFix mode", () => {
       "1.2.3.4",
       sampleDoctorResultWithFixable.findings,
       { dryRun: false, force: true },
+      sampleDoctorResultWithFixable.serverName,
     );
     expect(result.isError).toBeUndefined();
     const parsed = JSON.parse(result.content[0].text);
@@ -306,6 +307,7 @@ describe("autoFix mode", () => {
       "1.2.3.4",
       sampleDoctorResultWithFixable.findings,
       { dryRun: true, force: false },
+      sampleDoctorResultWithFixable.serverName,
     );
     expect(result.isError).toBeUndefined();
     const parsed = JSON.parse(result.content[0].text);

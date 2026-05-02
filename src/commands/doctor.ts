@@ -139,7 +139,7 @@ export async function doctorCommand(
       const fixResult = await runDoctorFix(resolved.ip, findings, {
         dryRun: false,
         force: options.force ?? false,
-      });
+      }, resolved.name);
 
       // Finding count delta summary (per D-03)
       console.log();
@@ -184,7 +184,7 @@ export async function doctorCommand(
     const fixResult = await runDoctorFix(resolved.ip, findings, {
       dryRun: false,
       force: options.force ?? false,
-    });
+    }, resolved.name);
 
     console.log();
     if (fixResult.applied.length > 0) {

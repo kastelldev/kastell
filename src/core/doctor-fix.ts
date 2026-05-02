@@ -13,6 +13,7 @@
 import inquirer from "inquirer";
 import { assertValidIp } from "../utils/ssh.js";
 import { resolveHandlerChain, executeHandlerChain } from "./audit/handlers/index.js";
+import { saveFixHistory } from "./audit/fix-history.js";
 import type { DoctorFinding } from "./doctor.js";
 
 // ─── Public types ─────────────────────────────────────────────────────────────
@@ -43,6 +44,7 @@ export async function runDoctorFix(
   ip: string,
   findings: DoctorFinding[],
   options: DoctorFixOptions,
+  serverName?: string,
 ): Promise<DoctorFixResult> {
   assertValidIp(ip);
 
@@ -100,4 +102,18 @@ export async function runDoctorFix(
   }
 
   return { applied, skipped, failed };
+
+  if (applied.length > 0 && !options.dryRun) {
+    await saveFixHistory({
+      fixId: `fix-${new Date().toISOString().slice(0, 10).replace(/-/g, "-")}-${Date.now() % 1000}`,
+      serverIp: ip,
+      serverName: serverName ?? ip,
+      timestamp: new Date().toISOString(),
+      checks: applied,
+      scoreBefore: 0,
+      scoreAfter: null,
+      status: "applied",
+      source: "doctor",
+    });
+  }
 }
