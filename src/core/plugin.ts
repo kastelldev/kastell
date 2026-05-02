@@ -1,7 +1,8 @@
 import { spawn } from "child_process";
 import { existsSync } from "fs";
 import { join } from "path";
-import { getPluginRegistry, forEachRegistryPlugin } from "../plugin/registry.js";
+import { getPluginRegistry, forEachRegistryPlugin, deletePlugin as deletePluginFromRegistry, savePluginCache } from "../plugin/registry.js";
+import type { PluginManifest } from "../plugin/sdk/types.js";
 import { PLUGIN_NAME_PATTERN } from "../plugin/sdk/constants.js";
 import { loadPlugins } from "../plugin/loader.js";
 import { PLUGINS_DIR, PLUGINS_NODE_MODULES } from "../utils/paths.js";
@@ -92,7 +93,13 @@ export async function removePlugin(name: string): Promise<PluginOperationResult>
     };
   }
 
-  await loadPlugins();
+  deletePluginFromRegistry(name);
+
+  const manifests = forEachRegistryPlugin((_, entry) =>
+    entry.status === "loaded" ? entry.manifest : null,
+  ).filter((m): m is PluginManifest => m !== null);
+  savePluginCache(manifests);
+
   return { success: true, name };
 }
 

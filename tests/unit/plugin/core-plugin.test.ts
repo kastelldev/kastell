@@ -4,6 +4,7 @@ import type { PluginManifest, PluginCheck } from "../../../src/plugin/sdk/types.
 
 jest.mock("child_process", () => ({
   spawn: jest.fn(),
+  spawnSync: jest.fn().mockReturnValue({ status: 0 }),
 }));
 
 jest.mock("../../../src/plugin/loader.js", () => ({
@@ -12,7 +13,7 @@ jest.mock("../../../src/plugin/loader.js", () => ({
 
 jest.mock("fs", () => {
   const actual = jest.requireActual("fs") as typeof import("fs");
-  return { ...actual, existsSync: jest.fn().mockReturnValue(true), mkdirSync: jest.fn() };
+  return { ...actual, existsSync: jest.fn().mockReturnValue(true), mkdirSync: jest.fn(), writeFileSync: jest.fn() };
 });
 
 const makeManifest = (overrides?: Partial<PluginManifest>): PluginManifest => ({
@@ -229,10 +230,14 @@ describe("removePlugin", () => {
     expect(result.error).toContain("not installed");
   });
 
-  it("removes plugin via npm and reloads", async () => {
+  it("removes plugin via npm and cleans registry", async () => {
     mockedExistsSync.mockReturnValue(true);
     mockedSpawn.mockImplementation(() => createMockProcess(0));
-    mockedLoadPlugins.mockResolvedValue({ loaded: [], errors: [] });
+
+    // Pre-register the plugin so deletePlugin has something to remove
+    const manifest = makeManifest({ name: "kastell-plugin-wordpress", checkPrefix: "WPR" });
+    registerPlugin(manifest, [makeCheck("WPR-ONE")]);
+    expect(getPluginRegistry().has("kastell-plugin-wordpress")).toBe(true);
 
     const { removePlugin } = await import("../../../src/core/plugin.js");
     const result = await removePlugin("kastell-plugin-wordpress");
@@ -242,7 +247,10 @@ describe("removePlugin", () => {
       [],
       expect.any(Object),
     );
-    expect(mockedLoadPlugins).toHaveBeenCalled();
+    // loadPlugins should NOT be called — deletePlugin used instead
+    expect(mockedLoadPlugins).not.toHaveBeenCalled();
+    // Plugin should be removed from registry
+    expect(getPluginRegistry().has("kastell-plugin-wordpress")).toBe(false);
   });
 
   it("reports npm uninstall failure", async () => {
