@@ -8,13 +8,14 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { createMcpServer } from "./server.js";
 import { migrateConfigIfNeeded } from "../utils/migration.js";
 import { KASTELL_VERSION } from "../utils/version.js";
+import { extractReason } from "../utils/errors.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Graceful handling of unhandled rejections (security audit MEDIUM-007)
 process.on("unhandledRejection", (reason) => {
-  const msg = reason instanceof Error ? reason.message : String(reason);
+  const msg = extractReason(reason);
   process.stderr.write(`MCP unhandled rejection: ${msg}\n`);
 });
 

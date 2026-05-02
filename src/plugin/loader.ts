@@ -4,6 +4,7 @@ import { join, resolve, sep } from "path";
 import { pathToFileURL } from "url";
 import { PLUGINS_NODE_MODULES } from "../utils/paths.js";
 import { validateManifest } from "./validate.js";
+import { extractReason } from "../utils/errors.js";
 import {
   registerPlugin,
   registerFailedPlugin,
@@ -120,11 +121,7 @@ export async function loadPlugins(
     if (result.status === "fulfilled") {
       loaded.push(result.value);
     } else {
-      const reason =
-        result.reason instanceof Error
-          ? result.reason.message
-          : String(result.reason);
-      errors.push(reason);
+      errors.push(extractReason(result.reason));
     }
   }
 

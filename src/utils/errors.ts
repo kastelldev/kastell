@@ -11,6 +11,10 @@ export class KastellError extends Error {
   }
 }
 
+export function extractReason(reason: unknown): string {
+  return reason instanceof Error ? reason.message : String(reason);
+}
+
 export class TransientError extends KastellError {}
 export class ValidationError extends KastellError {}
 export class BusinessError extends KastellError {}

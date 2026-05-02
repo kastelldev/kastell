@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { checkForUpdate } from "./utils/updateCheck.js";
 import { migrateConfigIfNeeded } from "./utils/migration.js";
+import { extractReason } from "./utils/errors.js";
 import { loadPlugins } from "./plugin/loader.js";
 import { interactiveMenu } from "./commands/interactive.js";
 import { initCommand } from "./commands/init.js";
@@ -58,7 +59,7 @@ const pkg = JSON.parse(readFileSync(join(__dirname, "../package.json"), "utf-8")
 
 // Graceful handling of unhandled rejections (security audit MEDIUM-007)
 process.on("unhandledRejection", (reason) => {
-  const msg = reason instanceof Error ? reason.message : String(reason);
+  const msg = extractReason(reason);
   process.stderr.write(`Unhandled rejection: ${msg}\n`);
   process.exit(1);
 });
