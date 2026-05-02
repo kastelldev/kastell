@@ -72,6 +72,27 @@ export function registerFailedPlugin(
   });
 }
 
+export function deletePlugin(name: string): void {
+  const entry = PLUGIN_REGISTRY.get(name);
+  if (!entry) return;
+
+  usedPrefixes.delete(entry.manifest.checkPrefix);
+  for (const check of entry.checks) {
+    usedCheckIds.delete(check.id);
+  }
+  PLUGIN_REGISTRY.delete(name);
+}
+
+export function forEachRegistryPlugin<T>(
+  callback: (name: string, entry: PluginRegistryEntry) => T,
+): T[] {
+  const results: T[] = [];
+  for (const [name, entry] of PLUGIN_REGISTRY) {
+    results.push(callback(name, entry));
+  }
+  return results;
+}
+
 export function clearPluginRegistry(): void {
   PLUGIN_REGISTRY.clear();
   usedPrefixes.clear();

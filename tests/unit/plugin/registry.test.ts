@@ -19,6 +19,8 @@ import {
   getPluginRegistry,
   loadPluginCache,
   savePluginCache,
+  deletePlugin,
+  forEachRegistryPlugin,
 } from "../../../src/plugin/registry.js";
 import type { PluginManifest, PluginCheck } from "../../../src/plugin/sdk/types.js";
 
@@ -112,6 +114,54 @@ describe("plugin/registry", () => {
     it("returns empty map when no plugins", () => {
       const registry = getPluginRegistry();
       expect(registry.size).toBe(0);
+    });
+  });
+
+  describe("deletePlugin", () => {
+    it("removes plugin and cleans up prefix and check IDs", () => {
+      registerPlugin(mockManifest, mockChecks);
+      expect(getPluginRegistry().has("kastell-plugin-wordpress")).toBe(true);
+
+      deletePlugin("kastell-plugin-wordpress");
+
+      expect(getPluginRegistry().has("kastell-plugin-wordpress")).toBe(false);
+      registerPlugin(mockManifest, mockChecks);
+      expect(getPluginRegistry().has("kastell-plugin-wordpress")).toBe(true);
+    });
+
+    it("is a no-op for unknown plugin name", () => {
+      deletePlugin("kastell-plugin-unknown");
+      expect(getPluginRegistry().size).toBe(0);
+    });
+  });
+
+  describe("forEachRegistryPlugin", () => {
+    it("maps over all registered plugins", () => {
+      const otherManifest = { ...mockManifest, name: "kastell-plugin-other", checkPrefix: "OT" };
+      const otherChecks: PluginCheck[] = [
+        { ...mockChecks[0], id: "OT-ADMIN-URL" },
+        { ...mockChecks[0], id: "OT-OTHER-CHECK", name: "Other", checkCommand: "echo test" },
+      ];
+      registerPlugin(mockManifest, mockChecks);
+      registerPlugin(otherManifest, otherChecks);
+
+      const result = forEachRegistryPlugin((name, entry) => ({
+        name,
+        checks: entry.checks.length,
+      }));
+
+      expect(result).toHaveLength(2);
+      expect(result).toEqual(
+        expect.arrayContaining([
+          { name: "kastell-plugin-wordpress", checks: 1 },
+          { name: "kastell-plugin-other", checks: 2 },
+        ]),
+      );
+    });
+
+    it("returns empty array when no plugins registered", () => {
+      const result = forEachRegistryPlugin((name) => name);
+      expect(result).toEqual([]);
     });
   });
 });
