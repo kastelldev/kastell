@@ -6,6 +6,7 @@
  */
 
 import type {AuditCheck, CheckParser, Severity, FixTier} from "../types.js";
+import { CHECK_IDS } from "../checkIds.js";
 
 interface SupplyChainCheckDef {
   id: string;
@@ -13,14 +14,14 @@ interface SupplyChainCheckDef {
   severity: Severity;
   check: (output: string) => { passed: boolean; currentValue: string };
   expectedValue: string;
-  fixCommand: string;
+  fixCommand: string;
   safeToAutoFix?: FixTier;
   explain: string;
 }
 
 const SUPPLY_CHECKS: SupplyChainCheckDef[] = [
   {
-    id: "SUPPLY-APT-HTTPS-REPOS",
+    id: CHECK_IDS.SUPPLYCHAIN.SUPPLY_APT_HTTPS_REPOS,
     name: "APT Repositories Use HTTPS",
     severity: "critical",
     check: (output) => {
@@ -44,7 +45,7 @@ const SUPPLY_CHECKS: SupplyChainCheckDef[] = [
       "APT repositories using plain HTTP (not HTTPS) are vulnerable to man-in-the-middle attacks that could inject malicious packages. An attacker between the server and the mirror can replace legitimate packages with trojaned versions.",
   },
   {
-    id: "SUPPLY-GPG-KEYS-TRUSTED",
+    id: CHECK_IDS.SUPPLYCHAIN.SUPPLY_GPG_KEYS_TRUSTED,
     name: "APT Trusted GPG Keys Present",
     severity: "warning",
     check: (output) => {
@@ -73,7 +74,7 @@ const SUPPLY_CHECKS: SupplyChainCheckDef[] = [
       "APT package signature verification relies on trusted GPG keys in /etc/apt/trusted.gpg.d/. Without trusted keys, package authenticity cannot be verified and apt may install unsigned or improperly signed packages silently.",
   },
   {
-    id: "SUPPLY-NO-UNSIGNED-PACKAGES",
+    id: CHECK_IDS.SUPPLYCHAIN.SUPPLY_NO_UNSIGNED_PACKAGES,
     name: "No Unsigned APT Packages Installed",
     severity: "critical",
     check: (output) => {
@@ -102,7 +103,7 @@ const SUPPLY_CHECKS: SupplyChainCheckDef[] = [
       "Unsigned packages bypass APT's GPG verification, meaning they were not authenticated by any trusted key. Malicious actors could substitute unsigned packages during download or through compromised mirrors without detection.",
   },
   {
-    id: "SUPPLY-APT-KEY-DEPRECATED",
+    id: CHECK_IDS.SUPPLYCHAIN.SUPPLY_APT_KEY_DEPRECATED,
     name: "apt-key Not Used (Deprecated)",
     severity: "warning",
     check: (output) => {
@@ -127,7 +128,7 @@ const SUPPLY_CHECKS: SupplyChainCheckDef[] = [
       "apt-key is deprecated in Ubuntu 22.04+ and will be removed in future releases. It stores all keys in a single shared keyring (/etc/apt/trusted.gpg), meaning any trusted key can sign any package. Per-repository keys in trusted.gpg.d/ provide isolation.",
   },
   {
-    id: "SUPPLY-REPOS-SIGNED",
+    id: CHECK_IDS.SUPPLYCHAIN.SUPPLY_REPOS_SIGNED,
     name: "APT Repository Metadata Is Signed",
     severity: "warning",
     check: (output) => {
@@ -149,7 +150,7 @@ const SUPPLY_CHECKS: SupplyChainCheckDef[] = [
       "APT verifies repository metadata (Release/InRelease files) against GPG signatures before downloading package indexes. Unsigned or unverified repository metadata allows a compromised mirror to serve malicious package lists.",
   },
   {
-    id: "SUPPLY-GPG-VERIFY-OK",
+    id: CHECK_IDS.SUPPLYCHAIN.SUPPLY_GPG_VERIFY_OK,
     name: "GPG Signature Verification Operational",
     severity: "info",
     check: (output) => {
@@ -171,7 +172,7 @@ const SUPPLY_CHECKS: SupplyChainCheckDef[] = [
       "GPG verification operational status confirms that package signature checks are functioning correctly. Failed verification may indicate expired keys, missing keyrings, or a compromised keyring configuration.",
   },
   {
-    id: "SUPPLY-NO-UNAUTH-SOURCES",
+    id: CHECK_IDS.SUPPLYCHAIN.SUPPLY_NO_UNAUTH_SOURCES,
     name: "No Unauthorized Package Sources",
     severity: "warning",
     check: (output) => {
@@ -193,7 +194,7 @@ const SUPPLY_CHECKS: SupplyChainCheckDef[] = [
       "Unauthorized or unexpected package sources in APT configuration may indicate a supply chain compromise or misconfiguration. All package sources should be intentional, official, and properly signed by known keys.",
   },
   {
-    id: "SUPPLY-DPKG-AUDIT-CLEAN",
+    id: CHECK_IDS.SUPPLYCHAIN.SUPPLY_DPKG_AUDIT_CLEAN,
     name: "dpkg Audit Finds No Broken Packages",
     severity: "info",
     check: (output) => {
@@ -216,7 +217,7 @@ const SUPPLY_CHECKS: SupplyChainCheckDef[] = [
       "Broken or partially installed packages may indicate interrupted updates, package conflicts, or attempted supply chain attacks. dpkg --audit identifies packages in inconsistent states that could be leveraged by attackers or cause service failures.",
   },
   {
-    id: "SUPPLY-NO-INSECURE-REPOS",
+    id: CHECK_IDS.SUPPLYCHAIN.SUPPLY_NO_INSECURE_REPOS,
     name: "No AllowInsecureRepositories or AllowUnauthenticated in APT Config",
     severity: "warning",
     check: (output) => {
@@ -241,7 +242,7 @@ const SUPPLY_CHECKS: SupplyChainCheckDef[] = [
       "Allowing unauthenticated or insecure repositories enables package tampering via man-in-the-middle attacks.",
   },
   {
-    id: "SUPPLY-GPG-KEYS-PRESENT",
+    id: CHECK_IDS.SUPPLYCHAIN.SUPPLY_GPG_KEYS_PRESENT,
     name: "GPG Keys Present for Repository Verification",
     severity: "info",
     check: (output) => {
@@ -262,7 +263,7 @@ const SUPPLY_CHECKS: SupplyChainCheckDef[] = [
       "GPG keys in the trusted keyring ensure package integrity verification during apt operations.",
   },
   {
-    id: "SUPPLY-PACKAGE-VERIFY-CLEAN",
+    id: CHECK_IDS.SUPPLYCHAIN.SUPPLY_PACKAGE_VERIFY_CLEAN,
     name: "dpkg Package File Integrity Verified",
     severity: "warning",
     check: (output) => {
@@ -284,7 +285,7 @@ const SUPPLY_CHECKS: SupplyChainCheckDef[] = [
       "Modified package files may indicate rootkit installation or unauthorized system tampering.",
   },
   {
-    id: "SUPPLY-DEBSUMS-INSTALLED",
+    id: CHECK_IDS.SUPPLYCHAIN.SUPPLY_DEBSUMS_INSTALLED,
     name: "debsums Package Integrity Tool Installed",
     severity: "info",
     check: (output) => {
@@ -323,7 +324,7 @@ export const parseSupplyChainChecks: CheckParser = (
         passed: false,
         currentValue: "Unable to determine",
         expectedValue: def.expectedValue,
-        fixCommand: def.fixCommand,
+        fixCommand: def.fixCommand,
         safeToAutoFix: def.safeToAutoFix,
         explain: def.explain,
       };
@@ -337,7 +338,7 @@ export const parseSupplyChainChecks: CheckParser = (
       passed,
       currentValue,
       expectedValue: def.expectedValue,
-      fixCommand: def.fixCommand,
+      fixCommand: def.fixCommand,
       safeToAutoFix: def.safeToAutoFix,
       explain: def.explain,
     };

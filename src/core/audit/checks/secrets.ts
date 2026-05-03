@@ -6,6 +6,7 @@
  */
 
 import type {AuditCheck, CheckParser, Severity, FixTier} from "../types.js";
+import { CHECK_IDS } from "../checkIds.js";
 
 interface SecretsCheckDef {
   id: string;
@@ -13,14 +14,14 @@ interface SecretsCheckDef {
   severity: Severity;
   check: (output: string) => { passed: boolean; currentValue: string };
   expectedValue: string;
-  fixCommand: string;
+  fixCommand: string;
   safeToAutoFix?: FixTier;
   explain: string;
 }
 
 const SECRETS_CHECKS: SecretsCheckDef[] = [
   {
-    id: "SECRETS-ENV-WORLD-READABLE",
+    id: CHECK_IDS.SECRETS.SECRETS_ENV_WORLD_READABLE,
     name: "No World-Readable .env Files",
     severity: "critical",
     check: (output) => {
@@ -43,7 +44,7 @@ const SECRETS_CHECKS: SecretsCheckDef[] = [
       "World-readable .env files expose API keys, database credentials, and service secrets to any local user on the system. Attackers who obtain local code execution can read these files without privilege escalation.",
   },
   {
-    id: "SECRETS-SSH-KEY-PERMS",
+    id: CHECK_IDS.SECRETS.SECRETS_SSH_KEY_PERMS,
     name: "SSH Private Keys Not Overly Permissive",
     severity: "critical",
     check: (output) => {
@@ -78,7 +79,7 @@ const SECRETS_CHECKS: SecretsCheckDef[] = [
       "SSH private keys with permissions wider than 600 can be read by other users on the system, allowing impersonation and unauthorized access to remote hosts. SSH itself will refuse to use keys that are too permissive.",
   },
   {
-    id: "SECRETS-GIT-CONFIG-TOKEN",
+    id: CHECK_IDS.SECRETS.SECRETS_GIT_CONFIG_TOKEN,
     name: "No Tokens in Git Config",
     severity: "critical",
     check: (output) => {
@@ -102,7 +103,7 @@ const SECRETS_CHECKS: SecretsCheckDef[] = [
       "Tokens or passwords embedded in .git/config remote URLs (e.g., https://user:TOKEN@github.com/...) are stored in plaintext and readable by anyone with filesystem access to the repo directory.",
   },
   {
-    id: "SECRETS-ETC-PLAINTEXT-CRED",
+    id: CHECK_IDS.SECRETS.SECRETS_ETC_PLAINTEXT_CRED,
     name: "No Plaintext Credentials in /etc Configs",
     severity: "warning",
     check: (output) => {
@@ -129,7 +130,7 @@ const SECRETS_CHECKS: SecretsCheckDef[] = [
       "Config files in /etc containing plaintext passwords or tokens are readable by system services and privileged users. Credentials should be stored in a secrets manager or environment-specific vault, not in world-accessible config files.",
   },
   {
-    id: "SECRETS-ENV-IN-HOME",
+    id: CHECK_IDS.SECRETS.SECRETS_ENV_IN_HOME,
     name: "No Unprotected .env Files in Home Directories",
     severity: "warning",
     check: (output) => {
@@ -151,7 +152,7 @@ const SECRETS_CHECKS: SecretsCheckDef[] = [
       "Application .env files in user home directories may contain database passwords, API keys, and service tokens. Without proper permissions, these are readable by any local user on a shared system.",
   },
   {
-    id: "SECRETS-WORLD-READABLE-KEYS",
+    id: CHECK_IDS.SECRETS.SECRETS_WORLD_READABLE_KEYS,
     name: "No World-Readable Private Key Files",
     severity: "critical",
     check: (output) => {
@@ -173,7 +174,7 @@ const SECRETS_CHECKS: SecretsCheckDef[] = [
       "World-readable private keys (TLS keys, SSH keys, service keys) allow any local user to decrypt traffic, forge signatures, or authenticate as the key owner. This is a direct secret exfiltration risk.",
   },
   {
-    id: "SECRETS-AWS-CREDS-PERMS",
+    id: CHECK_IDS.SECRETS.SECRETS_AWS_CREDS_PERMS,
     name: "AWS Credentials File Not Overly Permissive",
     severity: "warning",
     check: (output) => {
@@ -195,7 +196,7 @@ const SECRETS_CHECKS: SecretsCheckDef[] = [
       "AWS credentials files (~/.aws/credentials) containing access keys must not be world-readable. Exposure allows any local user to enumerate and access cloud resources, potentially leading to data exfiltration or infrastructure compromise.",
   },
   {
-    id: "SECRETS-DOCKER-ENV-PERMS",
+    id: CHECK_IDS.SECRETS.SECRETS_DOCKER_ENV_PERMS,
     name: "Docker Compose .env Files Not World-Readable",
     severity: "warning",
     check: (output) => {
@@ -217,7 +218,7 @@ const SECRETS_CHECKS: SecretsCheckDef[] = [
       "Docker Compose .env files frequently contain database passwords, service tokens, and encryption keys injected as container environment variables. World-readable access exposes all application secrets to local users.",
   },
   {
-    id: "SECRETS-NPMRC-TOKEN",
+    id: CHECK_IDS.SECRETS.SECRETS_NPMRC_TOKEN,
     name: "No npm Auth Tokens in .npmrc",
     severity: "warning",
     check: (output) => {
@@ -239,7 +240,7 @@ const SECRETS_CHECKS: SecretsCheckDef[] = [
       "npm auth tokens in .npmrc files grant access to private npm registries and package publishing. World-readable .npmrc files expose these tokens to any local user, enabling package hijacking or credential theft.",
   },
   {
-    id: "SECRETS-SSH-AUTHORIZED-KEYS-PERMS",
+    id: CHECK_IDS.SECRETS.SECRETS_SSH_AUTHORIZED_KEYS_PERMS,
     name: "SSH authorized_keys Files Properly Restricted",
     severity: "info",
     check: (output) => {
@@ -262,7 +263,7 @@ const SECRETS_CHECKS: SecretsCheckDef[] = [
       "Group or world-writable authorized_keys files can be modified by unprivileged users to insert their own public key, granting them passwordless SSH access to the account. SSH enforces strict permission checks on this file.",
   },
   {
-    id: "SECRETS-NO-READABLE-HISTORY",
+    id: CHECK_IDS.SECRETS.SECRETS_NO_READABLE_HISTORY,
     name: "No World-Readable Bash History Files",
     severity: "warning",
     check: (output) => {
@@ -282,7 +283,7 @@ const SECRETS_CHECKS: SecretsCheckDef[] = [
       "World-readable bash history files expose previously typed commands including passwords and API tokens.",
   },
   {
-    id: "SECRETS-NO-SSH-AGENT-FORWARDING",
+    id: CHECK_IDS.SECRETS.SECRETS_NO_SSH_AGENT_FORWARDING,
     name: "SSH Agent Forwarding Not Globally Enabled",
     severity: "info",
     check: (output) => {
@@ -308,7 +309,7 @@ const SECRETS_CHECKS: SecretsCheckDef[] = [
       "SSH agent forwarding exposes the user's authentication agent to the remote server, enabling key hijacking.",
   },
   {
-    id: "SECRETS-NO-AWS-CREDS-PLAINTEXT",
+    id: CHECK_IDS.SECRETS.SECRETS_NO_AWS_CREDS_PLAINTEXT,
     name: "AWS Credential Files Not Exposed",
     severity: "warning",
     check: (output) => {
@@ -343,7 +344,7 @@ const SECRETS_CHECKS: SecretsCheckDef[] = [
       "AWS credential files with excessive permissions allow local users to steal cloud access keys for lateral movement.",
   },
   {
-    id: "SECRETS-NO-KUBECONFIG-EXPOSED",
+    id: CHECK_IDS.SECRETS.SECRETS_NO_KUBECONFIG_EXPOSED,
     name: "Kubeconfig Not Exposed",
     severity: "warning",
     check: (output) => {
@@ -380,7 +381,7 @@ const SECRETS_CHECKS: SecretsCheckDef[] = [
       "Exposed kubeconfig files contain cluster credentials that allow full Kubernetes cluster compromise.",
   },
   {
-    id: "SECRETS-NO-SHELL-RC-SECRETS",
+    id: CHECK_IDS.SECRETS.SECRETS_NO_SHELL_RC_SECRETS,
     name: "No Secrets Exported in Shell RC Files",
     severity: "warning",
     check: (output) => {
@@ -421,7 +422,7 @@ export const parseSecretsChecks: CheckParser = (
         passed: false,
         currentValue: "Unable to determine",
         expectedValue: def.expectedValue,
-        fixCommand: def.fixCommand,
+        fixCommand: def.fixCommand,
         safeToAutoFix: def.safeToAutoFix,
         explain: def.explain,
       };
@@ -435,7 +436,7 @@ export const parseSecretsChecks: CheckParser = (
       passed,
       currentValue,
       expectedValue: def.expectedValue,
-      fixCommand: def.fixCommand,
+      fixCommand: def.fixCommand,
       safeToAutoFix: def.safeToAutoFix,
       explain: def.explain,
     };

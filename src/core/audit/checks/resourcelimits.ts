@@ -9,6 +9,7 @@
  */
 
 import type {AuditCheck, CheckParser, Severity, FixTier} from "../types.js";
+import { CHECK_IDS } from "../checkIds.js";
 
 interface ResourceLimitsCheckDef {
   id: string;
@@ -16,14 +17,14 @@ interface ResourceLimitsCheckDef {
   severity: Severity;
   check: (output: string) => { passed: boolean; currentValue: string };
   expectedValue: string;
-  fixCommand: string;
+  fixCommand: string;
   safeToAutoFix?: FixTier;
   explain: string;
 }
 
 const RLIMIT_CHECKS: ResourceLimitsCheckDef[] = [
   {
-    id: "RLIMIT-CGROUPS-V2",
+    id: CHECK_IDS.RESOURCELIMITS.RLIMIT_CGROUPS_V2,
     name: "cgroups v2 Active",
     severity: "warning",
     check: (output) => {
@@ -42,7 +43,7 @@ const RLIMIT_CHECKS: ResourceLimitsCheckDef[] = [
       "cgroups v2 (unified hierarchy) provides superior resource isolation and control compared to cgroups v1. Its absence means container runtimes and systemd cannot enforce per-process CPU/memory limits reliably.",
   },
   {
-    id: "RLIMIT-NPROC-SOFT",
+    id: CHECK_IDS.RESOURCELIMITS.RLIMIT_NPROC_SOFT,
     name: "nproc Soft Limit Configured",
     severity: "warning",
     check: (output) => {
@@ -72,7 +73,7 @@ const RLIMIT_CHECKS: ResourceLimitsCheckDef[] = [
       "An unlimited nproc soft limit allows a single user to fork unlimited processes, enabling fork bomb attacks that exhaust the process table and cause system-wide denial of service.",
   },
   {
-    id: "RLIMIT-NPROC-HARD",
+    id: CHECK_IDS.RESOURCELIMITS.RLIMIT_NPROC_HARD,
     name: "nproc Hard Limit Configured",
     severity: "info",
     check: (output) => {
@@ -102,7 +103,7 @@ const RLIMIT_CHECKS: ResourceLimitsCheckDef[] = [
       "A hard nproc limit provides an upper bound that even privileged users cannot exceed without root intervention. Without it, soft limits can be trivially bypassed by any user process.",
   },
   {
-    id: "RLIMIT-THREADS-MAX",
+    id: CHECK_IDS.RESOURCELIMITS.RLIMIT_THREADS_MAX,
     name: "kernel.threads-max Configured",
     severity: "info",
     check: (output) => {
@@ -127,7 +128,7 @@ const RLIMIT_CHECKS: ResourceLimitsCheckDef[] = [
       "kernel.threads-max sets the system-wide maximum number of threads. Having it explicitly configured prevents an unbounded thread count that could exhaust kernel resources.",
   },
   {
-    id: "RLIMIT-LIMITS-CONF-NPROC",
+    id: CHECK_IDS.RESOURCELIMITS.RLIMIT_LIMITS_CONF_NPROC,
     name: "nproc Entries in /etc/security/limits.conf",
     severity: "info",
     check: (output) => {
@@ -146,7 +147,7 @@ const RLIMIT_CHECKS: ResourceLimitsCheckDef[] = [
       "Explicit nproc entries in /etc/security/limits.conf enforce process limits for PAM-authenticated sessions. Without them, default system limits apply which may be unlimited depending on the OS version.",
   },
   {
-    id: "RLIMIT-MAXLOGINS",
+    id: CHECK_IDS.RESOURCELIMITS.RLIMIT_MAXLOGINS,
     name: "maxlogins Configured in limits.conf",
     severity: "info",
     check: (output) => {
@@ -165,7 +166,7 @@ const RLIMIT_CHECKS: ResourceLimitsCheckDef[] = [
       "Setting maxlogins in /etc/security/limits.conf limits concurrent login sessions per user. This prevents a single compromised account from holding many simultaneous sessions for parallel attack operations.",
   },
   {
-    id: "RLIMIT-LIMITS-CONF-CONFIGURED",
+    id: CHECK_IDS.RESOURCELIMITS.RLIMIT_LIMITS_CONF_CONFIGURED,
     name: "/etc/security/limits.conf Has Active Entries",
     severity: "info",
     check: (output) => {
@@ -195,7 +196,7 @@ const RLIMIT_CHECKS: ResourceLimitsCheckDef[] = [
       "Configured resource limits in limits.conf prevent individual users from exhausting system resources in denial-of-service scenarios.",
   },
   {
-    id: "RLIMIT-NPROC-LIMITED",
+    id: CHECK_IDS.RESOURCELIMITS.RLIMIT_NPROC_LIMITED,
     name: "nproc Limit Set to Prevent Fork Bombs",
     severity: "warning",
     check: (output) => {
@@ -241,7 +242,7 @@ export const parseResourceLimitsChecks: CheckParser = (
         passed: false,
         currentValue: "Unable to determine",
         expectedValue: def.expectedValue,
-        fixCommand: def.fixCommand,
+        fixCommand: def.fixCommand,
         safeToAutoFix: def.safeToAutoFix,
         explain: def.explain,
       };
@@ -255,7 +256,7 @@ export const parseResourceLimitsChecks: CheckParser = (
       passed,
       currentValue,
       expectedValue: def.expectedValue,
-      fixCommand: def.fixCommand,
+      fixCommand: def.fixCommand,
       safeToAutoFix: def.safeToAutoFix,
       explain: def.explain,
     };

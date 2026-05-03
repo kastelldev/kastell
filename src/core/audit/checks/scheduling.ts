@@ -4,6 +4,7 @@
  */
 
 import type {AuditCheck, CheckParser, Severity, FixTier} from "../types.js";
+import { CHECK_IDS } from "../checkIds.js";
 
 interface SchedulingCheckDef {
   id: string;
@@ -11,14 +12,14 @@ interface SchedulingCheckDef {
   severity: Severity;
   check: (output: string) => { passed: boolean; currentValue: string };
   expectedValue: string;
-  fixCommand: string;
+  fixCommand: string;
   safeToAutoFix?: FixTier;
   explain: string;
 }
 
 const SCHEDULING_CHECKS: SchedulingCheckDef[] = [
   {
-    id: "SCHED-CRON-ACCESS-CONTROL",
+    id: CHECK_IDS.SCHEDULING.SCHED_CRON_ACCESS_CONTROL,
     name: "cron.allow Configured",
     severity: "warning",
     check: (output) => {
@@ -36,7 +37,7 @@ const SCHEDULING_CHECKS: SchedulingCheckDef[] = [
       "Using cron.allow restricts cron access to explicitly listed users, following the principle of least privilege.",
   },
   {
-    id: "SCHED-CRON-DENY",
+    id: CHECK_IDS.SCHEDULING.SCHED_CRON_DENY,
     name: "cron.deny Configured",
     severity: "info",
     check: (output) => {
@@ -53,7 +54,7 @@ const SCHEDULING_CHECKS: SchedulingCheckDef[] = [
       "The cron.deny file provides a secondary layer of access control by explicitly blocking specific users from cron.",
   },
   {
-    id: "SCHED-AT-ACCESS-CONTROL",
+    id: CHECK_IDS.SCHEDULING.SCHED_AT_ACCESS_CONTROL,
     name: "at.allow Configured",
     severity: "warning",
     check: (output) => {
@@ -70,7 +71,7 @@ const SCHEDULING_CHECKS: SchedulingCheckDef[] = [
       "Using at.allow restricts the 'at' scheduler to explicitly listed users, preventing unauthorized job scheduling.",
   },
   {
-    id: "SCHED-AT-DENY",
+    id: CHECK_IDS.SCHEDULING.SCHED_AT_DENY,
     name: "at.deny Configured",
     severity: "info",
     check: (output) => {
@@ -87,7 +88,7 @@ const SCHEDULING_CHECKS: SchedulingCheckDef[] = [
       "The at.deny file blocks specific users from scheduling one-time jobs, complementing at.allow.",
   },
   {
-    id: "SCHED-CRON-DIR-PERMS",
+    id: CHECK_IDS.SCHEDULING.SCHED_CRON_DIR_PERMS,
     name: "Cron Dirs Not World-Writable",
     severity: "warning",
     check: (output) => {
@@ -107,7 +108,7 @@ const SCHEDULING_CHECKS: SchedulingCheckDef[] = [
       "World-writable cron directories allow any user to inject scheduled tasks, enabling privilege escalation.",
   },
   {
-    id: "SCHED-CRONTAB-PERMS",
+    id: CHECK_IDS.SCHEDULING.SCHED_CRONTAB_PERMS,
     name: "/etc/crontab Restricted",
     severity: "warning",
     check: (output) => {
@@ -129,7 +130,7 @@ const SCHEDULING_CHECKS: SchedulingCheckDef[] = [
       "The system crontab must be restricted to root to prevent unauthorized modification of scheduled tasks.",
   },
   {
-    id: "SCHED-CRON-D-PERMS",
+    id: CHECK_IDS.SCHEDULING.SCHED_CRON_D_PERMS,
     name: "/etc/cron.d Restricted",
     severity: "info",
     check: (output) => {
@@ -150,7 +151,7 @@ const SCHEDULING_CHECKS: SchedulingCheckDef[] = [
       "The cron.d directory holds additional crontab files and should be restricted to prevent unauthorized job additions.",
   },
   {
-    id: "SCHED-CRON-DAILY-PERMS",
+    id: CHECK_IDS.SCHEDULING.SCHED_CRON_DAILY_PERMS,
     name: "/etc/cron.daily Restricted",
     severity: "info",
     check: (output) => {
@@ -171,7 +172,7 @@ const SCHEDULING_CHECKS: SchedulingCheckDef[] = [
       "Daily cron scripts directory should be restricted to prevent injection of persistent malicious scripts.",
   },
   {
-    id: "SCHED-CRONTAB-OWNER",
+    id: CHECK_IDS.SCHEDULING.SCHED_CRONTAB_OWNER,
     name: "/etc/crontab Owned by Root with Restricted Permissions",
     severity: "warning",
     check: (output) => {
@@ -196,7 +197,7 @@ const SCHEDULING_CHECKS: SchedulingCheckDef[] = [
       "Non-root owned or world-writable crontab files allow privilege escalation through scheduled job injection.",
   },
   {
-    id: "SCHED-NO-USER-CRONTABS",
+    id: CHECK_IDS.SCHEDULING.SCHED_NO_USER_CRONTABS,
     name: "No World-Writable Cron Directories",
     severity: "warning",
     check: (output) => {
@@ -216,7 +217,7 @@ const SCHEDULING_CHECKS: SchedulingCheckDef[] = [
       "World-writable cron directories allow any user to inject scheduled tasks for privilege escalation.",
   },
   {
-    id: "SCHED-CRON-D-FILE-COUNT",
+    id: CHECK_IDS.SCHEDULING.SCHED_CRON_D_FILE_COUNT,
     name: "cron.d File Count Reasonable",
     severity: "info",
     check: (output) => {
@@ -239,7 +240,7 @@ const SCHEDULING_CHECKS: SchedulingCheckDef[] = [
       "Excessive cron.d files indicate unmanaged scheduled tasks that may run with elevated privileges.",
   },
   {
-    id: "SCHED-NO-WORLD-READABLE-CRONTABS",
+    id: CHECK_IDS.SCHEDULING.SCHED_NO_WORLD_READABLE_CRONTABS,
     name: "No World-Readable User Crontabs",
     severity: "warning",
     check: (output) => {
@@ -282,7 +283,7 @@ export const parseSchedulingChecks: CheckParser = (
         passed: false,
         currentValue: "Unable to determine",
         expectedValue: def.expectedValue,
-        fixCommand: def.fixCommand,
+        fixCommand: def.fixCommand,
         safeToAutoFix: def.safeToAutoFix,
         explain: def.explain,
       };
@@ -296,7 +297,7 @@ export const parseSchedulingChecks: CheckParser = (
       passed,
       currentValue,
       expectedValue: def.expectedValue,
-      fixCommand: def.fixCommand,
+      fixCommand: def.fixCommand,
       safeToAutoFix: def.safeToAutoFix,
       explain: def.explain,
     };

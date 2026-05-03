@@ -4,6 +4,7 @@
  */
 
 import type {AuditCheck, CheckParser, Severity, FixTier} from "../types.js";
+import { CHECK_IDS } from "../checkIds.js";
 
 interface BootCheckDef {
   id: string;
@@ -11,7 +12,7 @@ interface BootCheckDef {
   severity: Severity;
   check: (output: string) => { passed: boolean; currentValue: string };
   expectedValue: string;
-  fixCommand: string;
+  fixCommand: string;
   safeToAutoFix?: FixTier;
   explain: string;
   vpsIrrelevant?: boolean;
@@ -19,7 +20,7 @@ interface BootCheckDef {
 
 const BOOT_CHECKS: BootCheckDef[] = [
   {
-    id: "BOOT-GRUB-PERMS",
+    id: CHECK_IDS.BOOT.BOOT_GRUB_PERMS,
     name: "Bootloader Config Restricted",
     severity: "warning",
     vpsIrrelevant: true,
@@ -41,7 +42,7 @@ const BOOT_CHECKS: BootCheckDef[] = [
       "A world-readable bootloader config can reveal kernel parameters and system configuration to local attackers.",
   },
   {
-    id: "BOOT-GRUB-PASSWORD",
+    id: CHECK_IDS.BOOT.BOOT_GRUB_PASSWORD,
     name: "GRUB Password Set",
     severity: "info",
     vpsIrrelevant: true,
@@ -59,7 +60,7 @@ const BOOT_CHECKS: BootCheckDef[] = [
       "Without a GRUB password, anyone with physical or console access can modify boot parameters to gain root access.",
   },
   {
-    id: "BOOT-SECURE-BOOT",
+    id: CHECK_IDS.BOOT.BOOT_SECURE_BOOT,
     name: "Secure Boot Status",
     severity: "info",
     vpsIrrelevant: true,
@@ -80,7 +81,7 @@ const BOOT_CHECKS: BootCheckDef[] = [
       "Secure Boot prevents loading unsigned kernel modules and bootloaders, protecting against rootkit installation.",
   },
   {
-    id: "BOOT-CMDLINE-SECURITY",
+    id: CHECK_IDS.BOOT.BOOT_CMDLINE_SECURITY,
     name: "Kernel Boot Security Parameters",
     severity: "info",
     check: (output) => {
@@ -100,7 +101,7 @@ const BOOT_CHECKS: BootCheckDef[] = [
       "Kernel boot parameters should enable mandatory access control frameworks to enforce security policies.",
   },
   {
-    id: "BOOT-GRUB-DIR-PERMS",
+    id: CHECK_IDS.BOOT.BOOT_GRUB_DIR_PERMS,
     name: "GRUB Directory Restricted",
     severity: "warning",
     vpsIrrelevant: true,
@@ -123,7 +124,7 @@ const BOOT_CHECKS: BootCheckDef[] = [
       "The GRUB configuration directory contains scripts that run at boot — restricting access prevents unauthorized boot modifications.",
   },
   {
-    id: "BOOT-BOOT-PARTITION",
+    id: CHECK_IDS.BOOT.BOOT_BOOT_PARTITION,
     name: "/boot Mount Options",
     severity: "info",
     vpsIrrelevant: true,
@@ -149,7 +150,7 @@ const BOOT_CHECKS: BootCheckDef[] = [
       "Restrictive mount options on /boot prevent execution of setuid binaries and device files from the boot partition.",
   },
   {
-    id: "BOOT-SINGLE-USER-AUTH",
+    id: CHECK_IDS.BOOT.BOOT_SINGLE_USER_AUTH,
     name: "Single User Mode Authentication",
     severity: "warning",
     vpsIrrelevant: true,
@@ -170,7 +171,7 @@ const BOOT_CHECKS: BootCheckDef[] = [
       "Without authentication in single-user mode, anyone with console access gets a root shell without a password.",
   },
   {
-    id: "BOOT-KERNEL-MODULES",
+    id: CHECK_IDS.BOOT.BOOT_KERNEL_MODULES,
     name: "Kernel Module Loading Restricted",
     severity: "info",
     check: (output) => {
@@ -191,7 +192,7 @@ const BOOT_CHECKS: BootCheckDef[] = [
       "Restricting kernel module loading after boot prevents attackers from loading rootkit kernel modules at runtime.",
   },
   {
-    id: "BOOT-UEFI-SECURE",
+    id: CHECK_IDS.BOOT.BOOT_UEFI_SECURE,
     name: "System Uses UEFI Boot",
     severity: "info",
     vpsIrrelevant: true,
@@ -209,7 +210,7 @@ const BOOT_CHECKS: BootCheckDef[] = [
       "UEFI boot supports Secure Boot which verifies bootloader integrity, preventing boot-level rootkits.",
   },
   {
-    id: "BOOT-RESCUE-AUTH",
+    id: CHECK_IDS.BOOT.BOOT_RESCUE_AUTH,
     name: "Rescue/Emergency Mode Requires Authentication",
     severity: "warning",
     vpsIrrelevant: true,
@@ -230,7 +231,7 @@ const BOOT_CHECKS: BootCheckDef[] = [
       "Without authentication on rescue mode, physical or console access grants immediate root shell.",
   },
   {
-    id: "BOOT-GRUB-UNRESTRICTED",
+    id: CHECK_IDS.BOOT.BOOT_GRUB_UNRESTRICTED,
     name: "GRUB Bootloader Has Password Authentication",
     severity: "info",
     vpsIrrelevant: true,
@@ -278,7 +279,7 @@ export const parseBootChecks: CheckParser = (
       passed,
       currentValue,
       expectedValue: def.expectedValue,
-      fixCommand: def.fixCommand,
+      fixCommand: def.fixCommand,
       safeToAutoFix: def.safeToAutoFix,
       explain: def.explain,
       ...(def.vpsIrrelevant !== undefined && { vpsIrrelevant: def.vpsIrrelevant }),

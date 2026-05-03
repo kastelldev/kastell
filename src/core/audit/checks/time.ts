@@ -4,6 +4,7 @@
  */
 
 import type {AuditCheck, CheckParser, Severity, FixTier} from "../types.js";
+import { CHECK_IDS } from "../checkIds.js";
 
 interface TimeCheckDef {
   id: string;
@@ -11,14 +12,14 @@ interface TimeCheckDef {
   severity: Severity;
   check: (output: string) => { passed: boolean; currentValue: string };
   expectedValue: string;
-  fixCommand: string;
+  fixCommand: string;
   safeToAutoFix?: FixTier;
   explain: string;
 }
 
 const TIME_CHECKS: TimeCheckDef[] = [
   {
-    id: "TIME-NTP-ACTIVE",
+    id: CHECK_IDS.TIME.TIME_NTP_ACTIVE,
     name: "NTP Service Running",
     severity: "warning",
     check: (output) => {
@@ -38,7 +39,7 @@ const TIME_CHECKS: TimeCheckDef[] = [
       "Time synchronization is critical for TLS certificate validation, log correlation, and security audit accuracy.",
   },
   {
-    id: "TIME-SYNCHRONIZED",
+    id: CHECK_IDS.TIME.TIME_SYNCHRONIZED,
     name: "Clock NTP Synchronized",
     severity: "warning",
     check: (output) => {
@@ -57,7 +58,7 @@ const TIME_CHECKS: TimeCheckDef[] = [
       "An unsynchronized clock causes TLS failures, incorrect log timestamps, and authentication token expiry issues.",
   },
   {
-    id: "TIME-TIMEZONE-SET",
+    id: CHECK_IDS.TIME.TIME_TIMEZONE_SET,
     name: "Timezone Configured",
     severity: "info",
     check: (output) => {
@@ -78,7 +79,7 @@ const TIME_CHECKS: TimeCheckDef[] = [
       "A configured timezone ensures consistent log timestamps across the infrastructure for incident correlation.",
   },
   {
-    id: "TIME-HWCLOCK-SYNC",
+    id: CHECK_IDS.TIME.TIME_HWCLOCK_SYNC,
     name: "Hardware Clock Readable",
     severity: "info",
     check: (output) => {
@@ -99,7 +100,7 @@ const TIME_CHECKS: TimeCheckDef[] = [
       "Hardware clock synchronization ensures the system maintains correct time across reboots.",
   },
   {
-    id: "TIME-CHRONY-SOURCES",
+    id: CHECK_IDS.TIME.TIME_CHRONY_SOURCES,
     name: "NTP Source Configured",
     severity: "info",
     check: (output) => {
@@ -122,7 +123,7 @@ const TIME_CHECKS: TimeCheckDef[] = [
       "A configured NTP source ensures the server synchronizes time from trusted upstream servers.",
   },
   {
-    id: "TIME-DRIFT-CHECK",
+    id: CHECK_IDS.TIME.TIME_DRIFT_CHECK,
     name: "Clock Drift Within Range",
     severity: "warning",
     check: (output) => {
@@ -153,7 +154,7 @@ const TIME_CHECKS: TimeCheckDef[] = [
       "Excessive clock drift causes Kerberos authentication failures, TLS errors, and unreliable security event timestamps.",
   },
   {
-    id: "TIME-NTP-PEERS-CONFIGURED",
+    id: CHECK_IDS.TIME.TIME_NTP_PEERS_CONFIGURED,
     name: "Multiple NTP Sources Configured",
     severity: "info",
     check: (output) => {
@@ -175,7 +176,7 @@ const TIME_CHECKS: TimeCheckDef[] = [
       "Multiple NTP sources provide redundancy and protect against time manipulation from a single compromised server.",
   },
   {
-    id: "TIME-NO-DRIFT",
+    id: CHECK_IDS.TIME.TIME_NO_DRIFT,
     name: "System Clock Synchronized",
     severity: "warning",
     check: (output) => {
@@ -196,7 +197,7 @@ const TIME_CHECKS: TimeCheckDef[] = [
       "Clock drift causes TLS certificate validation failures, log correlation errors, and authentication token expiry issues.",
   },
   {
-    id: "TIME-NTP-SYNCHRONIZED",
+    id: CHECK_IDS.TIME.TIME_NTP_SYNCHRONIZED,
     name: "NTP Synchronized via timedatectl show",
     severity: "warning",
     check: (output) => {
@@ -235,7 +236,7 @@ export const parseTimeChecks: CheckParser = (
         passed: false,
         currentValue: "Unable to determine",
         expectedValue: def.expectedValue,
-        fixCommand: def.fixCommand,
+        fixCommand: def.fixCommand,
         safeToAutoFix: def.safeToAutoFix,
         explain: def.explain,
       };
@@ -249,7 +250,7 @@ export const parseTimeChecks: CheckParser = (
       passed,
       currentValue,
       expectedValue: def.expectedValue,
-      fixCommand: def.fixCommand,
+      fixCommand: def.fixCommand,
       safeToAutoFix: def.safeToAutoFix,
       explain: def.explain,
     };

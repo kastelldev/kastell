@@ -5,6 +5,7 @@
  */
 
 import type {AuditCheck, CheckParser, Severity, FixTier} from "../types.js";
+import { CHECK_IDS } from "../checkIds.js";
 import { makeSkippedChecks } from "./shared/skipChecks.js";
 
 interface HttpHeaderCheckDef {
@@ -13,7 +14,7 @@ interface HttpHeaderCheckDef {
   severity: Severity;
   check: (output: string) => { passed: boolean; currentValue: string };
   expectedValue: string;
-  fixCommand: string;
+  fixCommand: string;
   safeToAutoFix?: FixTier;
   explain: string;
 }
@@ -22,7 +23,7 @@ const CATEGORY = "HTTP Security Headers";
 
 const HTTP_HEADER_CHECKS: HttpHeaderCheckDef[] = [
   {
-    id: "HDR-001",
+    id: CHECK_IDS.HTTPHEADERS.HDR_001,
     name: "X-Frame-Options or CSP frame-ancestors",
     severity: "warning",
     check: (output) => {
@@ -41,7 +42,7 @@ const HTTP_HEADER_CHECKS: HttpHeaderCheckDef[] = [
       "X-Frame-Options or CSP frame-ancestors prevents clickjacking attacks by restricting which sites can embed your pages in iframes. Without this header, attackers can overlay invisible iframes on legitimate sites to hijack user clicks and steal credentials or trigger unintended actions.",
   },
   {
-    id: "HDR-002",
+    id: CHECK_IDS.HTTPHEADERS.HDR_002,
     name: "X-Content-Type-Options: nosniff",
     severity: "warning",
     check: (output) => {
@@ -56,7 +57,7 @@ const HTTP_HEADER_CHECKS: HttpHeaderCheckDef[] = [
       "X-Content-Type-Options: nosniff prevents browsers from MIME-type sniffing, which can turn non-executable MIME types into executable content. Without this header, attackers can exploit MIME confusion to execute malicious scripts disguised as harmless file types like images or stylesheets.",
   },
   {
-    id: "HDR-003",
+    id: CHECK_IDS.HTTPHEADERS.HDR_003,
     name: "Referrer-Policy present",
     severity: "info",
     check: (output) => {
@@ -71,7 +72,7 @@ const HTTP_HEADER_CHECKS: HttpHeaderCheckDef[] = [
       "Referrer-Policy controls how much URL information the browser sends when navigating away from your site. Without this header, full URLs including query parameters, tokens, and internal paths may leak to third-party sites via the Referer header, potentially exposing sensitive data.",
   },
   {
-    id: "HDR-004",
+    id: CHECK_IDS.HTTPHEADERS.HDR_004,
     name: "Permissions-Policy present",
     severity: "info",
     check: (output) => {
@@ -87,7 +88,7 @@ const HTTP_HEADER_CHECKS: HttpHeaderCheckDef[] = [
       "Permissions-Policy restricts which browser features (camera, microphone, geolocation, payment) can be used by your site and embedded iframes. Without this header, malicious scripts or third-party iframes can silently access sensitive device APIs to record audio, track location, or initiate payments.",
   },
   {
-    id: "HDR-005",
+    id: CHECK_IDS.HTTPHEADERS.HDR_005,
     name: "No CORS Wildcard (Access-Control-Allow-Origin)",
     severity: "warning",
     check: (output) => {
@@ -105,7 +106,7 @@ const HTTP_HEADER_CHECKS: HttpHeaderCheckDef[] = [
       "Access-Control-Allow-Origin: * allows any website to make cross-origin requests to your server and read the responses. This enables credential theft, data exfiltration, and CSRF attacks from any malicious site. Always specify exact allowed origins instead of using the wildcard.",
   },
   {
-    id: "HDR-006",
+    id: CHECK_IDS.HTTPHEADERS.HDR_006,
     name: "Content-Security-Policy present",
     severity: "warning",
     check: (output) => {
@@ -147,7 +148,7 @@ export const parseHttpHeadersChecks: CheckParser = (
       passed,
       currentValue,
       expectedValue: def.expectedValue,
-      fixCommand: def.fixCommand,
+      fixCommand: def.fixCommand,
       safeToAutoFix: def.safeToAutoFix,
       explain: def.explain,
     };

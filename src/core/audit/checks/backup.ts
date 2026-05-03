@@ -5,6 +5,7 @@
  */
 
 import type {AuditCheck, CheckParser, Severity, FixTier} from "../types.js";
+import { CHECK_IDS } from "../checkIds.js";
 
 interface BackupCheckDef {
   id: string;
@@ -12,14 +13,14 @@ interface BackupCheckDef {
   severity: Severity;
   check: (output: string) => { passed: boolean; currentValue: string };
   expectedValue: string;
-  fixCommand: string;
+  fixCommand: string;
   safeToAutoFix?: FixTier;
   explain: string;
 }
 
 const BACKUP_CHECKS: BackupCheckDef[] = [
   {
-    id: "BACKUP-RECENT-BACKUP",
+    id: CHECK_IDS.BACKUP.BACKUP_RECENT_BACKUP,
     name: "Recent Kastell Backup Exists",
     severity: "warning",
     check: (output) => {
@@ -38,7 +39,7 @@ const BACKUP_CHECKS: BackupCheckDef[] = [
       "A recent backup in /root/.kastell/backups/ confirms that server configuration and data are being backed up regularly. Without a recent backup, data loss after a failure or compromise cannot be recovered.",
   },
   {
-    id: "BACKUP-ENCRYPTION-PRESENT",
+    id: CHECK_IDS.BACKUP.BACKUP_ENCRYPTION_PRESENT,
     name: "Backup Files Have Restricted Permissions",
     severity: "warning",
     check: (output) => {
@@ -66,7 +67,7 @@ const BACKUP_CHECKS: BackupCheckDef[] = [
       "Backup files may contain sensitive configuration, credentials, or database dumps. Restricting permissions to 600/640 owned by root prevents other users from reading or modifying backup data.",
   },
   {
-    id: "BACKUP-SCRIPT-PERMS",
+    id: CHECK_IDS.BACKUP.BACKUP_SCRIPT_PERMS,
     name: "Backup Scripts Not World-Writable",
     severity: "warning",
     check: (output) => {
@@ -85,7 +86,7 @@ const BACKUP_CHECKS: BackupCheckDef[] = [
       "World-writable backup scripts allow any local user to inject arbitrary code that runs as root during scheduled backups, providing an easy privilege escalation vector.",
   },
   {
-    id: "BACKUP-TOOL-INSTALLED",
+    id: CHECK_IDS.BACKUP.BACKUP_TOOL_INSTALLED,
     name: "Backup Tool Installed",
     severity: "info",
     check: (output) => {
@@ -105,7 +106,7 @@ const BACKUP_CHECKS: BackupCheckDef[] = [
       "A dedicated backup tool (rsync, borg, or restic) enables reliable, incremental, and verifiable backups. Its absence suggests backups may not be performed or rely on ad-hoc scripts with limited reliability.",
   },
   {
-    id: "BACKUP-CRON-JOB",
+    id: CHECK_IDS.BACKUP.BACKUP_CRON_JOB,
     name: "Scheduled Backup Job Configured",
     severity: "info",
     check: (output) => {
@@ -124,7 +125,7 @@ const BACKUP_CHECKS: BackupCheckDef[] = [
       "A scheduled cron backup job ensures backups run automatically without manual intervention. Without it, backups depend on manual execution and are likely to be missed.",
   },
   {
-    id: "BACKUP-VAR-BACKUPS",
+    id: CHECK_IDS.BACKUP.BACKUP_VAR_BACKUPS,
     name: "/var/backups Exists and Has Content",
     severity: "info",
     check: (output) => {
@@ -143,7 +144,7 @@ const BACKUP_CHECKS: BackupCheckDef[] = [
       "/var/backups is the standard system backup location on Debian/Ubuntu systems. Its presence with content indicates system configuration and package state are being preserved for recovery purposes.",
   },
   {
-    id: "BKUP-ENCRYPTED-BACKUPS",
+    id: CHECK_IDS.BACKUP.BKUP_ENCRYPTED_BACKUPS,
     name: "Backup Files Are Encrypted",
     severity: "info",
     check: (output) => {
@@ -165,7 +166,7 @@ const BACKUP_CHECKS: BackupCheckDef[] = [
       "Unencrypted backup files expose sensitive data if backup storage is compromised.",
   },
   {
-    id: "BKUP-BACKUP-TOOL-INSTALLED",
+    id: CHECK_IDS.BACKUP.BKUP_BACKUP_TOOL_INSTALLED,
     name: "Backup Tool Installed",
     severity: "info",
     check: (output) => {
@@ -209,7 +210,7 @@ export const parseBackupChecks: CheckParser = (
         passed: false,
         currentValue: "Unable to determine",
         expectedValue: def.expectedValue,
-        fixCommand: def.fixCommand,
+        fixCommand: def.fixCommand,
         safeToAutoFix: def.safeToAutoFix,
         explain: def.explain,
       };
@@ -223,7 +224,7 @@ export const parseBackupChecks: CheckParser = (
       passed,
       currentValue,
       expectedValue: def.expectedValue,
-      fixCommand: def.fixCommand,
+      fixCommand: def.fixCommand,
       safeToAutoFix: def.safeToAutoFix,
       explain: def.explain,
     };

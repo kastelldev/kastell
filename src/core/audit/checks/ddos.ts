@@ -5,6 +5,7 @@
  */
 
 import type { AuditCheck, CheckParser } from "../types.js";
+import { CHECK_IDS } from "../checkIds.js";
 import { extractSysctlValue } from "./shared/sysctl.js";
 
 const CATEGORY = "DDoS Hardening";
@@ -17,7 +18,7 @@ export const parseDdosChecks: CheckParser = (sectionOutput: string, platform: st
   // DDOS-SYN-BACKLOG: net.ipv4.tcp_max_syn_backlog >= 2048
   const synBacklog = extractSysctlValue(output, "net.ipv4.tcp_max_syn_backlog");
   const ddosSynBacklog: AuditCheck = {
-    id: "DDOS-SYN-BACKLOG",
+    id: CHECK_IDS.DDOS.DDOS_SYN_BACKLOG,
     category: CATEGORY,
     name: "TCP SYN Backlog Queue Size",
     severity: "warning",
@@ -38,7 +39,7 @@ export const parseDdosChecks: CheckParser = (sectionOutput: string, platform: st
   // DDOS-SYNACK-RETRIES: net.ipv4.tcp_synack_retries <= 3
   const synackRetries = extractSysctlValue(output, "net.ipv4.tcp_synack_retries");
   const ddosSynackRetries: AuditCheck = {
-    id: "DDOS-SYNACK-RETRIES",
+    id: CHECK_IDS.DDOS.DDOS_SYNACK_RETRIES,
     category: CATEGORY,
     name: "TCP SYNACK Retry Count Limited",
     severity: "warning",
@@ -59,7 +60,7 @@ export const parseDdosChecks: CheckParser = (sectionOutput: string, platform: st
   // DDOS-FIN-TIMEOUT: net.ipv4.tcp_fin_timeout <= 30
   const finTimeout = extractSysctlValue(output, "net.ipv4.tcp_fin_timeout");
   const ddosFinTimeout: AuditCheck = {
-    id: "DDOS-FIN-TIMEOUT",
+    id: CHECK_IDS.DDOS.DDOS_FIN_TIMEOUT,
     category: CATEGORY,
     name: "TCP FIN Timeout Reduced",
     severity: "warning",
@@ -80,7 +81,7 @@ export const parseDdosChecks: CheckParser = (sectionOutput: string, platform: st
   // DDOS-TW-REUSE: net.ipv4.tcp_tw_reuse = 1 (but Docker platforms are exempt)
   const twReuse = extractSysctlValue(output, "net.ipv4.tcp_tw_reuse");
   const ddosTwReuse: AuditCheck = {
-    id: "DDOS-TW-REUSE",
+    id: CHECK_IDS.DDOS.DDOS_TW_REUSE,
     category: CATEGORY,
     name: "TCP TIME_WAIT Reuse Enabled",
     severity: "info",
@@ -104,7 +105,7 @@ export const parseDdosChecks: CheckParser = (sectionOutput: string, platform: st
   // DDOS-ICMP-RATELIMIT: net.ipv4.icmp_ratelimit <= 1000
   const icmpRatelimit = extractSysctlValue(output, "net.ipv4.icmp_ratelimit");
   const ddosIcmpRatelimit: AuditCheck = {
-    id: "DDOS-ICMP-RATELIMIT",
+    id: CHECK_IDS.DDOS.DDOS_ICMP_RATELIMIT,
     category: CATEGORY,
     name: "ICMP Rate Limiting Configured",
     severity: "info",
@@ -125,7 +126,7 @@ export const parseDdosChecks: CheckParser = (sectionOutput: string, platform: st
   // DDOS-ICMP-BOGUS: net.ipv4.icmp_ignore_bogus_error_responses = 1
   const icmpBogus = extractSysctlValue(output, "net.ipv4.icmp_ignore_bogus_error_responses");
   const ddosIcmpBogus: AuditCheck = {
-    id: "DDOS-ICMP-BOGUS",
+    id: CHECK_IDS.DDOS.DDOS_ICMP_BOGUS,
     category: CATEGORY,
     name: "Bogus ICMP Error Responses Ignored",
     severity: "info",
@@ -146,7 +147,7 @@ export const parseDdosChecks: CheckParser = (sectionOutput: string, platform: st
   // DDOS-SOMAXCONN: net.core.somaxconn >= 1024
   const somaxconn = extractSysctlValue(output, "net.core.somaxconn");
   const ddosSomaxconn: AuditCheck = {
-    id: "DDOS-SOMAXCONN",
+    id: CHECK_IDS.DDOS.DDOS_SOMAXCONN,
     category: CATEGORY,
     name: "Socket Listen Backlog (somaxconn) Size",
     severity: "warning",
@@ -167,7 +168,7 @@ export const parseDdosChecks: CheckParser = (sectionOutput: string, platform: st
   // DDOS-SYN-RETRIES: net.ipv4.tcp_syn_retries <= 3
   const synRetries = extractSysctlValue(output, "net.ipv4.tcp_syn_retries");
   const ddosSynRetries: AuditCheck = {
-    id: "DDOS-SYN-RETRIES",
+    id: CHECK_IDS.DDOS.DDOS_SYN_RETRIES,
     category: CATEGORY,
     name: "TCP SYN Retry Count Limited",
     severity: "info",

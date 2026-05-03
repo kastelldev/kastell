@@ -5,6 +5,7 @@
  */
 
 import type {AuditCheck, CheckParser, Severity, FixTier} from "../types.js";
+import { CHECK_IDS } from "../checkIds.js";
 
 interface IncidentReadyCheckDef {
   id: string;
@@ -12,14 +13,14 @@ interface IncidentReadyCheckDef {
   severity: Severity;
   check: (output: string) => { passed: boolean; currentValue: string };
   expectedValue: string;
-  fixCommand: string;
+  fixCommand: string;
   safeToAutoFix?: FixTier;
   explain: string;
 }
 
 const INCIDENT_CHECKS: IncidentReadyCheckDef[] = [
   {
-    id: "INCIDENT-AUDITD-INSTALLED",
+    id: CHECK_IDS.INCIDENTREADY.INCIDENT_AUDITD_INSTALLED,
     name: "auditd Package Installed",
     severity: "warning",
     check: (output) => {
@@ -38,7 +39,7 @@ const INCIDENT_CHECKS: IncidentReadyCheckDef[] = [
       "auditd is the Linux Audit daemon that records security-relevant events such as file access, system calls, and authentication attempts. Without it, forensic investigation after an incident has no kernel-level audit trail.",
   },
   {
-    id: "INCIDENT-AUDITD-RUNNING",
+    id: CHECK_IDS.INCIDENTREADY.INCIDENT_AUDITD_RUNNING,
     name: "auditd Service Running",
     severity: "warning",
     check: (output) => {
@@ -57,7 +58,7 @@ const INCIDENT_CHECKS: IncidentReadyCheckDef[] = [
       "Installing auditd without running it provides no protection. The auditd service must be active to collect audit events in real time, enabling detection of unauthorized access or configuration changes.",
   },
   {
-    id: "INCIDENT-AUDITD-PASSWD-RULE",
+    id: CHECK_IDS.INCIDENTREADY.INCIDENT_AUDITD_PASSWD_RULE,
     name: "Audit Rule for /etc/passwd",
     severity: "warning",
     check: (output) => {
@@ -86,7 +87,7 @@ const INCIDENT_CHECKS: IncidentReadyCheckDef[] = [
       "An audit rule watching /etc/passwd detects unauthorized user account modifications. Without this rule, an attacker can add backdoor accounts or modify existing ones without leaving any kernel-level audit evidence.",
   },
   {
-    id: "INCIDENT-AUDITD-SUDO-RULE",
+    id: CHECK_IDS.INCIDENTREADY.INCIDENT_AUDITD_SUDO_RULE,
     name: "Audit Rule for sudo/sudoers",
     severity: "info",
     check: (output) => {
@@ -116,7 +117,7 @@ const INCIDENT_CHECKS: IncidentReadyCheckDef[] = [
       "Auditing sudoers configuration changes ensures any privilege escalation modifications are recorded. Combined with /etc/passwd monitoring, this forms a baseline identity and access audit trail.",
   },
   {
-    id: "INCIDENT-LOG-FORWARDING",
+    id: CHECK_IDS.INCIDENTREADY.INCIDENT_LOG_FORWARDING,
     name: "Log Forwarding Service Active",
     severity: "info",
     check: (output) => {
@@ -137,7 +138,7 @@ const INCIDENT_CHECKS: IncidentReadyCheckDef[] = [
       "Log forwarding to a remote SIEM or log aggregator ensures that audit logs survive a system compromise. An attacker with root access can delete local logs; remote forwarding preserves the evidence.",
   },
   {
-    id: "INCIDENT-LAST-ACCESSIBLE",
+    id: CHECK_IDS.INCIDENTREADY.INCIDENT_LAST_ACCESSIBLE,
     name: "Login History Accessible (last/wtmp)",
     severity: "info",
     check: (output) => {
@@ -156,7 +157,7 @@ const INCIDENT_CHECKS: IncidentReadyCheckDef[] = [
       "The wtmp file records all login and logout events. During incident response, last command output is the first step to understanding who has accessed the system and when. An inaccessible wtmp impedes forensics.",
   },
   {
-    id: "INCIDENT-LASTB-ACCESSIBLE",
+    id: CHECK_IDS.INCIDENTREADY.INCIDENT_LASTB_ACCESSIBLE,
     name: "Failed Login History Accessible (lastb/btmp)",
     severity: "info",
     check: (output) => {
@@ -175,7 +176,7 @@ const INCIDENT_CHECKS: IncidentReadyCheckDef[] = [
       "The btmp file records failed login attempts, which is critical evidence of brute force or credential stuffing attacks. Without it, failed authentication attempts leave no persistent record on the system.",
   },
   {
-    id: "INCIDENT-WTMP-ROTATION",
+    id: CHECK_IDS.INCIDENTREADY.INCIDENT_WTMP_ROTATION,
     name: "wtmp/btmp Log Rotation Configured",
     severity: "info",
     check: (output) => {
@@ -194,7 +195,7 @@ const INCIDENT_CHECKS: IncidentReadyCheckDef[] = [
       "Log rotation for wtmp and btmp prevents unbounded growth that could fill the filesystem. Properly rotated and compressed logs also make historical login analysis feasible during incident investigation.",
   },
   {
-    id: "INCID-WTMP-EXISTS",
+    id: CHECK_IDS.INCIDENTREADY.INCID_WTMP_EXISTS,
     name: "wtmp Login Record File Exists",
     severity: "warning",
     check: (output) => {
@@ -214,7 +215,7 @@ const INCIDENT_CHECKS: IncidentReadyCheckDef[] = [
       "wtmp records all login/logout events; its absence prevents forensic analysis of unauthorized access.",
   },
   {
-    id: "INCID-BTMP-EXISTS",
+    id: CHECK_IDS.INCIDENTREADY.INCID_BTMP_EXISTS,
     name: "btmp Failed Login Record File Exists",
     severity: "warning",
     check: (output) => {
@@ -234,7 +235,7 @@ const INCIDENT_CHECKS: IncidentReadyCheckDef[] = [
       "btmp records failed login attempts; its absence prevents detection of brute-force attack patterns.",
   },
   {
-    id: "INCID-FORENSIC-TOOLS",
+    id: CHECK_IDS.INCIDENTREADY.INCID_FORENSIC_TOOLS,
     name: "Forensic Tools Pre-installed",
     severity: "info",
     check: (output) => {
@@ -255,7 +256,7 @@ const INCIDENT_CHECKS: IncidentReadyCheckDef[] = [
       "Having forensic tools pre-installed enables rapid incident response without contaminating the compromised system with new package installations.",
   },
   {
-    id: "INCID-LOG-ARCHIVE-EXISTS",
+    id: CHECK_IDS.INCIDENTREADY.INCID_LOG_ARCHIVE_EXISTS,
     name: "Recent Archived Log Files Present",
     severity: "info",
     check: (output) => {
@@ -299,7 +300,7 @@ export const parseIncidentReadyChecks: CheckParser = (
         passed: false,
         currentValue: "Unable to determine",
         expectedValue: def.expectedValue,
-        fixCommand: def.fixCommand,
+        fixCommand: def.fixCommand,
         safeToAutoFix: def.safeToAutoFix,
         explain: def.explain,
       };
@@ -313,7 +314,7 @@ export const parseIncidentReadyChecks: CheckParser = (
       passed,
       currentValue,
       expectedValue: def.expectedValue,
-      fixCommand: def.fixCommand,
+      fixCommand: def.fixCommand,
       safeToAutoFix: def.safeToAutoFix,
       explain: def.explain,
     };

@@ -4,6 +4,7 @@
  */
 
 import type {AuditCheck, CheckParser, Severity, FixTier} from "../types.js";
+import { CHECK_IDS } from "../checkIds.js";
 
 interface BannersCheckDef {
   id: string;
@@ -11,14 +12,14 @@ interface BannersCheckDef {
   severity: Severity;
   check: (output: string) => { passed: boolean; currentValue: string };
   expectedValue: string;
-  fixCommand: string;
+  fixCommand: string;
   safeToAutoFix?: FixTier;
   explain: string;
 }
 
 const BANNERS_CHECKS: BannersCheckDef[] = [
   {
-    id: "BANNER-ISSUE-EXISTS",
+    id: CHECK_IDS.BANNERS.BANNER_ISSUE_EXISTS,
     name: "/etc/issue Login Banner Exists",
     severity: "info",
     check: (output) => {
@@ -42,7 +43,7 @@ const BANNERS_CHECKS: BannersCheckDef[] = [
       "A login banner provides legal notice to potential intruders, which may be required for prosecution in some jurisdictions.",
   },
   {
-    id: "BANNER-ISSUE-NET-EXISTS",
+    id: CHECK_IDS.BANNERS.BANNER_ISSUE_NET_EXISTS,
     name: "/etc/issue.net Banner Exists",
     severity: "info",
     check: (output) => {
@@ -64,7 +65,7 @@ const BANNERS_CHECKS: BannersCheckDef[] = [
       "The issue.net file provides a pre-login banner for network services like SSH, serving as a legal deterrent.",
   },
   {
-    id: "BANNER-MOTD-EXISTS",
+    id: CHECK_IDS.BANNERS.BANNER_MOTD_EXISTS,
     name: "/etc/motd Message of the Day Exists",
     severity: "info",
     check: (output) => {
@@ -84,7 +85,7 @@ const BANNERS_CHECKS: BannersCheckDef[] = [
       "The message of the day is shown after login and can remind users of security policies and acceptable use.",
   },
   {
-    id: "BANNER-SSH-BANNER",
+    id: CHECK_IDS.BANNERS.BANNER_SSH_BANNER,
     name: "SSH Warning Banner Configured",
     severity: "info",
     check: (output) => {
@@ -108,7 +109,7 @@ const BANNERS_CHECKS: BannersCheckDef[] = [
       "An SSH banner displays a warning message before authentication, providing legal notice and deterring unauthorized access.",
   },
   {
-    id: "BANNER-NO-OS-INFO",
+    id: CHECK_IDS.BANNERS.BANNER_NO_OS_INFO,
     name: "Banners Hide OS Version Info",
     severity: "info",
     check: (output) => {
@@ -130,7 +131,7 @@ const BANNERS_CHECKS: BannersCheckDef[] = [
       "OS version disclosure in banners helps attackers identify specific vulnerabilities for the server's distribution and version.",
   },
   {
-    id: "BNR-ISSUE-NET-SET",
+    id: CHECK_IDS.BANNERS.BNR_ISSUE_NET_SET,
     name: "/etc/issue.net Contains a Warning Banner",
     severity: "info",
     check: (output) => {
@@ -179,7 +180,7 @@ export const parseBannersChecks: CheckParser = (
         passed: false,
         currentValue: "Unable to determine",
         expectedValue: def.expectedValue,
-        fixCommand: def.fixCommand,
+        fixCommand: def.fixCommand,
         safeToAutoFix: def.safeToAutoFix,
         explain: def.explain,
       };
@@ -193,7 +194,7 @@ export const parseBannersChecks: CheckParser = (
       passed,
       currentValue,
       expectedValue: def.expectedValue,
-      fixCommand: def.fixCommand,
+      fixCommand: def.fixCommand,
       safeToAutoFix: def.safeToAutoFix,
       explain: def.explain,
     };

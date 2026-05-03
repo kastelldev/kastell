@@ -7,6 +7,7 @@
  */
 
 import type {AuditCheck, CheckParser, Severity, FixTier} from "../types.js";
+import { CHECK_IDS } from "../checkIds.js";
 
 interface CloudMetaCheckDef {
   id: string;
@@ -14,14 +15,14 @@ interface CloudMetaCheckDef {
   severity: Severity;
   check: (output: string) => { passed: boolean; currentValue: string };
   expectedValue: string;
-  fixCommand: string;
+  fixCommand: string;
   safeToAutoFix?: FixTier;
   explain: string;
 }
 
 const CLOUDMETA_CHECKS: CloudMetaCheckDef[] = [
   {
-    id: "CLOUDMETA-ENDPOINT-BLOCKED",
+    id: CHECK_IDS.CLOUDMETA.CLOUDMETA_ENDPOINT_BLOCKED,
     name: "Metadata Endpoint Not Publicly Accessible",
     severity: "critical",
     check: (output) => {
@@ -43,7 +44,7 @@ const CLOUDMETA_CHECKS: CloudMetaCheckDef[] = [
       "The cloud IMDS (Instance Metadata Service) at 169.254.169.254 exposes IAM credentials, SSH keys, and instance identity tokens. If accessible to all processes, any compromised application can steal cloud credentials. Block with iptables for all non-root processes.",
   },
   {
-    id: "CLOUDMETA-INIT-LOG-CLEAN",
+    id: CHECK_IDS.CLOUDMETA.CLOUDMETA_INIT_LOG_CLEAN,
     name: "Cloud-Init Logs Free of Credentials",
     severity: "warning",
     check: (output) => {
@@ -68,7 +69,7 @@ const CLOUDMETA_CHECKS: CloudMetaCheckDef[] = [
       "Cloud-init logs (/var/log/cloud-init.log) can persist bootstrap credentials passed as user-data or config-drive scripts. If user-data included passwords or tokens, they may be readable in these logs by any user with log access.",
   },
   {
-    id: "CLOUDMETA-IMDSV2-ENFORCED",
+    id: CHECK_IDS.CLOUDMETA.CLOUDMETA_IMDSV2_ENFORCED,
     name: "IMDSv2 Session-Oriented API Enforced (AWS)",
     severity: "warning",
     check: (output) => {
@@ -90,7 +91,7 @@ const CLOUDMETA_CHECKS: CloudMetaCheckDef[] = [
       "AWS IMDSv1 is vulnerable to SSRF attacks — any application-level SSRF can fetch IAM role credentials from the metadata service. IMDSv2 requires a session token obtained via a PUT request, which SSRF cannot perform due to HTTP redirect restrictions.",
   },
   {
-    id: "CLOUDMETA-SENSITIVE-ENV-NOT-IN-CLOUDINIT",
+    id: CHECK_IDS.CLOUDMETA.CLOUDMETA_SENSITIVE_ENV_NOT_IN_CLOUDINIT,
     name: "Sensitive Data Not Passed via Cloud-Init User Data",
     severity: "info",
     check: (output) => {
@@ -113,7 +114,7 @@ const CLOUDMETA_CHECKS: CloudMetaCheckDef[] = [
       "Embedding secrets directly in cloud-init user data stores them in the instance metadata at /user-data, readable by any process that can access the IMDS endpoint. Use a secrets manager and fetch credentials at runtime instead.",
   },
   {
-    id: "CLOUDMETA-VPC-METADATA-FIREWALL",
+    id: CHECK_IDS.CLOUDMETA.CLOUDMETA_VPC_METADATA_FIREWALL,
     name: "VPC Security Group or Firewall Restricts Metadata Access",
     severity: "info",
     check: (output) => {
@@ -136,7 +137,7 @@ const CLOUDMETA_CHECKS: CloudMetaCheckDef[] = [
       "Even with IMDSv2 enabled, restricting metadata endpoint access by process UID using iptables provides defense-in-depth. This prevents compromised non-root services from enumerating instance metadata or acquiring temporary credentials.",
   },
   {
-    id: "CLOUDMETA-IMDSV1-DISABLED",
+    id: CHECK_IDS.CLOUDMETA.CLOUDMETA_IMDSV1_DISABLED,
     name: "IMDSv1 Not Accessible (Only IMDSv2 Works)",
     severity: "info",
     check: (output) => {
@@ -188,7 +189,7 @@ export const parseCloudMetaChecks: CheckParser = (
       passed,
       currentValue,
       expectedValue: def.expectedValue,
-      fixCommand: def.fixCommand,
+      fixCommand: def.fixCommand,
       safeToAutoFix: def.safeToAutoFix,
       explain: def.explain,
     };
