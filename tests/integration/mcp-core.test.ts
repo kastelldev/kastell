@@ -13,7 +13,7 @@
 // Mock I/O boundaries before imports
 jest.mock("../../src/utils/config.js");
 jest.mock("../../src/core/audit/index.js");
-jest.mock("../../src/core/lock.js");
+jest.mock("../../src/core/lock/index.js");
 jest.mock("../../src/core/manage.js");
 jest.mock("../../src/core/provision.js");
 jest.mock("../../src/core/status.js");
@@ -28,7 +28,7 @@ jest.mock("../../src/mcp/utils.js", () => ({
 
 import * as configUtils from "../../src/utils/config.js";
 import * as coreAudit from "../../src/core/audit/index.js";
-import * as coreLock from "../../src/core/lock.js";
+import * as coreLock from "../../src/core/lock/index.js";
 import * as coreManage from "../../src/core/manage.js";
 import * as coreProvision from "../../src/core/provision.js";
 import * as coreStatus from "../../src/core/status.js";

@@ -1,10 +1,10 @@
 import * as config from "../../src/utils/config";
-import * as lockCore from "../../src/core/lock";
+import * as lockCore from "../../src/core/lock/index.js";
 import { handleServerLock } from "../../src/mcp/tools/serverLock";
 import * as manage from "../../src/core/manage";
 
 jest.mock("../../src/utils/config");
-jest.mock("../../src/core/lock");
+jest.mock("../../src/core/lock/index.js");
 jest.mock("../../src/core/manage", () => ({
   ...jest.requireActual("../../src/core/manage"),
   isSafeMode: jest.fn().mockReturnValue(false),

@@ -24,7 +24,7 @@ jest.mock("../../src/core/doctor");
 jest.mock("../../src/core/evidence");
 jest.mock("../../src/core/fleet");
 jest.mock("../../src/core/guard");
-jest.mock("../../src/core/lock");
+jest.mock("../../src/core/lock/index.js");
 jest.mock("../../src/core/logs");
 jest.mock("../../src/core/maintain");
 jest.mock("../../src/core/manage");

@@ -24,8 +24,8 @@ import {
   buildFaillockCommand,
   buildSudoHardeningCommand,
   applyLock,
-} from "../../src/core/lock";
-import type { LockResult } from "../../src/core/lock";
+} from "../../src/core/lock/index.js";
+import type { LockResult } from "../../src/core/lock/index.js";
 
 jest.mock("../../src/utils/ssh");
 jest.mock("../../src/core/audit/index");

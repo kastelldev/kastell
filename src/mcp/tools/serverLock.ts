@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { getServers } from "../../utils/config.js";
-import { applyLock } from "../../core/lock.js";
+import { applyLock } from "../../core/lock/index.js";
 import {
   resolveServerForMcp,
   mcpSuccess,

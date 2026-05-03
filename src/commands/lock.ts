@@ -2,8 +2,8 @@ import inquirer from "inquirer";
 import { resolveServer } from "../utils/serverSelect.js";
 import { checkSshAvailable } from "../utils/ssh.js";
 import { logger, createSpinner } from "../utils/logger.js";
-import { applyLock } from "../core/lock.js";
-import type { LockStepResult } from "../core/lock.js";
+import { applyLock } from "../core/lock/index.js";
+import type { LockStepResult } from "../core/lock/index.js";
 
 const groups: Array<{
   label: string;

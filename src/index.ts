@@ -8,7 +8,7 @@ import { checkForUpdate } from "./utils/updateCheck.js";
 import { migrateConfigIfNeeded } from "./utils/migration.js";
 import { extractReason } from "./utils/errors.js";
 import { loadPlugins } from "./plugin/loader.js";
-import { interactiveMenu } from "./commands/interactive.js";
+import { interactiveMenu } from "./commands/interactive/index.js";
 import { initCommand } from "./commands/init.js";
 import { listCommand } from "./commands/list.js";
 import { statusCommand } from "./commands/status.js";

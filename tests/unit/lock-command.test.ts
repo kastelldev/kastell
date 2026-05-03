@@ -1,14 +1,14 @@
 import * as sshUtils from "../../src/utils/ssh";
 import * as serverSelectModule from "../../src/utils/serverSelect";
-import * as lockModule from "../../src/core/lock";
+import * as lockModule from "../../src/core/lock/index.js";
 import * as loggerModule from "../../src/utils/logger";
 import { lockCommand } from "../../src/commands/lock";
-import type { LockResult } from "../../src/core/lock";
+import type { LockResult } from "../../src/core/lock/index.js";
 import type { ServerRecord } from "../../src/types/index";
 
 jest.mock("../../src/utils/ssh");
 jest.mock("../../src/utils/serverSelect");
-jest.mock("../../src/core/lock");
+jest.mock("../../src/core/lock/index.js");
 jest.mock("../../src/utils/logger");
 
 const mockedSsh = sshUtils as jest.Mocked<typeof sshUtils>;

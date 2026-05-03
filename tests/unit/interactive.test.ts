@@ -1,5 +1,5 @@
 import inquirer from "inquirer";
-import { interactiveMenu, buildSearchSource } from "../../src/commands/interactive";
+import { interactiveMenu, buildSearchSource } from "../../src/commands/interactive/index.js";
 
 jest.mock("inquirer");
 
