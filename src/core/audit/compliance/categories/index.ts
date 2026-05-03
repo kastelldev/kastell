@@ -239,77 +239,77 @@ export const COMPLIANCE_MAP: Record<string, ComplianceRef[]> = {
     pci("10.2.1", "Implement audit logs", "partial"),
     hipaa("§164.312(b)", "Audit controls", "partial"),
   ],
-  "LOG-AUTH-LOG-PRESENT": [
+  [CHECK_IDS.LOGGING.LOG_AUTH_LOG_PRESENT]: [
     cis("4.2.1.5", "Ensure rsyslog is configured to send logs to a remote log host", "partial"),
     pci("10.2.1", "Implement audit logs", "partial"),
   ],
-  "LOG-ROTATION-CONFIGURED": [cis("4.2.3", "Ensure logrotate is configured", "full")],
-  "LOG-REMOTE-LOGGING": [
+  [CHECK_IDS.LOGGING.LOG_ROTATION_CONFIGURED]: [cis("4.2.3", "Ensure logrotate is configured", "full")],
+  [CHECK_IDS.LOGGING.LOG_REMOTE_LOGGING]: [
     cis("4.2.1.5", "Ensure rsyslog is configured to send logs to a remote log host", "full"),
     pci("10.3.3", "Protect audit logs from modification", "partial"),
     hipaa("§164.312(b)", "Audit controls - offsite preservation", "partial"),
   ],
-  "LOG-AUDIT-DAEMON": [
+  [CHECK_IDS.LOGGING.LOG_AUDIT_DAEMON]: [
     cis("4.1.1.1", "Ensure auditd is installed", "full"),
     pci("10.2.1", "Implement audit logs", "partial"),
     hipaa("§164.312(b)", "Audit controls", "partial"),
   ],
-  "LOG-AUDITD-ACTIVE": [
+  [CHECK_IDS.LOGGING.LOG_AUDITD_ACTIVE]: [
     cis("4.1.1.2", "Ensure auditd service is enabled", "full"),
     pci("10.2.1", "Implement audit logs", "partial"),
     hipaa("§164.312(b)", "Audit controls", "partial"),
   ],
-  "LOG-AUDIT-LOGIN-RULES": [
+  [CHECK_IDS.LOGGING.LOG_AUDIT_LOGIN_RULES]: [
     cis("4.1.3.1", "Ensure changes to system administration scope (sudoers) is collected", "full", "L2"),
     hipaa("§164.312(b)", "Audit controls", "partial"),
   ],
-  "LOG-AUDIT-SUDO-RULES": [
+  [CHECK_IDS.LOGGING.LOG_AUDIT_SUDO_RULES]: [
     cis("4.1.3.2", "Ensure actions as another user are always logged", "full", "L2"),
     hipaa("§164.312(b)", "Audit controls", "partial"),
   ],
-  "LOG-AUDIT-FILE-RULES": [
+  [CHECK_IDS.LOGGING.LOG_AUDIT_FILE_RULES]: [
     cis("4.1.3.5", "Ensure events that modify the system's network environment are collected", "full", "L2"),
     hipaa("§164.312(b)", "Audit controls", "partial"),
   ],
-  "LOG-VARLOG-PERMISSIONS": [cis("4.2.2.1", "Ensure journald is configured to send logs to rsyslog", "partial")],
-  "LOG-CENTRAL-LOGGING": [
+  [CHECK_IDS.LOGGING.LOG_VARLOG_PERMISSIONS]: [cis("4.2.2.1", "Ensure journald is configured to send logs to rsyslog", "partial")],
+  [CHECK_IDS.LOGGING.LOG_CENTRAL_LOGGING]: [
     cis("4.2.1.5", "Ensure rsyslog is configured to send logs to a remote log host", "partial"),
     pci("10.3.3", "Protect audit logs from modification", "partial"),
   ],
-  "LOG-SECURE-JOURNAL": [cis("4.2.2.2", "Ensure journald is configured to compress large log files", "partial")],
-  "LOG-NO-WORLD-READABLE-LOGS": [cis("4.2.2.3", "Ensure journald is configured to write logfiles to persistent disk", "partial")],
-  "LOG-SYSLOG-REMOTE": [
+  [CHECK_IDS.LOGGING.LOG_SECURE_JOURNAL]: [cis("4.2.2.2", "Ensure journald is configured to compress large log files", "partial")],
+  [CHECK_IDS.LOGGING.LOG_NO_WORLD_READABLE_LOGS]: [cis("4.2.2.3", "Ensure journald is configured to write logfiles to persistent disk", "partial")],
+  [CHECK_IDS.LOGGING.LOG_SYSLOG_REMOTE]: [
     cis("4.2.1.5", "Ensure rsyslog is configured to send logs to a remote log host", "full"),
     pci("10.3.3", "Protect audit logs from modification", "partial"),
     hipaa("§164.312(b)", "Audit controls - offsite preservation", "partial"),
   ],
-  "LOG-LOGROTATE-ACTIVE": [cis("4.2.3", "Ensure logrotate is configured", "full")],
-  "LOG-AUDIT-WATCH-COUNT": [cis("4.1.3.7", "Ensure file deletion events by users are collected", "full", "L2")],
-  "LOG-AUDITD-SPACE-ACTION": [cis("4.1.1.3", "Ensure auditing for processes that start prior to auditd is enabled", "partial")],
+  [CHECK_IDS.LOGGING.LOG_LOGROTATE_ACTIVE]: [cis("4.2.3", "Ensure logrotate is configured", "full")],
+  [CHECK_IDS.LOGGING.LOG_AUDIT_WATCH_COUNT]: [cis("4.1.3.7", "Ensure file deletion events by users are collected", "full", "L2")],
+  [CHECK_IDS.LOGGING.LOG_AUDITD_SPACE_ACTION]: [cis("4.1.1.3", "Ensure auditing for processes that start prior to auditd is enabled", "partial")],
 
   // ─── Accounts (CIS 5.5.x, 6.2.x) ────────────────────────────────────────
-  "ACCT-NO-EXTRA-UID0": [cis("6.2.3", "Ensure root is the only UID 0 account", "full")],
-  "ACCT-NO-EMPTY-PASSWORD": [cis("6.2.1", "Ensure accounts in /etc/passwd use shadowed passwords", "full")],
-  "ACCT-NO-RHOSTS": [cis("6.2.8", "Ensure users' dot files are not group or world writable", "partial")],
-  "ACCT-HOSTS-EQUIV": [cis("6.2.8", "Ensure users' dot files are not group or world writable", "partial")],
-  "ACCT-NO-NETRC": [cis("6.2.9", "Ensure no users have .netrc files", "full")],
-  "ACCT-NO-FORWARD": [cis("6.2.10", "Ensure no users have .forward files", "full")],
-  "ACCT-SYSTEM-SHELL": [cis("6.2.6", "Ensure no legacy '+' entries exist in /etc/passwd", "partial")],
-  "ACCT-ROOT-HOME-PERMS": [cis("6.2.8", "Ensure root PATH integrity", "partial")],
-  "ACCT-NO-DUPLICATE-UID": [cis("6.2.4", "Ensure no duplicate UIDs exist", "full")],
-  "ACCT-HOME-OWNERSHIP": [cis("6.2.7", "Ensure users' home directories permissions are 750 or more restrictive", "partial")],
-  "ACCT-SHADOW-PERMS": [cis("6.1.3", "Ensure permissions on /etc/shadow are configured", "full")],
-  "ACCT-MAX-PASSWORD-DAYS": [cis("5.5.1.1", "Ensure password expiration is 365 days or less", "full")],
-  "ACCT-MIN-PASSWORD-DAYS": [cis("5.5.1.2", "Ensure minimum days between password changes is 1 or more", "full")],
-  "ACCT-INACTIVE-LOCK": [cis("5.5.1.4", "Ensure inactive password lock is 30 days or less", "full")],
-  "ACCT-DEFAULT-UMASK": [cis("5.5.5", "Ensure default user umask is 027 or more restrictive", "full")],
-  "ACCT-NO-EMPTY-HOME": [cis("6.2.7", "Ensure users' home directories permissions are 750 or more restrictive", "partial")],
-  "ACCT-INACTIVE-ACCOUNTS": [cis("5.5.1.4", "Ensure inactive password lock is 30 days or less", "partial")],
-  "ACCT-TOTAL-USERS-REASONABLE": [cis("6.2.2", "Ensure /etc/shadow password fields are not empty", "partial")],
-  "ACCT-NO-WORLD-WRITABLE-HOME": [cis("6.2.7", "Ensure users' home directories permissions are 750 or more restrictive", "full")],
-  "ACCT-LOGIN-DEFS-UID-MAX": [cis("5.5.3", "Ensure system accounts are secured", "partial")],
-  "ACCT-LOGIN-SHELL-AUDIT": [cis("5.5.3", "Ensure system accounts are secured", "full")],
-  "ACCT-GID-CONSISTENCY": [cis("6.2.5", "Ensure no duplicate GIDs exist", "full")],
+  [CHECK_IDS.ACCOUNTS.ACCT_NO_EXTRA_UID0]: [cis("6.2.3", "Ensure root is the only UID 0 account", "full")],
+  [CHECK_IDS.ACCOUNTS.ACCT_NO_EMPTY_PASSWORD]: [cis("6.2.1", "Ensure accounts in /etc/passwd use shadowed passwords", "full")],
+  [CHECK_IDS.ACCOUNTS.ACCT_NO_RHOSTS]: [cis("6.2.8", "Ensure users' dot files are not group or world writable", "partial")],
+  [CHECK_IDS.ACCOUNTS.ACCT_HOSTS_EQUIV]: [cis("6.2.8", "Ensure users' dot files are not group or world writable", "partial")],
+  [CHECK_IDS.ACCOUNTS.ACCT_NO_NETRC]: [cis("6.2.9", "Ensure no users have .netrc files", "full")],
+  [CHECK_IDS.ACCOUNTS.ACCT_NO_FORWARD]: [cis("6.2.10", "Ensure no users have .forward files", "full")],
+  [CHECK_IDS.ACCOUNTS.ACCT_SYSTEM_SHELL]: [cis("6.2.6", "Ensure no legacy '+' entries exist in /etc/passwd", "partial")],
+  [CHECK_IDS.ACCOUNTS.ACCT_ROOT_HOME_PERMS]: [cis("6.2.8", "Ensure root PATH integrity", "partial")],
+  [CHECK_IDS.ACCOUNTS.ACCT_NO_DUPLICATE_UID]: [cis("6.2.4", "Ensure no duplicate UIDs exist", "full")],
+  [CHECK_IDS.ACCOUNTS.ACCT_HOME_OWNERSHIP]: [cis("6.2.7", "Ensure users' home directories permissions are 750 or more restrictive", "partial")],
+  [CHECK_IDS.ACCOUNTS.ACCT_SHADOW_PERMS]: [cis("6.1.3", "Ensure permissions on /etc/shadow are configured", "full")],
+  [CHECK_IDS.ACCOUNTS.ACCT_MAX_PASSWORD_DAYS]: [cis("5.5.1.1", "Ensure password expiration is 365 days or less", "full")],
+  [CHECK_IDS.ACCOUNTS.ACCT_MIN_PASSWORD_DAYS]: [cis("5.5.1.2", "Ensure minimum days between password changes is 1 or more", "full")],
+  [CHECK_IDS.ACCOUNTS.ACCT_INACTIVE_LOCK]: [cis("5.5.1.4", "Ensure inactive password lock is 30 days or less", "full")],
+  [CHECK_IDS.ACCOUNTS.ACCT_DEFAULT_UMASK]: [cis("5.5.5", "Ensure default user umask is 027 or more restrictive", "full")],
+  [CHECK_IDS.ACCOUNTS.ACCT_NO_EMPTY_HOME]: [cis("6.2.7", "Ensure users' home directories permissions are 750 or more restrictive", "partial")],
+  [CHECK_IDS.ACCOUNTS.ACCT_INACTIVE_ACCOUNTS]: [cis("5.5.1.4", "Ensure inactive password lock is 30 days or less", "partial")],
+  [CHECK_IDS.ACCOUNTS.ACCT_TOTAL_USERS_REASONABLE]: [cis("6.2.2", "Ensure /etc/shadow password fields are not empty", "partial")],
+  [CHECK_IDS.ACCOUNTS.ACCT_NO_WORLD_WRITABLE_HOME]: [cis("6.2.7", "Ensure users' home directories permissions are 750 or more restrictive", "full")],
+  [CHECK_IDS.ACCOUNTS.ACCT_LOGIN_DEFS_UID_MAX]: [cis("5.5.3", "Ensure system accounts are secured", "partial")],
+  [CHECK_IDS.ACCOUNTS.ACCT_LOGIN_SHELL_AUDIT]: [cis("5.5.3", "Ensure system accounts are secured", "full")],
+  [CHECK_IDS.ACCOUNTS.ACCT_GID_CONSISTENCY]: [cis("6.2.5", "Ensure no duplicate GIDs exist", "full")],
 
   // ─── Services (CIS 2.1-2.6) ────────────────────────────────────────────────
   [CHECK_IDS.SERVICES.SVC_NO_TELNET]: [
@@ -634,14 +634,14 @@ export const COMPLIANCE_MAP: Record<string, ComplianceRef[]> = {
   [CHECK_IDS.SUPPLYCHAIN.SUPPLY_GPG_KEYS_TRUSTED]: [pci("6.3.3", "Supply chain integrity", "partial")],
 
   // ─── Docker (PCI-DSS 2.x) ────────────────────────────────────────────────
-  "DCK-ROOTLESS-MODE": [pci("2.2.5", "Container security configuration", "partial")],
+  [CHECK_IDS.DOCKER.DCK_ROOTLESS_MODE]: [pci("2.2.5", "Container security configuration", "partial")],
   [CHECK_IDS.DOCKER.DCK_NO_PRIVILEGED]: [pci("2.2.5", "Container security configuration", "partial")],
-  "DCK-APPARMOR-PROFILE": [pci("2.2.5", "Container security configuration", "partial")],
+  [CHECK_IDS.DOCKER.DCK_APPARMOR_PROFILE]: [pci("2.2.5", "Container security configuration", "partial")],
   [CHECK_IDS.DOCKER.DCK_NO_HOST_NETWORK]: [pci("2.2.5", "Container security configuration", "partial")],
-  "DCK-PID-MODE": [pci("2.2.5", "Container security configuration", "partial")],
-  "DCK-SECCOMP-ENABLED": [pci("2.2.5", "Container security configuration", "partial")],
-  "DCK-READ-ONLY-ROOTFS": [pci("2.2.5", "Container security configuration", "partial")],
-  "DCK-NO-HOST-NETWORK-INSPECT": [pci("2.2.5", "Container security configuration", "partial")],
+  [CHECK_IDS.DOCKER.DCK_PID_MODE]: [pci("2.2.5", "Container security configuration", "partial")],
+  [CHECK_IDS.DOCKER.DCK_SECCOMP_ENABLED]: [pci("2.2.5", "Container security configuration", "partial")],
+  [CHECK_IDS.DOCKER.DCK_READ_ONLY_ROOTFS]: [pci("2.2.5", "Container security configuration", "partial")],
+  [CHECK_IDS.DOCKER.DCK_NO_HOST_NETWORK_INSPECT]: [pci("2.2.5", "Container security configuration", "partial")],
 
   // ─── Incident Readiness (PCI-DSS 10.x + HIPAA 164.312(b)) ───────────────
   [CHECK_IDS.INCIDENTREADY.INCIDENT_AUDITD_RUNNING]: [
