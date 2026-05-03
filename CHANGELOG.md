@@ -2,6 +2,56 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.0] - 2026-05-03
+
+### Added
+- **Plugin Ecosystem** — third-party audit check plugins via `kastell-plugin-*` npm packages
+  - `kastell plugin install/remove/list/validate` CLI commands
+  - `server_plugin` MCP tool (list + validate actions)
+  - Plugin SDK types (`PluginManifest`, `PluginCheck`, `PluginSeverity`, `PluginFixTier`)
+  - Manifest validation with Zod + semver compatibility check
+  - Plugin loader with collision detection, cache, and startup integration
+  - Bash/Zsh/Fish completions for plugin commands
+  - Example plugins: `kastell-plugin-wordpress` (3 checks), `kastell-plugin-auditor` (2 checks)
+- **`--include-forbidden` flag** — run FORBIDDEN tier fixes with per-fix confirmation prompt
+- **`--auto-fix --schedule` pipeline** — combines doctor diagnosis + fix application on a cron schedule (DOC-04)
+- **Fix session logging** — per-command execution log with stdout/stderr and duration in `FixHistoryEntry` (AH-03)
+- **Doctor fix history merge** — doctor fix results persisted to `fix-history.json` audit trail (DOC-02)
+- **FORBIDDEN rawCommand handler** — shows dangerous commands to user with confirmation before execution (DOC-03)
+
+### Changed
+- **CHECK_IDS constants** — all 481 audit check IDs migrated from string literals to typed const object (`CHECK_IDS.SSH.PASSWORD_AUTH` etc.), zero string literals remain in src/ or tests/
+- **`extractReason` shared helper** — replaces 18 inline `instanceof Error ? .message : String()` patterns across codebase
+- **`createMockProcess` shared helper** — unified test mock for spawn processes with stderr support, replaces 3 inline duplicates
+- **`executeSingleFix` extraction** — shared fix execution logic between safe and forbidden paths with backup support
+- **`compliance/mapper.ts` split** — category-based sub-modules (`categories/index.ts` barrel) for maintainability (DEF-06)
+- **`buildFirewallSetupCommand` merge** — bare firewall command merged into single function (DEF-07)
+- **Plugin list dynamic columns** — table sizing adapts to terminal width
+- **Plugin install UX** — name validation before confirmation prompt (not after)
+- **`PLUGIN_NAME_PATTERN`** — single source of truth in `sdk/constants.ts`
+- **`mapRegistryPlugins` helper** — replaces inline registry iteration in list/validate/loader
+
+### Fixed
+- **Backup idempotent** — first-writer-wins prevents SAFE/FORBIDDEN backup overwrite on repeated fix runs
+- **Plugin remove ghost check** — `deletePlugin` + cache update instead of full reload prevents stale entries
+- **Plugin install shell injection** — VERSION_PATTERN + name validation closes injection vector
+- **Windows npm spawn** — Node 24 `shell:true` DEP0190 fix via joined command string
+- **Commander.js `--version` collision** — renamed to `--ver` flag for plugin version display
+- **Notify completions restore** — bash completions case label fix (append, not replace)
+- **Doctor `--schedule` validation** — requires `--auto-fix` flag, rejects invalid combinations
+
+### Security
+- **Plugin loader path traversal guard** — resolve+startsWith prevents directory escape (SEC-08)
+- **Snapshot path traversal guard** — loadSnapshot validates path stays within snapshots dir (SEC-09)
+- **`server_lock` MCP destructiveHint** — marked as destructive for client-side gating (SEC-10)
+- **SHELL_METACHAR duplicate fix** — removed duplicate `&` from regex (SEC-11)
+- **CI expression injection fix** — `inputs.server_size` and `inputs.concurrency` moved to `env:` (SEC-07)
+
+### Stats
+- 10401 tests (267 suites, 14 snapshots), coverage 96.33%
+- 100 files changed across 6 phases (P124-P129)
+- 35+ commits (30 Minimax + 5 Opus fix/simplify)
+
 ## [2.1.0] - 2026-04-28
 
 ### Added
