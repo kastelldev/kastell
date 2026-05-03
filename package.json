@@ -1,6 +1,6 @@
 {
   "name": "kastell",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "CLI toolkit for provisioning, securing, and managing self-hosted servers",
   "type": "module",
   "main": "dist/index.js",
