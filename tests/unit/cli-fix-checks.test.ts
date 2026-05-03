@@ -177,4 +177,49 @@ describe("CLI fix --checks", () => {
 
     expect(mockRunForbiddenFixes).toHaveBeenCalledWith("1.2.3.4", forbiddenFix);
   });
+
+  it("calls backupFilesBeforeFix for forbidden fixes before runForbiddenFixes", async () => {
+    const mockPreview = jest.requireMock("../../src/core/audit/fix.js").previewSafeFixes;
+    const mockRunForbidden = jest.requireMock("../../src/core/audit/fix.js").runForbiddenFixes;
+    const mockBackup = jest.requireMock("../../src/core/audit/fix-history.js").backupFilesBeforeFix;
+
+    mockBackup.mockClear();
+    mockRunForbidden.mockClear();
+    mockRunForbidden.mockResolvedValueOnce({ applied: [], skipped: [], errors: [], executionLog: [] });
+
+    mockPreview.mockReturnValueOnce({
+      safePlan: { groups: [{ checks: [{ id: "KERN-SYNCOOKIES", name: "t", severity: "warning", category: "Kernel", tier: "SAFE", impact: 5 }] }] },
+      guardedCount: 0, forbiddenCount: 1, guardedIds: [],
+      forbiddenFixes: [{ checkId: CHECK_IDS.SSH.SSH_ROOT_LOGIN, command: "echo test", tier: "FORBIDDEN" as const }],
+    });
+
+    await fixSafeCommand("test-srv", { safe: true, dryRun: false, force: true, interactive: false } as any);
+
+    // backupFilesBeforeFix called twice: once for SAFE, once for FORBIDDEN
+    expect(mockBackup).toHaveBeenCalledTimes(2);
+    // Second call has forbidden fix commands
+    expect(mockBackup.mock.calls[1][2]).toEqual([{ checkId: CHECK_IDS.SSH.SSH_ROOT_LOGIN, fixCommand: "echo test" }]);
+    expect(mockRunForbidden).toHaveBeenCalled();
+  });
+
+  it("merges forbidden applied into re-audit gate", async () => {
+    const mockPreview = jest.requireMock("../../src/core/audit/fix.js").previewSafeFixes;
+    const mockRunForbidden = jest.requireMock("../../src/core/audit/fix.js").runForbiddenFixes;
+    const mockReAudit = jest.requireMock("../../src/core/audit/fix.js").runPostFixReAudit;
+
+    mockRunForbidden.mockResolvedValueOnce({
+      applied: [CHECK_IDS.SSH.SSH_ROOT_LOGIN], skipped: [], errors: [], executionLog: [],
+    });
+    mockReAudit.mockResolvedValueOnce({ overallScore: 72 });
+
+    mockPreview.mockReturnValueOnce({
+      safePlan: { groups: [{ checks: [] }] },
+      guardedCount: 0, forbiddenCount: 1, guardedIds: [],
+      forbiddenFixes: [{ checkId: CHECK_IDS.SSH.SSH_ROOT_LOGIN, command: "echo test", tier: "FORBIDDEN" as const }],
+    });
+
+    await fixSafeCommand("test-srv", { safe: true, dryRun: false, force: true, interactive: false } as any);
+
+    expect(mockReAudit).toHaveBeenCalled();
+  });
 });
