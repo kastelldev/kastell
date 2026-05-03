@@ -504,6 +504,7 @@ export async function fixSafeCommand(
   // Apply FORBIDDEN fixes if requested (per-fix confirmation)
   if (forbiddenFixes?.length && !options.dryRun) {
     logger.info(`${forbiddenFixes.length} FORBIDDEN fix(es) available (per-fix confirmation required):`);
+    // Reuses same fixId — SAFE+FORBIDDEN backups accumulate in one dir (rollback is per-session)
     const forbiddenCommands = forbiddenFixes.map(f => ({ checkId: f.checkId, fixCommand: f.command }));
     await backupFilesBeforeFix(ip, fixId, forbiddenCommands);
     const forbiddenResult = await runForbiddenFixes(ip, forbiddenFixes);
