@@ -4,6 +4,7 @@
  */
 
 import type { AuditCheck, CheckParser } from "../types.js";
+import { CHECK_IDS } from "../checkIds.js";
 
 export const parseAuthChecks: CheckParser = (sectionOutput: string, _platform: string): AuditCheck[] => {
   const isNA = !sectionOutput || sectionOutput.trim() === "N/A" || sectionOutput.trim() === "";
@@ -18,7 +19,7 @@ export const parseAuthChecks: CheckParser = (sectionOutput: string, _platform: s
   // AUTH-NO-NOPASSWD-ALL: No NOPASSWD: ALL in sudoers
   const hasNopasswdAll = /NOPASSWD:\s*ALL/i.test(output);
   const auth01: AuditCheck = {
-    id: "AUTH-NO-NOPASSWD-ALL",
+    id: CHECK_IDS.AUTH.AUTH_NO_NOPASSWD_ALL,
     category: "Auth",
     name: "No Passwordless Sudo (ALL)",
     severity: "critical",
@@ -38,7 +39,7 @@ export const parseAuthChecks: CheckParser = (sectionOutput: string, _platform: s
   const passMaxMatch = output.match(/PASS_MAX_DAYS\s+(\d+)/);
   const passMaxDays = passMaxMatch ? parseInt(passMaxMatch[1], 10) : null;
   const auth02: AuditCheck = {
-    id: "AUTH-PASSWORD-AGING",
+    id: CHECK_IDS.AUTH.AUTH_PASSWORD_AGING,
     category: "Auth",
     name: "Password Aging Policy",
     severity: "info",
@@ -76,7 +77,7 @@ export const parseAuthChecks: CheckParser = (sectionOutput: string, _platform: s
     }
   }
   const auth03: AuditCheck = {
-    id: "AUTH-NO-EMPTY-PASSWORDS",
+    id: CHECK_IDS.AUTH.AUTH_NO_EMPTY_PASSWORDS,
     category: "Auth",
     name: "No Empty Password Accounts",
     severity: "critical",
@@ -97,7 +98,7 @@ export const parseAuthChecks: CheckParser = (sectionOutput: string, _platform: s
   // Check for PermitRootLogin in SSH context or root password status
   const rootDirectLogin = /^root$/m.test(output) && !output.includes("prohibit-password");
   const auth04: AuditCheck = {
-    id: "AUTH-ROOT-LOGIN-RESTRICTED",
+    id: CHECK_IDS.AUTH.AUTH_ROOT_LOGIN_RESTRICTED,
     category: "Auth",
     name: "Root Direct Login Restricted",
     severity: "warning",
@@ -116,7 +117,7 @@ export const parseAuthChecks: CheckParser = (sectionOutput: string, _platform: s
   // AUTH-PWD-QUALITY: PAM config has password quality module
   const hasPwQuality = /pam_pwquality/i.test(output) || /pam_cracklib/i.test(output);
   const auth05: AuditCheck = {
-    id: "AUTH-PWD-QUALITY",
+    id: CHECK_IDS.AUTH.AUTH_PWD_QUALITY,
     category: "Auth",
     name: "Password Quality Module",
     severity: "info",
@@ -137,7 +138,7 @@ export const parseAuthChecks: CheckParser = (sectionOutput: string, _platform: s
   // AUTH-FAILLOCK-CONFIGURED: pam_faillock or pam_tally2 configured
   const hasFaillock = /pam_faillock|pam_tally2/i.test(output);
   const auth06: AuditCheck = {
-    id: "AUTH-FAILLOCK-CONFIGURED",
+    id: CHECK_IDS.AUTH.AUTH_FAILLOCK_CONFIGURED,
     category: "Auth",
     name: "Account Lockout Configured",
     severity: "warning",
@@ -158,7 +159,7 @@ export const parseAuthChecks: CheckParser = (sectionOutput: string, _platform: s
   const shadowPerms = shadowStatMatch ? shadowStatMatch[1] : null;
   const shadowSecure = shadowPerms !== null && ["000", "600", "640"].includes(shadowPerms);
   const auth07: AuditCheck = {
-    id: "AUTH-SHADOW-PERMISSIONS",
+    id: CHECK_IDS.AUTH.AUTH_SHADOW_PERMISSIONS,
     category: "Auth",
     name: "/etc/shadow Permissions",
     severity: "critical",
@@ -177,7 +178,7 @@ export const parseAuthChecks: CheckParser = (sectionOutput: string, _platform: s
   // AUTH-SUDO-LOG: sudo logging configured
   const hasSudoLog = /log_output|syslog/i.test(output);
   const auth08: AuditCheck = {
-    id: "AUTH-SUDO-LOG",
+    id: CHECK_IDS.AUTH.AUTH_SUDO_LOG,
     category: "Auth",
     name: "Sudo Logging Configured",
     severity: "warning",
@@ -196,7 +197,7 @@ export const parseAuthChecks: CheckParser = (sectionOutput: string, _platform: s
   // AUTH-SUDO-REQUIRETTY: requiretty in sudoers
   const hasRequiretty = /requiretty/i.test(output);
   const auth09: AuditCheck = {
-    id: "AUTH-SUDO-REQUIRETTY",
+    id: CHECK_IDS.AUTH.AUTH_SUDO_REQUIRETTY,
     category: "Auth",
     name: "Sudo requiretty Configured",
     severity: "info",
@@ -217,7 +218,7 @@ export const parseAuthChecks: CheckParser = (sectionOutput: string, _platform: s
   // We check for "toor" or any non-root username that could be a UID 0 alias
   const hasOnlyRoot = !output.includes("toor") && !output.match(/^(?!root)[a-z_][a-z0-9_-]{0,31}\s*$/m);
   const auth10: AuditCheck = {
-    id: "AUTH-NO-UID0-DUPS",
+    id: CHECK_IDS.AUTH.AUTH_NO_UID0_DUPS,
     category: "Auth",
     name: "No Duplicate UID 0 Accounts",
     severity: "critical",
@@ -237,7 +238,7 @@ export const parseAuthChecks: CheckParser = (sectionOutput: string, _platform: s
   const passMinMatch = output.match(/PASS_MIN_DAYS\s+(\d+)/);
   const passMinDays = passMinMatch ? parseInt(passMinMatch[1], 10) : null;
   const auth11: AuditCheck = {
-    id: "AUTH-PASS-MIN-DAYS",
+    id: CHECK_IDS.AUTH.AUTH_PASS_MIN_DAYS,
     category: "Auth",
     name: "Minimum Password Age",
     severity: "info",
@@ -257,7 +258,7 @@ export const parseAuthChecks: CheckParser = (sectionOutput: string, _platform: s
   const passWarnMatch = output.match(/PASS_WARN_AGE\s+(\d+)/);
   const passWarnAge = passWarnMatch ? parseInt(passWarnMatch[1], 10) : null;
   const auth12: AuditCheck = {
-    id: "AUTH-PASS-WARN-AGE",
+    id: CHECK_IDS.AUTH.AUTH_PASS_WARN_AGE,
     category: "Auth",
     name: "Password Expiry Warning",
     severity: "info",
@@ -278,7 +279,7 @@ export const parseAuthChecks: CheckParser = (sectionOutput: string, _platform: s
   const inactiveDays = inactiveMatch ? parseInt(inactiveMatch[1], 10) : null;
   const inactiveConfigured = inactiveDays !== null && inactiveDays >= 0 && inactiveDays <= 90;
   const auth13: AuditCheck = {
-    id: "AUTH-INACTIVE-LOCK",
+    id: CHECK_IDS.AUTH.AUTH_INACTIVE_LOCK,
     category: "Auth",
     name: "Inactive Account Auto-Lock",
     severity: "info",
@@ -301,7 +302,7 @@ export const parseAuthChecks: CheckParser = (sectionOutput: string, _platform: s
     ? sudoGroupMatch[1].split(",").map((m) => m.trim()).filter(Boolean)
     : [];
   const auth14: AuditCheck = {
-    id: "AUTH-SUDO-WHEEL-ONLY",
+    id: CHECK_IDS.AUTH.AUTH_SUDO_WHEEL_ONLY,
     category: "Auth",
     name: "Limited Sudo Group Members",
     severity: "info",
@@ -320,7 +321,7 @@ export const parseAuthChecks: CheckParser = (sectionOutput: string, _platform: s
   // AUTH-MFA-PRESENT: MFA package installed
   const hasMFA = /libpam-google-authenticator|libpam-oath/i.test(output);
   const auth15: AuditCheck = {
-    id: "AUTH-MFA-PRESENT",
+    id: CHECK_IDS.AUTH.AUTH_MFA_PRESENT,
     category: "Auth",
     name: "MFA Package Installed",
     severity: "info",
@@ -339,7 +340,7 @@ export const parseAuthChecks: CheckParser = (sectionOutput: string, _platform: s
   // AUTH-SU-RESTRICTED: su restricted to wheel group via pam_wheel
   const hasPamWheel = /pam_wheel/i.test(output);
   const auth16: AuditCheck = {
-    id: "AUTH-SU-RESTRICTED",
+    id: CHECK_IDS.AUTH.AUTH_SU_RESTRICTED,
     category: "Auth",
     name: "su Restricted to Wheel Group",
     severity: "info",
@@ -359,7 +360,7 @@ export const parseAuthChecks: CheckParser = (sectionOutput: string, _platform: s
   const passMaxDaysSetMatch = output.match(/PASS_MAX_DAYS\s+(\d+)/);
   const passMaxDaysSet = passMaxDaysSetMatch ? parseInt(passMaxDaysSetMatch[1], 10) : null;
   const auth17: AuditCheck = {
-    id: "AUTH-PASS-MAX-DAYS-SET",
+    id: CHECK_IDS.AUTH.AUTH_PASS_MAX_DAYS_SET,
     category: "Auth",
     name: "Password Maximum Age Configured",
     severity: "info",
@@ -383,7 +384,7 @@ export const parseAuthChecks: CheckParser = (sectionOutput: string, _platform: s
   const gshadowPerms = allPermMatches.length >= 2 ? allPermMatches[1] : null;
   const gshadowSecure = gshadowPerms !== null && ["000", "600", "640"].includes(gshadowPerms);
   const auth18: AuditCheck = {
-    id: "AUTH-GSHADOW-PERMISSIONS",
+    id: CHECK_IDS.AUTH.AUTH_GSHADOW_PERMISSIONS,
     category: "Auth",
     name: "/etc/gshadow Permissions",
     severity: "warning",
@@ -403,7 +404,7 @@ export const parseAuthChecks: CheckParser = (sectionOutput: string, _platform: s
   // grep -rE 'pam_pwquality|pam_cracklib' /etc/pam.d/ output
   const hasPwqualityConfig = /pam_pwquality|pam_cracklib/i.test(output);
   const auth19: AuditCheck = {
-    id: "AUTH-PWQUALITY-CONFIGURED",
+    id: CHECK_IDS.AUTH.AUTH_PWQUALITY_CONFIGURED,
     category: "Auth",
     name: "PAM Password Quality Module Configured",
     severity: "warning",
@@ -424,7 +425,7 @@ export const parseAuthChecks: CheckParser = (sectionOutput: string, _platform: s
   const umaskValue = umaskMatch ? umaskMatch[1] : null;
   const umaskSecure = umaskValue !== null && (umaskValue === "027" || umaskValue === "022");
   const auth20: AuditCheck = {
-    id: "AUTH-UMASK-LOGIN-DEFS",
+    id: CHECK_IDS.AUTH.AUTH_UMASK_LOGIN_DEFS,
     category: "Auth",
     name: "Default UMASK Configured Securely",
     severity: "info",
@@ -445,7 +446,7 @@ export const parseAuthChecks: CheckParser = (sectionOutput: string, _platform: s
   const encryptMethod = encryptMethodMatch ? encryptMethodMatch[1].toUpperCase() : null;
   const encryptSecure = encryptMethod === "SHA512" || encryptMethod === "YESCRYPT";
   const auth21: AuditCheck = {
-    id: "AUTH-SHA512-HASH",
+    id: CHECK_IDS.AUTH.AUTH_SHA512_HASH,
     category: "Auth",
     name: "Strong Password Hash Algorithm",
     severity: "warning",
@@ -466,7 +467,7 @@ export const parseAuthChecks: CheckParser = (sectionOutput: string, _platform: s
   const pwqualityMinlen = pwqualityMinlenMatch ? parseInt(pwqualityMinlenMatch[1], 10) : null;
   const minlenSecure = pwqualityMinlen !== null && pwqualityMinlen >= 12;
   const auth22: AuditCheck = {
-    id: "AUTH-PWQUALITY-MINLEN",
+    id: CHECK_IDS.AUTH.AUTH_PWQUALITY_MINLEN,
     category: "Auth",
     name: "Password Minimum Length Configured",
     severity: "warning",

@@ -4,6 +4,7 @@
  */
 
 import type { AuditCheck, CheckParser } from "../types.js";
+import { CHECK_IDS } from "../checkIds.js";
 
 /** Dangerous ports that should not be exposed to 0.0.0.0/0 (except SSH 22, HTTP 80, HTTPS 443) */
 const SAFE_PUBLIC_PORTS = new Set(["22", "80", "443"]);
@@ -28,7 +29,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
   // FW-01: Firewall active
   const isActive = /Status:\s*active/i.test(output);
   const fw01: AuditCheck = {
-    id: "FW-UFW-ACTIVE",
+    id: CHECK_IDS.FIREWALL.FW_UFW_ACTIVE,
     category: "Firewall",
     name: "Firewall Active",
     severity: "critical",
@@ -43,7 +44,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
   // FW-02: Default deny incoming
   const denyIncoming = /Default:\s*deny\s*\(incoming\)/i.test(output);
   const fw02: AuditCheck = {
-    id: "FW-DEFAULT-DENY",
+    id: CHECK_IDS.FIREWALL.FW_DEFAULT_DENY,
     category: "Firewall",
     name: "Default Deny Incoming",
     severity: "critical",
@@ -58,7 +59,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
   // FW-03: SSH port in rules
   const hasSSHRule = /22\/tcp\s+ALLOW/i.test(output) || /OpenSSH\s+ALLOW/i.test(output);
   const fw03: AuditCheck = {
-    id: "FW-SSH-ALLOWED",
+    id: CHECK_IDS.FIREWALL.FW_SSH_ALLOWED,
     category: "Firewall",
     name: "SSH Port in Rules",
     severity: "warning",
@@ -84,7 +85,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
     }
   }
   const fw04: AuditCheck = {
-    id: "FW-NO-WIDE-OPEN",
+    id: CHECK_IDS.FIREWALL.FW_NO_WIDE_OPEN,
     category: "Firewall",
     name: "No Wide-Open Rules",
     severity: "warning",
@@ -99,7 +100,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
   // FW-05: IPv6 consistency (basic check - just verify UFW supports IPv6)
   const ipv6Enabled = /IPV6=yes/i.test(output) || output.includes("(v6)");
   const fw05: AuditCheck = {
-    id: "FW-IPV6-RULES",
+    id: CHECK_IDS.FIREWALL.FW_IPV6_RULES,
     category: "Firewall",
     name: "IPv6 Firewall Rules",
     severity: "info",
@@ -115,7 +116,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
   // FW-06: nftables available
   const nftSection = lines.some((l) => /\btables?\b|\bchains?\b|counter/.test(l));
   const fw06: AuditCheck = {
-    id: "FW-NFTABLES-PRESENT",
+    id: CHECK_IDS.FIREWALL.FW_NFTABLES_PRESENT,
     category: "Firewall",
     name: "nftables Available",
     severity: "info",
@@ -130,7 +131,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
   // FW-07: fail2ban active (uses existing output from fail2ban-client status)
   const hasFail2banJails = /Number of jail/.test(output);
   const fw07: AuditCheck = {
-    id: "FW-FAIL2BAN-ACTIVE",
+    id: CHECK_IDS.FIREWALL.FW_FAIL2BAN_ACTIVE,
     category: "Firewall",
     name: "Fail2ban Active",
     severity: "warning",
@@ -146,7 +147,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
   const iptablesCount = extractSentinelValue(output, "---IPTABLES_COUNT---") ?? 0;
   const hasIptablesRules = iptablesCount > 8;
   const fw08: AuditCheck = {
-    id: "FW-IPTABLES-BASELINE",
+    id: CHECK_IDS.FIREWALL.FW_IPTABLES_BASELINE,
     category: "Firewall",
     name: "iptables Has Rules",
     severity: "warning",
@@ -162,7 +163,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
   const inputPolicyLine = output.split("\n").find((l) => /Chain INPUT.*policy/.test(l)) ?? "";
   const hasInputDeny = /policy DROP|policy REJECT/i.test(inputPolicyLine);
   const fw09: AuditCheck = {
-    id: "FW-INPUT-CHAIN-DENY",
+    id: CHECK_IDS.FIREWALL.FW_INPUT_CHAIN_DENY,
     category: "Firewall",
     name: "iptables INPUT Default Deny",
     severity: "critical",
@@ -177,7 +178,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
   // FW-10: REJECT preferred over DROP (informational)
   const hasRejectRules = /REJECT/.test(output);
   const fw10: AuditCheck = {
-    id: "FW-REJECT-NOT-DROP",
+    id: CHECK_IDS.FIREWALL.FW_REJECT_NOT_DROP,
     category: "Firewall",
     name: "REJECT Rules Present",
     severity: "info",
@@ -193,7 +194,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
   const outputPolicyLine = output.split("\n").find((l) => /Chain OUTPUT.*policy/.test(l)) ?? "";
   const hasRestrictedOutput = /policy DROP|policy REJECT/.test(outputPolicyLine);
   const fw11: AuditCheck = {
-    id: "FW-OUTBOUND-RESTRICTED",
+    id: CHECK_IDS.FIREWALL.FW_OUTBOUND_RESTRICTED,
     category: "Firewall",
     name: "Outbound Traffic Restricted",
     severity: "info",
@@ -208,7 +209,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
   // FW-12: Rate limiting rules present
   const hasRateLimit = output.split("\n").some((l) => /limit/.test(l) && l.trim() !== "NONE");
   const fw12: AuditCheck = {
-    id: "FW-RATE-LIMIT",
+    id: CHECK_IDS.FIREWALL.FW_RATE_LIMIT,
     category: "Firewall",
     name: "Rate Limiting Rules Present",
     severity: "info",
@@ -224,7 +225,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
   const forwardPolicyLine = output.split("\n").find((l) => /Chain FORWARD.*policy/.test(l)) ?? "";
   const hasForwardDeny = /policy DROP|policy REJECT/i.test(forwardPolicyLine);
   const fw13: AuditCheck = {
-    id: "FW-FORWARD-CHAIN-DENY",
+    id: CHECK_IDS.FIREWALL.FW_FORWARD_CHAIN_DENY,
     category: "Firewall",
     name: "FORWARD Chain Default Deny",
     severity: "warning",
@@ -244,7 +245,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
   // IPv6 disabled sysctl
   const ipv6SysctlDisabled = /disable_ipv6\s*=\s*1/.test(output);
   const fw14: AuditCheck = {
-    id: "FW-IPV6-DISABLED-OR-FILTERED",
+    id: CHECK_IDS.FIREWALL.FW_IPV6_DISABLED_OR_FILTERED,
     category: "Firewall",
     name: "IPv6 Disabled or Filtered",
     severity: "info",
@@ -264,7 +265,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
   // FW-15: No wildcard ACCEPT rule in INPUT chain
   const hasWildcardAccept = /ACCEPT\s+all\s+--\s+0\.0\.0\.0\/0\s+0\.0\.0\.0\/0\s*$/.test(output);
   const fw15: AuditCheck = {
-    id: "FW-NO-WILDCARD-ACCEPT",
+    id: CHECK_IDS.FIREWALL.FW_NO_WILDCARD_ACCEPT,
     category: "Firewall",
     name: "No Unrestricted ACCEPT All Rule",
     severity: "warning",
@@ -284,7 +285,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
   // FW-16: conntrack max value
   const conntrackMax = extractSentinelValue(output, "---CONNTRACK_MAX---");
   const fw16: AuditCheck = {
-    id: "FW-CONNTRACK-MAX",
+    id: CHECK_IDS.FIREWALL.FW_CONNTRACK_MAX,
     category: "Firewall",
     name: "Connection Tracking Limit Adequate",
     severity: "info",
@@ -303,7 +304,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
   // FW-17: LOG rule count for dropped packets
   const logRuleCount = extractSentinelValue(output, "---LOG_RULE_COUNT---");
   const fw17: AuditCheck = {
-    id: "FW-LOG-DROPPED",
+    id: CHECK_IDS.FIREWALL.FW_LOG_DROPPED,
     category: "Firewall",
     name: "Dropped Packets Logged",
     severity: "info",

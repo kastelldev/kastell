@@ -4,6 +4,7 @@
  */
 
 import type { AuditCheck, CheckParser } from "../types.js";
+import { CHECK_IDS } from "../checkIds.js";
 
 interface SshCheckDef {
   id: string;
@@ -18,7 +19,7 @@ interface SshCheckDef {
 
 const SSH_CHECKS: SshCheckDef[] = [
   {
-    id: "SSH-PASSWORD-AUTH",
+    id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH,
     name: "Password Authentication Disabled",
     severity: "critical",
     key: "passwordauthentication",
@@ -28,7 +29,7 @@ const SSH_CHECKS: SshCheckDef[] = [
     explain: "Password authentication allows brute-force attacks. Key-based auth is significantly more secure.",
   },
   {
-    id: "SSH-ROOT-LOGIN",
+    id: CHECK_IDS.SSH.SSH_ROOT_LOGIN,
     name: "Root Login Restricted",
     severity: "critical",
     key: "permitrootlogin",
@@ -41,7 +42,7 @@ const SSH_CHECKS: SshCheckDef[] = [
     explain: "Direct root login increases attack surface. Use a regular user with sudo instead.",
   },
   {
-    id: "SSH-EMPTY-PASSWORDS",
+    id: CHECK_IDS.SSH.SSH_EMPTY_PASSWORDS,
     name: "Empty Passwords Denied",
     severity: "critical",
     key: "permitemptypasswords",
@@ -51,7 +52,7 @@ const SSH_CHECKS: SshCheckDef[] = [
     explain: "Allowing empty passwords lets anyone log in without credentials.",
   },
   {
-    id: "SSH-PUBKEY-AUTH",
+    id: CHECK_IDS.SSH.SSH_PUBKEY_AUTH,
     name: "Public Key Authentication Enabled",
     severity: "warning",
     key: "pubkeyauthentication",
@@ -61,7 +62,7 @@ const SSH_CHECKS: SshCheckDef[] = [
     explain: "Public key authentication provides strong cryptographic identity verification.",
   },
   {
-    id: "SSH-MAX-AUTH-TRIES",
+    id: CHECK_IDS.SSH.SSH_MAX_AUTH_TRIES,
     name: "Max Auth Tries Limited",
     severity: "warning",
     key: "maxauthtries",
@@ -74,7 +75,7 @@ const SSH_CHECKS: SshCheckDef[] = [
     explain: "Limiting authentication attempts slows down brute-force attacks.",
   },
   {
-    id: "SSH-X11-FORWARDING",
+    id: CHECK_IDS.SSH.SSH_X11_FORWARDING,
     name: "X11 Forwarding Disabled",
     severity: "info",
     key: "x11forwarding",
@@ -84,7 +85,7 @@ const SSH_CHECKS: SshCheckDef[] = [
     explain: "X11 forwarding can be exploited for display hijacking on servers that don't need GUI access.",
   },
   {
-    id: "SSH-CLIENT-ALIVE-INTERVAL",
+    id: CHECK_IDS.SSH.SSH_CLIENT_ALIVE_INTERVAL,
     name: "Client Alive Interval Configured",
     severity: "warning",
     key: "clientaliveinterval",
@@ -97,7 +98,7 @@ const SSH_CHECKS: SshCheckDef[] = [
     explain: "Setting a client alive interval disconnects idle sessions, reducing the risk of session hijacking.",
   },
   {
-    id: "SSH-CLIENT-ALIVE-COUNT",
+    id: CHECK_IDS.SSH.SSH_CLIENT_ALIVE_COUNT,
     name: "Client Alive Count Max Limited",
     severity: "warning",
     key: "clientalivecountmax",
@@ -110,7 +111,7 @@ const SSH_CHECKS: SshCheckDef[] = [
     explain: "Limiting alive count ensures unresponsive sessions are terminated after a short time.",
   },
   {
-    id: "SSH-LOGIN-GRACE-TIME",
+    id: CHECK_IDS.SSH.SSH_LOGIN_GRACE_TIME,
     name: "Login Grace Time Restricted",
     severity: "warning",
     key: "logingracetime",
@@ -123,7 +124,7 @@ const SSH_CHECKS: SshCheckDef[] = [
     explain: "Restricting login grace time limits how long an unauthenticated connection is held open.",
   },
   {
-    id: "SSH-IGNORE-RHOSTS",
+    id: CHECK_IDS.SSH.SSH_IGNORE_RHOSTS,
     name: "Ignore Rhosts Files",
     severity: "critical",
     key: "ignorerhosts",
@@ -133,7 +134,7 @@ const SSH_CHECKS: SshCheckDef[] = [
     explain: "Rhosts-based authentication is insecure and allows host-based trust without cryptographic verification.",
   },
   {
-    id: "SSH-HOSTBASED-AUTH",
+    id: CHECK_IDS.SSH.SSH_HOSTBASED_AUTH,
     name: "Host-Based Authentication Disabled",
     severity: "critical",
     key: "hostbasedauthentication",
@@ -143,7 +144,7 @@ const SSH_CHECKS: SshCheckDef[] = [
     explain: "Host-based authentication trusts remote hosts without user credentials, enabling lateral movement.",
   },
   {
-    id: "SSH-MAX-SESSIONS",
+    id: CHECK_IDS.SSH.SSH_MAX_SESSIONS,
     name: "Max Sessions Limited",
     severity: "warning",
     key: "maxsessions",
@@ -156,7 +157,7 @@ const SSH_CHECKS: SshCheckDef[] = [
     explain: "Limiting max sessions per connection prevents resource exhaustion and reduces attack surface.",
   },
   {
-    id: "SSH-USE-DNS",
+    id: CHECK_IDS.SSH.SSH_USE_DNS,
     name: "DNS Lookup Disabled",
     severity: "info",
     key: "usedns",
@@ -166,7 +167,7 @@ const SSH_CHECKS: SshCheckDef[] = [
     explain: "Disabling DNS lookups speeds up SSH connections and avoids DNS-based information disclosure.",
   },
   {
-    id: "SSH-PERMIT-USER-ENV",
+    id: CHECK_IDS.SSH.SSH_PERMIT_USER_ENV,
     name: "User Environment Passthrough Disabled",
     severity: "warning",
     key: "permituserenvironment",
@@ -176,7 +177,7 @@ const SSH_CHECKS: SshCheckDef[] = [
     explain: "Allowing user environment passthrough can be used to bypass security restrictions via environment variables.",
   },
   {
-    id: "SSH-LOG-LEVEL",
+    id: CHECK_IDS.SSH.SSH_LOG_LEVEL,
     name: "SSH Logging Level Adequate",
     severity: "info",
     key: "loglevel",
@@ -186,7 +187,7 @@ const SSH_CHECKS: SshCheckDef[] = [
     explain: "Verbose or INFO logging ensures sufficient detail is captured for security audit and incident response.",
   },
   {
-    id: "SSH-STRONG-CIPHERS",
+    id: CHECK_IDS.SSH.SSH_STRONG_CIPHERS,
     name: "No Weak SSH Ciphers",
     severity: "warning",
     key: "ciphers",
@@ -196,7 +197,7 @@ const SSH_CHECKS: SshCheckDef[] = [
     explain: "Weak ciphers like 3DES and Blowfish are vulnerable to known cryptographic attacks.",
   },
   {
-    id: "SSH-STRONG-MACS",
+    id: CHECK_IDS.SSH.SSH_STRONG_MACS,
     name: "No Weak SSH MACs",
     severity: "warning",
     key: "macs",
@@ -206,7 +207,7 @@ const SSH_CHECKS: SshCheckDef[] = [
     explain: "Weak MACs like MD5-based algorithms do not provide sufficient integrity protection for SSH sessions.",
   },
   {
-    id: "SSH-STRONG-KEX",
+    id: CHECK_IDS.SSH.SSH_STRONG_KEX,
     name: "No Weak KEX Algorithms",
     severity: "warning",
     key: "kexalgorithms",
@@ -216,7 +217,7 @@ const SSH_CHECKS: SshCheckDef[] = [
     explain: "Weak key exchange algorithms based on SHA-1 are vulnerable to collision attacks.",
   },
   {
-    id: "SSH-MAX-STARTUPS",
+    id: CHECK_IDS.SSH.SSH_MAX_STARTUPS,
     name: "MaxStartups Limits Concurrent Unauthenticated Connections",
     severity: "warning",
     key: "maxstartups",
@@ -230,7 +231,7 @@ const SSH_CHECKS: SshCheckDef[] = [
     explain: "MaxStartups limits concurrent unauthenticated SSH connections, mitigating brute-force and resource exhaustion attacks.",
   },
   {
-    id: "SSH-STRICT-MODES",
+    id: CHECK_IDS.SSH.SSH_STRICT_MODES,
     name: "StrictModes Enabled",
     severity: "warning",
     key: "strictmodes",
@@ -240,7 +241,7 @@ const SSH_CHECKS: SshCheckDef[] = [
     explain: "StrictModes checks file permissions on user SSH files before accepting login, preventing exploitation of misconfigured authorized_keys.",
   },
   {
-    id: "SSH-NO-AGENT-FORWARDING",
+    id: CHECK_IDS.SSH.SSH_NO_AGENT_FORWARDING,
     name: "SSH Agent Forwarding Disabled",
     severity: "warning",
     key: "allowagentforwarding",
@@ -250,7 +251,7 @@ const SSH_CHECKS: SshCheckDef[] = [
     explain: "SSH agent forwarding exposes the authentication agent to the remote server, enabling key theft if the server is compromised.",
   },
   {
-    id: "SSH-PRINT-MOTD",
+    id: CHECK_IDS.SSH.SSH_PRINT_MOTD,
     name: "PrintMotd Handled by PAM",
     severity: "info",
     key: "printmotd",

@@ -5,6 +5,7 @@
 
 import type { AuditCheck, CheckParser } from "../types.js";
 import { extractSysctlValue } from "./shared/sysctl.js";
+import { CHECK_IDS } from "../checkIds.js";
 
 export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform: string): AuditCheck[] => {
   const isNA = !sectionOutput || sectionOutput.trim() === "N/A" || sectionOutput.trim() === "";
@@ -13,7 +14,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
   // KRN-01: ASLR (kernel.randomize_va_space = 2)
   const aslr = extractSysctlValue(output, "kernel.randomize_va_space");
   const krn01: AuditCheck = {
-    id: "KRN-ASLR-ENABLED",
+    id: CHECK_IDS.KERNEL.KRN_ASLR_ENABLED,
     category: "Kernel",
     name: "ASLR Enabled (Full)",
     severity: "critical",
@@ -34,7 +35,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
   const coreUsesPid = extractSysctlValue(output, "kernel.core_uses_pid");
   const coreRestricted = suidDumpable === "0" || coreUsesPid === "1";
   const krn02: AuditCheck = {
-    id: "KRN-CORE-DUMPS-RESTRICTED",
+    id: CHECK_IDS.KERNEL.KRN_CORE_DUMPS_RESTRICTED,
     category: "Kernel",
     name: "Core Dumps Restricted",
     severity: "warning",
@@ -59,7 +60,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
 
   const hardeningPassed = acceptRedirects === "0" && acceptSourceRoute === "0" && logMartians === "1";
   const krn03: AuditCheck = {
-    id: "KRN-NETWORK-HARDENING",
+    id: CHECK_IDS.KERNEL.KRN_NETWORK_HARDENING,
     category: "Kernel",
     name: "Network Hardening Sysctls",
     severity: "warning",
@@ -83,7 +84,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
   // KRN-04: Kernel version (basic presence check)
   const kernelVersion = output.match(/(\d+\.\d+\.\d+[-\w]*)/);
   const krn04: AuditCheck = {
-    id: "KRN-KERNEL-VERSION",
+    id: CHECK_IDS.KERNEL.KRN_KERNEL_VERSION,
     category: "Kernel",
     name: "Kernel Version",
     severity: "info",
@@ -102,7 +103,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
   // KRN-05: dmesg restricted (kernel.dmesg_restrict = 1)
   const dmesgRestrict = extractSysctlValue(output, "kernel.dmesg_restrict");
   const krn05: AuditCheck = {
-    id: "KRN-DMESG-RESTRICTED",
+    id: CHECK_IDS.KERNEL.KRN_DMESG_RESTRICTED,
     category: "Kernel",
     name: "dmesg Restricted",
     severity: "info",
@@ -121,7 +122,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
   // KRN-06: ptrace scope (kernel.yama.ptrace_scope >= 1)
   const ptraceScope = extractSysctlValue(output, "kernel.yama.ptrace_scope");
   const krn06: AuditCheck = {
-    id: "KRN-PTRACE-SCOPE",
+    id: CHECK_IDS.KERNEL.KRN_PTRACE_SCOPE,
     category: "Kernel",
     name: "Ptrace Scope Restricted",
     severity: "warning",
@@ -140,7 +141,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
   // KRN-07: kptr restrict (kernel.kptr_restrict >= 1)
   const kptrRestrict = extractSysctlValue(output, "kernel.kptr_restrict");
   const krn07: AuditCheck = {
-    id: "KRN-KPTR-RESTRICT",
+    id: CHECK_IDS.KERNEL.KRN_KPTR_RESTRICT,
     category: "Kernel",
     name: "Kernel Pointer Restriction",
     severity: "warning",
@@ -159,7 +160,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
   // KRN-08: perf event paranoid (kernel.perf_event_paranoid >= 2)
   const perfParanoid = extractSysctlValue(output, "kernel.perf_event_paranoid");
   const krn08: AuditCheck = {
-    id: "KRN-PERF-PARANOID",
+    id: CHECK_IDS.KERNEL.KRN_PERF_PARANOID,
     category: "Kernel",
     name: "Perf Events Restricted",
     severity: "info",
@@ -178,7 +179,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
   // KRN-09: TCP SYN cookies (net.ipv4.tcp_syncookies = 1)
   const synCookiesKrn = extractSysctlValue(output, "net.ipv4.tcp_syncookies");
   const krn09: AuditCheck = {
-    id: "KRN-SYN-COOKIES",
+    id: CHECK_IDS.KERNEL.KRN_SYN_COOKIES,
     category: "Kernel",
     name: "TCP SYN Cookies Enabled",
     severity: "warning",
@@ -197,7 +198,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
   // KRN-10: IP forwarding disabled (net.ipv4.ip_forward = 0)
   const ipForwardKrn = extractSysctlValue(output, "net.ipv4.ip_forward");
   const krn10: AuditCheck = {
-    id: "KRN-IP-FORWARD-DISABLED",
+    id: CHECK_IDS.KERNEL.KRN_IP_FORWARD_DISABLED,
     category: "Kernel",
     name: "IPv4 Forwarding Disabled",
     severity: "warning",
@@ -217,7 +218,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
   // Accepts both strict (1) and loose (2) modes — loose mode is required for Docker bridge networking
   const rpFilter = extractSysctlValue(output, "net.ipv4.conf.all.rp_filter");
   const krn11: AuditCheck = {
-    id: "KRN-RP-FILTER",
+    id: CHECK_IDS.KERNEL.KRN_RP_FILTER,
     category: "Kernel",
     name: "Reverse Path Filtering Enabled",
     severity: "warning",
@@ -236,7 +237,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
   // KRN-12: TCP timestamps (net.ipv4.tcp_timestamps = 0)
   const tcpTimestamps = extractSysctlValue(output, "net.ipv4.tcp_timestamps");
   const krn12: AuditCheck = {
-    id: "KRN-TCP-TIMESTAMPS",
+    id: CHECK_IDS.KERNEL.KRN_TCP_TIMESTAMPS,
     category: "Kernel",
     name: "TCP Timestamps Disabled",
     severity: "info",
@@ -255,7 +256,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
   // KRN-13: ICMP broadcast (net.ipv4.icmp_echo_ignore_broadcasts = 1)
   const icmpBroadcast = extractSysctlValue(output, "net.ipv4.icmp_echo_ignore_broadcasts");
   const krn13: AuditCheck = {
-    id: "KRN-ICMP-BROADCAST",
+    id: CHECK_IDS.KERNEL.KRN_ICMP_BROADCAST,
     category: "Kernel",
     name: "ICMP Broadcast Ignored",
     severity: "warning",
@@ -274,7 +275,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
   // KRN-14: IPv6 accept redirects (net.ipv6.conf.all.accept_redirects = 0)
   const ipv6AcceptRedirects = extractSysctlValue(output, "net.ipv6.conf.all.accept_redirects");
   const krn14: AuditCheck = {
-    id: "KRN-ACCEPT-REDIRECTS-V6",
+    id: CHECK_IDS.KERNEL.KRN_ACCEPT_REDIRECTS_V6,
     category: "Kernel",
     name: "IPv6 ICMP Redirects Rejected",
     severity: "warning",
@@ -293,7 +294,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
   // KRN-15: BPF unprivileged (kernel.unprivileged_bpf_disabled = 1)
   const bpfUnprivileged = extractSysctlValue(output, "kernel.unprivileged_bpf_disabled");
   const krn15: AuditCheck = {
-    id: "KRN-BPF-UNPRIVILEGED",
+    id: CHECK_IDS.KERNEL.KRN_BPF_UNPRIVILEGED,
     category: "Kernel",
     name: "Unprivileged BPF Disabled",
     severity: "warning",
@@ -312,7 +313,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
   // KRN-16: Kernel modules disabled (kernel.modules_disabled = 1)
   const modulesDisabled = extractSysctlValue(output, "kernel.modules_disabled");
   const krn16: AuditCheck = {
-    id: "KRN-MODULES-DISABLED",
+    id: CHECK_IDS.KERNEL.KRN_MODULES_DISABLED,
     category: "Kernel",
     name: "Kernel Module Loading Disabled",
     severity: "info",
@@ -331,7 +332,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
   // KRN-17: IPv6 forwarding disabled (net.ipv6.conf.all.forwarding = 0)
   const ipv6Forward = extractSysctlValue(output, "net.ipv6.conf.all.forwarding");
   const krn17: AuditCheck = {
-    id: "KRN-IP-FORWARD-V6",
+    id: CHECK_IDS.KERNEL.KRN_IP_FORWARD_V6,
     category: "Kernel",
     name: "IPv6 Forwarding Disabled",
     severity: "warning",
@@ -350,7 +351,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
   // KRN-18: Send redirects disabled (net.ipv4.conf.all.send_redirects = 0)
   const sendRedirects = extractSysctlValue(output, "net.ipv4.conf.all.send_redirects");
   const krn18: AuditCheck = {
-    id: "KRN-SEND-REDIRECTS",
+    id: CHECK_IDS.KERNEL.KRN_SEND_REDIRECTS,
     category: "Kernel",
     name: "ICMP Redirect Sending Disabled",
     severity: "warning",
@@ -369,7 +370,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
   // KRN-19: Secure redirects disabled (net.ipv4.conf.all.secure_redirects = 0)
   const secureRedirects = extractSysctlValue(output, "net.ipv4.conf.all.secure_redirects");
   const krn19: AuditCheck = {
-    id: "KRN-SECURE-REDIRECTS",
+    id: CHECK_IDS.KERNEL.KRN_SECURE_REDIRECTS,
     category: "Kernel",
     name: "Secure ICMP Redirects Disabled",
     severity: "warning",
@@ -389,7 +390,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
   const sysrq = extractSysctlValue(output, "kernel.sysrq");
   const sysrqVal = sysrq !== null ? parseInt(sysrq, 10) : null;
   const krn20: AuditCheck = {
-    id: "KRN-SYSRQ-DISABLED",
+    id: CHECK_IDS.KERNEL.KRN_SYSRQ_DISABLED,
     category: "Kernel",
     name: "SysRq Disabled or Restricted",
     severity: "warning",
@@ -410,7 +411,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
   const corePattern = extractSysctlValue(output, "kernel.core_pattern");
   const corePatternSafe = corePattern !== null && !corePattern.startsWith("|");
   const krn21: AuditCheck = {
-    id: "KRN-CORE-PATTERN-SAFE",
+    id: CHECK_IDS.KERNEL.KRN_CORE_PATTERN_SAFE,
     category: "Kernel",
     name: "Core Dump Pattern Safe",
     severity: "warning",
@@ -430,7 +431,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
   // KRN-22: Panic on oops (kernel.panic_on_oops = 1)
   const panicOnOops = extractSysctlValue(output, "kernel.panic_on_oops");
   const krn22: AuditCheck = {
-    id: "KRN-PANIC-ON-OOPS",
+    id: CHECK_IDS.KERNEL.KRN_PANIC_ON_OOPS,
     category: "Kernel",
     name: "Panic on Kernel Oops",
     severity: "info",
@@ -450,7 +451,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
   // KRN-23: NMI watchdog disabled (kernel.nmi_watchdog = 0)
   const nmiWatchdog = extractSysctlValue(output, "kernel.nmi_watchdog");
   const krn23: AuditCheck = {
-    id: "KRN-NMI-WATCHDOG-DISABLED",
+    id: CHECK_IDS.KERNEL.KRN_NMI_WATCHDOG_DISABLED,
     category: "Kernel",
     name: "NMI Watchdog Disabled",
     severity: "info",
@@ -470,7 +471,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
   // KRN-24: Unprivileged user namespaces disabled
   const unprivUserns = extractSysctlValue(output, "kernel.unprivileged_userns_clone");
   const krn24: AuditCheck = {
-    id: "KRN-UNPRIVILEGED-USERNS",
+    id: CHECK_IDS.KERNEL.KRN_UNPRIVILEGED_USERNS,
     category: "Kernel",
     name: "Unprivileged User Namespaces Disabled",
     severity: "warning",
@@ -494,7 +495,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
   // KRN-25: Exec-shield (may not exist on modern kernels)
   const execShield = extractSysctlValue(output, "kernel.exec_shield");
   const krn25: AuditCheck = {
-    id: "KRN-EXEC-SHIELD",
+    id: CHECK_IDS.KERNEL.KRN_EXEC_SHIELD,
     category: "Kernel",
     name: "Exec-Shield or NX Bit Protection",
     severity: "info",
@@ -528,7 +529,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
     }
   }
   const krn26: AuditCheck = {
-    id: "KRN-MODULE-BLACKLIST",
+    id: CHECK_IDS.KERNEL.KRN_MODULE_BLACKLIST,
     category: "Kernel",
     name: "Blacklisted Filesystem Modules Not Loaded",
     severity: "info",
@@ -548,7 +549,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
   const kernelPanic = extractSysctlValue(output, "kernel.panic");
   const kernelPanicVal = kernelPanic !== null ? parseInt(kernelPanic, 10) : null;
   const krn27: AuditCheck = {
-    id: "KRN-PANIC-REBOOT",
+    id: CHECK_IDS.KERNEL.KRN_PANIC_REBOOT,
     category: "Kernel",
     name: "Kernel Panic Auto-Reboot Configured",
     severity: "info",
@@ -583,7 +584,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
     }
   }
   const krn28: AuditCheck = {
-    id: "KRN-SYSCTL-HARDENED",
+    id: CHECK_IDS.KERNEL.KRN_SYSCTL_HARDENED,
     category: "Kernel",
     name: "Sysctl Hardening Configs Present",
     severity: "info",
@@ -607,7 +608,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
   const coredumpDisabled = coredumpStorage === "none"
     || processSizeMax === "0";
   const krn29: AuditCheck = {
-    id: "KRN-COREDUMP-SYSTEMD",
+    id: CHECK_IDS.KERNEL.KRN_COREDUMP_SYSTEMD,
     category: "Kernel",
     name: "Systemd Coredumps Disabled",
     severity: "info",
@@ -628,7 +629,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
   const lockdownEnabled = lockdownValue !== null;
   const lockdownLine = output.split("\n").find((l) => /\[none\]|\[integrity\]|\[confidentiality\]/i.test(l));
   const krn30: AuditCheck = {
-    id: "KRN-LOCKDOWN-MODE",
+    id: CHECK_IDS.KERNEL.KRN_LOCKDOWN_MODE,
     category: "Kernel",
     name: "Kernel Lockdown Mode Enabled",
     severity: "info",
@@ -645,7 +646,7 @@ export const parseKernelChecks: CheckParser = (sectionOutput: string, _platform:
   // KRN-31: BPF JIT hardening (net.core.bpf_jit_harden >= 1)
   const bpfJitHarden = extractSysctlValue(output, "net.core.bpf_jit_harden");
   const krn31: AuditCheck = {
-    id: "KRN-BPF-JIT-HARDEN",
+    id: CHECK_IDS.KERNEL.KRN_BPF_JIT_HARDEN,
     category: "Kernel",
     name: "BPF JIT Hardening Enabled",
     severity: "warning",

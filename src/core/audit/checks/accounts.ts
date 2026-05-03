@@ -4,6 +4,7 @@
  */
 
 import type {AuditCheck, CheckParser, Severity, FixTier} from "../types.js";
+import {CHECK_IDS} from "../checkIds.js";
 
 interface AccountsCheckDef {
   id: string;
@@ -11,14 +12,14 @@ interface AccountsCheckDef {
   severity: Severity;
   check: (output: string) => { passed: boolean; currentValue: string };
   expectedValue: string;
-  fixCommand: string;
+  fixCommand: string;
   safeToAutoFix?: FixTier;
   explain: string;
 }
 
 const ACCOUNTS_CHECKS: AccountsCheckDef[] = [
   {
-    id: "ACCT-NO-EXTRA-UID0",
+    id: CHECK_IDS.ACCOUNTS.ACCT_NO_EXTRA_UID0,
     name: "No Extra UID 0 Accounts",
     severity: "critical",
     check: (output) => {
@@ -44,7 +45,7 @@ const ACCOUNTS_CHECKS: AccountsCheckDef[] = [
       "Multiple accounts with UID 0 grant full root access, making privilege control and audit trails impossible.",
   },
   {
-    id: "ACCT-NO-EMPTY-PASSWORD",
+    id: CHECK_IDS.ACCOUNTS.ACCT_NO_EMPTY_PASSWORD,
     name: "No Empty Password Hashes",
     severity: "critical",
     check: (output) => {
@@ -65,7 +66,7 @@ const ACCOUNTS_CHECKS: AccountsCheckDef[] = [
       "Accounts with empty password hashes allow login without any credentials, providing trivial unauthorized access.",
   },
   {
-    id: "ACCT-NO-RHOSTS",
+    id: CHECK_IDS.ACCOUNTS.ACCT_NO_RHOSTS,
     name: "No .rhosts Files",
     severity: "critical",
     check: (output) => {
@@ -82,7 +83,7 @@ const ACCOUNTS_CHECKS: AccountsCheckDef[] = [
       "The .rhosts file allows remote login without password authentication, bypassing all security controls.",
   },
   {
-    id: "ACCT-HOSTS-EQUIV",
+    id: CHECK_IDS.ACCOUNTS.ACCT_HOSTS_EQUIV,
     name: "No /etc/hosts.equiv",
     severity: "critical",
     check: (output) => {
@@ -100,7 +101,7 @@ const ACCOUNTS_CHECKS: AccountsCheckDef[] = [
       "The hosts.equiv file grants trust relationships between hosts, allowing passwordless remote access.",
   },
   {
-    id: "ACCT-NO-NETRC",
+    id: CHECK_IDS.ACCOUNTS.ACCT_NO_NETRC,
     name: "No .netrc Files",
     severity: "warning",
     check: (output) => {
@@ -117,7 +118,7 @@ const ACCOUNTS_CHECKS: AccountsCheckDef[] = [
       "The .netrc file stores plaintext credentials for FTP and other services, risking credential exposure.",
   },
   {
-    id: "ACCT-NO-FORWARD",
+    id: CHECK_IDS.ACCOUNTS.ACCT_NO_FORWARD,
     name: "No .forward Files",
     severity: "warning",
     check: (output) => {
@@ -135,7 +136,7 @@ const ACCOUNTS_CHECKS: AccountsCheckDef[] = [
       "The .forward file can redirect mail to external addresses, potentially leaking sensitive information.",
   },
   {
-    id: "ACCT-SYSTEM-SHELL",
+    id: CHECK_IDS.ACCOUNTS.ACCT_SYSTEM_SHELL,
     name: "System Accounts No Interactive Shell",
     severity: "warning",
     check: (output) => {
@@ -161,7 +162,7 @@ const ACCOUNTS_CHECKS: AccountsCheckDef[] = [
       "System accounts with interactive shells can be exploited if compromised, providing a login vector.",
   },
   {
-    id: "ACCT-ROOT-HOME-PERMS",
+    id: CHECK_IDS.ACCOUNTS.ACCT_ROOT_HOME_PERMS,
     name: "Root Home Directory Restricted",
     severity: "warning",
     check: (output) => {
@@ -183,7 +184,7 @@ const ACCOUNTS_CHECKS: AccountsCheckDef[] = [
       "A world-readable root home directory may expose sensitive configuration files and credentials.",
   },
   {
-    id: "ACCT-NO-DUPLICATE-UID",
+    id: CHECK_IDS.ACCOUNTS.ACCT_NO_DUPLICATE_UID,
     name: "No Duplicate UIDs",
     severity: "warning",
     check: (output) => {
@@ -205,7 +206,7 @@ const ACCOUNTS_CHECKS: AccountsCheckDef[] = [
       "Duplicate UIDs cause file ownership confusion, making it impossible to correctly attribute actions to users.",
   },
   {
-    id: "ACCT-HOME-OWNERSHIP",
+    id: CHECK_IDS.ACCOUNTS.ACCT_HOME_OWNERSHIP,
     name: "Home Directory Ownership Correct",
     severity: "info",
     check: (output) => {
@@ -233,7 +234,7 @@ const ACCOUNTS_CHECKS: AccountsCheckDef[] = [
       "Mismatched home directory ownership can allow other users to access private files and configurations.",
   },
   {
-    id: "ACCT-SHADOW-PERMS",
+    id: CHECK_IDS.ACCOUNTS.ACCT_SHADOW_PERMS,
     name: "/etc/shadow Permissions Restricted",
     severity: "warning",
     check: (output) => {
@@ -254,7 +255,7 @@ const ACCOUNTS_CHECKS: AccountsCheckDef[] = [
       "The /etc/shadow file contains password hashes and must be restricted to prevent offline password cracking.",
   },
   {
-    id: "ACCT-MAX-PASSWORD-DAYS",
+    id: CHECK_IDS.ACCOUNTS.ACCT_MAX_PASSWORD_DAYS,
     name: "Password Maximum Age Set",
     severity: "warning",
     check: (output) => {
@@ -275,7 +276,7 @@ const ACCOUNTS_CHECKS: AccountsCheckDef[] = [
       "Password maximum age ensures credentials are rotated periodically, limiting the window of exposure for compromised passwords.",
   },
   {
-    id: "ACCT-MIN-PASSWORD-DAYS",
+    id: CHECK_IDS.ACCOUNTS.ACCT_MIN_PASSWORD_DAYS,
     name: "Password Minimum Age Set",
     severity: "warning",
     check: (output) => {
@@ -296,7 +297,7 @@ const ACCOUNTS_CHECKS: AccountsCheckDef[] = [
       "Password minimum age prevents users from immediately changing back to an old password after a forced change.",
   },
   {
-    id: "ACCT-INACTIVE-LOCK",
+    id: CHECK_IDS.ACCOUNTS.ACCT_INACTIVE_LOCK,
     name: "Inactive Account Lockout Configured",
     severity: "info",
     check: (output) => {
@@ -316,7 +317,7 @@ const ACCOUNTS_CHECKS: AccountsCheckDef[] = [
       "Automatically locking inactive accounts reduces the attack surface by disabling unused credentials.",
   },
   {
-    id: "ACCT-DEFAULT-UMASK",
+    id: CHECK_IDS.ACCOUNTS.ACCT_DEFAULT_UMASK,
     name: "Default umask Restrictive",
     severity: "info",
     check: (output) => {
@@ -336,7 +337,7 @@ const ACCOUNTS_CHECKS: AccountsCheckDef[] = [
       "A restrictive default umask ensures newly created files are not world-readable, protecting sensitive data by default.",
   },
   {
-    id: "ACCT-NO-EMPTY-HOME",
+    id: CHECK_IDS.ACCOUNTS.ACCT_NO_EMPTY_HOME,
     name: "No Users with Missing Home Directories",
     severity: "warning",
     check: (output) => {
@@ -370,7 +371,7 @@ const ACCOUNTS_CHECKS: AccountsCheckDef[] = [
       "Users with valid login shells but missing home directories may indicate misconfigured or orphaned accounts.",
   },
   {
-    id: "ACCT-INACTIVE-ACCOUNTS",
+    id: CHECK_IDS.ACCOUNTS.ACCT_INACTIVE_ACCOUNTS,
     name: "No Excessive Inactive Accounts",
     severity: "info",
     check: (output) => {
@@ -399,7 +400,7 @@ const ACCOUNTS_CHECKS: AccountsCheckDef[] = [
       "Dormant accounts with valid credentials are targets for brute force and credential reuse attacks.",
   },
   {
-    id: "ACCT-TOTAL-USERS-REASONABLE",
+    id: CHECK_IDS.ACCOUNTS.ACCT_TOTAL_USERS_REASONABLE,
     name: "Total User Count Reasonable",
     severity: "info",
     check: (output) => {
@@ -435,7 +436,7 @@ const ACCOUNTS_CHECKS: AccountsCheckDef[] = [
       "Excessive user accounts on a VPS indicate poor account hygiene and increase the attack surface.",
   },
   {
-    id: "ACCT-NO-WORLD-WRITABLE-HOME",
+    id: CHECK_IDS.ACCOUNTS.ACCT_NO_WORLD_WRITABLE_HOME,
     name: "No World-Writable Home Directories",
     severity: "warning",
     check: (output) => {
@@ -463,7 +464,7 @@ const ACCOUNTS_CHECKS: AccountsCheckDef[] = [
       "World-writable home directories allow any user to plant malicious files like .bashrc or .ssh/authorized_keys.",
   },
   {
-    id: "ACCT-LOGIN-DEFS-UID-MAX",
+    id: CHECK_IDS.ACCOUNTS.ACCT_LOGIN_DEFS_UID_MAX,
     name: "Login UID Ranges Configured",
     severity: "info",
     check: (output) => {
@@ -489,7 +490,7 @@ const ACCOUNTS_CHECKS: AccountsCheckDef[] = [
       "Standard UID ranges prevent accidental overlap between system and user accounts, which can lead to privilege confusion.",
   },
   {
-    id: "ACCT-LOGIN-SHELL-AUDIT",
+    id: CHECK_IDS.ACCOUNTS.ACCT_LOGIN_SHELL_AUDIT,
     name: "Limited Accounts with Login Shells",
     severity: "warning",
     check: (output) => {
@@ -524,7 +525,7 @@ const ACCOUNTS_CHECKS: AccountsCheckDef[] = [
       "Excessive accounts with login shells increase the attack surface for brute-force and credential stuffing attacks.",
   },
   {
-    id: "ACCT-GID-CONSISTENCY",
+    id: CHECK_IDS.ACCOUNTS.ACCT_GID_CONSISTENCY,
     name: "No Duplicate Group IDs",
     severity: "info",
     check: (output) => {
@@ -575,7 +576,7 @@ export const parseAccountsChecks: CheckParser = (
         passed: false,
         currentValue: "Unable to determine",
         expectedValue: def.expectedValue,
-        fixCommand: def.fixCommand,
+        fixCommand: def.fixCommand,
         safeToAutoFix: def.safeToAutoFix,
         explain: def.explain,
       };
@@ -589,7 +590,7 @@ export const parseAccountsChecks: CheckParser = (
       passed,
       currentValue,
       expectedValue: def.expectedValue,
-      fixCommand: def.fixCommand,
+      fixCommand: def.fixCommand,
       safeToAutoFix: def.safeToAutoFix,
       explain: def.explain,
     };

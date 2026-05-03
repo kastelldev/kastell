@@ -5,6 +5,7 @@
  */
 
 import type { AuditCheck, CheckParser } from "../types.js";
+import { CHECK_IDS } from "../checkIds.js";
 
 /** Check if Docker is installed based on output */
 function isDockerAvailable(output: string): boolean {
@@ -16,38 +17,38 @@ function isDockerAvailable(output: string): boolean {
 function makeDockerSkippedChecks(severity: "info" | "warning"): AuditCheck[] {
   const message = "Docker not installed";
   const ids = [
-    { id: "DCK-NO-TCP-SOCKET", name: "No TCP Socket Exposed" },
-    { id: "DCK-NO-PRIVILEGED", name: "No Privileged Containers" },
-    { id: "DCK-VERSION-CURRENT", name: "Docker Version Current" },
-    { id: "DCK-USER-NAMESPACE", name: "User Namespace Enabled" },
-    { id: "DCK-NO-HOST-NETWORK", name: "No Host Network Containers" },
-    { id: "DCK-LOGGING-DRIVER", name: "Logging Driver Configured" },
-    { id: "DCK-LIVE-RESTORE", name: "Live Restore Enabled" },
-    { id: "DCK-NO-NEW-PRIVILEGES", name: "No New Privileges Default" },
-    { id: "DCK-ICC-DISABLED", name: "Inter-Container Communication Disabled" },
-    { id: "DCK-TLS-VERIFY", name: "TLS Verification Enabled" },
-    { id: "DCK-SOCKET-PERMS", name: "Docker Socket Permissions" },
-    { id: "DCK-NO-ROOT-CONTAINERS", name: "No Root Containers" },
-    { id: "DCK-READ-ONLY-ROOTFS", name: "Read-Only Root Filesystem" },
-    { id: "DCK-LOG-MAX-SIZE", name: "Log Max Size Configured" },
-    { id: "DCK-DEFAULT-ULIMITS", name: "Default Ulimits Configured" },
-    { id: "DCK-SECCOMP-ENABLED", name: "Seccomp Profile Applied" },
-    { id: "DCK-CONTENT-TRUST", name: "Docker Content Trust Enabled" },
-    { id: "DCK-NO-SENSITIVE-MOUNTS", name: "No Sensitive Mounts" },
-    { id: "DCK-APPARMOR-PROFILE", name: "AppArmor Profile Applied" },
-    { id: "DCK-NO-PRIVILEGED-PORTS", name: "No Privileged Port Bindings" },
-    { id: "DCK-NETWORK-DISABLED", name: "Custom Network Configured" },
-    { id: "DCK-LOG-DRIVER-CONFIGURED", name: "Log Driver Not None" },
-    { id: "DCK-ROOTLESS-MODE", name: "Rootless Docker Mode" },
-    { id: "DCK-NO-HOST-NETWORK-INSPECT", name: "No Host Network Mode (Inspect)" },
-    { id: "DCK-HEALTH-CHECK", name: "Container Health Checks Configured" },
-    { id: "DCK-BRIDGE-NFCALL", name: "Bridge ICC Disabled" },
-    { id: "DCK-NO-INSECURE-REGISTRY", name: "No Insecure Registries Configured" },
-    { id: "DCK-NO-EXPERIMENTAL", name: "Experimental Features Disabled" },
-    { id: "DCK-AUTH-PLUGIN", name: "Docker Authorization Plugin Configured" },
-    { id: "DCK-REGISTRY-CERTS", name: "Registry TLS Certificates Configured" },
-    { id: "DCK-SWARM-INACTIVE", name: "Docker Swarm Mode Inactive" },
-    { id: "DCK-PID-MODE", name: "No Host PID Namespace Containers" },
+    { id: CHECK_IDS.DOCKER.DCK_NO_TCP_SOCKET, name: "No TCP Socket Exposed" },
+    { id: CHECK_IDS.DOCKER.DCK_NO_PRIVILEGED, name: "No Privileged Containers" },
+    { id: CHECK_IDS.DOCKER.DCK_VERSION_CURRENT, name: "Docker Version Current" },
+    { id: CHECK_IDS.DOCKER.DCK_USER_NAMESPACE, name: "User Namespace Enabled" },
+    { id: CHECK_IDS.DOCKER.DCK_NO_HOST_NETWORK, name: "No Host Network Containers" },
+    { id: CHECK_IDS.DOCKER.DCK_LOGGING_DRIVER, name: "Logging Driver Configured" },
+    { id: CHECK_IDS.DOCKER.DCK_LIVE_RESTORE, name: "Live Restore Enabled" },
+    { id: CHECK_IDS.DOCKER.DCK_NO_NEW_PRIVILEGES, name: "No New Privileges Default" },
+    { id: CHECK_IDS.DOCKER.DCK_ICC_DISABLED, name: "Inter-Container Communication Disabled" },
+    { id: CHECK_IDS.DOCKER.DCK_TLS_VERIFY, name: "TLS Verification Enabled" },
+    { id: CHECK_IDS.DOCKER.DCK_SOCKET_PERMS, name: "Docker Socket Permissions" },
+    { id: CHECK_IDS.DOCKER.DCK_NO_ROOT_CONTAINERS, name: "No Root Containers" },
+    { id: CHECK_IDS.DOCKER.DCK_READ_ONLY_ROOTFS, name: "Read-Only Root Filesystem" },
+    { id: CHECK_IDS.DOCKER.DCK_LOG_MAX_SIZE, name: "Log Max Size Configured" },
+    { id: CHECK_IDS.DOCKER.DCK_DEFAULT_ULIMITS, name: "Default Ulimits Configured" },
+    { id: CHECK_IDS.DOCKER.DCK_SECCOMP_ENABLED, name: "Seccomp Profile Applied" },
+    { id: CHECK_IDS.DOCKER.DCK_CONTENT_TRUST, name: "Docker Content Trust Enabled" },
+    { id: CHECK_IDS.DOCKER.DCK_NO_SENSITIVE_MOUNTS, name: "No Sensitive Mounts" },
+    { id: CHECK_IDS.DOCKER.DCK_APPARMOR_PROFILE, name: "AppArmor Profile Applied" },
+    { id: CHECK_IDS.DOCKER.DCK_NO_PRIVILEGED_PORTS, name: "No Privileged Port Bindings" },
+    { id: CHECK_IDS.DOCKER.DCK_NETWORK_DISABLED, name: "Custom Network Configured" },
+    { id: CHECK_IDS.DOCKER.DCK_LOG_DRIVER_CONFIGURED, name: "Log Driver Not None" },
+    { id: CHECK_IDS.DOCKER.DCK_ROOTLESS_MODE, name: "Rootless Docker Mode" },
+    { id: CHECK_IDS.DOCKER.DCK_NO_HOST_NETWORK_INSPECT, name: "No Host Network Mode (Inspect)" },
+    { id: CHECK_IDS.DOCKER.DCK_HEALTH_CHECK, name: "Container Health Checks Configured" },
+    { id: CHECK_IDS.DOCKER.DCK_BRIDGE_NFCALL, name: "Bridge ICC Disabled" },
+    { id: CHECK_IDS.DOCKER.DCK_NO_INSECURE_REGISTRY, name: "No Insecure Registries Configured" },
+    { id: CHECK_IDS.DOCKER.DCK_NO_EXPERIMENTAL, name: "Experimental Features Disabled" },
+    { id: CHECK_IDS.DOCKER.DCK_AUTH_PLUGIN, name: "Docker Authorization Plugin Configured" },
+    { id: CHECK_IDS.DOCKER.DCK_REGISTRY_CERTS, name: "Registry TLS Certificates Configured" },
+    { id: CHECK_IDS.DOCKER.DCK_SWARM_INACTIVE, name: "Docker Swarm Mode Inactive" },
+    { id: CHECK_IDS.DOCKER.DCK_PID_MODE, name: "No Host PID Namespace Containers" },
   ];
 
   return ids.map((def) => ({
@@ -97,7 +98,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
   const hosts = dockerInfo.Hosts ?? [];
   const hasTcpSocket = hosts.some((h: string) => h.startsWith("tcp://"));
   const dck01: AuditCheck = {
-    id: "DCK-NO-TCP-SOCKET",
+    id: CHECK_IDS.DOCKER.DCK_NO_TCP_SOCKET,
     category: "Docker",
     name: "No TCP Socket Exposed",
     severity: "critical",
@@ -112,7 +113,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
   // DCK-NO-PRIVILEGED: No privileged containers
   const hasPrivileged = /--privileged/i.test(sectionOutput) || /"Privileged":\s*true/i.test(sectionOutput);
   const dck02: AuditCheck = {
-    id: "DCK-NO-PRIVILEGED",
+    id: CHECK_IDS.DOCKER.DCK_NO_PRIVILEGED,
     category: "Docker",
     name: "No Privileged Containers",
     severity: "critical",
@@ -129,7 +130,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
   const versionMajor = parseInt(version.split(".")[0], 10);
   const isCurrentVersion = !isNaN(versionMajor) && versionMajor >= 24;
   const dck03: AuditCheck = {
-    id: "DCK-VERSION-CURRENT",
+    id: CHECK_IDS.DOCKER.DCK_VERSION_CURRENT,
     category: "Docker",
     name: "Docker Version Current",
     severity: "warning",
@@ -146,7 +147,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
   const hasUserns = securityOpts.some((opt: string) => opt.includes("userns")) ||
     sectionOutput.includes("userns-remap");
   const dck04: AuditCheck = {
-    id: "DCK-USER-NAMESPACE",
+    id: CHECK_IDS.DOCKER.DCK_USER_NAMESPACE,
     category: "Docker",
     name: "User Namespace Enabled",
     severity: "warning",
@@ -161,7 +162,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
   // DCK-NO-HOST-NETWORK: No host network containers
   const hasHostNetwork = /--network\s*host/i.test(sectionOutput) || /"NetworkMode":\s*"host"/i.test(sectionOutput);
   const dck05: AuditCheck = {
-    id: "DCK-NO-HOST-NETWORK",
+    id: CHECK_IDS.DOCKER.DCK_NO_HOST_NETWORK,
     category: "Docker",
     name: "No Host Network Containers",
     severity: "warning",
@@ -177,7 +178,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
   const loggingDriver = dockerInfo.LoggingDriver ?? "unknown";
   const hasLogging = loggingDriver !== "none" && loggingDriver !== "unknown";
   const dck06: AuditCheck = {
-    id: "DCK-LOGGING-DRIVER",
+    id: CHECK_IDS.DOCKER.DCK_LOGGING_DRIVER,
     category: "Docker",
     name: "Logging Driver Configured",
     severity: "info",
@@ -209,7 +210,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
   // DCK-07: live-restore enabled
   const liveRestoreEnabled = daemonJson["live-restore"] === true || dockerInfo.LiveRestoreEnabled === true;
   const dck07: AuditCheck = {
-    id: "DCK-LIVE-RESTORE",
+    id: CHECK_IDS.DOCKER.DCK_LIVE_RESTORE,
     category: "Docker",
     name: "Live Restore Enabled",
     severity: "warning",
@@ -226,7 +227,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
   const noNewPrivilegesDefault = securityOpts2.some((o: string) => o.includes("no-new-privileges")) ||
     daemonJson["no-new-privileges"] === true;
   const dck08: AuditCheck = {
-    id: "DCK-NO-NEW-PRIVILEGES",
+    id: CHECK_IDS.DOCKER.DCK_NO_NEW_PRIVILEGES,
     category: "Docker",
     name: "No New Privileges Default",
     severity: "warning",
@@ -243,7 +244,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
     sectionOutput.includes('"BridgeNfIcc":false') ||
     sectionOutput.includes('"BridgeNfIcc": false');
   const dck09: AuditCheck = {
-    id: "DCK-ICC-DISABLED",
+    id: CHECK_IDS.DOCKER.DCK_ICC_DISABLED,
     category: "Docker",
     name: "Inter-Container Communication Disabled",
     severity: "warning",
@@ -260,7 +261,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
   const hasTcpExposed = tcpHosts.length > 0;
   const tlsVerifyEnabled = sectionOutput.includes('"tls":true') || sectionOutput.includes('"tlsverify":true');
   const dck10: AuditCheck = {
-    id: "DCK-TLS-VERIFY",
+    id: CHECK_IDS.DOCKER.DCK_TLS_VERIFY,
     category: "Docker",
     name: "TLS Verification Enabled",
     severity: "critical",
@@ -278,7 +279,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
   const sockStatLine = allLines.find((l) => /^\d{3}\s+\w+\s+\w+/.test(l.trim())) ?? "";
   const sockPermOk = /^660\s+root\s+docker/.test(sockStatLine.trim());
   const dck11: AuditCheck = {
-    id: "DCK-SOCKET-PERMS",
+    id: CHECK_IDS.DOCKER.DCK_SOCKET_PERMS,
     category: "Docker",
     name: "Docker Socket Permissions",
     severity: "warning",
@@ -295,7 +296,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
   const hasRootContainers = hasRunningContainers &&
     containerUserLines.some((l) => /User=$/.test(l.trim()) || /User=""/.test(l));
   const dck12: AuditCheck = {
-    id: "DCK-NO-ROOT-CONTAINERS",
+    id: CHECK_IDS.DOCKER.DCK_NO_ROOT_CONTAINERS,
     category: "Docker",
     name: "No Root Containers",
     severity: "warning",
@@ -316,7 +317,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
   const allReadOnly = hasRunningContainers && readonlyLines.length > 0 &&
     readonlyLines.every((l) => l.includes("ReadonlyRootfs=true"));
   const dck13: AuditCheck = {
-    id: "DCK-READ-ONLY-ROOTFS",
+    id: CHECK_IDS.DOCKER.DCK_READ_ONLY_ROOTFS,
     category: "Docker",
     name: "Read-Only Root Filesystem",
     severity: "info",
@@ -337,7 +338,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
   const logMaxSize = sectionOutput.includes("max-size") ||
     (typeof logOpts === "object" && logOpts !== null && "max-size" in (logOpts as Record<string, unknown>));
   const dck14: AuditCheck = {
-    id: "DCK-LOG-MAX-SIZE",
+    id: CHECK_IDS.DOCKER.DCK_LOG_MAX_SIZE,
     category: "Docker",
     name: "Log Max Size Configured",
     severity: "info",
@@ -352,7 +353,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
   // DCK-15: Default ulimits configured
   const hasDefaultUlimits = "default-ulimits" in daemonJson;
   const dck15: AuditCheck = {
-    id: "DCK-DEFAULT-ULIMITS",
+    id: CHECK_IDS.DOCKER.DCK_DEFAULT_ULIMITS,
     category: "Docker",
     name: "Default Ulimits Configured",
     severity: "info",
@@ -369,7 +370,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
   const hasSeccomp = !hasRunningContainers ||
     (seccompLines.length > 0 && seccompLines.some((l) => l.includes("seccomp")));
   const dck16: AuditCheck = {
-    id: "DCK-SECCOMP-ENABLED",
+    id: CHECK_IDS.DOCKER.DCK_SECCOMP_ENABLED,
     category: "Docker",
     name: "Seccomp Profile Applied",
     severity: "warning",
@@ -388,7 +389,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
   // DCK-17: Docker content trust
   const contentTrustEnabled = sectionOutput.includes("DOCKER_CONTENT_TRUST=1");
   const dck17: AuditCheck = {
-    id: "DCK-CONTENT-TRUST",
+    id: CHECK_IDS.DOCKER.DCK_CONTENT_TRUST,
     category: "Docker",
     name: "Docker Content Trust Enabled",
     severity: "info",
@@ -405,7 +406,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
   const hasPrivilegedFromInspect = hasRunningContainers &&
     privilegedInspectLines.some((l) => l.includes("Privileged=true"));
   const dck18: AuditCheck = {
-    id: "DCK-NO-SENSITIVE-MOUNTS",
+    id: CHECK_IDS.DOCKER.DCK_NO_SENSITIVE_MOUNTS,
     category: "Docker",
     name: "No Sensitive Mounts",
     severity: "warning",
@@ -425,7 +426,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
   const hasApparmor = !hasRunningContainers ||
     (seccompLines.length > 0 && seccompLines.some((l) => l.includes("apparmor")));
   const dck19: AuditCheck = {
-    id: "DCK-APPARMOR-PROFILE",
+    id: CHECK_IDS.DOCKER.DCK_APPARMOR_PROFILE,
     category: "Docker",
     name: "AppArmor Profile Applied",
     severity: "warning",
@@ -450,7 +451,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
     })
     .filter((p) => !isNaN(p) && p < 1024 && p !== 80 && p !== 443);
   const dck20: AuditCheck = {
-    id: "DCK-NO-PRIVILEGED-PORTS",
+    id: CHECK_IDS.DOCKER.DCK_NO_PRIVILEGED_PORTS,
     category: "Docker",
     name: "No Privileged Port Bindings",
     severity: "info",
@@ -479,7 +480,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
     return !defaultNetworks.has(norm) && !l.includes("NETWORK") && !l.includes("NAME");
   });
   const dck21: AuditCheck = {
-    id: "DCK-NETWORK-DISABLED",
+    id: CHECK_IDS.DOCKER.DCK_NETWORK_DISABLED,
     category: "Docker",
     name: "Custom Docker Network Configured",
     severity: "info",
@@ -499,7 +500,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
   // DCK-22: Log driver not 'none'
   const dck22LogDriver = dockerInfo.LoggingDriver ?? "unknown";
   const dck22: AuditCheck = {
-    id: "DCK-LOG-DRIVER-CONFIGURED",
+    id: CHECK_IDS.DOCKER.DCK_LOG_DRIVER_CONFIGURED,
     category: "Docker",
     name: "Logging Driver Not None",
     severity: "warning",
@@ -518,7 +519,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
   const dck23SecOpts = dockerInfo.SecurityOptions ?? [];
   const isRootless = dck23SecOpts.some((o: string) => o.toLowerCase().includes("rootless"));
   const dck23: AuditCheck = {
-    id: "DCK-ROOTLESS-MODE",
+    id: CHECK_IDS.DOCKER.DCK_ROOTLESS_MODE,
     category: "Docker",
     name: "Docker Rootless Mode",
     severity: "info",
@@ -538,7 +539,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
   // DCK-24: No containers using host network mode (inspect JSON path)
   const hasHostNetworkMode = /"NetworkMode":\s*"host"/i.test(sectionOutput);
   const dck24: AuditCheck = {
-    id: "DCK-NO-HOST-NETWORK-INSPECT",
+    id: CHECK_IDS.DOCKER.DCK_NO_HOST_NETWORK_INSPECT,
     category: "Docker",
     name: "No Host Network Mode (Inspect)",
     severity: "warning",
@@ -561,7 +562,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
   const healthCheckLines = allLines.filter((l) => l.includes("Health") || l.includes("healthy") || l.includes("unhealthy"));
   const hasHealthChecks = !hasRunningContainers || healthCheckLines.length > 0;
   const dck25: AuditCheck = {
-    id: "DCK-HEALTH-CHECK",
+    id: CHECK_IDS.DOCKER.DCK_HEALTH_CHECK,
     category: "Docker",
     name: "Container Health Checks Configured",
     severity: "info",
@@ -594,7 +595,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
     }
   }
   const dck26: AuditCheck = {
-    id: "DCK-BRIDGE-NFCALL",
+    id: CHECK_IDS.DOCKER.DCK_BRIDGE_NFCALL,
     category: "Docker",
     name: "Bridge ICC Disabled",
     severity: "warning",
@@ -619,7 +620,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
     && !/^\[127\.0\.0\.0\/8\]$/.test(insecureRegistryValue.replace(/\s/g, ""))
     && !insecureRegistryValue.includes("[]");
   const dck27: AuditCheck = {
-    id: "DCK-NO-INSECURE-REGISTRY",
+    id: CHECK_IDS.DOCKER.DCK_NO_INSECURE_REGISTRY,
     category: "Docker",
     name: "No Insecure Registries Configured",
     severity: "warning",
@@ -644,7 +645,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
   const isExperimental = (experimentalLine !== undefined && experimentalLine.trim() === "true")
     || (lastBoolLine?.trim() === "true");
   const dck28: AuditCheck = {
-    id: "DCK-NO-EXPERIMENTAL",
+    id: CHECK_IDS.DOCKER.DCK_NO_EXPERIMENTAL,
     category: "Docker",
     name: "Experimental Features Disabled",
     severity: "info",
@@ -669,7 +670,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
     && authPluginValue !== "[]"
     && authPluginValue !== "[ ]";
   const dck29: AuditCheck = {
-    id: "DCK-AUTH-PLUGIN",
+    id: CHECK_IDS.DOCKER.DCK_AUTH_PLUGIN,
     category: "Docker",
     name: "Docker Authorization Plugin Configured",
     severity: "info",
@@ -690,7 +691,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
     && sectionOutput.includes("/etc/docker/certs.d/")
     && !sectionOutput.includes("total 0");
   const dck30: AuditCheck = {
-    id: "DCK-REGISTRY-CERTS",
+    id: CHECK_IDS.DOCKER.DCK_REGISTRY_CERTS,
     category: "Docker",
     name: "Registry TLS Certificates Configured",
     severity: "info",
@@ -712,7 +713,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
   const swarmState = swarmStateLine?.trim() ?? "inactive";
   const swarmActive = swarmState === "active";
   const dck31: AuditCheck = {
-    id: "DCK-SWARM-INACTIVE",
+    id: CHECK_IDS.DOCKER.DCK_SWARM_INACTIVE,
     category: "Docker",
     name: "Docker Swarm Mode Inactive",
     severity: "info",
@@ -732,7 +733,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
   const hasHostPid = /"PidMode":\s*"host"/i.test(sectionOutput)
     || /PidMode=host/.test(sectionOutput);
   const dck32: AuditCheck = {
-    id: "DCK-PID-MODE",
+    id: CHECK_IDS.DOCKER.DCK_PID_MODE,
     category: "Docker",
     name: "No Host PID Namespace Containers",
     severity: "warning",
