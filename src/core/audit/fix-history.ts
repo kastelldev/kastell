@@ -253,7 +253,7 @@ export async function backupFilesBeforeFix(
   const cmds = [`mkdir -p ${REMOTE_BACKUP_BASE}`, `mkdir -p ${backupDir}`];
   for (const fp of allFilePaths) {
     cmds.push(`mkdir -p ${backupDir}$(dirname ${fp})`);
-    cmds.push(`test -f ${fp} && cp ${fp} ${backupDir}${fp} || true`);
+    cmds.push(`test -f ${fp} && { test -e ${backupDir}${fp} || cp ${fp} ${backupDir}${fp}; } || true`);
   }
   for (const param of sysctlParams) {
     cmds.push(`echo "sysctl -w ${param}=$(sysctl -n ${param})" >> ${backupDir}/restore-commands.sh`);
