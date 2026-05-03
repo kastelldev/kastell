@@ -5,6 +5,7 @@
  */
 
 import type {AuditCheck, CheckParser, Severity, FixTier} from "../types.js";
+import { CHECK_IDS } from "../checkIds.js";
 
 interface MACCheckDef {
   id: string;
@@ -12,14 +13,14 @@ interface MACCheckDef {
   severity: Severity;
   check: (output: string) => { passed: boolean; currentValue: string };
   expectedValue: string;
-  fixCommand: string;
+  fixCommand: string;
   safeToAutoFix?: FixTier;
   explain: string;
 }
 
 const MAC_CHECKS: MACCheckDef[] = [
   {
-    id: "MAC-LSM-ACTIVE",
+    id: CHECK_IDS.MAC.MAC_LSM_ACTIVE,
     name: "LSM Active (AppArmor or SELinux)",
     severity: "warning",
     check: (output) => {
@@ -39,7 +40,7 @@ const MAC_CHECKS: MACCheckDef[] = [
       "A mandatory access control system (AppArmor or SELinux) enforces security policies that restrict what programs can do, limiting the impact of exploited vulnerabilities.",
   },
   {
-    id: "MAC-APPARMOR-ACTIVE",
+    id: CHECK_IDS.MAC.MAC_APPARMOR_ACTIVE,
     name: "AppArmor Service Active",
     severity: "warning",
     check: (output) => {
@@ -58,7 +59,7 @@ const MAC_CHECKS: MACCheckDef[] = [
       "AppArmor must be running to enforce security profiles. A stopped AppArmor service provides no MAC protection even if profiles are defined.",
   },
   {
-    id: "MAC-APPARMOR-PROFILES",
+    id: CHECK_IDS.MAC.MAC_APPARMOR_PROFILES,
     name: "AppArmor Enforce Mode Profiles",
     severity: "info",
     check: (output) => {
@@ -79,7 +80,7 @@ const MAC_CHECKS: MACCheckDef[] = [
       "AppArmor profiles in enforce mode actively block policy violations. Profiles only in complain mode log violations without blocking them, providing weaker protection.",
   },
   {
-    id: "MAC-APPARMOR-NO-UNCONFINED",
+    id: CHECK_IDS.MAC.MAC_APPARMOR_NO_UNCONFINED,
     name: "Minimal Unconfined Processes",
     severity: "info",
     check: (output) => {
@@ -103,7 +104,7 @@ const MAC_CHECKS: MACCheckDef[] = [
       "Processes running without an AppArmor profile (unconfined) have unrestricted access. A high count of unconfined processes indicates incomplete MAC coverage.",
   },
   {
-    id: "MAC-SELINUX-ENFORCING",
+    id: CHECK_IDS.MAC.MAC_SELINUX_ENFORCING,
     name: "SELinux Enforcing (if present)",
     severity: "warning",
     check: (output) => {
@@ -125,7 +126,7 @@ const MAC_CHECKS: MACCheckDef[] = [
       "SELinux in Enforcing mode actively blocks policy violations. Permissive mode only logs violations without blocking them. On AppArmor systems (Ubuntu), SELinux absence is expected and not a finding.",
   },
   {
-    id: "MAC-SELINUX-CONFIG",
+    id: CHECK_IDS.MAC.MAC_SELINUX_CONFIG,
     name: "SELinux Config Enforcing",
     severity: "info",
     check: (output) => {
@@ -147,7 +148,7 @@ const MAC_CHECKS: MACCheckDef[] = [
       "The SELinux config file sets the mode that persists across reboots. Without SELINUX=enforcing in the config, a reboot can revert SELinux to permissive or disabled mode.",
   },
   {
-    id: "MAC-SECCOMP-ENABLED",
+    id: CHECK_IDS.MAC.MAC_SECCOMP_ENABLED,
     name: "Seccomp Kernel Support",
     severity: "info",
     check: (output) => {
@@ -168,7 +169,7 @@ const MAC_CHECKS: MACCheckDef[] = [
       "Seccomp (secure computing mode) restricts the system calls available to processes, limiting the attack surface if a process is compromised.",
   },
   {
-    id: "MAC-APPARMOR-ENFORCE-COUNT",
+    id: CHECK_IDS.MAC.MAC_APPARMOR_ENFORCE_COUNT,
     name: "AppArmor Enforce Mode Count",
     severity: "warning",
     check: (output) => {
@@ -210,7 +211,7 @@ const MAC_CHECKS: MACCheckDef[] = [
       "AppArmor profiles in enforce mode actively restrict application behavior; complain mode only logs violations.",
   },
   {
-    id: "MAC-NO-UNCONFINED-PROCS",
+    id: CHECK_IDS.MAC.MAC_NO_UNCONFINED_PROCS,
     name: "Minimal Unconfined Processes",
     severity: "info",
     check: (output) => {
@@ -234,7 +235,7 @@ const MAC_CHECKS: MACCheckDef[] = [
       "Unconfined processes run without AppArmor restrictions; minimizing them reduces the attack surface.",
   },
   {
-    id: "MAC-SECCOMP-STRICT",
+    id: CHECK_IDS.MAC.MAC_SECCOMP_STRICT,
     name: "Seccomp Filter Mode Active",
     severity: "info",
     check: (output) => {
@@ -282,7 +283,7 @@ export const parseMACChecks: CheckParser = (
         passed: false,
         currentValue: "Unable to determine",
         expectedValue: def.expectedValue,
-        fixCommand: def.fixCommand,
+        fixCommand: def.fixCommand,
         safeToAutoFix: def.safeToAutoFix,
         explain: def.explain,
       };
@@ -296,7 +297,7 @@ export const parseMACChecks: CheckParser = (
       passed,
       currentValue,
       expectedValue: def.expectedValue,
-      fixCommand: def.fixCommand,
+      fixCommand: def.fixCommand,
       safeToAutoFix: def.safeToAutoFix,
       explain: def.explain,
     };

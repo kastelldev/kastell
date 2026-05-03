@@ -4,6 +4,7 @@
  */
 
 import type {AuditCheck, CheckParser, Severity, FixTier} from "../types.js";
+import { CHECK_IDS } from "../checkIds.js";
 
 interface ServicesCheckDef {
   id: string;
@@ -11,7 +12,7 @@ interface ServicesCheckDef {
   severity: Severity;
   check: (output: string) => { passed: boolean; currentValue: string };
   expectedValue: string;
-  fixCommand: string;
+  fixCommand: string;
   safeToAutoFix?: FixTier;
   explain: string;
 }
@@ -31,7 +32,7 @@ function isServiceLineActive(output: string, index: number): boolean {
 const SERVICES_CHECKS: ServicesCheckDef[] = [
   // === Legacy dangerous services (from first systemctl batch) ===
   {
-    id: "SVC-NO-TELNET",
+    id: CHECK_IDS.SERVICES.SVC_NO_TELNET,
     name: "Telnet Service Disabled",
     severity: "critical",
     check: (output) => {
@@ -48,7 +49,7 @@ const SERVICES_CHECKS: ServicesCheckDef[] = [
       "Telnet transmits all data including passwords in cleartext, making it trivially interceptable.",
   },
   {
-    id: "SVC-NO-RSH",
+    id: CHECK_IDS.SERVICES.SVC_NO_RSH,
     name: "rsh Service Disabled",
     severity: "critical",
     check: (output) => {
@@ -65,7 +66,7 @@ const SERVICES_CHECKS: ServicesCheckDef[] = [
       "Remote Shell (rsh) provides no encryption and uses weak host-based authentication, allowing easy impersonation.",
   },
   {
-    id: "SVC-NO-RLOGIN",
+    id: CHECK_IDS.SERVICES.SVC_NO_RLOGIN,
     name: "rlogin Service Disabled",
     severity: "warning",
     check: (output) => {
@@ -82,7 +83,7 @@ const SERVICES_CHECKS: ServicesCheckDef[] = [
       "Remote login (rlogin) transmits credentials in cleartext and relies on insecure host trust relationships.",
   },
   {
-    id: "SVC-NO-FTP",
+    id: CHECK_IDS.SERVICES.SVC_NO_FTP,
     name: "FTP Server Disabled",
     severity: "warning",
     check: (output) => {
@@ -99,7 +100,7 @@ const SERVICES_CHECKS: ServicesCheckDef[] = [
       "FTP transmits credentials and data in cleartext. Use SFTP or SCP over SSH for secure file transfers.",
   },
   {
-    id: "SVC-NO-TFTP",
+    id: CHECK_IDS.SERVICES.SVC_NO_TFTP,
     name: "TFTP Service Disabled",
     severity: "warning",
     check: (output) => {
@@ -118,7 +119,7 @@ const SERVICES_CHECKS: ServicesCheckDef[] = [
 
   // === Network services (from second systemctl batch) ===
   {
-    id: "SVC-NFS-RESTRICTED",
+    id: CHECK_IDS.SERVICES.SVC_NFS_RESTRICTED,
     name: "NFS Server Not Exposed",
     severity: "warning",
     check: (output) => {
@@ -135,7 +136,7 @@ const SERVICES_CHECKS: ServicesCheckDef[] = [
       "NFS shares can expose sensitive files to unauthorized hosts if not properly restricted with exports configuration.",
   },
   {
-    id: "SVC-NO-RPCBIND",
+    id: CHECK_IDS.SERVICES.SVC_NO_RPCBIND,
     name: "rpcbind Not Running",
     severity: "warning",
     check: (output) => {
@@ -152,7 +153,7 @@ const SERVICES_CHECKS: ServicesCheckDef[] = [
       "rpcbind maps RPC services to ports and is a common target for reconnaissance and amplification attacks.",
   },
   {
-    id: "SVC-SAMBA-RESTRICTED",
+    id: CHECK_IDS.SERVICES.SVC_SAMBA_RESTRICTED,
     name: "Samba Not Exposed",
     severity: "warning",
     check: (output) => {
@@ -169,7 +170,7 @@ const SERVICES_CHECKS: ServicesCheckDef[] = [
       "Samba file sharing on public servers exposes the SMB protocol, which is frequently targeted by ransomware and worms.",
   },
   {
-    id: "SVC-NO-AVAHI",
+    id: CHECK_IDS.SERVICES.SVC_NO_AVAHI,
     name: "Avahi Daemon Disabled",
     severity: "info",
     check: (output) => {
@@ -186,7 +187,7 @@ const SERVICES_CHECKS: ServicesCheckDef[] = [
       "Avahi provides mDNS/DNS-SD service discovery intended for desktops, not servers. It increases attack surface unnecessarily.",
   },
   {
-    id: "SVC-NO-CUPS",
+    id: CHECK_IDS.SERVICES.SVC_NO_CUPS,
     name: "CUPS Print Service Disabled",
     severity: "info",
     check: (output) => {
@@ -203,7 +204,7 @@ const SERVICES_CHECKS: ServicesCheckDef[] = [
       "CUPS print service is unnecessary on most servers and has had multiple critical vulnerabilities in recent years.",
   },
   {
-    id: "SVC-NO-DHCP-SERVER",
+    id: CHECK_IDS.SERVICES.SVC_NO_DHCP_SERVER,
     name: "DHCP Server Disabled",
     severity: "info",
     check: (output) => {
@@ -220,7 +221,7 @@ const SERVICES_CHECKS: ServicesCheckDef[] = [
       "Running a rogue DHCP server on a cloud VPS can disrupt network addressing for other tenants.",
   },
   {
-    id: "SVC-NO-DNS-SERVER",
+    id: CHECK_IDS.SERVICES.SVC_NO_DNS_SERVER,
     name: "DNS Server Not Running",
     severity: "info",
     check: (output) => {
@@ -237,7 +238,7 @@ const SERVICES_CHECKS: ServicesCheckDef[] = [
       "An unintended DNS server can be used for DNS amplification attacks and zone information leakage.",
   },
   {
-    id: "SVC-NO-SNMP",
+    id: CHECK_IDS.SERVICES.SVC_NO_SNMP,
     name: "SNMP Service Disabled",
     severity: "warning",
     check: (output) => {
@@ -254,7 +255,7 @@ const SERVICES_CHECKS: ServicesCheckDef[] = [
       "SNMP with default community strings exposes system information and can allow unauthorized configuration changes.",
   },
   {
-    id: "SVC-NO-SQUID",
+    id: CHECK_IDS.SERVICES.SVC_NO_SQUID,
     name: "Squid Proxy Disabled",
     severity: "info",
     check: (output) => {
@@ -271,7 +272,7 @@ const SERVICES_CHECKS: ServicesCheckDef[] = [
       "An open proxy server can be abused to anonymize malicious traffic and may violate hosting provider terms.",
   },
   {
-    id: "SVC-NO-XINETD",
+    id: CHECK_IDS.SERVICES.SVC_NO_XINETD,
     name: "xinetd Service Disabled",
     severity: "warning",
     check: (output) => {
@@ -288,7 +289,7 @@ const SERVICES_CHECKS: ServicesCheckDef[] = [
       "xinetd is a legacy super-server that can spawn insecure services. Modern systemd socket activation is preferred.",
   },
   {
-    id: "SVC-NO-YPSERV",
+    id: CHECK_IDS.SERVICES.SVC_NO_YPSERV,
     name: "NIS (ypserv) Disabled",
     severity: "warning",
     check: (output) => {
@@ -305,7 +306,7 @@ const SERVICES_CHECKS: ServicesCheckDef[] = [
       "NIS transmits authentication data in cleartext and is vulnerable to domain-level compromise.",
   },
   {
-    id: "SVC-NO-INETD",
+    id: CHECK_IDS.SERVICES.SVC_NO_INETD,
     name: "No Dangerous inetd Entries",
     severity: "warning",
     check: (output) => {
@@ -327,7 +328,7 @@ const SERVICES_CHECKS: ServicesCheckDef[] = [
       "The inetd super-server can silently spawn legacy insecure services that bypass systemd management.",
   },
   {
-    id: "SVC-NO-CHARGEN",
+    id: CHECK_IDS.SERVICES.SVC_NO_CHARGEN,
     name: "chargen Service Disabled",
     severity: "warning",
     check: (output) => {
@@ -344,7 +345,7 @@ const SERVICES_CHECKS: ServicesCheckDef[] = [
       "The chargen service generates character streams and is commonly exploited in amplification DDoS attacks.",
   },
   {
-    id: "SVC-NO-DAYTIME",
+    id: CHECK_IDS.SERVICES.SVC_NO_DAYTIME,
     name: "daytime Service Disabled",
     severity: "info",
     check: (output) => {
@@ -361,7 +362,7 @@ const SERVICES_CHECKS: ServicesCheckDef[] = [
       "The daytime protocol is obsolete and can be used in amplification attacks against third parties.",
   },
   {
-    id: "SVC-NO-DISCARD",
+    id: CHECK_IDS.SERVICES.SVC_NO_DISCARD,
     name: "discard Service Disabled",
     severity: "info",
     check: (output) => {
@@ -545,7 +546,7 @@ export const parseServicesChecks: CheckParser = (
         passed: false,
         currentValue: "Unable to determine",
         expectedValue: def.expectedValue,
-        fixCommand: def.fixCommand,
+        fixCommand: def.fixCommand,
         safeToAutoFix: def.safeToAutoFix,
         explain: def.explain,
       };
@@ -559,7 +560,7 @@ export const parseServicesChecks: CheckParser = (
       passed,
       currentValue,
       expectedValue: def.expectedValue,
-      fixCommand: def.fixCommand,
+      fixCommand: def.fixCommand,
       safeToAutoFix: def.safeToAutoFix,
       explain: def.explain,
     };

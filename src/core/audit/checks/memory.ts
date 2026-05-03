@@ -5,6 +5,7 @@
  */
 
 import type {AuditCheck, CheckParser, Severity, FixTier} from "../types.js";
+import { CHECK_IDS } from "../checkIds.js";
 
 interface MemoryCheckDef {
   id: string;
@@ -12,14 +13,14 @@ interface MemoryCheckDef {
   severity: Severity;
   check: (output: string) => { passed: boolean; currentValue: string };
   expectedValue: string;
-  fixCommand: string;
+  fixCommand: string;
   safeToAutoFix?: FixTier;
   explain: string;
 }
 
 const MEMORY_CHECKS: MemoryCheckDef[] = [
   {
-    id: "MEM-OVERCOMMIT-POLICY",
+    id: CHECK_IDS.MEMORY.MEM_OVERCOMMIT_POLICY,
     name: "Memory Overcommit Controlled",
     severity: "info",
     check: (output) => {
@@ -46,7 +47,7 @@ const MEMORY_CHECKS: MemoryCheckDef[] = [
       "vm.overcommit_memory=1 (always overcommit) allows any memory allocation regardless of available memory, increasing OOM kill risk and potential denial-of-service conditions.",
   },
   {
-    id: "MEM-NO-ZOMBIE-EXCESS",
+    id: CHECK_IDS.MEMORY.MEM_NO_ZOMBIE_EXCESS,
     name: "No Excessive Zombie Processes",
     severity: "warning",
     check: (output) => {
@@ -81,7 +82,7 @@ const MEMORY_CHECKS: MemoryCheckDef[] = [
       "Excessive zombie processes indicate a parent process is not properly reaping children, suggesting a software fault. Large numbers can exhaust process table entries causing system-wide failures.",
   },
   {
-    id: "MEM-CORE-DUMP-RESTRICTED",
+    id: CHECK_IDS.MEMORY.MEM_CORE_DUMP_RESTRICTED,
     name: "Core Dumps Restricted (SUID)",
     severity: "warning",
     check: (output) => {
@@ -105,7 +106,7 @@ const MEMORY_CHECKS: MemoryCheckDef[] = [
       "fs.suid_dumpable=0 prevents SUID/SGID programs from generating core dumps, protecting against leaking privileged process memory (credentials, keys) to disk.",
   },
   {
-    id: "MEM-OOM-KILL-POLICY",
+    id: CHECK_IDS.MEMORY.MEM_OOM_KILL_POLICY,
     name: "OOM Killer Policy Configured",
     severity: "info",
     check: (output) => {
@@ -126,7 +127,7 @@ const MEMORY_CHECKS: MemoryCheckDef[] = [
       "The OOM killer policy controls which process is terminated when memory runs out. Having it explicitly configured ensures predictable behavior during memory pressure events.",
   },
   {
-    id: "MEM-HUGEPAGES-CONFIG",
+    id: CHECK_IDS.MEMORY.MEM_HUGEPAGES_CONFIG,
     name: "Transparent Hugepages Configured",
     severity: "info",
     check: (output) => {
@@ -153,7 +154,7 @@ const MEMORY_CHECKS: MemoryCheckDef[] = [
       "Transparent hugepages configuration affects memory management performance and fragmentation. Having it explicitly configured is a sign of deliberate memory tuning.",
   },
   {
-    id: "MEM-PID-MAX-REASONABLE",
+    id: CHECK_IDS.MEMORY.MEM_PID_MAX_REASONABLE,
     name: "PID Max Configured",
     severity: "info",
     check: (output) => {
@@ -178,7 +179,7 @@ const MEMORY_CHECKS: MemoryCheckDef[] = [
       "The pid_max value limits how many processes can run simultaneously. Values above 4096 indicate the system is configured for normal multi-process operation.",
   },
   {
-    id: "MEM-ULIMIT-NOFILE",
+    id: CHECK_IDS.MEMORY.MEM_ULIMIT_NOFILE,
     name: "Open Files Limit Configured",
     severity: "warning",
     check: (output) => {
@@ -204,7 +205,7 @@ const MEMORY_CHECKS: MemoryCheckDef[] = [
       "An unlimited open files ulimit allows a single process to consume all available file descriptors, potentially causing denial-of-service by exhausting system resources.",
   },
   {
-    id: "MEM-SWAP-ENCRYPTED",
+    id: CHECK_IDS.MEMORY.MEM_SWAP_ENCRYPTED,
     name: "Swap Encrypted or Disabled",
     severity: "info",
     check: (output) => {
@@ -231,7 +232,7 @@ const MEMORY_CHECKS: MemoryCheckDef[] = [
       "Unencrypted swap can contain sensitive data like passwords and encryption keys that persist after power loss.",
   },
   {
-    id: "MEM-SWAPPINESS-REASONABLE",
+    id: CHECK_IDS.MEMORY.MEM_SWAPPINESS_REASONABLE,
     name: "Swappiness Value Reasonable",
     severity: "info",
     check: (output) => {
@@ -267,7 +268,7 @@ const MEMORY_CHECKS: MemoryCheckDef[] = [
       "High swappiness increases the chance of sensitive memory pages being written to potentially unencrypted swap.",
   },
   {
-    id: "MEM-HUGEPAGES-NOT-EXCESSIVE",
+    id: CHECK_IDS.MEMORY.MEM_HUGEPAGES_NOT_EXCESSIVE,
     name: "Transparent Hugepages Not Always Mode",
     severity: "info",
     check: (output) => {
@@ -292,7 +293,7 @@ const MEMORY_CHECKS: MemoryCheckDef[] = [
       "Transparent hugepages set to 'always' can cause memory fragmentation and latency spikes; 'madvise' gives application control.",
   },
   {
-    id: "MEM-MAX-MAP-COUNT",
+    id: CHECK_IDS.MEMORY.MEM_MAX_MAP_COUNT,
     name: "vm.max_map_count Meets Minimum",
     severity: "info",
     check: (output) => {
@@ -351,7 +352,7 @@ export const parseMemoryChecks: CheckParser = (
         passed: false,
         currentValue: "Unable to determine",
         expectedValue: def.expectedValue,
-        fixCommand: def.fixCommand,
+        fixCommand: def.fixCommand,
         safeToAutoFix: def.safeToAutoFix,
         explain: def.explain,
       };
@@ -365,7 +366,7 @@ export const parseMemoryChecks: CheckParser = (
       passed,
       currentValue,
       expectedValue: def.expectedValue,
-      fixCommand: def.fixCommand,
+      fixCommand: def.fixCommand,
       safeToAutoFix: def.safeToAutoFix,
       explain: def.explain,
     };

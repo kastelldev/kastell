@@ -5,6 +5,7 @@
  */
 
 import type {AuditCheck, CheckParser, Severity, FixTier} from "../types.js";
+import { CHECK_IDS } from "../checkIds.js";
 
 interface DnsCheckDef {
   id: string;
@@ -12,14 +13,14 @@ interface DnsCheckDef {
   severity: Severity;
   check: (output: string) => { passed: boolean; currentValue: string };
   expectedValue: string;
-  fixCommand: string;
+  fixCommand: string;
   safeToAutoFix?: FixTier;
   explain: string;
 }
 
 const DNS_CHECKS: DnsCheckDef[] = [
   {
-    id: "DNS-DNSSEC-ENABLED",
+    id: CHECK_IDS.DNS.DNS_DNSSEC_ENABLED,
     name: "DNSSEC Validation Enabled",
     severity: "warning",
     check: (output) => {
@@ -38,7 +39,7 @@ const DNS_CHECKS: DnsCheckDef[] = [
       "DNSSEC validation prevents DNS cache poisoning and man-in-the-middle attacks by verifying cryptographic signatures on DNS responses. Without it, DNS responses can be spoofed to redirect traffic to malicious servers.",
   },
   {
-    id: "DNS-DOH-DOT-AVAILABLE",
+    id: CHECK_IDS.DNS.DNS_DOH_DOT_AVAILABLE,
     name: "DNS over HTTPS/TLS Tool Installed",
     severity: "info",
     check: (output) => {
@@ -59,7 +60,7 @@ const DNS_CHECKS: DnsCheckDef[] = [
       "DNS over HTTPS (DoH) and DNS over TLS (DoT) encrypt DNS queries preventing network-level DNS interception and manipulation. Installing a DoH/DoT resolver protects DNS traffic from passive surveillance and active tampering.",
   },
   {
-    id: "DNS-RESOLV-IMMUTABLE",
+    id: CHECK_IDS.DNS.DNS_RESOLV_IMMUTABLE,
     name: "/etc/resolv.conf Protected from Modification",
     severity: "warning",
     check: (output) => {
@@ -78,7 +79,7 @@ const DNS_CHECKS: DnsCheckDef[] = [
       "An unprotected /etc/resolv.conf can be overwritten by DHCP clients, network managers, or malicious processes to redirect all DNS queries to an attacker-controlled resolver, enabling DNS hijacking without any kernel compromise.",
   },
   {
-    id: "DNS-NAMESERVER-CONFIGURED",
+    id: CHECK_IDS.DNS.DNS_NAMESERVER_CONFIGURED,
     name: "Nameserver Configured in resolv.conf",
     severity: "warning",
     check: (output) => {
@@ -99,7 +100,7 @@ const DNS_CHECKS: DnsCheckDef[] = [
       "A nameserver must be configured in /etc/resolv.conf for the system to perform DNS lookups. Without it, domain name resolution fails entirely, breaking all network services that rely on hostnames rather than IP addresses.",
   },
   {
-    id: "DNS-MULTIPLE-NAMESERVERS",
+    id: CHECK_IDS.DNS.DNS_MULTIPLE_NAMESERVERS,
     name: "Multiple DNS Nameservers Configured",
     severity: "info",
     check: (output) => {
@@ -124,7 +125,7 @@ const DNS_CHECKS: DnsCheckDef[] = [
       "A single DNS nameserver creates a single point of failure; multiple servers ensure DNS resolution survives outages.",
   },
   {
-    id: "DNS-RESOLV-NOT-LOCALHOST-ONLY",
+    id: CHECK_IDS.DNS.DNS_RESOLV_NOT_LOCALHOST_ONLY,
     name: "DNS Resolution Not Limited to Localhost Only",
     severity: "info",
     check: (output) => {
@@ -155,7 +156,7 @@ const DNS_CHECKS: DnsCheckDef[] = [
       "DNS resolution relying solely on localhost without a running resolver causes total DNS failure.",
   },
   {
-    id: "DNS-LOCAL-RESOLVER-ACTIVE",
+    id: CHECK_IDS.DNS.DNS_LOCAL_RESOLVER_ACTIVE,
     name: "systemd-resolved Local Resolver Active",
     severity: "info",
     check: (output) => {
@@ -173,7 +174,7 @@ const DNS_CHECKS: DnsCheckDef[] = [
       "A local DNS resolver provides caching, DNSSEC validation, and protection against DNS cache poisoning from upstream resolvers.",
   },
   {
-    id: "DNS-SEARCH-DOMAIN-SET",
+    id: CHECK_IDS.DNS.DNS_SEARCH_DOMAIN_SET,
     name: "DNS Search Domain Configured",
     severity: "info",
     check: (output) => {
@@ -214,7 +215,7 @@ export const parseDnsChecks: CheckParser = (
         passed: false,
         currentValue: "Unable to determine",
         expectedValue: def.expectedValue,
-        fixCommand: def.fixCommand,
+        fixCommand: def.fixCommand,
         safeToAutoFix: def.safeToAutoFix,
         explain: def.explain,
       };
@@ -228,7 +229,7 @@ export const parseDnsChecks: CheckParser = (
       passed,
       currentValue,
       expectedValue: def.expectedValue,
-      fixCommand: def.fixCommand,
+      fixCommand: def.fixCommand,
       safeToAutoFix: def.safeToAutoFix,
       explain: def.explain,
     };

@@ -3,6 +3,7 @@
  * Parses OpenSSL version, SSH cipher/MAC/KEX config, LUKS disk, TLS protocol,
  * and certificate expiry data into 10 security checks.
  */
+import { CHECK_IDS } from "../checkIds.js";
 
 import type {AuditCheck, CheckParser, Severity, FixTier} from "../types.js";
 import { WEAK_CIPHERS, WEAK_MACS, WEAK_KEX } from "../../../constants.js";
@@ -13,14 +14,14 @@ interface CryptoCheckDef {
   severity: Severity;
   check: (output: string) => { passed: boolean; currentValue: string };
   expectedValue: string;
-  fixCommand: string;
+  fixCommand: string;
   safeToAutoFix?: FixTier;
   explain: string;
 }
 
 const CRYPTO_CHECKS: CryptoCheckDef[] = [
   {
-    id: "CRYPTO-OPENSSL-INSTALLED",
+    id: CHECK_IDS.CRYPTO.CRYPTO_OPENSSL_INSTALLED,
     name: "OpenSSL Installed",
     severity: "info",
     check: (output) => {
@@ -36,7 +37,7 @@ const CRYPTO_CHECKS: CryptoCheckDef[] = [
     explain: "OpenSSL provides the cryptographic library used by most services for TLS and certificate operations.",
   },
   {
-    id: "CRYPTO-SSH-WEAK-CIPHERS",
+    id: CHECK_IDS.CRYPTO.CRYPTO_SSH_WEAK_CIPHERS,
     name: "SSH No Weak Ciphers",
     severity: "warning",
     check: (output) => {
@@ -57,7 +58,7 @@ const CRYPTO_CHECKS: CryptoCheckDef[] = [
     explain: "Weak SSH ciphers (arcfour, 3DES, Blowfish) are vulnerable to known cryptographic attacks including SWEET32 and related attacks.",
   },
   {
-    id: "CRYPTO-SSH-WEAK-MACS",
+    id: CHECK_IDS.CRYPTO.CRYPTO_SSH_WEAK_MACS,
     name: "SSH No Weak MACs",
     severity: "warning",
     check: (output) => {
@@ -78,7 +79,7 @@ const CRYPTO_CHECKS: CryptoCheckDef[] = [
     explain: "Weak SSH MACs like HMAC-MD5 and HMAC-SHA1-96 provide insufficient integrity protection and are vulnerable to collision attacks.",
   },
   {
-    id: "CRYPTO-SSH-WEAK-KEX",
+    id: CHECK_IDS.CRYPTO.CRYPTO_SSH_WEAK_KEX,
     name: "SSH No Weak Key Exchange",
     severity: "warning",
     check: (output) => {
@@ -115,7 +116,7 @@ const CRYPTO_CHECKS: CryptoCheckDef[] = [
     explain: "ED25519 host keys use modern elliptic curve cryptography offering stronger security and better performance than RSA keys.",
   },
   {
-    id: "CRYPTO-LUKS-DISK",
+    id: CHECK_IDS.CRYPTO.CRYPTO_LUKS_DISK,
     name: "Disk Encryption (LUKS) Present",
     severity: "info",
     check: (output) => {
@@ -131,7 +132,7 @@ const CRYPTO_CHECKS: CryptoCheckDef[] = [
     explain: "LUKS disk encryption protects data at rest against physical theft or unauthorized access to storage media.",
   },
   {
-    id: "CRYPTO-TLS-MIN-PROTOCOL",
+    id: CHECK_IDS.CRYPTO.CRYPTO_TLS_MIN_PROTOCOL,
     name: "TLS Minimum Protocol Version",
     severity: "warning",
     check: (output) => {
@@ -156,7 +157,7 @@ const CRYPTO_CHECKS: CryptoCheckDef[] = [
     explain: "Setting a minimum TLS protocol version prevents clients from negotiating insecure TLS 1.0 or 1.1 connections.",
   },
   {
-    id: "CRYPTO-CERT-NOT-EXPIRED",
+    id: CHECK_IDS.CRYPTO.CRYPTO_CERT_NOT_EXPIRED,
     name: "TLS Certificate Not Expired",
     severity: "warning",
     check: (output) => {
@@ -209,7 +210,7 @@ const CRYPTO_CHECKS: CryptoCheckDef[] = [
     explain: "SSLv3 is vulnerable to the POODLE attack which allows an attacker to decrypt encrypted communications in an active MitM scenario.",
   },
   {
-    id: "CRYPTO-OPENSSL-MODERN",
+    id: CHECK_IDS.CRYPTO.CRYPTO_OPENSSL_MODERN,
     name: "OpenSSL Modern Version",
     severity: "info",
     check: (output) => {
@@ -234,7 +235,7 @@ const CRYPTO_CHECKS: CryptoCheckDef[] = [
     explain: "OpenSSL 1.0.x and earlier have known vulnerabilities including Heartbleed (1.0.1) and lack modern cipher support.",
   },
   {
-    id: "CRYPTO-WEAK-SSH-KEYS",
+    id: CHECK_IDS.CRYPTO.CRYPTO_WEAK_SSH_KEYS,
     name: "No Weak DSA SSH Host Keys",
     severity: "warning",
     check: (output) => {
@@ -250,7 +251,7 @@ const CRYPTO_CHECKS: CryptoCheckDef[] = [
     explain: "DSA host keys use fixed 1024-bit key length which is cryptographically weak by modern standards.",
   },
   {
-    id: "CRYPTO-HOST-KEY-PERMS",
+    id: CHECK_IDS.CRYPTO.CRYPTO_HOST_KEY_PERMS,
     name: "SSH Host Key Permissions Restrictive",
     severity: "critical",
     check: (output) => {
@@ -281,7 +282,7 @@ const CRYPTO_CHECKS: CryptoCheckDef[] = [
     explain: "World-readable SSH host private keys allow any local user to impersonate the server.",
   },
   {
-    id: "CRYPTO-NO-WEAK-OPENSSL-CIPHERS",
+    id: CHECK_IDS.CRYPTO.CRYPTO_NO_WEAK_OPENSSL_CIPHERS,
     name: "No Excessive Weak OpenSSL Ciphers",
     severity: "warning",
     check: (output) => {
@@ -316,7 +317,7 @@ const CRYPTO_CHECKS: CryptoCheckDef[] = [
     explain: "Weak ciphers in the OpenSSL configuration can be exploited through protocol downgrade attacks.",
   },
   {
-    id: "CRYPTO-MIN-PROTOCOL",
+    id: CHECK_IDS.CRYPTO.CRYPTO_MIN_PROTOCOL,
     name: "OpenSSL Minimum TLS Protocol",
     severity: "warning",
     check: (output) => {
@@ -337,7 +338,7 @@ const CRYPTO_CHECKS: CryptoCheckDef[] = [
     explain: "TLS versions below 1.2 have known cryptographic weaknesses and are deprecated by NIST and PCI-DSS.",
   },
   {
-    id: "CRYPTO-LUKS-KEY-SIZE",
+    id: CHECK_IDS.CRYPTO.CRYPTO_LUKS_KEY_SIZE,
     name: "LUKS Encryption Present or Info",
     severity: "info",
     check: (output) => {
@@ -353,7 +354,7 @@ const CRYPTO_CHECKS: CryptoCheckDef[] = [
     explain: "LUKS disk encryption protects data at rest; key size should be >= 256 bits for strong protection.",
   },
   {
-    id: "CRYPTO-DH-PARAMS-SIZE",
+    id: CHECK_IDS.CRYPTO.CRYPTO_DH_PARAMS_SIZE,
     name: "DH Parameters Are Adequate Size",
     severity: "warning",
     check: (output) => {
@@ -377,7 +378,7 @@ const CRYPTO_CHECKS: CryptoCheckDef[] = [
     explain: "DH parameters smaller than 2048 bits are vulnerable to Logjam attacks that allow passive TLS decryption.",
   },
   {
-    id: "CRYPTO-NO-WORLD-READABLE-KEYS",
+    id: CHECK_IDS.CRYPTO.CRYPTO_NO_WORLD_READABLE_KEYS,
     name: "No World-Readable TLS Private Keys",
     severity: "critical",
     check: (output) => {
@@ -403,7 +404,7 @@ const CRYPTO_CHECKS: CryptoCheckDef[] = [
     explain: "World-readable TLS private keys allow any local user to impersonate the server or decrypt intercepted traffic.",
   },
   {
-    id: "CRYPTO-CERT-COUNT",
+    id: CHECK_IDS.CRYPTO.CRYPTO_CERT_COUNT,
     name: "CA Certificate Store Populated",
     severity: "info",
     check: (output) => {
@@ -438,7 +439,7 @@ const CRYPTO_CHECKS: CryptoCheckDef[] = [
     explain: "A populated CA certificate store is required for TLS verification; empty stores cause all HTTPS connections to fail or bypass validation.",
   },
   {
-    id: "CRYPTO-NGINX-TLS-MODERN",
+    id: CHECK_IDS.CRYPTO.CRYPTO_NGINX_TLS_MODERN,
     name: "Nginx TLS Protocols Are Modern",
     severity: "warning",
     check: (output) => {
@@ -486,7 +487,7 @@ export const parseCryptoChecks: CheckParser = (
         passed: false,
         currentValue: "Unable to determine",
         expectedValue: def.expectedValue,
-        fixCommand: def.fixCommand,
+        fixCommand: def.fixCommand,
         safeToAutoFix: def.safeToAutoFix,
         explain: def.explain,
       };
@@ -500,7 +501,7 @@ export const parseCryptoChecks: CheckParser = (
       passed,
       currentValue,
       expectedValue: def.expectedValue,
-      fixCommand: def.fixCommand,
+      fixCommand: def.fixCommand,
       safeToAutoFix: def.safeToAutoFix,
       explain: def.explain,
     };

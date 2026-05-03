@@ -6,6 +6,7 @@
  */
 
 import type {AuditCheck, CheckParser, Severity, FixTier} from "../types.js";
+import { CHECK_IDS } from "../checkIds.js";
 import { makeSkippedChecks } from "./shared/skipChecks.js";
 
 const CATEGORY = "WAF & Reverse Proxy";
@@ -23,7 +24,7 @@ interface NgxCheckDef {
 
 const NGX_CHECKS: NgxCheckDef[] = [
   {
-    id: "NGX-SERVER-TOKENS",
+    id: CHECK_IDS.NGINX.NGX_SERVER_TOKENS,
     name: "server_tokens off",
     severity: "warning",
     check: (output) => {
@@ -42,7 +43,7 @@ const NGX_CHECKS: NgxCheckDef[] = [
       "Hiding Nginx version information prevents attackers from targeting known vulnerabilities for a specific version. The server_tokens directive controls whether Nginx sends its version number in the Server HTTP response header and on error pages.",
   },
   {
-    id: "NGX-SSL-PROTOCOLS",
+    id: CHECK_IDS.NGINX.NGX_SSL_PROTOCOLS,
     name: "ssl_protocols explicitly configured",
     severity: "warning",
     check: (output) => {
@@ -58,7 +59,7 @@ const NGX_CHECKS: NgxCheckDef[] = [
       "Explicitly configuring ssl_protocols ensures only modern TLS versions are accepted. Without explicit configuration, Nginx may accept outdated protocols depending on the compiled defaults.",
   },
   {
-    id: "NGX-RATE-LIMIT",
+    id: CHECK_IDS.NGINX.NGX_RATE_LIMIT,
     name: "Rate limiting configured",
     severity: "warning",
     check: (output) => {
@@ -75,7 +76,7 @@ const NGX_CHECKS: NgxCheckDef[] = [
       "Rate limiting protects against brute-force attacks and resource exhaustion by restricting the number of requests per client. Without rate limiting, a single client can overwhelm the server.",
   },
   {
-    id: "NGX-GZIP-CONFIG",
+    id: CHECK_IDS.NGINX.NGX_GZIP_CONFIG,
     name: "gzip compression configured",
     severity: "info",
     check: (output) => {
@@ -92,7 +93,7 @@ const NGX_CHECKS: NgxCheckDef[] = [
       "Configuring gzip compression reduces bandwidth usage and improves page load times. Note: gzip on dynamic content with HTTPS can be vulnerable to BREACH attacks. Consider limiting gzip_types to static assets only.",
   },
   {
-    id: "NGX-CLIENT-BODY-SIZE",
+    id: CHECK_IDS.NGINX.NGX_CLIENT_BODY_SIZE,
     name: "client_max_body_size configured",
     severity: "warning",
     check: (output) => {
@@ -108,7 +109,7 @@ const NGX_CHECKS: NgxCheckDef[] = [
       "Setting client_max_body_size limits the maximum request body size, preventing large file uploads that could exhaust server resources or be used in denial-of-service attacks. Nginx default is 1MB, which may be too permissive or too restrictive depending on application needs.",
   },
   {
-    id: "NGX-SERVER-HEADER",
+    id: CHECK_IDS.NGINX.NGX_SERVER_HEADER,
     name: "Server header suppression configured",
     severity: "info",
     check: (output) => {
@@ -125,7 +126,7 @@ const NGX_CHECKS: NgxCheckDef[] = [
       "Suppressing the Server response header reduces information disclosure. While server_tokens off hides the version, the Server header still reveals Nginx is in use. Full suppression requires the headers-more module or proxy_hide_header directive.",
   },
   {
-    id: "NGX-ACCESS-LOG",
+    id: CHECK_IDS.NGINX.NGX_ACCESS_LOG,
     name: "access_log enabled",
     severity: "warning",
     check: (output) => {
@@ -144,7 +145,7 @@ const NGX_CHECKS: NgxCheckDef[] = [
       "Access logs are essential for incident investigation, traffic analysis, and compliance. Disabling access logging creates blind spots in security monitoring and makes forensic analysis impossible after an incident.",
   },
   {
-    id: "NGX-ERROR-LOG",
+    id: CHECK_IDS.NGINX.NGX_ERROR_LOG,
     name: "error_log directive present",
     severity: "warning",
     check: (output) => {
@@ -163,7 +164,7 @@ const NGX_CHECKS: NgxCheckDef[] = [
 ];
 
 const WAF_CHECK: NgxCheckDef = {
-  id: "NGX-WAF-DETECTED",
+  id: CHECK_IDS.NGINX.NGX_WAF_DETECTED,
   name: "WAF detection (ModSecurity/Coraza)",
   severity: "info",
   check: (output) => {
@@ -200,7 +201,7 @@ const RE_CHALLENGE_NGINX = /error_page.*challenge/i;
 
 const WAF_DEEP_CHECKS: NgxCheckDef[] = [
   {
-    id: "NGX-WAF-IP-ACL",
+    id: CHECK_IDS.NGINX.NGX_WAF_IP_ACL,
     name: "IP ACL rules configured (deny/allow directives)",
     severity: "warning",
     check: (output) => {
@@ -220,7 +221,7 @@ const WAF_DEEP_CHECKS: NgxCheckDef[] = [
       "IP ACL rules (deny/allow directives) restrict access to specific IP addresses or ranges, providing a first line of defense against known malicious sources. Without IP ACLs, any IP address can attempt to access the server. Configure deny directives to block known bad actors and allow directives to whitelist trusted sources.",
   },
   {
-    id: "NGX-WAF-RATE-LIMIT",
+    id: CHECK_IDS.NGINX.NGX_WAF_RATE_LIMIT,
     name: "WAF rate limit rules active",
     severity: "info",
     check: (output, noWaf) => {
@@ -240,7 +241,7 @@ const WAF_DEEP_CHECKS: NgxCheckDef[] = [
       "ModSecurity rate limit rules complement nginx's built-in rate limiting by providing WAF-level request throttling with deeper inspection capabilities. They can detect and block volumetric attacks and brute-force attempts at the application layer, providing more granular control than IP-level rate limits.",
   },
   {
-    id: "NGX-WAF-INPUT-SANITIZE",
+    id: CHECK_IDS.NGINX.NGX_WAF_INPUT_SANITIZE,
     name: "SecRuleEngine active (On or DetectionOnly)",
     severity: "info",
     check: (output, noWaf) => {
@@ -260,7 +261,7 @@ const WAF_DEEP_CHECKS: NgxCheckDef[] = [
       "SecRuleEngine On activates ModSecurity's rule engine to inspect and sanitize incoming requests, blocking SQL injection, XSS, path traversal, and other OWASP Top 10 attacks. DetectionOnly mode logs violations without blocking — useful for initial rollout. Without this setting active, the WAF provides no protection even if installed.",
   },
   {
-    id: "NGX-WAF-DETECTION-ENGINE",
+    id: CHECK_IDS.NGINX.NGX_WAF_DETECTION_ENGINE,
     name: "CRS rules installed (>0 rule files)",
     severity: "info",
     check: (output, noWaf) => {
@@ -283,7 +284,7 @@ const WAF_DEEP_CHECKS: NgxCheckDef[] = [
       "The OWASP Core Rule Set (CRS) provides ModSecurity with pre-built detection rules covering OWASP Top 10 threats. Without CRS rules, a WAF engine is present but has no detection capability. CRS includes rules for SQL injection, XSS, local/remote file inclusion, command injection, and many other attack vectors.",
   },
   {
-    id: "NGX-WAF-DATA-MASKING",
+    id: CHECK_IDS.NGINX.NGX_WAF_DATA_MASKING,
     name: "Sensitive response headers filtered",
     severity: "info",
     check: (output) => {
@@ -303,7 +304,7 @@ const WAF_DEEP_CHECKS: NgxCheckDef[] = [
       "Filtering sensitive response headers like X-Powered-By and X-AspNet-Version prevents information disclosure about the backend technology stack. Attackers use this information to target known vulnerabilities in specific framework versions. proxy_hide_header removes upstream headers, while more_clear_headers (from headers-more module) can remove any header.",
   },
   {
-    id: "NGX-WAF-BOT-DETECT",
+    id: CHECK_IDS.NGINX.NGX_WAF_BOT_DETECT,
     name: "Bot detection rules configured (ModSec CRS 913 or UA map)",
     severity: "info",
     check: (output, noWaf) => {
@@ -326,7 +327,7 @@ const WAF_DEEP_CHECKS: NgxCheckDef[] = [
       "Bot detection rules identify and block automated scanning tools and known bad bots. OWASP CRS rules 913xxx detect scanners (Nmap, Nikto, etc.). Nginx UA map blocks by user agent string. Without bot detection, automated reconnaissance runs unchallenged.",
   },
   {
-    id: "NGX-WAF-CHALLENGE-MODE",
+    id: CHECK_IDS.NGINX.NGX_WAF_CHALLENGE_MODE,
     name: "Challenge mode configured (JS PoW/CAPTCHA redirect)",
     severity: "info",
     check: (output, noWaf) => {
