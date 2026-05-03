@@ -5,6 +5,7 @@
  */
 
 import type {AuditCheck, CheckParser, Severity, FixTier} from "../types.js";
+import { CHECK_IDS } from "../checkIds.js";
 
 interface FileIntegrityCheckDef {
   id: string;
@@ -12,14 +13,14 @@ interface FileIntegrityCheckDef {
   severity: Severity;
   check: (output: string) => { passed: boolean; currentValue: string };
   expectedValue: string;
-  fixCommand: string;
+  fixCommand: string;
   safeToAutoFix?: FixTier;
   explain: string;
 }
 
 const FILEINTEGRITY_CHECKS: FileIntegrityCheckDef[] = [
   {
-    id: "FINT-AIDE-INSTALLED",
+    id: CHECK_IDS.FILEINTEGRITY.FINT_AIDE_INSTALLED,
     name: "AIDE Installed",
     severity: "warning",
     check: (output) => {
@@ -35,7 +36,7 @@ const FILEINTEGRITY_CHECKS: FileIntegrityCheckDef[] = [
     explain: "AIDE monitors file integrity by comparing file hashes against a known-good baseline, detecting unauthorized changes to critical system files.",
   },
   {
-    id: "FINT-TRIPWIRE-INSTALLED",
+    id: CHECK_IDS.FILEINTEGRITY.FINT_TRIPWIRE_INSTALLED,
     name: "Tripwire Installed",
     severity: "info",
     check: (output) => {
@@ -51,7 +52,7 @@ const FILEINTEGRITY_CHECKS: FileIntegrityCheckDef[] = [
     explain: "Tripwire is an alternative file integrity monitoring tool. Either AIDE or Tripwire provides file integrity monitoring capability.",
   },
   {
-    id: "FINT-AIDE-DB-EXISTS",
+    id: CHECK_IDS.FILEINTEGRITY.FINT_AIDE_DB_EXISTS,
     name: "AIDE Database Initialized",
     severity: "warning",
     check: (output) => {
@@ -67,7 +68,7 @@ const FILEINTEGRITY_CHECKS: FileIntegrityCheckDef[] = [
     explain: "The AIDE database stores file integrity baselines. Without it, AIDE cannot detect unauthorized changes even if installed.",
   },
   {
-    id: "FINT-AIDE-CRON",
+    id: CHECK_IDS.FILEINTEGRITY.FINT_AIDE_CRON,
     name: "AIDE Scheduled Check",
     severity: "warning",
     check: (output) => {
@@ -84,7 +85,7 @@ const FILEINTEGRITY_CHECKS: FileIntegrityCheckDef[] = [
     explain: "AIDE must run on a schedule to continuously detect unauthorized changes. A missing cron job means integrity violations may go undetected.",
   },
   {
-    id: "FINT-AUDITD-INSTALLED",
+    id: CHECK_IDS.FILEINTEGRITY.FINT_AUDITD_INSTALLED,
     name: "auditd Installed",
     severity: "warning",
     check: (output) => {
@@ -100,7 +101,7 @@ const FILEINTEGRITY_CHECKS: FileIntegrityCheckDef[] = [
     explain: "auditd provides comprehensive audit logging for system calls and file access, essential for detecting and investigating security incidents.",
   },
   {
-    id: "FINT-AUDITD-RUNNING",
+    id: CHECK_IDS.FILEINTEGRITY.FINT_AUDITD_RUNNING,
     name: "auditd Running",
     severity: "warning",
     check: (output) => {
@@ -116,7 +117,7 @@ const FILEINTEGRITY_CHECKS: FileIntegrityCheckDef[] = [
     explain: "An installed but inactive auditd provides no security monitoring. auditd must be running to capture audit events.",
   },
   {
-    id: "FINT-AUDIT-PASSWD-RULE",
+    id: CHECK_IDS.FILEINTEGRITY.FINT_AUDIT_PASSWD_RULE,
     name: "/etc/passwd Changes Audited",
     severity: "warning",
     check: (output) => {
@@ -132,7 +133,7 @@ const FILEINTEGRITY_CHECKS: FileIntegrityCheckDef[] = [
     explain: "Auditing changes to /etc/passwd detects unauthorized account creation, modification, or deletion events.",
   },
   {
-    id: "FINT-AUDIT-SHADOW-RULE",
+    id: CHECK_IDS.FILEINTEGRITY.FINT_AUDIT_SHADOW_RULE,
     name: "/etc/shadow Changes Audited",
     severity: "warning",
     check: (output) => {
@@ -148,7 +149,7 @@ const FILEINTEGRITY_CHECKS: FileIntegrityCheckDef[] = [
     explain: "Auditing /etc/shadow detects unauthorized password changes or credential manipulation that could indicate a compromise.",
   },
   {
-    id: "FINT-AIDE-DB-RECENT",
+    id: CHECK_IDS.FILEINTEGRITY.FINT_AIDE_DB_RECENT,
     name: "AIDE Database Updated Within Last 30 Days",
     severity: "warning",
     check: (output) => {
@@ -177,7 +178,7 @@ const FILEINTEGRITY_CHECKS: FileIntegrityCheckDef[] = [
     explain: "A stale AIDE database fails to detect recent unauthorized file modifications.",
   },
   {
-    id: "FINT-CRITICAL-FILE-MONITORING",
+    id: CHECK_IDS.FILEINTEGRITY.FINT_CRITICAL_FILE_MONITORING,
     name: "Critical System Files Monitored by auditd",
     severity: "warning",
     check: (output) => {
@@ -220,7 +221,7 @@ export const parseFileIntegrityChecks: CheckParser = (
         passed: false,
         currentValue: "Unable to determine",
         expectedValue: def.expectedValue,
-        fixCommand: def.fixCommand,
+        fixCommand: def.fixCommand,
         safeToAutoFix: def.safeToAutoFix,
         explain: def.explain,
       };
@@ -234,7 +235,7 @@ export const parseFileIntegrityChecks: CheckParser = (
       passed,
       currentValue,
       expectedValue: def.expectedValue,
-      fixCommand: def.fixCommand,
+      fixCommand: def.fixCommand,
       safeToAutoFix: def.safeToAutoFix,
       explain: def.explain,
     };

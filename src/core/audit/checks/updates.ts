@@ -4,6 +4,7 @@
  */
 
 import type { AuditCheck, CheckParser } from "../types.js";
+import { CHECK_IDS } from "../checkIds.js";
 
 export const parseUpdatesChecks: CheckParser = (sectionOutput: string, _platform: string): AuditCheck[] => {
   const isNA = !sectionOutput || sectionOutput.trim() === "N/A" || sectionOutput.trim() === "";
@@ -27,7 +28,7 @@ export const parseUpdatesChecks: CheckParser = (sectionOutput: string, _platform
   const securityCount = parseInt(securityCountStr, 10);
   const hasSecurityUpdates = !isNaN(securityCount) && securityCount > 0;
   const upd01: AuditCheck = {
-    id: "UPD-SECURITY-PATCHES",
+    id: CHECK_IDS.UPDATES.UPD_SECURITY_PATCHES,
     category: "Updates",
     name: "Security Updates Pending",
     severity: "critical",
@@ -46,7 +47,7 @@ export const parseUpdatesChecks: CheckParser = (sectionOutput: string, _platform
   // UPD-02: Unattended upgrades installed
   const unattendedInstalled = unattendedLine.includes("unattended-upgrades");
   const upd02: AuditCheck = {
-    id: "UPD-AUTO-UPDATES",
+    id: CHECK_IDS.UPDATES.UPD_AUTO_UPDATES,
     category: "Updates",
     name: "Automatic Security Updates",
     severity: "warning",
@@ -68,7 +69,7 @@ export const parseUpdatesChecks: CheckParser = (sectionOutput: string, _platform
   const sevenDays = 7 * 24 * 60 * 60;
   const isFresh = !isNaN(aptTimestamp) && (nowEpoch - aptTimestamp) < sevenDays;
   const upd03: AuditCheck = {
-    id: "UPD-CACHE-FRESH",
+    id: CHECK_IDS.UPDATES.UPD_CACHE_FRESH,
     category: "Updates",
     name: "Package Cache Fresh",
     severity: "info",
@@ -88,7 +89,7 @@ export const parseUpdatesChecks: CheckParser = (sectionOutput: string, _platform
   const rebootRequired = rebootLine.includes("REBOOT_REQUIRED");
   const noReboot = rebootLine.includes("NO_REBOOT");
   const upd04: AuditCheck = {
-    id: "UPD-REBOOT-REQUIRED",
+    id: CHECK_IDS.UPDATES.UPD_REBOOT_REQUIRED,
     category: "Updates",
     name: "System Reboot Required",
     severity: "warning",
@@ -121,7 +122,7 @@ export const parseUpdatesChecks: CheckParser = (sectionOutput: string, _platform
   const latestTimestamp = allTimestamps.length > 0 ? allTimestamps.reduce((a, b) => (b > a ? b : a)) : NaN;
   const isUpgradeRecent = !isNaN(latestTimestamp) && (Math.floor(Date.now() / 1000) - latestTimestamp) < thirtyDays;
   const upd05: AuditCheck = {
-    id: "UPD-LAST-UPGRADE-RECENT",
+    id: CHECK_IDS.UPDATES.UPD_LAST_UPGRADE_RECENT,
     category: "Updates",
     name: "Last Package Activity Recent",
     severity: "warning",
@@ -141,7 +142,7 @@ export const parseUpdatesChecks: CheckParser = (sectionOutput: string, _platform
   const cveToolLine = lines.find((l) => l.includes("trivy") || l.includes("grype") || l === "NONE") ?? "N/A";
   const hasCveTool = cveToolLine !== "NONE" && cveToolLine !== "N/A" && cveToolLine.trim() !== "";
   const upd06: AuditCheck = {
-    id: "UPD-CVE-SCANNER-PRESENT",
+    id: CHECK_IDS.UPDATES.UPD_CVE_SCANNER_PRESENT,
     category: "Updates",
     name: "CVE Scanner Installed",
     severity: "info",
@@ -158,7 +159,7 @@ export const parseUpdatesChecks: CheckParser = (sectionOutput: string, _platform
   const dpkgPartialCount = dpkgAuditLine !== undefined && dpkgAuditLine !== null ? parseInt(dpkgAuditLine, 10) : NaN;
   const noDpkgPartial = !isNaN(dpkgPartialCount) && dpkgPartialCount === 0;
   const upd07: AuditCheck = {
-    id: "UPD-DPKG-NO-PARTIAL",
+    id: CHECK_IDS.UPDATES.UPD_DPKG_NO_PARTIAL,
     category: "Updates",
     name: "No Partial Packages",
     severity: "warning",
@@ -174,7 +175,7 @@ export const parseUpdatesChecks: CheckParser = (sectionOutput: string, _platform
   const kernelVersion = lines.find((l) => /^\d+\.\d+\./.test(l)) ?? "";
   const hasKernelInfo = kernelVersion.length > 0;
   const upd08: AuditCheck = {
-    id: "UPD-KERNEL-CURRENT",
+    id: CHECK_IDS.UPDATES.UPD_KERNEL_CURRENT,
     category: "Updates",
     name: "Kernel Version Detected",
     severity: "info",
@@ -190,7 +191,7 @@ export const parseUpdatesChecks: CheckParser = (sectionOutput: string, _platform
   const autoUpgradesContent = lines.find((l) => l.includes("APT::Periodic") || l.includes("Unattended-Upgrade")) ?? "";
   const isUnattendedEnabled = /APT::Periodic::Unattended-Upgrade\s+"1"/.test(sectionOutput);
   const upd09: AuditCheck = {
-    id: "UPD-UNATTENDED-ENABLED",
+    id: CHECK_IDS.UPDATES.UPD_UNATTENDED_ENABLED,
     category: "Updates",
     name: "Unattended Upgrades Enabled",
     severity: "warning",
@@ -207,7 +208,7 @@ export const parseUpdatesChecks: CheckParser = (sectionOutput: string, _platform
   // UPD-10: APT repos use HTTPS (informational)
   const hasHttpRepos = !isNA && /http:\/\//.test(sectionOutput) && !/apt list|upgradable/.test(sectionOutput);
   const upd10: AuditCheck = {
-    id: "UPD-APT-HTTPS",
+    id: CHECK_IDS.UPDATES.UPD_APT_HTTPS,
     category: "Updates",
     name: "APT Sources Use HTTPS",
     severity: "info",
@@ -226,7 +227,7 @@ export const parseUpdatesChecks: CheckParser = (sectionOutput: string, _platform
   ) ?? "";
   const hasSecurityRepo = securityRepoLine.length > 0;
   const upd11: AuditCheck = {
-    id: "UPD-SECURITY-REPO-PRIORITY",
+    id: CHECK_IDS.UPDATES.UPD_SECURITY_REPO_PRIORITY,
     category: "Updates",
     name: "Security Repository Configured",
     severity: "info",

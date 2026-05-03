@@ -5,6 +5,7 @@
  */
 
 import type {AuditCheck, CheckParser, Severity, FixTier} from "../types.js";
+import { CHECK_IDS } from "../checkIds.js";
 import { makeSkippedChecks } from "./shared/skipChecks.js";
 
 interface TlsCheckDef {
@@ -13,14 +14,14 @@ interface TlsCheckDef {
   severity: Severity;
   check: (output: string) => { passed: boolean; currentValue: string };
   expectedValue: string;
-  fixCommand: string;
+  fixCommand: string;
   safeToAutoFix?: FixTier;
   explain: string;
 }
 
 const TLS_CHECKS: TlsCheckDef[] = [
   {
-    id: "TLS-MIN-VERSION",
+    id: CHECK_IDS.TLS.TLS_MIN_VERSION,
     name: "TLS Minimum Version 1.2",
     severity: "critical",
     check: (output) => {
@@ -46,7 +47,7 @@ const TLS_CHECKS: TlsCheckDef[] = [
       "TLS 1.0 and 1.1 are deprecated (RFC 8996). PCI-DSS 4.2.1 requires TLS 1.2 minimum. TLS 1.0 is vulnerable to POODLE and BEAST attacks. Enforcing TLSv1.2+ eliminates these protocol-level vulnerabilities.",
   },
   {
-    id: "TLS-WEAK-CIPHERS",
+    id: CHECK_IDS.TLS.TLS_WEAK_CIPHERS,
     name: "No Weak TLS Ciphers Configured",
     severity: "critical",
     check: (output) => {
@@ -72,7 +73,7 @@ const TLS_CHECKS: TlsCheckDef[] = [
       "Weak ciphers like RC4 (RFC 7465), DES, 3DES (Sweet32), and EXPORT-grade ciphers are cryptographically broken. They can be exploited via BEAST, POODLE, SWEET32, and CRIME attacks to decrypt TLS traffic. Only ECDHE/DHE with AES-GCM or ChaCha20 ciphers should be allowed.",
   },
   {
-    id: "TLS-HSTS",
+    id: CHECK_IDS.TLS.TLS_HSTS,
     name: "HTTP Strict Transport Security Enabled",
     severity: "warning",
     check: (output) => {
@@ -93,7 +94,7 @@ const TLS_CHECKS: TlsCheckDef[] = [
       "HTTP Strict Transport Security (HSTS) prevents protocol downgrade attacks by instructing browsers to only connect via HTTPS. Without HSTS, attackers can perform SSL stripping attacks that silently downgrade HTTPS connections to HTTP, exposing credentials and session tokens.",
   },
   {
-    id: "TLS-OCSP",
+    id: CHECK_IDS.TLS.TLS_OCSP,
     name: "OCSP Stapling Enabled",
     severity: "warning",
     check: (output) => {
@@ -113,7 +114,7 @@ const TLS_CHECKS: TlsCheckDef[] = [
       "OCSP stapling allows Nginx to provide certificate revocation status during the TLS handshake, eliminating the need for clients to contact the CA directly. This improves connection speed and privacy, and ensures clients know immediately if a certificate has been revoked.",
   },
   {
-    id: "TLS-CERT-EXPIRY",
+    id: CHECK_IDS.TLS.TLS_CERT_EXPIRY,
     name: "TLS Certificate Valid for >= 30 Days",
     severity: "warning",
     check: (output) => {
@@ -136,7 +137,7 @@ const TLS_CHECKS: TlsCheckDef[] = [
       "Expired TLS certificates cause browser warnings and connection failures, breaking all HTTPS traffic immediately. Certificates expiring within 30 days should be renewed proactively to avoid service disruption. Let's Encrypt auto-renewal with certbot or acme.sh handles this automatically.",
   },
   {
-    id: "TLS-DH-PARAM",
+    id: CHECK_IDS.TLS.TLS_DH_PARAM,
     name: "DH Parameters >= 2048 Bits",
     severity: "warning",
     check: (output) => {
@@ -161,7 +162,7 @@ const TLS_CHECKS: TlsCheckDef[] = [
       "Weak Diffie-Hellman parameters (1024-bit) are vulnerable to the Logjam attack (CVE-2015-4000), enabling a man-in-the-middle attacker to downgrade TLS connections and decrypt them. PCI-DSS 4.2.1 requires DH parameters of at least 2048 bits for all TLS connections.",
   },
   {
-    id: "TLS-COMPRESSION",
+    id: CHECK_IDS.TLS.TLS_COMPRESSION,
     name: "TLS Compression Disabled",
     severity: "warning",
     check: (output) => {
@@ -182,7 +183,7 @@ const TLS_CHECKS: TlsCheckDef[] = [
       "TLS compression is vulnerable to the CRIME attack (CVE-2012-4929) which allows an attacker to recover secret HTTP headers (including session cookies and CSRF tokens) from encrypted TLS traffic using a chosen-plaintext attack. Nginx has disabled it by default since version 1.3.2.",
   },
   {
-    id: "TLS-CERT-CHAIN",
+    id: CHECK_IDS.TLS.TLS_CERT_CHAIN,
     name: "TLS Certificate Chain Complete",
     severity: "warning",
     check: (output) => {
@@ -232,7 +233,7 @@ export const parseTlsChecks: CheckParser = (
       passed,
       currentValue,
       expectedValue: def.expectedValue,
-      fixCommand: def.fixCommand,
+      fixCommand: def.fixCommand,
       safeToAutoFix: def.safeToAutoFix,
       explain: def.explain,
     };
