@@ -15,6 +15,7 @@ import {
   selectChecksForTarget,
   fixCommandsFromChecks,
   extractAffectedCategories,
+  runForbiddenFixes,
   type ScoredFixCheck,
 } from "../core/audit/fix.js";
 import { tryHandlerDispatch, type CollectedDiff } from "../core/audit/handlers/index.js";
@@ -290,8 +291,8 @@ export async function fixSafeCommand(
   }
 
   // Filter SAFE fixes
-  const { safePlan, guardedCount, forbiddenCount, guardedIds } =
-    previewSafeFixes(auditResult);
+  const { safePlan, guardedCount, forbiddenCount, guardedIds, forbiddenFixes } =
+    previewSafeFixes(auditResult, { includeForbidden: options.includeForbidden });
 
   // ── Prioritization: sort + select by --top or --target (D-03, D-06, D-07) ──
   const allSafeChecks = safePlan.groups.flatMap((g) => g.checks);
@@ -499,6 +500,18 @@ export async function fixSafeCommand(
     logger.success(`Fixed: ${applied.join(", ")}`);
   if (errors.length > 0)
     logger.error(`Errors: ${errors.join("; ")}`);
+
+  // Apply FORBIDDEN fixes if requested (per-fix confirmation)
+  if (forbiddenFixes?.length && !options.dryRun) {
+    console.log(`\n${forbiddenFixes.length} FORBIDDEN fix(es) available (per-fix confirmation required):`);
+    const forbiddenResult = await runForbiddenFixes(ip, forbiddenFixes);
+    if (forbiddenResult.applied.length) {
+      console.log(`Applied ${forbiddenResult.applied.length} FORBIDDEN fix(es): ${forbiddenResult.applied.join(", ")}`);
+    }
+    if (forbiddenResult.errors.length) {
+      console.log(`Errors: ${forbiddenResult.errors.join("; ")}`);
+    }
+  }
 
   // Post-fix score delta (FIX-04)
   let newScore: number | null = null;

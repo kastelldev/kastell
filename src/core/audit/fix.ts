@@ -406,6 +406,50 @@ export async function runFix(
   return { applied, skipped, errors, executionLog: truncateExecutionLog(executionLog) };
 }
 
+export async function runForbiddenFixes(
+  ip: string,
+  forbiddenFixes: FixPreview[],
+): Promise<{ applied: string[]; skipped: string[]; errors: string[] }> {
+  if (!forbiddenFixes.length) return { applied: [], skipped: [], errors: [] };
+
+  await sshMasterOpen(ip);
+  const applied: string[] = [];
+  const skipped: string[] = [];
+  const errors: string[] = [];
+
+  for (const fix of forbiddenFixes) {
+    const { proceed } = await inquirer.prompt([{
+      type: "confirm",
+      name: "proceed",
+      message: `Apply FORBIDDEN fix ${fix.checkId}? Command: ${fix.command.slice(0, 80)}`,
+      default: false,
+    }]);
+
+    if (!proceed) {
+      skipped.push(fix.checkId);
+      continue;
+    }
+
+    try {
+      if (!isFixCommandAllowed(fix.command)) {
+        errors.push(`${fix.checkId}: fix command rejected — ${fix.command.slice(0, 60)}`);
+        continue;
+      }
+      const result = await sshExec(ip, raw(fix.command));
+      if (result.code !== 0) {
+        errors.push(`${fix.checkId}: command failed (exit ${result.code})${result.stderr ? ` — ${result.stderr}` : ""}`);
+      } else {
+        applied.push(fix.checkId);
+      }
+    } catch (err) {
+      errors.push(`${fix.checkId}: ${getErrorMessage(err)}`);
+    }
+  }
+
+  sshMasterClose(ip);
+  return { applied, skipped, errors };
+}
+
 /**
  * Extract { checkId, fixCommand } pairs from a flat check array.
  * Used by CLI and MCP to pass to backupFilesBeforeFix.

@@ -47,13 +47,16 @@ jest.mock("../../src/core/audit/fix.js", () => ({
     guardedCount: 0,
     forbiddenCount: 0,
     guardedIds: [],
+    forbiddenFixes: [],
   })),
-  runPostFixReAudit: jest.fn(),
+  runPostFixReAudit: jest.fn(() => Promise.resolve({ overallScore: 70 })),
   isFixCommandAllowed: jest.fn(() => true),
   sortChecksByImpact: jest.fn((checks) => checks),
   selectChecksForTop: jest.fn((checks) => checks),
   selectChecksForTarget: jest.fn((checks) => checks),
   fixCommandsFromChecks: jest.fn(() => []),
+  extractAffectedCategories: jest.fn(() => []),
+  runForbiddenFixes: jest.fn(() => Promise.resolve({ applied: [], skipped: [], errors: [] })),
 }));
 
 jest.mock("../../src/core/audit/handlers/index.js", () => ({
@@ -126,5 +129,51 @@ describe("CLI fix --checks", () => {
 
     expect(mockPreview).toHaveBeenCalledTimes(1);
     expect(capturedSorted.map((c) => c.id)).toEqual(["KERN-SYNCOOKIES", "KERN-RPLIMIT"]);
+  });
+
+  it("passes includeForbidden to previewSafeFixes when flag is set", async () => {
+    const mockPreview = jest.requireMock("../../src/core/audit/fix.js").previewSafeFixes;
+    mockPreview.mockReturnValueOnce({
+      safePlan: { groups: [] },
+      guardedCount: 0,
+      forbiddenCount: 0,
+      guardedIds: [],
+      forbiddenFixes: [],
+    });
+
+    await fixSafeCommand("test-srv", {
+      safe: true,
+      dryRun: true,
+      includeForbidden: true,
+    } as any);
+
+    expect(mockPreview).toHaveBeenCalledWith(
+      expect.anything(),
+      { includeForbidden: true },
+    );
+  });
+
+  it("calls runForbiddenFixes when forbiddenFixes exist and not dry-run", async () => {
+    const mockPreview = jest.requireMock("../../src/core/audit/fix.js").previewSafeFixes;
+    const mockRunForbiddenFixes = jest.requireMock("../../src/core/audit/fix.js").runForbiddenFixes;
+
+    const forbiddenFix = [{ checkId: "SSH-ROOT-LOGIN", command: "echo test", tier: "FORBIDDEN" as const }];
+    const safeCheck = { id: "KERN-SYNCOOKIES", name: "SYN cookies", severity: "warning", category: "Kernel", tier: "SAFE", impact: 5, commands: ["echo test"] };
+    mockPreview.mockReturnValueOnce({
+      safePlan: { groups: [{ checks: [safeCheck] }] },
+      guardedCount: 0,
+      forbiddenCount: 1,
+      guardedIds: [],
+      forbiddenFixes: forbiddenFix,
+    });
+
+    await fixSafeCommand("test-srv", {
+      safe: true,
+      dryRun: false,
+      force: true,
+      interactive: false,
+    } as any);
+
+    expect(mockRunForbiddenFixes).toHaveBeenCalledWith("1.2.3.4", forbiddenFix);
   });
 });
