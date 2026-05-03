@@ -11,6 +11,7 @@ import { parseAllChecks, mergeComplianceRefs } from "./checks/index.js";
 import { COMPLIANCE_MAP } from "./compliance/mapper.js";
 import { sshExec } from "../../utils/ssh.js";
 import { raw } from "../../utils/sshCommand.js";
+import { extractReason } from "../../utils/errors.js";
 import { calculateQuickWins } from "./quickwin.js";
 import { extractVpsType, applyVpsAdjustments } from "./vps.js";
 import { AUDIT_VERSION } from "../../constants.js";
@@ -61,7 +62,7 @@ export async function runAudit(
         batchOutputs.push(result.stdout);
       } catch (batchErr) {
         // Track which batch failed and why
-        const msg = batchErr instanceof Error ? batchErr.message : String(batchErr);
+        const msg = extractReason(batchErr);
         batchErrors.push({ tier: batch.tier, error: msg });
         batchOutputs.push("");
       }
@@ -127,7 +128,7 @@ export async function runAudit(
 
     return { success: true, data: auditResult };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = extractReason(err);
     return {
       success: false,
       error: `Audit failed: ${message}`,

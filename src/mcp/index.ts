@@ -38,6 +38,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((error: unknown) => {
-  process.stderr.write(`Fatal: ${error instanceof Error ? error.message : String(error)}\n`);
+  process.stderr.write(`Fatal: ${extractReason(error)}\n`);
   process.exit(1);
 });

@@ -13,6 +13,7 @@
 import inquirer from "inquirer";
 import { assertValidIp } from "../utils/ssh.js";
 import { resolveHandlerChain, executeHandlerChain } from "./audit/handlers/index.js";
+import { extractReason } from "../utils/errors.js";
 import { saveFixHistory } from "./audit/fix-history.js";
 import type { DoctorFinding } from "./doctor.js";
 
@@ -96,7 +97,7 @@ export async function runDoctorFix(
         failed.push(`${finding.id}: ${handlerResult.error ?? "handler failed"}`);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = extractReason(err);
       failed.push(`${finding.id}: ${message}`);
     }
   }

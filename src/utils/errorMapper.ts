@@ -5,6 +5,7 @@ import {
   TransientError,
   BusinessError,
 } from "./errors.js";
+import { extractReason } from "./errors.js";
 import { PROVIDER_DISPLAY_NAMES } from "../constants.js";
 
 interface ProviderUrls {
@@ -85,7 +86,7 @@ export function mapProviderError(error: unknown, provider: string): string {
   }
 
   // Check for common error message patterns
-  const message = error instanceof Error ? error.message : String(error);
+  const message = extractReason(error);
 
   if (/insufficient.*(balance|fund|credit)/i.test(message)) {
     const billingUrl = urls?.billing || "your provider billing page";

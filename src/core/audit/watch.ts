@@ -6,6 +6,7 @@
 import type { AuditResult } from "./types.js";
 import { runAudit } from "./index.js";
 import { saveAuditHistory } from "./history.js";
+import { extractReason } from "../../utils/errors.js";
 
 /** Default interval in seconds (5 minutes) */
 const DEFAULT_INTERVAL = 300;
@@ -136,7 +137,7 @@ export async function watchAudit(
           })
           .catch((err: unknown) => {
             consecutiveFailures++;
-            log(`[Error] Watch audit failed: ${err instanceof Error ? err.message : String(err)}`);
+            log(`[Error] Watch audit failed: ${extractReason(err)}`);
             if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
               log(`[Error] ${MAX_CONSECUTIVE_FAILURES} consecutive failures — stopping watch mode.`);
               cleanup();
@@ -144,7 +145,7 @@ export async function watchAudit(
           });
       }, interval);
     }).catch((err: unknown) => {
-      log(`[Error] Initial audit failed: ${err instanceof Error ? err.message : String(err)}`);
+      log(`[Error] Initial audit failed: ${extractReason(err)}`);
       cleanup();
     });
   });

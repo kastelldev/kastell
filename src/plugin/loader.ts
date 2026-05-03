@@ -94,8 +94,7 @@ export async function loadPlugins(
       try {
         mod = await importer(entryUrl);
       } catch (err: unknown) {
-        const msg =
-          err instanceof Error ? err.message : String(err);
+        const msg = extractReason(err);
         registerFailedPlugin(manifest, msg);
         throw new Error(`${dir.name}: import failed — ${msg}`, { cause: err });
       }

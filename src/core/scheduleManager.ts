@@ -12,6 +12,7 @@ import { KASTELL_DIR } from "../utils/paths.js";
 import { sanitizedEnv } from "../utils/ssh.js";
 import { dispatchWithCooldown } from "../core/notify.js";
 import { ValidationError } from "../utils/errors.js";
+import { extractReason } from "../utils/errors.js";
 
 export type ScheduleType = "fix" | "audit" | "doctor-fix";
 
@@ -101,7 +102,7 @@ export function installLocalCron(
   try {
     sanitized = sanitizeServerName(serverName);
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : String(err) };
+    return { success: false, error: extractReason(err) };
   }
 
   const kastellBin = resolveKastellBin();
@@ -122,7 +123,7 @@ export function installLocalCron(
     const result = updateCrontab(marker, entry);
     if (!result.success) return result;
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : String(err) };
+    return { success: false, error: extractReason(err) };
   }
 
   saveSchedule(scheduleKey(sanitized, type), cronExpr);
@@ -137,7 +138,7 @@ export function removeLocalCron(serverName: string, type: ScheduleType): LocalCr
       const result = updateCrontab(marker);
       if (!result.success) return result;
     } catch (err) {
-      return { success: false, error: err instanceof Error ? err.message : String(err) };
+      return { success: false, error: extractReason(err) };
     }
   }
 

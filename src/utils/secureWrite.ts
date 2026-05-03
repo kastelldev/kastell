@@ -2,6 +2,7 @@ import { spawnSync } from "child_process";
 import { writeFileSync, mkdirSync, chmodSync } from "fs";
 import { userInfo } from "os";
 import { SecurityLogger } from "./securityLogger.js";
+import { extractReason } from "./errors.js";
 
 export interface WriteFileOptions {
   encoding?: BufferEncoding;
@@ -43,7 +44,7 @@ function applyPermissions(targetPath: string, mode: 0o600 | 0o700): void {
       SecurityLogger.warn("chmod operation failed", {
         path: targetPath,
         platform: process.platform,
-        error: error instanceof Error ? error.message : String(error),
+        error: extractReason(error),
       });
     }
   }

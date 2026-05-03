@@ -9,6 +9,7 @@ import { ValidationError } from "../utils/errors.js";
 import { createSpinner } from "../utils/logger.js";
 import { loadNotifyChannels, saveNotifyChannel, removeNotifyChannel } from "./notifyStore.js";
 import { secureWriteFileSync, secureMkdirSync } from "../utils/secureWrite.js";
+import { extractReason } from "../utils/errors.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -83,7 +84,7 @@ async function sendHttp(
     await axios.post(url, body, { timeout: NOTIFY_TIMEOUT_MS });
     return { success: true };
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : String(err) };
+    return { success: false, error: extractReason(err) };
   }
 }
 

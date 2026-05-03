@@ -9,6 +9,7 @@ import type {
   ServerMode,
 } from "../types/index.js";
 import { TransientError, BusinessError, PermissionError, ValidationError } from "../utils/errors.js";
+import { extractReason } from "../utils/errors.js";
 
 /** Default timeout for provider API calls (15 seconds) */
 export const API_TIMEOUT_MS = 15_000;
@@ -209,7 +210,7 @@ export async function uploadSshKeyWithConflict(
       }
     }
     throw new TransientError(
-      `Failed to upload SSH key: ${error instanceof Error ? error.message : String(error)}`,
+      `Failed to upload SSH key: ${extractReason(error)}`,
       { cause: error },
     );
   }

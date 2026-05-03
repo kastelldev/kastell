@@ -1,4 +1,5 @@
 import { readFileSync } from "fs";
+import { extractReason } from "./errors.js";
 import yaml from "js-yaml";
 import { z } from "zod";
 import type { KastellYamlConfig } from "../types/index.js";
@@ -168,7 +169,7 @@ export function loadYamlConfig(filePath: string): YamlLoadResult {
   try {
     content = readFileSync(filePath, "utf-8");
   } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : String(error);
+    const msg = extractReason(error);
     return { config: {}, warnings: [`Could not read config file: ${msg}`] };
   }
 
@@ -176,7 +177,7 @@ export function loadYamlConfig(filePath: string): YamlLoadResult {
   try {
     parsed = yaml.load(content, { schema: yaml.JSON_SCHEMA });
   } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : String(error);
+    const msg = extractReason(error);
     return { config: {}, warnings: [`Invalid YAML syntax: ${msg}`] };
   }
 

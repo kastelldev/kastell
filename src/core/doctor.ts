@@ -13,6 +13,7 @@ import { assertValidIp, sshExec } from "../utils/ssh.js";
 import { raw } from "../utils/sshCommand.js";
 import { MS_PER_DAY } from "../utils/dates.js";
 import { loadAuditHistory } from "./audit/history.js";
+import { extractReason } from "../utils/errors.js";
 import type { MetricSnapshot, KastellResult } from "../types/index.js";
 import type { AuditHistoryEntry } from "./audit/types.js";
 
@@ -362,7 +363,7 @@ export async function runServerDoctor(
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : String(err),
+      error: extractReason(err),
     };
   }
 
