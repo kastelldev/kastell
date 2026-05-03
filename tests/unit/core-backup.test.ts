@@ -2,6 +2,7 @@ import { mkdirSync, existsSync, writeFileSync } from "fs";
 import { spawn } from "child_process";
 import * as sshUtils from "../../src/utils/ssh";
 import { MockChildProcess } from "../helpers/ssh-factories.js";
+import { createMockSpawnProcess } from "../helpers/mockProcess.js";
 import {
   buildBareConfigTarCommand,
   buildBareRestoreConfigCommand,
@@ -35,12 +36,8 @@ const mockedExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;
 const mockedWriteFileSync = writeFileSync as jest.MockedFunction<typeof writeFileSync>;
 const mockedSpawn = spawn as jest.MockedFunction<typeof spawn>;
 
-function createMockProcess(code: number = 0, stderrData: string = "") {
-  const proc = new MockChildProcess(code, 10);
-  if (stderrData) {
-    setTimeout(() => proc.stderr.emit("data", Buffer.from(stderrData)), 5);
-  }
-  return proc as unknown as ReturnType<typeof spawn>;
+function createMockProcess(code: number = 0, stderrData: string = ""): ReturnType<typeof spawn> {
+  return createMockSpawnProcess(code, stderrData, 10) as unknown as ReturnType<typeof spawn>;
 }
 
 describe("core/backup — bare backup/restore", () => {

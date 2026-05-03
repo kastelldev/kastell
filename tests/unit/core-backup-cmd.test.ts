@@ -48,6 +48,7 @@ jest.mock("../../src/core/manage", () => ({
 import { spawn } from "child_process";
 import * as sshUtils from "../../src/utils/ssh";
 import { MockChildProcess } from "../helpers/ssh-factories.js";
+import { createMockSpawnProcess } from "../helpers/mockProcess.js";
 import { isBareServer } from "../../src/utils/modeGuard";
 import { resolvePlatform, getAdapter } from "../../src/adapters/factory";
 import { backupServer } from "../../src/core/backup";
@@ -58,12 +59,8 @@ const mockedGetAdapter = getAdapter as jest.MockedFunction<typeof getAdapter>;
 const mockedSsh = sshUtils as jest.Mocked<typeof sshUtils>;
 const mockedSpawn = spawn as jest.MockedFunction<typeof spawn>;
 
-function createMockProcess(code: number = 0, stderrData: string = "") {
-  const proc = new MockChildProcess(code, 10);
-  if (stderrData) {
-    setTimeout(() => proc.stderr.emit("data", Buffer.from(stderrData)), 5);
-  }
-  return proc as unknown as ReturnType<typeof spawn>;
+function createMockProcess(code: number = 0, stderrData: string = ""): ReturnType<typeof spawn> {
+  return createMockSpawnProcess(code, stderrData, 10) as unknown as ReturnType<typeof spawn>;
 }
 
 const bareServer: ServerRecord = {

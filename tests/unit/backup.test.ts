@@ -62,6 +62,7 @@ import ora from "ora";
 import { backupServer } from "../../src/core/backup";
 import { resolvePlatform } from "../../src/adapters/factory";
 import { MockChildProcess } from "../helpers/ssh-factories.js";
+import { createMockSpawnProcess } from "../helpers/mockProcess.js";
 
 const mockedOra = ora as jest.MockedFunction<typeof ora>;
 const mockedBackupServer = backupServer as jest.MockedFunction<typeof backupServer>;
@@ -97,12 +98,8 @@ const sampleServer2 = {
   mode: "coolify" as const,
 };
 
-function createMockProcess(code: number = 0, stderrData: string = "") {
-  const proc = new MockChildProcess(code, 10);
-  if (stderrData) {
-    setTimeout(() => proc.stderr.emit("data", Buffer.from(stderrData)), 5);
-  }
-  return proc as unknown as ReturnType<typeof spawn>;
+function createMockProcess(code: number = 0, stderrData: string = ""): ReturnType<typeof spawn> {
+  return createMockSpawnProcess(code, stderrData, 10) as unknown as ReturnType<typeof spawn>;
 }
 
 describe("backup", () => {
