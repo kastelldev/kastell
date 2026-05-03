@@ -332,76 +332,77 @@ export async function runFix(
   const errors: string[] = [];
   const executionLog: FixExecutionLogEntry[] = [];
 
-  for (const group of plan.groups) {
-    const checkIds = group.checks.map((c) => c.id).join(", ");
-    const { confirm } = await inquirer.prompt([
-      {
-        type: "confirm",
-        name: "confirm",
-        message: `Fix ${group.checks.length} ${group.severity} issue(s)? [${checkIds}]`,
-        default: false,
-      },
-    ]);
+  try {
+    for (const group of plan.groups) {
+      const checkIds = group.checks.map((c) => c.id).join(", ");
+      const { confirm } = await inquirer.prompt([
+        {
+          type: "confirm",
+          name: "confirm",
+          message: `Fix ${group.checks.length} ${group.severity} issue(s)? [${checkIds}]`,
+          default: false,
+        },
+      ]);
 
-    if (!confirm) {
-      skipped.push(...group.checks.map((c) => c.id));
-      continue;
-    }
+      if (!confirm) {
+        skipped.push(...group.checks.map((c) => c.id));
+        continue;
+      }
 
-    // Execute fixes for this group
-    for (const check of group.checks) {
-      try {
-        // Check pre-condition before applying fix (prevents lockout scenarios)
-        if (check.preCondition) {
-          // preCondition is a hardcoded string from audit check definitions
+      // Execute fixes for this group
+      for (const check of group.checks) {
+        try {
+          // Check pre-condition before applying fix (prevents lockout scenarios)
+          if (check.preCondition) {
+            // preCondition is a hardcoded string from audit check definitions
+            const startMs = Date.now();
+            const preCheck = await sshExec(ip, raw(check.preCondition));
+            const durationMs = Date.now() - startMs;
+            executionLog.push({
+              checkId: check.id,
+              command: check.preCondition,
+              stdout: preCheck.stdout,
+              stderr: preCheck.stderr,
+              durationMs,
+              success: preCheck.code === 0,
+            });
+            if (preCheck.code !== 0) {
+              errors.push(`${check.id}: pre-condition failed — ${check.preCondition}`);
+              continue;
+            }
+          }
+          // Handler dispatch — bypasses shell metachar guard (D-05, D-06)
+          const dispatch = await tryHandlerDispatch(ip, check, applied, errors);
+          if (dispatch.handled) continue;
+          // Validate fixCommand against known safe prefixes + reject shell metacharacters
+          if (!isFixCommandAllowed(check.fixCommand)) {
+            errors.push(`${check.id}: fix command rejected — ${check.fixCommand.slice(0, 60)}`);
+            continue;
+          }
           const startMs = Date.now();
-          const preCheck = await sshExec(ip, raw(check.preCondition));
+          const fixResult = await sshExec(ip, raw(check.fixCommand));
           const durationMs = Date.now() - startMs;
           executionLog.push({
             checkId: check.id,
-            command: check.preCondition,
-            stdout: preCheck.stdout,
-            stderr: preCheck.stderr,
+            command: check.fixCommand,
+            stdout: fixResult.stdout,
+            stderr: fixResult.stderr,
             durationMs,
-            success: preCheck.code === 0,
+            success: fixResult.code === 0,
           });
-          if (preCheck.code !== 0) {
-            errors.push(`${check.id}: pre-condition failed — ${check.preCondition}`);
-            continue;
+          if (fixResult.code !== 0) {
+            errors.push(`${check.id}: command failed (exit ${fixResult.code})${fixResult.stderr ? ` — ${fixResult.stderr}` : ""}`);
+          } else {
+            applied.push(check.id);
           }
+        } catch (err) {
+          errors.push(`${check.id}: ${getErrorMessage(err)}`);
         }
-        // Handler dispatch — bypasses shell metachar guard (D-05, D-06)
-        const dispatch = await tryHandlerDispatch(ip, check, applied, errors);
-        if (dispatch.handled) continue;
-        // Validate fixCommand against known safe prefixes + reject shell metacharacters
-        if (!isFixCommandAllowed(check.fixCommand)) {
-          errors.push(`${check.id}: fix command rejected — ${check.fixCommand.slice(0, 60)}`);
-          continue;
-        }
-        const startMs = Date.now();
-        const fixResult = await sshExec(ip, raw(check.fixCommand));
-        const durationMs = Date.now() - startMs;
-        executionLog.push({
-          checkId: check.id,
-          command: check.fixCommand,
-          stdout: fixResult.stdout,
-          stderr: fixResult.stderr,
-          durationMs,
-          success: fixResult.code === 0,
-        });
-        if (fixResult.code !== 0) {
-          errors.push(`${check.id}: command failed (exit ${fixResult.code})${fixResult.stderr ? ` — ${fixResult.stderr}` : ""}`);
-        } else {
-          applied.push(check.id);
-        }
-      } catch (err) {
-        errors.push(`${check.id}: ${getErrorMessage(err)}`);
       }
     }
+  } finally {
+    sshMasterClose(ip);
   }
-
-  // Close SSH master connection (D-23)
-  sshMasterClose(ip);
 
   return { applied, skipped, errors, executionLog: truncateExecutionLog(executionLog) };
 }
@@ -409,13 +410,14 @@ export async function runFix(
 export async function runForbiddenFixes(
   ip: string,
   forbiddenFixes: FixPreview[],
-): Promise<{ applied: string[]; skipped: string[]; errors: string[] }> {
-  if (!forbiddenFixes.length) return { applied: [], skipped: [], errors: [] };
+): Promise<{ applied: string[]; skipped: string[]; errors: string[]; executionLog: FixExecutionLogEntry[] }> {
+  if (!forbiddenFixes.length) return { applied: [], skipped: [], errors: [], executionLog: [] };
 
   await sshMasterOpen(ip);
   const applied: string[] = [];
   const skipped: string[] = [];
   const errors: string[] = [];
+  const executionLog: FixExecutionLogEntry[] = [];
 
   try {
     for (const fix of forbiddenFixes) {
@@ -436,7 +438,17 @@ export async function runForbiddenFixes(
           errors.push(`${fix.checkId}: fix command rejected — ${fix.command.slice(0, 60)}`);
           continue;
         }
+        const startMs = Date.now();
         const result = await sshExec(ip, raw(fix.command));
+        const durationMs = Date.now() - startMs;
+        executionLog.push({
+          checkId: fix.checkId,
+          command: fix.command,
+          stdout: result.stdout,
+          stderr: result.stderr,
+          durationMs,
+          success: result.code === 0,
+        });
         if (result.code !== 0) {
           errors.push(`${fix.checkId}: command failed (exit ${result.code})${result.stderr ? ` — ${result.stderr}` : ""}`);
         } else {
@@ -450,7 +462,7 @@ export async function runForbiddenFixes(
     sshMasterClose(ip);
   }
 
-  return { applied, skipped, errors };
+  return { applied, skipped, errors, executionLog: truncateExecutionLog(executionLog) };
 }
 
 /**

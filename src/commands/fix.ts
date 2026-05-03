@@ -503,13 +503,14 @@ export async function fixSafeCommand(
 
   // Apply FORBIDDEN fixes if requested (per-fix confirmation)
   if (forbiddenFixes?.length && !options.dryRun) {
-    console.log(`\n${forbiddenFixes.length} FORBIDDEN fix(es) available (per-fix confirmation required):`);
+    logger.info(`${forbiddenFixes.length} FORBIDDEN fix(es) available (per-fix confirmation required):`);
     const forbiddenResult = await runForbiddenFixes(ip, forbiddenFixes);
     if (forbiddenResult.applied.length) {
-      console.log(`Applied ${forbiddenResult.applied.length} FORBIDDEN fix(es): ${forbiddenResult.applied.join(", ")}`);
+      applied.push(...forbiddenResult.applied);
+      logger.success(`Applied ${forbiddenResult.applied.length} FORBIDDEN fix(es): ${forbiddenResult.applied.join(", ")}`);
     }
     if (forbiddenResult.errors.length) {
-      console.log(`Errors: ${forbiddenResult.errors.join("; ")}`);
+      logger.error(`FORBIDDEN errors: ${forbiddenResult.errors.join("; ")}`);
     }
   }
 

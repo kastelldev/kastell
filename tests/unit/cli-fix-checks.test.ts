@@ -57,7 +57,7 @@ jest.mock("../../src/core/audit/fix.js", () => ({
   selectChecksForTarget: jest.fn((checks) => checks),
   fixCommandsFromChecks: jest.fn(() => []),
   extractAffectedCategories: jest.fn(() => []),
-  runForbiddenFixes: jest.fn(() => Promise.resolve({ applied: [], skipped: [], errors: [] })),
+  runForbiddenFixes: jest.fn(() => Promise.resolve({ applied: [], skipped: [], errors: [], executionLog: [] })),
 }));
 
 jest.mock("../../src/core/audit/handlers/index.js", () => ({
