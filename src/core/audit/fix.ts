@@ -50,6 +50,34 @@ export function isFixCommandAllowed(command: string): boolean {
   return isKnown && !SHELL_METACHAR.test(command);
 }
 
+type FixOutcome = { status: "applied" } | { status: "rejected"; reason: string } | { status: "failed"; reason: string };
+
+async function executeSingleFix(
+  ip: string,
+  checkId: string,
+  command: string,
+  executionLog: FixExecutionLogEntry[],
+): Promise<FixOutcome> {
+  if (!isFixCommandAllowed(command)) {
+    return { status: "rejected", reason: `fix command rejected — ${command.slice(0, 60)}` };
+  }
+  const startMs = Date.now();
+  const result = await sshExec(ip, raw(command));
+  const durationMs = Date.now() - startMs;
+  executionLog.push({
+    checkId,
+    command,
+    stdout: result.stdout,
+    stderr: result.stderr,
+    durationMs,
+    success: result.code === 0,
+  });
+  if (result.code !== 0) {
+    return { status: "failed", reason: `command failed (exit ${result.code})${result.stderr ? ` — ${result.stderr}` : ""}` };
+  }
+  return { status: "applied" };
+}
+
 /** Categories where auto-fix is NEVER allowed regardless of check-level tier (D-02) */
 export const FORBIDDEN_CATEGORIES = new Set(["SSH", "Firewall", "Docker"]);
 
@@ -374,26 +402,11 @@ export async function runFix(
           // Handler dispatch — bypasses shell metachar guard (D-05, D-06)
           const dispatch = await tryHandlerDispatch(ip, check, applied, errors);
           if (dispatch.handled) continue;
-          // Validate fixCommand against known safe prefixes + reject shell metacharacters
-          if (!isFixCommandAllowed(check.fixCommand)) {
-            errors.push(`${check.id}: fix command rejected — ${check.fixCommand.slice(0, 60)}`);
-            continue;
-          }
-          const startMs = Date.now();
-          const fixResult = await sshExec(ip, raw(check.fixCommand));
-          const durationMs = Date.now() - startMs;
-          executionLog.push({
-            checkId: check.id,
-            command: check.fixCommand,
-            stdout: fixResult.stdout,
-            stderr: fixResult.stderr,
-            durationMs,
-            success: fixResult.code === 0,
-          });
-          if (fixResult.code !== 0) {
-            errors.push(`${check.id}: command failed (exit ${fixResult.code})${fixResult.stderr ? ` — ${fixResult.stderr}` : ""}`);
-          } else {
+          const outcome = await executeSingleFix(ip, check.id, check.fixCommand, executionLog);
+          if (outcome.status === "applied") {
             applied.push(check.id);
+          } else {
+            errors.push(`${check.id}: ${outcome.reason}`);
           }
         } catch (err) {
           errors.push(`${check.id}: ${getErrorMessage(err)}`);
@@ -434,25 +447,11 @@ export async function runForbiddenFixes(
       }
 
       try {
-        if (!isFixCommandAllowed(fix.command)) {
-          errors.push(`${fix.checkId}: fix command rejected — ${fix.command.slice(0, 60)}`);
-          continue;
-        }
-        const startMs = Date.now();
-        const result = await sshExec(ip, raw(fix.command));
-        const durationMs = Date.now() - startMs;
-        executionLog.push({
-          checkId: fix.checkId,
-          command: fix.command,
-          stdout: result.stdout,
-          stderr: result.stderr,
-          durationMs,
-          success: result.code === 0,
-        });
-        if (result.code !== 0) {
-          errors.push(`${fix.checkId}: command failed (exit ${result.code})${result.stderr ? ` — ${result.stderr}` : ""}`);
-        } else {
+        const outcome = await executeSingleFix(ip, fix.checkId, fix.command, executionLog);
+        if (outcome.status === "applied") {
           applied.push(fix.checkId);
+        } else {
+          errors.push(`${fix.checkId}: ${outcome.reason}`);
         }
       } catch (err) {
         errors.push(`${fix.checkId}: ${getErrorMessage(err)}`);
