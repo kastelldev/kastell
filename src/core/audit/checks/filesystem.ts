@@ -4,6 +4,7 @@
  */
 
 import type { AuditCheck, CheckParser } from "../types.js";
+import { CHECK_IDS } from "../checkIds.js";
 
 // CodeQL suppression: fixCommand strings are display-only recommendations;
 // no user input reaches shell execution
@@ -25,7 +26,7 @@ export const parseFilesystemChecks: CheckParser = (sectionOutput: string, _platf
   const tmpPerms = tmpMatch ? tmpMatch[1] : null;
   const hasStickyBit = tmpPerms !== null && tmpPerms.startsWith("1");
   const fs01: AuditCheck = {
-    id: "FS-TMP-STICKY-BIT",
+    id: CHECK_IDS.FILESYSTEM.FS_TMP_STICKY_BIT,
     category: "Filesystem",
     name: "/tmp Sticky Bit Set",
     severity: "warning",
@@ -58,7 +59,7 @@ export const parseFilesystemChecks: CheckParser = (sectionOutput: string, _platf
   }
   const hasWorldWritable = worldWritableLines.length > 0;
   const fs02: AuditCheck = {
-    id: "FS-NO-WORLD-WRITABLE",
+    id: CHECK_IDS.FILESYSTEM.FS_NO_WORLD_WRITABLE,
     category: "Filesystem",
     name: "No World-Writable Files",
     severity: "warning",
@@ -81,7 +82,7 @@ export const parseFilesystemChecks: CheckParser = (sectionOutput: string, _platf
   });
   const suidCount = suidLines.length;
   const fs03: AuditCheck = {
-    id: "FS-SUID-THRESHOLD",
+    id: CHECK_IDS.FILESYSTEM.FS_SUID_THRESHOLD,
     category: "Filesystem",
     name: "SUID Binaries Within Threshold",
     severity: "info",
@@ -111,7 +112,7 @@ export const parseFilesystemChecks: CheckParser = (sectionOutput: string, _platf
   });
   const homePermsPass = homeDirLines.length > 0 && worldReadableHomeDirs.length === 0;
   const fs04: AuditCheck = {
-    id: "FS-HOME-PERMISSIONS",
+    id: CHECK_IDS.FILESYSTEM.FS_HOME_PERMISSIONS,
     category: "Filesystem",
     name: "Home Directory Permissions",
     severity: "warning",
@@ -133,7 +134,7 @@ export const parseFilesystemChecks: CheckParser = (sectionOutput: string, _platf
   const diskMatch = output.match(/(\d+)%\s+\/$/m);
   const diskUsage = diskMatch ? parseInt(diskMatch[1], 10) : null;
   const fs05: AuditCheck = {
-    id: "FS-DISK-USAGE",
+    id: CHECK_IDS.FILESYSTEM.FS_DISK_USAGE,
     category: "Filesystem",
     name: "Disk Usage Under Threshold",
     severity: "warning",
@@ -181,27 +182,27 @@ export const parseFilesystemChecks: CheckParser = (sectionOutput: string, _platf
     };
   }
 
-  const fs06 = makeMountCheck("FS-HOME-NOEXEC", "/home Mount noexec", "/home", "noexec", "warning",
+  const fs06 = makeMountCheck(CHECK_IDS.FILESYSTEM.FS_HOME_NOEXEC, "/home Mount noexec", "/home", "noexec", "warning",
     "mount -o remount,noexec /home  # also add noexec to /etc/fstab",
     "Mounting /home with noexec prevents execution of scripts placed in user home directories.");
 
-  const fs07 = makeMountCheck("FS-HOME-NOSUID", "/home Mount nosuid", "/home", "nosuid", "warning",
+  const fs07 = makeMountCheck(CHECK_IDS.FILESYSTEM.FS_HOME_NOSUID, "/home Mount nosuid", "/home", "nosuid", "warning",
     "mount -o remount,nosuid /home  # also add nosuid to /etc/fstab",
     "Mounting /home with nosuid prevents SUID binaries placed in user home directories from being exploited.");
 
-  const fs08 = makeMountCheck("FS-VAR-TMP-NOEXEC", "/var/tmp Mount noexec", "/var/tmp", "noexec", "warning",
+  const fs08 = makeMountCheck(CHECK_IDS.FILESYSTEM.FS_VAR_TMP_NOEXEC, "/var/tmp Mount noexec", "/var/tmp", "noexec", "warning",
     "mount -o remount,noexec /var/tmp  # also add noexec to /etc/fstab",
     "Mounting /var/tmp with noexec prevents execution of attacker-placed scripts in the temp directory.");
 
-  const fs09 = makeMountCheck("FS-VAR-TMP-NOSUID", "/var/tmp Mount nosuid", "/var/tmp", "nosuid", "warning",
+  const fs09 = makeMountCheck(CHECK_IDS.FILESYSTEM.FS_VAR_TMP_NOSUID, "/var/tmp Mount nosuid", "/var/tmp", "nosuid", "warning",
     "mount -o remount,nosuid /var/tmp  # also add nosuid to /etc/fstab",
     "Mounting /var/tmp with nosuid prevents SUID exploitation from world-writable temp directories.");
 
-  const fs10 = makeMountCheck("FS-DEV-SHM-NOEXEC", "/dev/shm Mount noexec", "/dev/shm", "noexec", "warning",
+  const fs10 = makeMountCheck(CHECK_IDS.FILESYSTEM.FS_DEV_SHM_NOEXEC, "/dev/shm Mount noexec", "/dev/shm", "noexec", "warning",
     "mount -o remount,noexec /dev/shm  # also add noexec to /etc/fstab",
     "Mounting /dev/shm with noexec prevents in-memory exploits from executing arbitrary code.");
 
-  const fs11 = makeMountCheck("FS-DEV-SHM-NOSUID", "/dev/shm Mount nosuid", "/dev/shm", "nosuid", "info",
+  const fs11 = makeMountCheck(CHECK_IDS.FILESYSTEM.FS_DEV_SHM_NOSUID, "/dev/shm Mount nosuid", "/dev/shm", "nosuid", "info",
     "mount -o remount,nosuid /dev/shm  # also add nosuid to /etc/fstab",
     "Mounting /dev/shm with nosuid reduces risk of SUID exploitation from shared memory.");
 
@@ -209,7 +210,7 @@ export const parseFilesystemChecks: CheckParser = (sectionOutput: string, _platf
   const umaskMatch = output.match(/\b(0?0?27|0?0?22)\b/);
   const umaskValue = umaskMatch ? umaskMatch[0] : null;
   const fs12: AuditCheck = {
-    id: "FS-UMASK-RESTRICTIVE",
+    id: CHECK_IDS.FILESYSTEM.FS_UMASK_RESTRICTIVE,
     category: "Filesystem",
     name: "Restrictive Default umask",
     severity: "info",
@@ -226,14 +227,14 @@ export const parseFilesystemChecks: CheckParser = (sectionOutput: string, _platf
   };
 
   // FS-TMP-NOEXEC: /tmp mounted with noexec
-  const fs13 = makeMountCheck("FS-TMP-NOEXEC", "/tmp Mount noexec", "/tmp", "noexec", "warning",
+  const fs13 = makeMountCheck(CHECK_IDS.FILESYSTEM.FS_TMP_NOEXEC, "/tmp Mount noexec", "/tmp", "noexec", "warning",
     "mount -o remount,noexec /tmp  # also add noexec to /etc/fstab",
     "Mounting /tmp with noexec is a key hardening step that prevents execution of attacker-dropped scripts.");
 
   // FS-NO-UNOWNED-FILES: No unowned files (proxy: world-writable count is low)
   // We infer from the existing world-writable file list — short list (<3 items) means clean
   const fs14: AuditCheck = {
-    id: "FS-NO-UNOWNED-FILES",
+    id: CHECK_IDS.FILESYSTEM.FS_NO_UNOWNED_FILES,
     category: "Filesystem",
     name: "No Unowned Files in Critical Dirs",
     severity: "info",
@@ -250,12 +251,12 @@ export const parseFilesystemChecks: CheckParser = (sectionOutput: string, _platf
   };
 
   // FS-TMP-NOSUID: /tmp mounted with nosuid
-  const fs15 = makeMountCheck("FS-TMP-NOSUID", "/tmp Mount nosuid", "/tmp", "nosuid", "warning",
+  const fs15 = makeMountCheck(CHECK_IDS.FILESYSTEM.FS_TMP_NOSUID, "/tmp Mount nosuid", "/tmp", "nosuid", "warning",
     "mount -o remount,nosuid /tmp  # also add nosuid to /etc/fstab",
     "Mounting /tmp with nosuid prevents SUID bit exploitation from world-writable temp directory.");
 
   // FS-NODEV-REMOVABLE: Removable media mounted with nodev
-  const fs16 = makeMountCheck("FS-NODEV-REMOVABLE", "/media Mount nodev", "/media", "nodev", "info",
+  const fs16 = makeMountCheck(CHECK_IDS.FILESYSTEM.FS_NODEV_REMOVABLE, "/media Mount nodev", "/media", "nodev", "info",
     "Add nodev option to removable media mount points in /etc/fstab",
     "Mounting removable media with nodev prevents device file exploits from USB or external media.");
 
@@ -266,7 +267,7 @@ export const parseFilesystemChecks: CheckParser = (sectionOutput: string, _platf
   });
   const hasVarLogSeparate = varLogLines.length > 0;
   const fs17: AuditCheck = {
-    id: "FS-VAR-LOG-SEPARATE",
+    id: CHECK_IDS.FILESYSTEM.FS_VAR_LOG_SEPARATE,
     category: "Filesystem",
     name: "/var/log on Separate Partition",
     severity: "info",
@@ -283,12 +284,12 @@ export const parseFilesystemChecks: CheckParser = (sectionOutput: string, _platf
   };
 
   // FS-BOOT-NOSUID: /boot mounted with nosuid
-  const fs18 = makeMountCheck("FS-BOOT-NOSUID", "/boot Mount nosuid", "/boot", "nosuid", "info",
+  const fs18 = makeMountCheck(CHECK_IDS.FILESYSTEM.FS_BOOT_NOSUID, "/boot Mount nosuid", "/boot", "nosuid", "info",
     "mount -o remount,nosuid /boot  # also add nosuid to /etc/fstab",
     "Mounting /boot with nosuid prevents SUID exploitation from modified boot files.");
 
   // FS-VAR-NOEXEC: /var mounted with noexec
-  const fs19 = makeMountCheck("FS-VAR-NOEXEC", "/var Mount noexec", "/var", "noexec", "info",
+  const fs19 = makeMountCheck(CHECK_IDS.FILESYSTEM.FS_VAR_NOEXEC, "/var Mount noexec", "/var", "noexec", "info",
     "mount -o remount,noexec /var  # also add noexec to /etc/fstab",
     "Mounting /var with noexec prevents execution of scripts placed in application data directories.");
 
@@ -307,7 +308,7 @@ export const parseFilesystemChecks: CheckParser = (sectionOutput: string, _platf
     }
   }
   const fs20: AuditCheck = {
-    id: "FS-SUID-SYSTEM-COUNT",
+    id: CHECK_IDS.FILESYSTEM.FS_SUID_SYSTEM_COUNT,
     category: "Filesystem",
     name: "System-Wide SUID File Count",
     severity: "info",

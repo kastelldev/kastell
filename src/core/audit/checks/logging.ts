@@ -4,6 +4,7 @@
  */
 
 import type { AuditCheck, CheckParser } from "../types.js";
+import { CHECK_IDS } from "../checkIds.js";
 
 export const parseLoggingChecks: CheckParser = (sectionOutput: string, _platform: string): AuditCheck[] => {
   const isNA = !sectionOutput || sectionOutput.trim() === "N/A" || sectionOutput.trim() === "";
@@ -24,7 +25,7 @@ export const parseLoggingChecks: CheckParser = (sectionOutput: string, _platform
   const journaldActive = lines[1] === "active";
   const anyLogActive = rsyslogActive || journaldActive;
   const log01: AuditCheck = {
-    id: "LOG-SYSLOG-ACTIVE",
+    id: CHECK_IDS.LOGGING.LOG_SYSLOG_ACTIVE,
     category: "Logging",
     name: "System Logging Active",
     severity: "critical",
@@ -44,7 +45,7 @@ export const parseLoggingChecks: CheckParser = (sectionOutput: string, _platform
   const authLogExists = output.includes("EXISTS");
   const authLogMissing = output.includes("MISSING");
   const log02: AuditCheck = {
-    id: "LOG-AUTH-LOG-PRESENT",
+    id: CHECK_IDS.LOGGING.LOG_AUTH_LOG_PRESENT,
     category: "Logging",
     name: "Authentication Log Present",
     severity: "warning",
@@ -66,7 +67,7 @@ export const parseLoggingChecks: CheckParser = (sectionOutput: string, _platform
   const hasLogrotate = output.includes("weekly") || output.includes("daily") ||
     output.includes("monthly") || output.includes("rotate");
   const log03: AuditCheck = {
-    id: "LOG-ROTATION-CONFIGURED",
+    id: CHECK_IDS.LOGGING.LOG_ROTATION_CONFIGURED,
     category: "Logging",
     name: "Log Rotation Configured",
     severity: "info",
@@ -86,7 +87,7 @@ export const parseLoggingChecks: CheckParser = (sectionOutput: string, _platform
   // This is a nice-to-have, info severity
   const hasRemoteLogging = /@\S+:\d+/i.test(output) || /@@\S+:\d+/i.test(output);
   const log04: AuditCheck = {
-    id: "LOG-REMOTE-LOGGING",
+    id: CHECK_IDS.LOGGING.LOG_REMOTE_LOGGING,
     category: "Logging",
     name: "Remote Logging",
     severity: "info",
@@ -105,7 +106,7 @@ export const parseLoggingChecks: CheckParser = (sectionOutput: string, _platform
   // LOG-05: Auditd status
   const hasAuditd = /auditd.*active|active.*auditd/i.test(output);
   const log05: AuditCheck = {
-    id: "LOG-AUDIT-DAEMON",
+    id: CHECK_IDS.LOGGING.LOG_AUDIT_DAEMON,
     category: "Logging",
     name: "Audit Daemon",
     severity: "info",
@@ -127,7 +128,7 @@ export const parseLoggingChecks: CheckParser = (sectionOutput: string, _platform
   // New loggingSection() adds: systemctl is-active auditd output
   const auditdActive = /^active$/m.test(output);
   const log06: AuditCheck = {
-    id: "LOG-AUDITD-ACTIVE",
+    id: CHECK_IDS.LOGGING.LOG_AUDITD_ACTIVE,
     category: "Logging",
     name: "Auditd Service Active",
     severity: "warning",
@@ -146,7 +147,7 @@ export const parseLoggingChecks: CheckParser = (sectionOutput: string, _platform
   // LOG-AUDIT-LOGIN-RULES: auditctl has login event rules
   const hasLoginRules = /\/var\/log\/lastlog|-k logins|\/var\/run\/utmp/i.test(output);
   const log07: AuditCheck = {
-    id: "LOG-AUDIT-LOGIN-RULES",
+    id: CHECK_IDS.LOGGING.LOG_AUDIT_LOGIN_RULES,
     category: "Logging",
     name: "Audit Login Event Rules",
     severity: "warning",
@@ -165,7 +166,7 @@ export const parseLoggingChecks: CheckParser = (sectionOutput: string, _platform
   // LOG-AUDIT-SUDO-RULES: auditctl has privilege escalation rules
   const hasSudoRules = /\/etc\/sudoers|-k privilege|\/usr\/bin\/sudo/i.test(output);
   const log08: AuditCheck = {
-    id: "LOG-AUDIT-SUDO-RULES",
+    id: CHECK_IDS.LOGGING.LOG_AUDIT_SUDO_RULES,
     category: "Logging",
     name: "Audit Privilege Escalation Rules",
     severity: "warning",
@@ -184,7 +185,7 @@ export const parseLoggingChecks: CheckParser = (sectionOutput: string, _platform
   // LOG-AUDIT-FILE-RULES: auditctl has file change monitoring
   const hasFileRules = /\/etc\/passwd|-k identity|\/etc\/shadow/i.test(output);
   const log09: AuditCheck = {
-    id: "LOG-AUDIT-FILE-RULES",
+    id: CHECK_IDS.LOGGING.LOG_AUDIT_FILE_RULES,
     category: "Logging",
     name: "Audit File Integrity Rules",
     severity: "warning",
@@ -207,7 +208,7 @@ export const parseLoggingChecks: CheckParser = (sectionOutput: string, _platform
   const varlogLastDigit = varlogPerms ? parseInt(varlogPerms[varlogPerms.length - 1], 10) : null;
   const varlogSecure = varlogLastDigit !== null && varlogLastDigit === 0;
   const log10: AuditCheck = {
-    id: "LOG-VARLOG-PERMISSIONS",
+    id: CHECK_IDS.LOGGING.LOG_VARLOG_PERMISSIONS,
     category: "Logging",
     name: "/var/log Not World-Readable",
     severity: "info",
@@ -226,7 +227,7 @@ export const parseLoggingChecks: CheckParser = (sectionOutput: string, _platform
   // LOG-CENTRAL-LOGGING: Centralized logging tool installed
   const hasCentralized = /vector|promtail|fluent-bit/i.test(output) && !output.includes("NONE");
   const log11: AuditCheck = {
-    id: "LOG-CENTRAL-LOGGING",
+    id: CHECK_IDS.LOGGING.LOG_CENTRAL_LOGGING,
     category: "Logging",
     name: "Centralized Logging Tool",
     severity: "info",
@@ -245,7 +246,7 @@ export const parseLoggingChecks: CheckParser = (sectionOutput: string, _platform
   // LOG-SECURE-JOURNAL: journald persistent storage
   const hasPersistentJournal = /Storage\s*=\s*persistent/i.test(output);
   const log12: AuditCheck = {
-    id: "LOG-SECURE-JOURNAL",
+    id: CHECK_IDS.LOGGING.LOG_SECURE_JOURNAL,
     category: "Logging",
     name: "Journald Persistent Storage",
     severity: "info",
@@ -278,7 +279,7 @@ export const parseLoggingChecks: CheckParser = (sectionOutput: string, _platform
     }
   }
   const log13: AuditCheck = {
-    id: "LOG-NO-WORLD-READABLE-LOGS",
+    id: CHECK_IDS.LOGGING.LOG_NO_WORLD_READABLE_LOGS,
     category: "Logging",
     name: "No Excessive World-Readable Logs",
     severity: "info",
@@ -298,7 +299,7 @@ export const parseLoggingChecks: CheckParser = (sectionOutput: string, _platform
   // LOG-SYSLOG-REMOTE: Remote syslog forwarding configured
   const hasRemoteSyslog = /^\s*@@?\S/m.test(output);
   const log14: AuditCheck = {
-    id: "LOG-SYSLOG-REMOTE",
+    id: CHECK_IDS.LOGGING.LOG_SYSLOG_REMOTE,
     category: "Logging",
     name: "Remote Syslog Forwarding Configured",
     severity: "info",
@@ -319,7 +320,7 @@ export const parseLoggingChecks: CheckParser = (sectionOutput: string, _platform
   const hasLogrotateActive = /^active$/m.test(output) ||
     /\/etc\/cron\.daily\/logrotate/.test(output);
   const log15: AuditCheck = {
-    id: "LOG-LOGROTATE-ACTIVE",
+    id: CHECK_IDS.LOGGING.LOG_LOGROTATE_ACTIVE,
     category: "Logging",
     name: "Logrotate Active",
     severity: "warning",
@@ -350,7 +351,7 @@ export const parseLoggingChecks: CheckParser = (sectionOutput: string, _platform
     }
   }
   const log16: AuditCheck = {
-    id: "LOG-AUDIT-WATCH-COUNT",
+    id: CHECK_IDS.LOGGING.LOG_AUDIT_WATCH_COUNT,
     category: "Logging",
     name: "Audit File Watch Rules Configured",
     severity: "info",
@@ -373,7 +374,7 @@ export const parseLoggingChecks: CheckParser = (sectionOutput: string, _platform
   const spaceIgnored = /space_left_action\s*=\s*ignore/i.test(output);
   const fileIgnored = /max_log_file_action\s*=\s*ignore/i.test(output);
   const log17: AuditCheck = {
-    id: "LOG-AUDITD-SPACE-ACTION",
+    id: CHECK_IDS.LOGGING.LOG_AUDITD_SPACE_ACTION,
     category: "Logging",
     name: "Auditd Space and Rotation Actions Configured",
     severity: "warning",
@@ -394,7 +395,7 @@ export const parseLoggingChecks: CheckParser = (sectionOutput: string, _platform
   // LOG-AUDIT-TIME-RULES: auditctl has time change event rules
   const hasTimeRules = /adjtimex|settimeofday|clock_settime|-k time-change/i.test(output);
   const log18: AuditCheck = {
-    id: "LOG-AUDIT-TIME-RULES",
+    id: CHECK_IDS.LOGGING.LOG_AUDIT_TIME_RULES,
     category: "Logging",
     name: "Audit Time Change Rules",
     severity: "warning",
@@ -415,7 +416,7 @@ export const parseLoggingChecks: CheckParser = (sectionOutput: string, _platform
   // LOG-AUDIT-NETWORK-RULES: auditctl has network change event rules
   const hasNetworkRules = /sethostname|setdomainname|-k network-change/i.test(output);
   const log19: AuditCheck = {
-    id: "LOG-AUDIT-NETWORK-RULES",
+    id: CHECK_IDS.LOGGING.LOG_AUDIT_NETWORK_RULES,
     category: "Logging",
     name: "Audit Network Change Rules",
     severity: "warning",
@@ -436,7 +437,7 @@ export const parseLoggingChecks: CheckParser = (sectionOutput: string, _platform
   // LOG-AUDIT-MODULE-RULES: auditctl has kernel module event rules
   const hasModuleRules = /init_module|delete_module|finit_module|-k kernel-module/i.test(output);
   const log20: AuditCheck = {
-    id: "LOG-AUDIT-MODULE-RULES",
+    id: CHECK_IDS.LOGGING.LOG_AUDIT_MODULE_RULES,
     category: "Logging",
     name: "Audit Kernel Module Rules",
     severity: "warning",

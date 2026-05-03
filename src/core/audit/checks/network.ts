@@ -4,6 +4,7 @@
  */
 
 import type { AuditCheck, CheckParser } from "../types.js";
+import { CHECK_IDS } from "../checkIds.js";
 
 // CodeQL suppression: fixCommand strings are display-only recommendations;
 // no user input reaches shell execution
@@ -34,7 +35,7 @@ export const parseNetworkChecks: CheckParser = (sectionOutput: string, platform:
     }
   }
   const net01: AuditCheck = {
-    id: "NET-NO-DANGEROUS-PORTS",
+    id: CHECK_IDS.NETWORK.NET_NO_DANGEROUS_PORTS,
     category: "Network",
     name: "No Dangerous Ports Exposed",
     severity: "warning",
@@ -54,7 +55,7 @@ export const parseNetworkChecks: CheckParser = (sectionOutput: string, platform:
   // NET-02: DNS resolver configured
   const hasDNS = /nameserver\s+\S+/i.test(output);
   const net02: AuditCheck = {
-    id: "NET-DNS-RESOLVER",
+    id: CHECK_IDS.NETWORK.NET_DNS_RESOLVER,
     category: "Network",
     name: "DNS Resolver Configured",
     severity: "info",
@@ -74,7 +75,7 @@ export const parseNetworkChecks: CheckParser = (sectionOutput: string, platform:
   const hasNTP = /NTP\s*synchronized:\s*yes/i.test(output) ||
     /System clock synchronized:\s*yes/i.test(output);
   const net03: AuditCheck = {
-    id: "NET-TIME-SYNC",
+    id: CHECK_IDS.NETWORK.NET_TIME_SYNC,
     category: "Network",
     name: "Time Synchronization",
     severity: "info",
@@ -95,7 +96,7 @@ export const parseNetworkChecks: CheckParser = (sectionOutput: string, platform:
   const isPlatform = platform === "coolify" || platform === "dokploy";
   const forwardingOff = ipForward === "0";
   const net04: AuditCheck = {
-    id: "NET-IP-FORWARDING",
+    id: CHECK_IDS.NETWORK.NET_IP_FORWARDING,
     category: "Network",
     name: "IP Forwarding Status",
     severity: "warning",
@@ -116,7 +117,7 @@ export const parseNetworkChecks: CheckParser = (sectionOutput: string, platform:
   // NET-05: TCP SYN cookies enabled
   const syncookies = extractSysctlValue(output, "net.ipv4.tcp_syncookies");
   const net05: AuditCheck = {
-    id: "NET-SYN-COOKIES",
+    id: CHECK_IDS.NETWORK.NET_SYN_COOKIES,
     category: "Network",
     name: "TCP SYN Cookies Enabled",
     severity: "warning",
@@ -135,7 +136,7 @@ export const parseNetworkChecks: CheckParser = (sectionOutput: string, platform:
   // NET-06: hosts.allow exists
   const hostsAllowPresent = !output.includes("NO_HOSTS_ALLOW");
   const net06: AuditCheck = {
-    id: "NET-HOSTS-ACCESS",
+    id: CHECK_IDS.NETWORK.NET_HOSTS_ACCESS,
     category: "Network",
     name: "TCP Wrappers hosts.allow Configured",
     severity: "info",
@@ -154,7 +155,7 @@ export const parseNetworkChecks: CheckParser = (sectionOutput: string, platform:
   // NET-07: hosts.deny has default deny (ALL : ALL)
   const hostsDenyAll = /ALL\s*:\s*ALL/i.test(output);
   const net07: AuditCheck = {
-    id: "NET-HOSTS-DENY",
+    id: CHECK_IDS.NETWORK.NET_HOSTS_DENY,
     category: "Network",
     name: "TCP Wrappers Default Deny Configured",
     severity: "warning",
@@ -173,7 +174,7 @@ export const parseNetworkChecks: CheckParser = (sectionOutput: string, platform:
   // NET-08: IPv6 disabled if not needed
   const ipv6Disabled = extractSysctlValue(output, "net.ipv6.conf.all.disable_ipv6");
   const net08: AuditCheck = {
-    id: "NET-IPV6-DISABLED",
+    id: CHECK_IDS.NETWORK.NET_IPV6_DISABLED,
     category: "Network",
     name: "IPv6 Disabled If Not Needed",
     severity: "info",
@@ -192,7 +193,7 @@ export const parseNetworkChecks: CheckParser = (sectionOutput: string, platform:
   // NET-09: Send redirects disabled
   const sendRedirectsNet = extractSysctlValue(output, "net.ipv4.conf.all.send_redirects");
   const net09: AuditCheck = {
-    id: "NET-ICMP-REDIRECT-SEND",
+    id: CHECK_IDS.NETWORK.NET_ICMP_REDIRECT_SEND,
     category: "Network",
     name: "ICMP Redirect Sending Disabled",
     severity: "warning",
@@ -211,7 +212,7 @@ export const parseNetworkChecks: CheckParser = (sectionOutput: string, platform:
   // NET-10: Secure redirects disabled
   const secureRedirectsNet = extractSysctlValue(output, "net.ipv4.conf.all.secure_redirects");
   const net10: AuditCheck = {
-    id: "NET-ICMP-SECURE-REDIRECT",
+    id: CHECK_IDS.NETWORK.NET_ICMP_SECURE_REDIRECT,
     category: "Network",
     name: "Secure ICMP Redirects Disabled",
     severity: "warning",
@@ -230,7 +231,7 @@ export const parseNetworkChecks: CheckParser = (sectionOutput: string, platform:
   // NET-11: IPv6 source routing disabled
   const ipv6SourceRoute = extractSysctlValue(output, "net.ipv6.conf.all.accept_source_route");
   const net11: AuditCheck = {
-    id: "NET-SOURCE-ROUTING-V6",
+    id: CHECK_IDS.NETWORK.NET_SOURCE_ROUTING_V6,
     category: "Network",
     name: "IPv6 Source Routing Disabled",
     severity: "warning",
@@ -249,7 +250,7 @@ export const parseNetworkChecks: CheckParser = (sectionOutput: string, platform:
   // NET-12: Martian packet logging
   const logMartiansNet = extractSysctlValue(output, "net.ipv4.conf.all.log_martians");
   const net12: AuditCheck = {
-    id: "NET-MARTIAN-LOGGING",
+    id: CHECK_IDS.NETWORK.NET_MARTIAN_LOGGING,
     category: "Network",
     name: "Martian Packet Logging Enabled",
     severity: "info",
@@ -268,7 +269,7 @@ export const parseNetworkChecks: CheckParser = (sectionOutput: string, platform:
   // NET-13: No management ports exposed on 0.0.0.0
   const noExposedMgmt = output.includes("NONE") || !/:8080 |:8443 |:9000 |:3000 /.test(output);
   const net13: AuditCheck = {
-    id: "NET-NO-EXPOSED-MGMT-PORTS",
+    id: CHECK_IDS.NETWORK.NET_NO_EXPOSED_MGMT_PORTS,
     category: "Network",
     name: "No Management Ports Exposed Publicly",
     severity: "warning",
@@ -287,7 +288,7 @@ export const parseNetworkChecks: CheckParser = (sectionOutput: string, platform:
   // NET-14: Reverse path filter enabled
   const rpFilterNet = extractSysctlValue(output, "net.ipv4.conf.all.rp_filter");
   const net14: AuditCheck = {
-    id: "NET-RP-FILTER",
+    id: CHECK_IDS.NETWORK.NET_RP_FILTER,
     category: "Network",
     name: "Reverse Path Filtering Enabled",
     severity: "warning",
@@ -311,7 +312,7 @@ export const parseNetworkChecks: CheckParser = (sectionOutput: string, platform:
   const mailPortsNone = output.split("\n").some((l) => l.trim() === "NONE");
   const mailPortsFound = !mailPortsNone && /:(25|110|143)\s/.test(output);
   const net16: AuditCheck = {
-    id: "NET-NO-MAIL-PORTS",
+    id: CHECK_IDS.NETWORK.NET_NO_MAIL_PORTS,
     category: "Network",
     name: "No Unnecessary Mail Ports Open",
     severity: "info",
@@ -331,7 +332,7 @@ export const parseNetworkChecks: CheckParser = (sectionOutput: string, platform:
   // Count 0.0.0.0 and :: listening TCP services from ss output
   const listeningCount = (output.match(/(?:0\.0\.0\.0|::|\*):(\d+)/g) ?? []).length;
   const net17: AuditCheck = {
-    id: "NET-LISTENING-SERVICES-AUDIT",
+    id: CHECK_IDS.NETWORK.NET_LISTENING_SERVICES_AUDIT,
     category: "Network",
     name: "Listening Services Count Reasonable",
     severity: "info",
@@ -350,7 +351,7 @@ export const parseNetworkChecks: CheckParser = (sectionOutput: string, platform:
   const promiscNone = output.split("\n").some((l) => l.trim() === "NONE");
   const hasPromiscuousIface = !promiscNone && /PROMISC/i.test(output);
   const net18: AuditCheck = {
-    id: "NET-NO-PROMISCUOUS-INTERFACES",
+    id: CHECK_IDS.NETWORK.NET_NO_PROMISCUOUS_INTERFACES,
     category: "Network",
     name: "No Promiscuous Mode Interfaces",
     severity: "warning",
@@ -369,7 +370,7 @@ export const parseNetworkChecks: CheckParser = (sectionOutput: string, platform:
   // NET-19: ARP announce protection (net.ipv4.conf.all.arp_announce = 2)
   const arpAnnounce = extractSysctlValue(output, "net.ipv4.conf.all.arp_announce");
   const net19: AuditCheck = {
-    id: "NET-ARP-ANNOUNCE",
+    id: CHECK_IDS.NETWORK.NET_ARP_ANNOUNCE,
     category: "Network",
     name: "ARP Announce Protection Enabled",
     severity: "warning",
@@ -389,7 +390,7 @@ export const parseNetworkChecks: CheckParser = (sectionOutput: string, platform:
   const arpIgnore = extractSysctlValue(output, "net.ipv4.conf.all.arp_ignore");
   const arpIgnoreVal = arpIgnore !== null ? parseInt(arpIgnore, 10) : null;
   const net20: AuditCheck = {
-    id: "NET-ARP-IGNORE",
+    id: CHECK_IDS.NETWORK.NET_ARP_IGNORE,
     category: "Network",
     name: "ARP Ignore Protection Enabled",
     severity: "warning",
@@ -412,7 +413,7 @@ export const parseNetworkChecks: CheckParser = (sectionOutput: string, platform:
     && tcpWrappersOutput.trim() !== "EMPTY"
     && tcpWrappersOutput.trim() !== "";
   const net22: AuditCheck = {
-    id: "NET-TCP-WRAPPERS-CONFIGURED",
+    id: CHECK_IDS.NETWORK.NET_TCP_WRAPPERS_CONFIGURED,
     category: "Network",
     name: "TCP Wrappers Active Rules Present",
     severity: "info",
@@ -444,7 +445,7 @@ export const parseNetworkChecks: CheckParser = (sectionOutput: string, platform:
     }
   }
   const net23: AuditCheck = {
-    id: "NET-LISTENING-PORT-COUNT",
+    id: CHECK_IDS.NETWORK.NET_LISTENING_PORT_COUNT,
     category: "Network",
     name: "Listening Port Count Reasonable",
     severity: "info",
