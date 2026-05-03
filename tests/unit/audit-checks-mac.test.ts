@@ -1,3 +1,4 @@
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 import { parseMACChecks } from "../../src/core/audit/checks/mac.js";
 
 describe("parseMACChecks", () => {

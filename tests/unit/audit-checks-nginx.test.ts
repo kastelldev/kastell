@@ -1,3 +1,4 @@
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 import { parseNginxChecks } from "../../src/core/audit/checks/nginx.js";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────

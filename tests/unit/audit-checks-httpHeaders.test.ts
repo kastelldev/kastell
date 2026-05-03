@@ -1,3 +1,4 @@
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 import { parseHttpHeadersChecks } from "../../src/core/audit/checks/httpHeaders.js";
 
 describe("parseHttpHeadersChecks", () => {

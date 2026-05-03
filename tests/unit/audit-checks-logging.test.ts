@@ -1,3 +1,4 @@
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 import { parseLoggingChecks } from "../../src/core/audit/checks/logging.js";
 
 describe("parseLoggingChecks", () => {
@@ -67,81 +68,81 @@ describe("parseLoggingChecks", () => {
 
   it("should return LOG-SYSLOG-ACTIVE passed when journald is active", () => {
     const checks = parseLoggingChecks(secureOutput, "bare");
-    const log01 = checks.find((c: { id: string }) => c.id === "LOG-SYSLOG-ACTIVE");
+    const log01 = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_SYSLOG_ACTIVE);
     expect(log01!.passed).toBe(true);
   });
 
   it("should return LOG-SYSLOG-ACTIVE failed when neither syslog nor journald active", () => {
     const checks = parseLoggingChecks(insecureOutput, "bare");
-    const log01 = checks.find((c: { id: string }) => c.id === "LOG-SYSLOG-ACTIVE");
+    const log01 = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_SYSLOG_ACTIVE);
     expect(log01!.passed).toBe(false);
   });
 
   it("should return LOG-AUTH-LOG-PRESENT passed when auth log exists", () => {
     const checks = parseLoggingChecks(secureOutput, "bare");
-    const log02 = checks.find((c: { id: string }) => c.id === "LOG-AUTH-LOG-PRESENT");
+    const log02 = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUTH_LOG_PRESENT);
     expect(log02!.passed).toBe(true);
   });
 
   it("should return LOG-AUTH-LOG-PRESENT failed when auth log missing", () => {
     const checks = parseLoggingChecks(insecureOutput, "bare");
-    const log02 = checks.find((c: { id: string }) => c.id === "LOG-AUTH-LOG-PRESENT");
+    const log02 = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUTH_LOG_PRESENT);
     expect(log02!.passed).toBe(false);
   });
 
   it("should return LOG-AUDIT-LOGIN-RULES passed when auditctl output contains /var/log/lastlog", () => {
     const checks = parseLoggingChecks(secureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-LOGIN-RULES");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_LOGIN_RULES);
     expect(check!.passed).toBe(true);
   });
 
   it("should return LOG-AUDIT-LOGIN-RULES failed when no login audit rules", () => {
     const checks = parseLoggingChecks(insecureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-LOGIN-RULES");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_LOGIN_RULES);
     expect(check!.passed).toBe(false);
   });
 
   it("should return LOG-VARLOG-PERMISSIONS passed when /var/log is mode 750", () => {
     const checks = parseLoggingChecks(secureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "LOG-VARLOG-PERMISSIONS");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_VARLOG_PERMISSIONS);
     expect(check!.passed).toBe(true);
   });
 
   it("should return LOG-VARLOG-PERMISSIONS failed when /var/log is mode 755 (world-readable)", () => {
     const checks = parseLoggingChecks(insecureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "LOG-VARLOG-PERMISSIONS");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_VARLOG_PERMISSIONS);
     expect(check!.passed).toBe(false);
   });
 
   it("should return LOG-CENTRAL-LOGGING passed when centralized logging tool installed", () => {
     const checks = parseLoggingChecks(secureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "LOG-CENTRAL-LOGGING");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_CENTRAL_LOGGING);
     expect(check!.passed).toBe(true);
   });
 
   it("should return LOG-CENTRAL-LOGGING failed when no centralized logging tool", () => {
     const checks = parseLoggingChecks(insecureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "LOG-CENTRAL-LOGGING");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_CENTRAL_LOGGING);
     expect(check!.passed).toBe(false);
   });
 
   it("LOG-SYSLOG-REMOTE passes when @@ forwarding found", () => {
     const checks = parseLoggingChecks(secureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "LOG-SYSLOG-REMOTE");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_SYSLOG_REMOTE);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(true);
   });
 
   it("LOG-LOGROTATE-ACTIVE passes when /etc/cron.daily/logrotate present", () => {
     const checks = parseLoggingChecks(secureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "LOG-LOGROTATE-ACTIVE");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_LOGROTATE_ACTIVE);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(true);
   });
 
   it("LOG-NO-WORLD-READABLE-LOGS passes when count < 5", () => {
     const checks = parseLoggingChecks(secureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "LOG-NO-WORLD-READABLE-LOGS");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_NO_WORLD_READABLE_LOGS);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(true);
   });
@@ -153,7 +154,7 @@ describe("parseLoggingChecks", () => {
 
   it("LOG-AUDIT-WATCH-COUNT passes when file watch count >= 5", () => {
     const checks = parseLoggingChecks(secureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-WATCH-COUNT");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_WATCH_COUNT);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(true);
     expect(check!.currentValue).toMatch(/7 file watch audit rule/);
@@ -162,13 +163,13 @@ describe("parseLoggingChecks", () => {
   it("LOG-AUDIT-WATCH-COUNT fails when file watch count < 5", () => {
     const output = secureOutput.replace("\n7\n", "\n2\n");
     const checks = parseLoggingChecks(output, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-WATCH-COUNT");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_WATCH_COUNT);
     expect(check!.passed).toBe(false);
   });
 
   it("LOG-AUDITD-SPACE-ACTION passes when space_left_action=email and max_log_file_action=keep_logs", () => {
     const checks = parseLoggingChecks(secureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "LOG-AUDITD-SPACE-ACTION");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDITD_SPACE_ACTION);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(true);
   });
@@ -176,13 +177,13 @@ describe("parseLoggingChecks", () => {
   it("LOG-AUDITD-SPACE-ACTION fails when space_left_action=ignore", () => {
     const output = secureOutput.replace("space_left_action = email", "space_left_action = ignore");
     const checks = parseLoggingChecks(output, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "LOG-AUDITD-SPACE-ACTION");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDITD_SPACE_ACTION);
     expect(check!.passed).toBe(false);
   });
 
   it("LOG-AUDIT-TIME-RULES passes when output contains -k time-change", () => {
     const checks = parseLoggingChecks(secureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-TIME-RULES");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_TIME_RULES);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(true);
   });
@@ -190,21 +191,21 @@ describe("parseLoggingChecks", () => {
   it("LOG-AUDIT-TIME-RULES passes when output contains adjtimex", () => {
     const output = "adjtimex syscall monitoring active";
     const checks = parseLoggingChecks(output, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-TIME-RULES");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_TIME_RULES);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(true);
   });
 
   it("LOG-AUDIT-TIME-RULES fails when no time-change rules present", () => {
     const checks = parseLoggingChecks(insecureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-TIME-RULES");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_TIME_RULES);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(false);
   });
 
   it("LOG-AUDIT-NETWORK-RULES passes when output contains -k network-change", () => {
     const checks = parseLoggingChecks(secureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-NETWORK-RULES");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_NETWORK_RULES);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(true);
   });
@@ -212,21 +213,21 @@ describe("parseLoggingChecks", () => {
   it("LOG-AUDIT-NETWORK-RULES passes when output contains sethostname", () => {
     const output = "sethostname syscall monitoring active";
     const checks = parseLoggingChecks(output, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-NETWORK-RULES");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_NETWORK_RULES);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(true);
   });
 
   it("LOG-AUDIT-NETWORK-RULES fails when no network-change rules present", () => {
     const checks = parseLoggingChecks(insecureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-NETWORK-RULES");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_NETWORK_RULES);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(false);
   });
 
   it("LOG-AUDIT-MODULE-RULES passes when output contains -k kernel-module", () => {
     const checks = parseLoggingChecks(secureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-MODULE-RULES");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_MODULE_RULES);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(true);
   });
@@ -234,14 +235,14 @@ describe("parseLoggingChecks", () => {
   it("LOG-AUDIT-MODULE-RULES passes when output contains init_module", () => {
     const output = "init_module syscall monitoring active";
     const checks = parseLoggingChecks(output, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-MODULE-RULES");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_MODULE_RULES);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(true);
   });
 
   it("LOG-AUDIT-MODULE-RULES fails when no kernel-module rules present", () => {
     const checks = parseLoggingChecks(insecureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-MODULE-RULES");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_MODULE_RULES);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(false);
   });
@@ -251,7 +252,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-SYSLOG-ACTIVE] passes when only rsyslog is active (not journald)", () => {
       const output = "active\ninactive\nweekly\nEXISTS";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-SYSLOG-ACTIVE");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_SYSLOG_ACTIVE);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toBe("System logging active");
     });
@@ -259,7 +260,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-SYSLOG-ACTIVE] passes when only journald is active (not rsyslog)", () => {
       const output = "inactive\nactive\nweekly\nEXISTS";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-SYSLOG-ACTIVE");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_SYSLOG_ACTIVE);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toBe("System logging active");
     });
@@ -267,7 +268,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-SYSLOG-ACTIVE] fails when both are inactive", () => {
       const output = "inactive\ninactive\nweekly\nEXISTS";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-SYSLOG-ACTIVE");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_SYSLOG_ACTIVE);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toBe("No active logging service found");
     });
@@ -275,7 +276,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-SYSLOG-ACTIVE] rsyslogActive requires exact 'active' on line[0]", () => {
       const output = "active (running)\nactive\nweekly";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-SYSLOG-ACTIVE");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_SYSLOG_ACTIVE);
       // line[0] is "active (running)" which !== "active", but line[1] is "active"
       expect(check!.passed).toBe(true); // journald passes
     });
@@ -283,7 +284,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-SYSLOG-ACTIVE] isNA forces false", () => {
       const output = "";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-SYSLOG-ACTIVE");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_SYSLOG_ACTIVE);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toBe("Unable to determine");
     });
@@ -292,7 +293,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-AUTH-LOG-PRESENT] currentValue shows 'Auth log missing' when MISSING present", () => {
       const output = "inactive\ninactive\nN/A\nMISSING";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUTH-LOG-PRESENT");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUTH_LOG_PRESENT);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toBe("Auth log missing");
     });
@@ -300,7 +301,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-AUTH-LOG-PRESENT] currentValue shows 'Unable to determine' when neither EXISTS nor MISSING", () => {
       const output = "inactive\ninactive\nN/A\nUNKNOWN";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUTH-LOG-PRESENT");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUTH_LOG_PRESENT);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toBe("Unable to determine");
     });
@@ -308,7 +309,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-AUTH-LOG-PRESENT] currentValue shows 'Auth log exists' on pass", () => {
       const output = "inactive\ninactive\nN/A\nEXISTS";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUTH-LOG-PRESENT");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUTH_LOG_PRESENT);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toBe("Auth log exists");
     });
@@ -317,7 +318,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-ROTATION-CONFIGURED] passes with 'daily' keyword", () => {
       const output = "inactive\ninactive\ndaily";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-ROTATION-CONFIGURED");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_ROTATION_CONFIGURED);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toBe("Log rotation configured");
     });
@@ -325,21 +326,21 @@ describe("parseLoggingChecks", () => {
     it("[LOG-ROTATION-CONFIGURED] passes with 'monthly' keyword", () => {
       const output = "inactive\ninactive\nmonthly";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-ROTATION-CONFIGURED");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_ROTATION_CONFIGURED);
       expect(check!.passed).toBe(true);
     });
 
     it("[LOG-ROTATION-CONFIGURED] passes with 'rotate' keyword alone", () => {
       const output = "inactive\ninactive\nrotate 7";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-ROTATION-CONFIGURED");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_ROTATION_CONFIGURED);
       expect(check!.passed).toBe(true);
     });
 
     it("[LOG-ROTATION-CONFIGURED] fails when none of the keywords present", () => {
       const output = "inactive\ninactive\nsomething else";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-ROTATION-CONFIGURED");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_ROTATION_CONFIGURED);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toBe("Log rotation not detected");
     });
@@ -348,7 +349,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-REMOTE-LOGGING] passes with single @ remote config", () => {
       const output = "inactive\ninactive\n@loghost:514";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-REMOTE-LOGGING");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_REMOTE_LOGGING);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toBe("Remote logging configured");
     });
@@ -356,14 +357,14 @@ describe("parseLoggingChecks", () => {
     it("[LOG-REMOTE-LOGGING] passes with @@ remote config", () => {
       const output = "inactive\ninactive\n@@loghost:514";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-REMOTE-LOGGING");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_REMOTE_LOGGING);
       expect(check!.passed).toBe(true);
     });
 
     it("[LOG-REMOTE-LOGGING] fails when no remote logging pattern", () => {
       const output = "inactive\ninactive\nno remote here";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-REMOTE-LOGGING");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_REMOTE_LOGGING);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toBe("No remote logging detected");
     });
@@ -372,7 +373,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-AUDIT-DAEMON] passes with 'auditd is active'", () => {
       const output = "auditd is active";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-DAEMON");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_DAEMON);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toBe("auditd active");
     });
@@ -380,14 +381,14 @@ describe("parseLoggingChecks", () => {
     it("[LOG-AUDIT-DAEMON] passes with 'active auditd'", () => {
       const output = "active auditd running";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-DAEMON");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_DAEMON);
       expect(check!.passed).toBe(true);
     });
 
     it("[LOG-AUDIT-DAEMON] fails when auditd not mentioned", () => {
       const output = "nothing here";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-DAEMON");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_DAEMON);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toBe("auditd not detected");
     });
@@ -396,7 +397,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-AUDITD-ACTIVE] passes when 'active' appears on its own line", () => {
       const output = "some data\nactive\nmore data";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDITD-ACTIVE");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDITD_ACTIVE);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toBe("auditd service active");
     });
@@ -404,7 +405,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-AUDITD-ACTIVE] fails when 'active' is not on its own line", () => {
       const output = "auditd is active running\nnothing standalone";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDITD-ACTIVE");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDITD_ACTIVE);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toBe("auditd service not active");
     });
@@ -413,7 +414,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-AUDIT-LOGIN-RULES] passes with -k logins keyword", () => {
       const output = "-w /some/path -p wa -k logins";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-LOGIN-RULES");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_LOGIN_RULES);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toBe("Login event audit rules configured");
     });
@@ -421,14 +422,14 @@ describe("parseLoggingChecks", () => {
     it("[LOG-AUDIT-LOGIN-RULES] passes with /var/run/utmp path", () => {
       const output = "-w /var/run/utmp -p wa -k session";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-LOGIN-RULES");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_LOGIN_RULES);
       expect(check!.passed).toBe(true);
     });
 
     it("[LOG-AUDIT-LOGIN-RULES] fails when no login-related patterns", () => {
       const output = "some random audit rules";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-LOGIN-RULES");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_LOGIN_RULES);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toBe("No login event audit rules found");
     });
@@ -437,7 +438,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-AUDIT-SUDO-RULES] passes with /etc/sudoers", () => {
       const output = "-w /etc/sudoers -p wa -k privilege";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-SUDO-RULES");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_SUDO_RULES);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toBe("Sudo/privilege escalation audit rules configured");
     });
@@ -445,21 +446,21 @@ describe("parseLoggingChecks", () => {
     it("[LOG-AUDIT-SUDO-RULES] passes with /usr/bin/sudo", () => {
       const output = "-w /usr/bin/sudo -p x -k priv";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-SUDO-RULES");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_SUDO_RULES);
       expect(check!.passed).toBe(true);
     });
 
     it("[LOG-AUDIT-SUDO-RULES] passes with -k privilege alone", () => {
       const output = "-a always,exit -k privilege";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-SUDO-RULES");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_SUDO_RULES);
       expect(check!.passed).toBe(true);
     });
 
     it("[LOG-AUDIT-SUDO-RULES] fails when no sudo-related patterns", () => {
       const output = "random stuff here";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-SUDO-RULES");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_SUDO_RULES);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toBe("No sudo audit rules found");
     });
@@ -468,7 +469,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-AUDIT-FILE-RULES] passes with /etc/passwd", () => {
       const output = "-w /etc/passwd -p wa -k identity";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-FILE-RULES");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_FILE_RULES);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toBe("File integrity audit rules configured");
     });
@@ -476,21 +477,21 @@ describe("parseLoggingChecks", () => {
     it("[LOG-AUDIT-FILE-RULES] passes with /etc/shadow alone", () => {
       const output = "-w /etc/shadow -p wa";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-FILE-RULES");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_FILE_RULES);
       expect(check!.passed).toBe(true);
     });
 
     it("[LOG-AUDIT-FILE-RULES] passes with -k identity alone", () => {
       const output = "-w /some/file -k identity";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-FILE-RULES");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_FILE_RULES);
       expect(check!.passed).toBe(true);
     });
 
     it("[LOG-AUDIT-FILE-RULES] fails when no file integrity patterns", () => {
       const output = "nothing relevant";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-FILE-RULES");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_FILE_RULES);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toBe("No file integrity audit rules found");
     });
@@ -499,7 +500,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-VARLOG-PERMISSIONS] passes with mode 700 (last digit 0)", () => {
       const output = "inactive\ninactive\n700";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-VARLOG-PERMISSIONS");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_VARLOG_PERMISSIONS);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toBe("Mode: 700");
     });
@@ -507,7 +508,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-VARLOG-PERMISSIONS] fails with mode 751 (last digit 1)", () => {
       const output = "inactive\ninactive\n751";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-VARLOG-PERMISSIONS");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_VARLOG_PERMISSIONS);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toBe("Mode: 751");
     });
@@ -515,7 +516,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-VARLOG-PERMISSIONS] handles 4-digit mode (1750)", () => {
       const output = "inactive\ninactive\n1750";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-VARLOG-PERMISSIONS");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_VARLOG_PERMISSIONS);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toBe("Mode: 1750");
     });
@@ -523,7 +524,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-VARLOG-PERMISSIONS] fails when no permission line found", () => {
       const output = "inactive\ninactive\nno perms";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-VARLOG-PERMISSIONS");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_VARLOG_PERMISSIONS);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toBe("Unable to determine /var/log permissions");
     });
@@ -532,7 +533,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-CENTRAL-LOGGING] passes with promtail", () => {
       const output = "promtail installed";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-CENTRAL-LOGGING");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_CENTRAL_LOGGING);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toBe("Centralized logging tool installed");
     });
@@ -540,21 +541,21 @@ describe("parseLoggingChecks", () => {
     it("[LOG-CENTRAL-LOGGING] passes with fluent-bit", () => {
       const output = "fluent-bit running";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-CENTRAL-LOGGING");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_CENTRAL_LOGGING);
       expect(check!.passed).toBe(true);
     });
 
     it("[LOG-CENTRAL-LOGGING] fails when match exists but NONE also present", () => {
       const output = "vector\nNONE";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-CENTRAL-LOGGING");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_CENTRAL_LOGGING);
       expect(check!.passed).toBe(false);
     });
 
     it("[LOG-CENTRAL-LOGGING] currentValue lists tools when not detected", () => {
       const output = "nothing here";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-CENTRAL-LOGGING");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_CENTRAL_LOGGING);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toMatch(/No centralized logging tool/);
     });
@@ -563,7 +564,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-SECURE-JOURNAL] passes with Storage = persistent (spaces)", () => {
       const output = "Storage = persistent";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-SECURE-JOURNAL");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_SECURE_JOURNAL);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toBe("journald persistent storage configured");
     });
@@ -571,14 +572,14 @@ describe("parseLoggingChecks", () => {
     it("[LOG-SECURE-JOURNAL] passes with Storage=persistent (no spaces)", () => {
       const output = "Storage=persistent";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-SECURE-JOURNAL");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_SECURE_JOURNAL);
       expect(check!.passed).toBe(true);
     });
 
     it("[LOG-SECURE-JOURNAL] fails with Storage=volatile", () => {
       const output = "Storage=volatile";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-SECURE-JOURNAL");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_SECURE_JOURNAL);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toBe("journald persistent storage not configured");
     });
@@ -587,7 +588,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-NO-WORLD-READABLE-LOGS] passes when count is exactly 4", () => {
       const output = "inactive\ninactive\n4";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-NO-WORLD-READABLE-LOGS");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_NO_WORLD_READABLE_LOGS);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toMatch(/4 world-readable/);
     });
@@ -595,7 +596,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-NO-WORLD-READABLE-LOGS] fails when count is exactly 5", () => {
       const output = "inactive\ninactive\n5";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-NO-WORLD-READABLE-LOGS");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_NO_WORLD_READABLE_LOGS);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toMatch(/5 world-readable/);
     });
@@ -603,7 +604,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-NO-WORLD-READABLE-LOGS] passes when count is 0", () => {
       const output = "inactive\ninactive\n0";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-NO-WORLD-READABLE-LOGS");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_NO_WORLD_READABLE_LOGS);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toMatch(/0 world-readable/);
     });
@@ -611,7 +612,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-NO-WORLD-READABLE-LOGS] passes when no standalone number (null)", () => {
       const output = "inactive\ninactive\nno numbers here";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-NO-WORLD-READABLE-LOGS");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_NO_WORLD_READABLE_LOGS);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toBe("World-readable log count not determinable");
     });
@@ -619,7 +620,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-NO-WORLD-READABLE-LOGS] ignores standalone numbers >= 200", () => {
       const output = "inactive\ninactive\n250\nno valid count";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-NO-WORLD-READABLE-LOGS");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_NO_WORLD_READABLE_LOGS);
       // 250 >= 200 so it's skipped, worldReadableCount = null
       expect(check!.passed).toBe(true);
     });
@@ -628,7 +629,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-SYSLOG-REMOTE] passes with single @ forwarding", () => {
       const output = "@logserver:514";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-SYSLOG-REMOTE");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_SYSLOG_REMOTE);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toBe("Remote syslog forwarding configured");
     });
@@ -636,14 +637,14 @@ describe("parseLoggingChecks", () => {
     it("[LOG-SYSLOG-REMOTE] passes with leading spaces before @", () => {
       const output = "  @@logserver:514";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-SYSLOG-REMOTE");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_SYSLOG_REMOTE);
       expect(check!.passed).toBe(true);
     });
 
     it("[LOG-SYSLOG-REMOTE] fails when no @ line", () => {
       const output = "nothing remote here";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-SYSLOG-REMOTE");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_SYSLOG_REMOTE);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toBe("No remote syslog forwarding found");
     });
@@ -652,7 +653,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-LOGROTATE-ACTIVE] passes with standalone 'active' line (not just substring)", () => {
       const output = "something\nactive\nmore";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-LOGROTATE-ACTIVE");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_LOGROTATE_ACTIVE);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toBe("logrotate timer or cron job active");
     });
@@ -660,7 +661,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-LOGROTATE-ACTIVE] fails when only 'activating' (not exact match)", () => {
       const output = "activating\nno cron";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-LOGROTATE-ACTIVE");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_LOGROTATE_ACTIVE);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toBe("logrotate not active");
     });
@@ -669,21 +670,21 @@ describe("parseLoggingChecks", () => {
     it("[LOG-AUDIT-WATCH-COUNT] passes when exactly 5", () => {
       const output = "inactive\ninactive\n5";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-WATCH-COUNT");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_WATCH_COUNT);
       expect(check!.passed).toBe(true);
     });
 
     it("[LOG-AUDIT-WATCH-COUNT] fails when exactly 4", () => {
       const output = "inactive\ninactive\n4";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-WATCH-COUNT");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_WATCH_COUNT);
       expect(check!.passed).toBe(false);
     });
 
     it("[LOG-AUDIT-WATCH-COUNT] fails when count is 0", () => {
       const output = "inactive\ninactive\n0";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-WATCH-COUNT");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_WATCH_COUNT);
       expect(check!.passed).toBe(false);
     });
 
@@ -691,7 +692,7 @@ describe("parseLoggingChecks", () => {
       // First small number is world-readable count, last is watch count
       const output = "inactive\ninactive\n3\n10";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-WATCH-COUNT");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_WATCH_COUNT);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toMatch(/10 file watch/);
     });
@@ -699,7 +700,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-AUDIT-WATCH-COUNT] fails when no standalone number present", () => {
       const output = "inactive\ninactive\nno numbers";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-WATCH-COUNT");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_WATCH_COUNT);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toBe("Watch rule count not determinable");
     });
@@ -708,7 +709,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-AUDITD-SPACE-ACTION] fails when only space_left_action set (no file action)", () => {
       const output = "space_left_action = syslog";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDITD-SPACE-ACTION");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDITD_SPACE_ACTION);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toBe("auditd space or file rotation actions not configured");
     });
@@ -716,28 +717,28 @@ describe("parseLoggingChecks", () => {
     it("[LOG-AUDITD-SPACE-ACTION] fails when only max_log_file_action set (no space action)", () => {
       const output = "max_log_file_action = rotate";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDITD-SPACE-ACTION");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDITD_SPACE_ACTION);
       expect(check!.passed).toBe(false);
     });
 
     it("[LOG-AUDITD-SPACE-ACTION] passes with space_left_action=halt and max_log_file_action=rotate", () => {
       const output = "space_left_action = halt\nmax_log_file_action = rotate";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDITD-SPACE-ACTION");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDITD_SPACE_ACTION);
       expect(check!.passed).toBe(true);
     });
 
     it("[LOG-AUDITD-SPACE-ACTION] passes with space_left_action=exec", () => {
       const output = "space_left_action = exec\nmax_log_file_action = keep_logs";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDITD-SPACE-ACTION");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDITD_SPACE_ACTION);
       expect(check!.passed).toBe(true);
     });
 
     it("[LOG-AUDITD-SPACE-ACTION] currentValue mentions 'ignore' when max_log_file_action=ignore", () => {
       const output = "space_left_action = syslog\nmax_log_file_action = ignore";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDITD-SPACE-ACTION");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDITD_SPACE_ACTION);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toMatch(/silently discarded/);
     });
@@ -745,7 +746,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-AUDITD-SPACE-ACTION] currentValue mentions 'ignore' when space_left_action=ignore", () => {
       const output = "space_left_action = ignore\nmax_log_file_action = keep_logs";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDITD-SPACE-ACTION");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDITD_SPACE_ACTION);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toMatch(/silently discarded/);
     });
@@ -754,7 +755,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-AUDIT-TIME-RULES] passes with settimeofday", () => {
       const output = "-S settimeofday -k time";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-TIME-RULES");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_TIME_RULES);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toBe("Time change audit rules configured");
     });
@@ -762,14 +763,14 @@ describe("parseLoggingChecks", () => {
     it("[LOG-AUDIT-TIME-RULES] passes with clock_settime", () => {
       const output = "-S clock_settime -k time-change";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-TIME-RULES");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_TIME_RULES);
       expect(check!.passed).toBe(true);
     });
 
     it("[LOG-AUDIT-TIME-RULES] fails with unrelated content", () => {
       const output = "some random audit output";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-TIME-RULES");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_TIME_RULES);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toBe("No time change audit rules found");
     });
@@ -778,7 +779,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-AUDIT-NETWORK-RULES] passes with setdomainname", () => {
       const output = "-S setdomainname -k network";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-NETWORK-RULES");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_NETWORK_RULES);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toBe("Network change audit rules configured");
     });
@@ -786,14 +787,14 @@ describe("parseLoggingChecks", () => {
     it("[LOG-AUDIT-NETWORK-RULES] passes with -k network-change alone", () => {
       const output = "-a exit -k network-change";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-NETWORK-RULES");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_NETWORK_RULES);
       expect(check!.passed).toBe(true);
     });
 
     it("[LOG-AUDIT-NETWORK-RULES] fails when no network patterns", () => {
       const output = "unrelated content";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-NETWORK-RULES");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_NETWORK_RULES);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toBe("No network change audit rules found");
     });
@@ -802,7 +803,7 @@ describe("parseLoggingChecks", () => {
     it("[LOG-AUDIT-MODULE-RULES] passes with delete_module", () => {
       const output = "-S delete_module -k modules";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-MODULE-RULES");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_MODULE_RULES);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toBe("Kernel module audit rules configured");
     });
@@ -810,21 +811,21 @@ describe("parseLoggingChecks", () => {
     it("[LOG-AUDIT-MODULE-RULES] passes with finit_module", () => {
       const output = "-S finit_module -k modules";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-MODULE-RULES");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_MODULE_RULES);
       expect(check!.passed).toBe(true);
     });
 
     it("[LOG-AUDIT-MODULE-RULES] passes with -k kernel-module alone", () => {
       const output = "-a exit -k kernel-module";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-MODULE-RULES");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_MODULE_RULES);
       expect(check!.passed).toBe(true);
     });
 
     it("[LOG-AUDIT-MODULE-RULES] fails with unrelated content", () => {
       const output = "random text no modules";
       const checks = parseLoggingChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "LOG-AUDIT-MODULE-RULES");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.LOGGING.LOG_AUDIT_MODULE_RULES);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toBe("No kernel module audit rules found");
     });
@@ -852,21 +853,21 @@ describe("parseLoggingChecks", () => {
     const checks = parseLoggingChecks(secureOutput, "bare");
 
     const expectedMeta: Array<[string, string, string]> = [
-      ["LOG-SYSLOG-ACTIVE", "critical", "GUARDED"],
-      ["LOG-AUTH-LOG-PRESENT", "warning", "GUARDED"],
-      ["LOG-ROTATION-CONFIGURED", "info", "SAFE"],
-      ["LOG-REMOTE-LOGGING", "info", "GUARDED"],
-      ["LOG-AUDIT-DAEMON", "info", "GUARDED"],
-      ["LOG-AUDITD-ACTIVE", "warning", "GUARDED"],
-      ["LOG-AUDIT-LOGIN-RULES", "warning", "SAFE"],
-      ["LOG-AUDIT-SUDO-RULES", "warning", "SAFE"],
-      ["LOG-AUDIT-FILE-RULES", "warning", "SAFE"],
-      ["LOG-VARLOG-PERMISSIONS", "info", "SAFE"],
-      ["LOG-CENTRAL-LOGGING", "info", "SAFE"],
-      ["LOG-SECURE-JOURNAL", "info", "GUARDED"],
-      ["LOG-NO-WORLD-READABLE-LOGS", "info", "SAFE"],
-      ["LOG-SYSLOG-REMOTE", "info", "GUARDED"],
-      ["LOG-LOGROTATE-ACTIVE", "warning", "SAFE"],
+      [CHECK_IDS.LOGGING.LOG_SYSLOG_ACTIVE, "critical", "GUARDED"],
+      [CHECK_IDS.LOGGING.LOG_AUTH_LOG_PRESENT, "warning", "GUARDED"],
+      [CHECK_IDS.LOGGING.LOG_ROTATION_CONFIGURED, "info", "SAFE"],
+      [CHECK_IDS.LOGGING.LOG_REMOTE_LOGGING, "info", "GUARDED"],
+      [CHECK_IDS.LOGGING.LOG_AUDIT_DAEMON, "info", "GUARDED"],
+      [CHECK_IDS.LOGGING.LOG_AUDITD_ACTIVE, "warning", "GUARDED"],
+      [CHECK_IDS.LOGGING.LOG_AUDIT_LOGIN_RULES, "warning", "SAFE"],
+      [CHECK_IDS.LOGGING.LOG_AUDIT_SUDO_RULES, "warning", "SAFE"],
+      [CHECK_IDS.LOGGING.LOG_AUDIT_FILE_RULES, "warning", "SAFE"],
+      [CHECK_IDS.LOGGING.LOG_VARLOG_PERMISSIONS, "info", "SAFE"],
+      [CHECK_IDS.LOGGING.LOG_CENTRAL_LOGGING, "info", "SAFE"],
+      [CHECK_IDS.LOGGING.LOG_SECURE_JOURNAL, "info", "GUARDED"],
+      [CHECK_IDS.LOGGING.LOG_NO_WORLD_READABLE_LOGS, "info", "SAFE"],
+      [CHECK_IDS.LOGGING.LOG_SYSLOG_REMOTE, "info", "GUARDED"],
+      [CHECK_IDS.LOGGING.LOG_LOGROTATE_ACTIVE, "warning", "SAFE"],
     ];
 
     it.each(expectedMeta)("[MUTATION-KILLER] %s has severity=%s, safeToAutoFix=%s", (id, severity, safe) => {

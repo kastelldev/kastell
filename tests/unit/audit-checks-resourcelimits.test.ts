@@ -1,3 +1,4 @@
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 import { parseResourceLimitsChecks } from "../../src/core/audit/checks/resourcelimits.js";
 
 describe("parseResourceLimitsChecks", () => {

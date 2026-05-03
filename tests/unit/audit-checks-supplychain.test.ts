@@ -1,3 +1,4 @@
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 import { parseSupplyChainChecks } from "../../src/core/audit/checks/supplychain.js";
 
 describe("parseSupplyChainChecks", () => {

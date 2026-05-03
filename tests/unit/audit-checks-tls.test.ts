@@ -1,3 +1,4 @@
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 import { parseTlsChecks } from "../../src/core/audit/checks/tls.js";
 
 describe("parseTlsChecks", () => {
@@ -92,10 +93,10 @@ describe("parseTlsChecks", () => {
 
   // ─── TLS-MIN-VERSION ─────────────────────────────────────────────────────────
 
-  describe("TLS-MIN-VERSION", () => {
+  describe(CHECK_IDS.TLS.TLS_MIN_VERSION, () => {
     it("passes when ssl_protocols contains TLSv1.2 and TLSv1.3 only", () => {
       const checks = parseTlsChecks(validOutput, "bare");
-      const check = checks.find((c) => c.id === "TLS-MIN-VERSION");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_MIN_VERSION);
       expect(check).toBeDefined();
       expect(check!.passed).toBe(true);
     });
@@ -103,44 +104,44 @@ describe("parseTlsChecks", () => {
     it("passes when ssl_protocols is TLSv1.3 only", () => {
       const output = "ssl_protocols TLSv1.3;";
       const checks = parseTlsChecks(output, "bare");
-      const check = checks.find((c) => c.id === "TLS-MIN-VERSION");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_MIN_VERSION);
       expect(check!.passed).toBe(true);
     });
 
     it("fails when ssl_protocols contains TLSv1", () => {
       const output = "ssl_protocols TLSv1 TLSv1.1 TLSv1.2;";
       const checks = parseTlsChecks(output, "bare");
-      const check = checks.find((c) => c.id === "TLS-MIN-VERSION");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_MIN_VERSION);
       expect(check!.passed).toBe(false);
     });
 
     it("fails when ssl_protocols contains TLSv1.1", () => {
       const output = "ssl_protocols TLSv1.1 TLSv1.2;";
       const checks = parseTlsChecks(output, "bare");
-      const check = checks.find((c) => c.id === "TLS-MIN-VERSION");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_MIN_VERSION);
       expect(check!.passed).toBe(false);
     });
 
     it("fails when ssl_protocols is not configured", () => {
       const output = "ssl_ciphers HIGH:!aNULL;";
       const checks = parseTlsChecks(output, "bare");
-      const check = checks.find((c) => c.id === "TLS-MIN-VERSION");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_MIN_VERSION);
       expect(check!.passed).toBe(false);
     });
 
     it("has critical severity", () => {
       const checks = parseTlsChecks(validOutput, "bare");
-      const check = checks.find((c) => c.id === "TLS-MIN-VERSION");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_MIN_VERSION);
       expect(check!.severity).toBe("critical");
     });
   });
 
   // ─── TLS-WEAK-CIPHERS ────────────────────────────────────────────────────────
 
-  describe("TLS-WEAK-CIPHERS", () => {
+  describe(CHECK_IDS.TLS.TLS_WEAK_CIPHERS, () => {
     it("passes when ssl_ciphers uses strong ciphers only (! prefix excludes weak)", () => {
       const checks = parseTlsChecks(validOutput, "bare");
-      const check = checks.find((c) => c.id === "TLS-WEAK-CIPHERS");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_WEAK_CIPHERS);
       expect(check).toBeDefined();
       expect(check!.passed).toBe(true);
     });
@@ -148,58 +149,58 @@ describe("parseTlsChecks", () => {
     it("passes when !aNULL and !MD5 are excluded via ! prefix", () => {
       const output = "ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:HIGH:!aNULL:!MD5;";
       const checks = parseTlsChecks(output, "bare");
-      const check = checks.find((c) => c.id === "TLS-WEAK-CIPHERS");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_WEAK_CIPHERS);
       expect(check!.passed).toBe(true);
     });
 
     it("fails when ssl_ciphers contains RC4 (no ! prefix)", () => {
       const output = "ssl_ciphers RC4-SHA:AES128-SHA;";
       const checks = parseTlsChecks(output, "bare");
-      const check = checks.find((c) => c.id === "TLS-WEAK-CIPHERS");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_WEAK_CIPHERS);
       expect(check!.passed).toBe(false);
     });
 
     it("fails when ssl_ciphers contains DES", () => {
       const output = "ssl_ciphers DES-CBC3-SHA:AES256-SHA;";
       const checks = parseTlsChecks(output, "bare");
-      const check = checks.find((c) => c.id === "TLS-WEAK-CIPHERS");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_WEAK_CIPHERS);
       expect(check!.passed).toBe(false);
     });
 
     it("fails when ssl_ciphers contains NULL (without ! prefix)", () => {
       const output = "ssl_ciphers NULL-SHA:AES128-SHA;";
       const checks = parseTlsChecks(output, "bare");
-      const check = checks.find((c) => c.id === "TLS-WEAK-CIPHERS");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_WEAK_CIPHERS);
       expect(check!.passed).toBe(false);
     });
 
     it("fails when ssl_ciphers contains EXPORT", () => {
       const output = "ssl_ciphers EXPORT-RC4-MD5:AES128-SHA;";
       const checks = parseTlsChecks(output, "bare");
-      const check = checks.find((c) => c.id === "TLS-WEAK-CIPHERS");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_WEAK_CIPHERS);
       expect(check!.passed).toBe(false);
     });
 
     it("fails when no ssl_ciphers directive is present", () => {
       const output = "ssl_protocols TLSv1.2 TLSv1.3;";
       const checks = parseTlsChecks(output, "bare");
-      const check = checks.find((c) => c.id === "TLS-WEAK-CIPHERS");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_WEAK_CIPHERS);
       expect(check!.passed).toBe(false);
     });
 
     it("has critical severity", () => {
       const checks = parseTlsChecks(validOutput, "bare");
-      const check = checks.find((c) => c.id === "TLS-WEAK-CIPHERS");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_WEAK_CIPHERS);
       expect(check!.severity).toBe("critical");
     });
   });
 
   // ─── TLS-HSTS ────────────────────────────────────────────────────────────────
 
-  describe("TLS-HSTS", () => {
+  describe(CHECK_IDS.TLS.TLS_HSTS, () => {
     it("passes when Strict-Transport-Security header is present", () => {
       const checks = parseTlsChecks(validOutput, "bare");
-      const check = checks.find((c) => c.id === "TLS-HSTS");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_HSTS);
       expect(check).toBeDefined();
       expect(check!.passed).toBe(true);
     });
@@ -207,23 +208,23 @@ describe("parseTlsChecks", () => {
     it("fails when no HSTS header is configured", () => {
       const output = "ssl_protocols TLSv1.2 TLSv1.3;\nssl_stapling on;";
       const checks = parseTlsChecks(output, "bare");
-      const check = checks.find((c) => c.id === "TLS-HSTS");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_HSTS);
       expect(check!.passed).toBe(false);
     });
 
     it("has warning severity", () => {
       const checks = parseTlsChecks(validOutput, "bare");
-      const check = checks.find((c) => c.id === "TLS-HSTS");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_HSTS);
       expect(check!.severity).toBe("warning");
     });
   });
 
   // ─── TLS-OCSP ────────────────────────────────────────────────────────────────
 
-  describe("TLS-OCSP", () => {
+  describe(CHECK_IDS.TLS.TLS_OCSP, () => {
     it("passes when ssl_stapling on is set", () => {
       const checks = parseTlsChecks(validOutput, "bare");
-      const check = checks.find((c) => c.id === "TLS-OCSP");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_OCSP);
       expect(check).toBeDefined();
       expect(check!.passed).toBe(true);
     });
@@ -231,30 +232,30 @@ describe("parseTlsChecks", () => {
     it("fails when ssl_stapling off is set", () => {
       const output = "ssl_protocols TLSv1.2 TLSv1.3;\nssl_stapling off;";
       const checks = parseTlsChecks(output, "bare");
-      const check = checks.find((c) => c.id === "TLS-OCSP");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_OCSP);
       expect(check!.passed).toBe(false);
     });
 
     it("fails when ssl_stapling is absent", () => {
       const output = "ssl_protocols TLSv1.2 TLSv1.3;";
       const checks = parseTlsChecks(output, "bare");
-      const check = checks.find((c) => c.id === "TLS-OCSP");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_OCSP);
       expect(check!.passed).toBe(false);
     });
 
     it("has warning severity", () => {
       const checks = parseTlsChecks(validOutput, "bare");
-      const check = checks.find((c) => c.id === "TLS-OCSP");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_OCSP);
       expect(check!.severity).toBe("warning");
     });
   });
 
   // ─── TLS-CERT-EXPIRY ─────────────────────────────────────────────────────────
 
-  describe("TLS-CERT-EXPIRY", () => {
+  describe(CHECK_IDS.TLS.TLS_CERT_EXPIRY, () => {
     it("passes when CERT_VALID_30DAYS sentinel is found", () => {
       const checks = parseTlsChecks(validOutput, "bare");
-      const check = checks.find((c) => c.id === "TLS-CERT-EXPIRY");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_CERT_EXPIRY);
       expect(check).toBeDefined();
       expect(check!.passed).toBe(true);
     });
@@ -262,30 +263,30 @@ describe("parseTlsChecks", () => {
     it("fails when CERT_EXPIRING_SOON sentinel is found", () => {
       const output = validOutput.replace("CERT_VALID_30DAYS", "CERT_EXPIRING_SOON");
       const checks = parseTlsChecks(output, "bare");
-      const check = checks.find((c) => c.id === "TLS-CERT-EXPIRY");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_CERT_EXPIRY);
       expect(check!.passed).toBe(false);
     });
 
     it("fails when CERT_NOT_FOUND sentinel is found", () => {
       const output = validOutput.replace("CERT_VALID_30DAYS", "CERT_NOT_FOUND");
       const checks = parseTlsChecks(output, "bare");
-      const check = checks.find((c) => c.id === "TLS-CERT-EXPIRY");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_CERT_EXPIRY);
       expect(check!.passed).toBe(false);
     });
 
     it("has warning severity", () => {
       const checks = parseTlsChecks(validOutput, "bare");
-      const check = checks.find((c) => c.id === "TLS-CERT-EXPIRY");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_CERT_EXPIRY);
       expect(check!.severity).toBe("warning");
     });
   });
 
   // ─── TLS-DH-PARAM ────────────────────────────────────────────────────────────
 
-  describe("TLS-DH-PARAM", () => {
+  describe(CHECK_IDS.TLS.TLS_DH_PARAM, () => {
     it("passes when DH Parameters is 2048 bit", () => {
       const checks = parseTlsChecks(validOutput, "bare");
-      const check = checks.find((c) => c.id === "TLS-DH-PARAM");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_DH_PARAM);
       expect(check).toBeDefined();
       expect(check!.passed).toBe(true);
     });
@@ -293,75 +294,75 @@ describe("parseTlsChecks", () => {
     it("passes when DH Parameters is 4096 bit", () => {
       const output = validOutput.replace("DH Parameters: (2048 bit)", "DH Parameters: (4096 bit)");
       const checks = parseTlsChecks(output, "bare");
-      const check = checks.find((c) => c.id === "TLS-DH-PARAM");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_DH_PARAM);
       expect(check!.passed).toBe(true);
     });
 
     it("fails when DH Parameters is 1024 bit", () => {
       const output = validOutput.replace("DH Parameters: (2048 bit)", "DH Parameters: (1024 bit)");
       const checks = parseTlsChecks(output, "bare");
-      const check = checks.find((c) => c.id === "TLS-DH-PARAM");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_DH_PARAM);
       expect(check!.passed).toBe(false);
     });
 
     it("fails when NO_DH_PARAM sentinel is found", () => {
       const output = validOutput.replace("DH Parameters: (2048 bit)", "NO_DH_PARAM");
       const checks = parseTlsChecks(output, "bare");
-      const check = checks.find((c) => c.id === "TLS-DH-PARAM");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_DH_PARAM);
       expect(check!.passed).toBe(false);
     });
 
     it("has warning severity", () => {
       const checks = parseTlsChecks(validOutput, "bare");
-      const check = checks.find((c) => c.id === "TLS-DH-PARAM");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_DH_PARAM);
       expect(check!.severity).toBe("warning");
     });
   });
 
   // ─── TLS-COMPRESSION ─────────────────────────────────────────────────────────
 
-  describe("TLS-COMPRESSION", () => {
+  describe(CHECK_IDS.TLS.TLS_COMPRESSION, () => {
     it("passes when ssl_compression off is set", () => {
       const output = validOutput.replace("SSL_COMPRESSION_NOT_SET", "ssl_compression off;");
       const checks = parseTlsChecks(output, "bare");
-      const check = checks.find((c) => c.id === "TLS-COMPRESSION");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_COMPRESSION);
       expect(check).toBeDefined();
       expect(check!.passed).toBe(true);
     });
 
     it("passes when SSL_COMPRESSION_NOT_SET sentinel is present (absence = safe)", () => {
       const checks = parseTlsChecks(validOutput, "bare");
-      const check = checks.find((c) => c.id === "TLS-COMPRESSION");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_COMPRESSION);
       expect(check!.passed).toBe(true);
     });
 
     it("passes when ssl_compression directive is absent from output", () => {
       const output = "ssl_protocols TLSv1.2 TLSv1.3;\nssl_stapling on;";
       const checks = parseTlsChecks(output, "bare");
-      const check = checks.find((c) => c.id === "TLS-COMPRESSION");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_COMPRESSION);
       expect(check!.passed).toBe(true);
     });
 
     it("fails when ssl_compression on is explicitly set", () => {
       const output = validOutput.replace("SSL_COMPRESSION_NOT_SET", "ssl_compression on;");
       const checks = parseTlsChecks(output, "bare");
-      const check = checks.find((c) => c.id === "TLS-COMPRESSION");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_COMPRESSION);
       expect(check!.passed).toBe(false);
     });
 
     it("has warning severity", () => {
       const checks = parseTlsChecks(validOutput, "bare");
-      const check = checks.find((c) => c.id === "TLS-COMPRESSION");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_COMPRESSION);
       expect(check!.severity).toBe("warning");
     });
   });
 
   // ─── TLS-CERT-CHAIN ──────────────────────────────────────────────────────────
 
-  describe("TLS-CERT-CHAIN", () => {
+  describe(CHECK_IDS.TLS.TLS_CERT_CHAIN, () => {
     it("passes when openssl verify output contains ': OK'", () => {
       const checks = parseTlsChecks(validOutput, "bare");
-      const check = checks.find((c) => c.id === "TLS-CERT-CHAIN");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_CERT_CHAIN);
       expect(check).toBeDefined();
       expect(check!.passed).toBe(true);
     });
@@ -369,7 +370,7 @@ describe("parseTlsChecks", () => {
     it("fails when CERT_VERIFY_NOT_POSSIBLE sentinel is present", () => {
       const output = validOutput.replace("/etc/ssl/certs/cert.pem: OK", "CERT_VERIFY_NOT_POSSIBLE");
       const checks = parseTlsChecks(output, "bare");
-      const check = checks.find((c) => c.id === "TLS-CERT-CHAIN");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_CERT_CHAIN);
       expect(check!.passed).toBe(false);
     });
 
@@ -379,13 +380,13 @@ describe("parseTlsChecks", () => {
         "/etc/ssl/certs/cert.pem: unable to get local issuer certificate",
       );
       const checks = parseTlsChecks(output, "bare");
-      const check = checks.find((c) => c.id === "TLS-CERT-CHAIN");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_CERT_CHAIN);
       expect(check!.passed).toBe(false);
     });
 
     it("has warning severity", () => {
       const checks = parseTlsChecks(validOutput, "bare");
-      const check = checks.find((c) => c.id === "TLS-CERT-CHAIN");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_CERT_CHAIN);
       expect(check!.severity).toBe("warning");
     });
   });
@@ -394,7 +395,7 @@ describe("parseTlsChecks", () => {
     it("fails when no recognized TLS version found", () => {
       const output = "ssl_protocols SSLv3;\nssl_ciphers HIGH;\nCERT_VALID_30DAYS";
       const checks = parseTlsChecks(output, "bare");
-      const check = checks.find((c) => c.id === "TLS-MIN-VERSION");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_MIN_VERSION);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toContain("No recognized TLS protocol");
     });
@@ -408,7 +409,7 @@ describe("parseTlsChecks", () => {
         "CERT_VALID_30DAYS",
       ].join("\n");
       const checks = parseTlsChecks(output, "bare");
-      const check = checks.find((c) => c.id === "TLS-HSTS");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_HSTS);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toContain("max-age too low");
     });
@@ -420,7 +421,7 @@ describe("parseTlsChecks", () => {
         "CERT_VALID_30DAYS",
       ].join("\n");
       const checks = parseTlsChecks(output, "bare");
-      const check = checks.find((c) => c.id === "TLS-HSTS");
+      const check = checks.find((c) => c.id === CHECK_IDS.TLS.TLS_HSTS);
       expect(check!.passed).toBe(true);
     });
   });
@@ -434,14 +435,14 @@ describe("parseTlsChecks", () => {
     const checks = parseTlsChecks(output, "bare");
 
     const expectedMeta: Array<[string, string, string]> = [
-      ["TLS-MIN-VERSION", "critical", "GUARDED"],
-      ["TLS-WEAK-CIPHERS", "critical", "GUARDED"],
-      ["TLS-HSTS", "warning", "GUARDED"],
-      ["TLS-OCSP", "warning", "GUARDED"],
-      ["TLS-CERT-EXPIRY", "warning", "GUARDED"],
-      ["TLS-DH-PARAM", "warning", "GUARDED"],
-      ["TLS-COMPRESSION", "warning", "GUARDED"],
-      ["TLS-CERT-CHAIN", "warning", "GUARDED"],
+      [CHECK_IDS.TLS.TLS_MIN_VERSION, "critical", "GUARDED"],
+      [CHECK_IDS.TLS.TLS_WEAK_CIPHERS, "critical", "GUARDED"],
+      [CHECK_IDS.TLS.TLS_HSTS, "warning", "GUARDED"],
+      [CHECK_IDS.TLS.TLS_OCSP, "warning", "GUARDED"],
+      [CHECK_IDS.TLS.TLS_CERT_EXPIRY, "warning", "GUARDED"],
+      [CHECK_IDS.TLS.TLS_DH_PARAM, "warning", "GUARDED"],
+      [CHECK_IDS.TLS.TLS_COMPRESSION, "warning", "GUARDED"],
+      [CHECK_IDS.TLS.TLS_CERT_CHAIN, "warning", "GUARDED"],
     ];
 
     it.each(expectedMeta)("[MUTATION-KILLER] %s has severity=%s, safeToAutoFix=%s", (id, severity, safe) => {

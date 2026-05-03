@@ -1,3 +1,4 @@
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 import { parseMemoryChecks } from "../../src/core/audit/checks/memory.js";
 
 describe("parseMemoryChecks", () => {

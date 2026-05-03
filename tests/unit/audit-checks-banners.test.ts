@@ -1,3 +1,4 @@
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 import { parseBannersChecks } from "../../src/core/audit/checks/banners.js";
 
 describe("parseBannersChecks", () => {

@@ -1,3 +1,4 @@
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 import { parseDdosChecks } from "../../src/core/audit/checks/ddos.js";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────

@@ -1,3 +1,4 @@
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 import { parseSchedulingChecks } from "../../src/core/audit/checks/scheduling.js";
 
 describe("parseSchedulingChecks", () => {

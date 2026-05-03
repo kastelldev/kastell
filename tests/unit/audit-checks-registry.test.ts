@@ -1,3 +1,4 @@
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 import { parseAllChecks, CHECK_REGISTRY } from "../../src/core/audit/checks/index.js";
 import type { CategoryEntry } from "../../src/core/audit/checks/index.js";
 
@@ -97,7 +98,7 @@ describe("parseAllChecks", () => {
     expect(ssh).toBeDefined();
     expect(ssh!.checks.length).toBeGreaterThan(0);
     // passwordauthentication no → SSH-PASSWORD-AUTH should pass
-    const pwdCheck = ssh!.checks.find((c) => c.id === "SSH-PASSWORD-AUTH");
+    const pwdCheck = ssh!.checks.find((c) => c.id === CHECK_IDS.SSH.SSH_PASSWORD_AUTH);
     expect(pwdCheck).toBeDefined();
     expect(pwdCheck!.passed).toBe(true);
   });

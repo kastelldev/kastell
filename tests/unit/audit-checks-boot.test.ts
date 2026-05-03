@@ -1,3 +1,4 @@
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 import { parseBootChecks } from "../../src/core/audit/checks/boot.js";
 
 describe("parseBootChecks", () => {

@@ -1,3 +1,4 @@
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 import { parseDnsChecks } from "../../src/core/audit/checks/dns.js";
 
 describe("parseDnsChecks", () => {

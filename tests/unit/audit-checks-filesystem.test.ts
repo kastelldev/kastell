@@ -1,3 +1,4 @@
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 import { parseFilesystemChecks } from "../../src/core/audit/checks/filesystem.js";
 
 describe("parseFilesystemChecks", () => {
@@ -68,93 +69,93 @@ describe("parseFilesystemChecks", () => {
 
   it("should return FS-TMP-STICKY-BIT passed when /tmp has sticky bit (1777)", () => {
     const checks = parseFilesystemChecks(secureOutput, "bare");
-    const fs01 = checks.find((c: { id: string }) => c.id === "FS-TMP-STICKY-BIT");
+    const fs01 = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_TMP_STICKY_BIT);
     expect(fs01!.passed).toBe(true);
   });
 
   it("should return FS-TMP-STICKY-BIT failed when /tmp has 0777 (no sticky bit)", () => {
     const checks = parseFilesystemChecks(insecureOutput, "bare");
-    const fs01 = checks.find((c: { id: string }) => c.id === "FS-TMP-STICKY-BIT");
+    const fs01 = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_TMP_STICKY_BIT);
     expect(fs01!.passed).toBe(false);
   });
 
   it("should return FS-NO-WORLD-WRITABLE passed when no world-writable files", () => {
     const checks = parseFilesystemChecks(secureOutput, "bare");
-    const fs02 = checks.find((c: { id: string }) => c.id === "FS-NO-WORLD-WRITABLE");
+    const fs02 = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_NO_WORLD_WRITABLE);
     expect(fs02!.passed).toBe(true);
   });
 
   it("should return FS-NO-WORLD-WRITABLE failed when world-writable files exist", () => {
     const checks = parseFilesystemChecks(insecureOutput, "bare");
-    const fs02 = checks.find((c: { id: string }) => c.id === "FS-NO-WORLD-WRITABLE");
+    const fs02 = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_NO_WORLD_WRITABLE);
     expect(fs02!.passed).toBe(false);
   });
 
   it("should return FS-HOME-NOEXEC passed when /home mount has noexec", () => {
     const checks = parseFilesystemChecks(secureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "FS-HOME-NOEXEC");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_HOME_NOEXEC);
     expect(check!.passed).toBe(true);
   });
 
   it("should return FS-HOME-NOEXEC failed when /home mount lacks noexec", () => {
     const checks = parseFilesystemChecks(insecureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "FS-HOME-NOEXEC");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_HOME_NOEXEC);
     expect(check!.passed).toBe(false);
   });
 
   it("should return FS-TMP-NOEXEC passed when /tmp mount has noexec", () => {
     const checks = parseFilesystemChecks(secureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "FS-TMP-NOEXEC");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_TMP_NOEXEC);
     expect(check!.passed).toBe(true);
   });
 
   it("should return FS-TMP-NOEXEC failed when /tmp mount lacks noexec", () => {
     const checks = parseFilesystemChecks(insecureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "FS-TMP-NOEXEC");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_TMP_NOEXEC);
     expect(check!.passed).toBe(false);
   });
 
   it("should return FS-UMASK-RESTRICTIVE passed with umask 0022", () => {
     const checks = parseFilesystemChecks(secureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "FS-UMASK-RESTRICTIVE");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_UMASK_RESTRICTIVE);
     expect(check!.passed).toBe(true);
   });
 
   it("should return FS-UMASK-RESTRICTIVE failed with permissive umask 0000", () => {
     const checks = parseFilesystemChecks(insecureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "FS-UMASK-RESTRICTIVE");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_UMASK_RESTRICTIVE);
     expect(check!.passed).toBe(false);
   });
 
   it("should return FS-HOME-PERMISSIONS passed when home dirs are mode 750", () => {
     const checks = parseFilesystemChecks(secureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "FS-HOME-PERMISSIONS");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_HOME_PERMISSIONS);
     expect(check!.passed).toBe(true);
   });
 
   it("should return FS-HOME-PERMISSIONS failed when home dirs are world-readable (755)", () => {
     const checks = parseFilesystemChecks(insecureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "FS-HOME-PERMISSIONS");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_HOME_PERMISSIONS);
     expect(check!.passed).toBe(false);
   });
 
   it("should return FS-NODEV-REMOVABLE passed when /media mount has nodev", () => {
     const checks = parseFilesystemChecks(secureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "FS-NODEV-REMOVABLE");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_NODEV_REMOVABLE);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(true);
   });
 
   it("should return FS-VAR-LOG-SEPARATE passed when /var/log is a separate mount", () => {
     const checks = parseFilesystemChecks(secureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "FS-VAR-LOG-SEPARATE");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_VAR_LOG_SEPARATE);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(true);
   });
 
   it("should return FS-BOOT-NOSUID passed when /boot mount has nosuid", () => {
     const checks = parseFilesystemChecks(secureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "FS-BOOT-NOSUID");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_BOOT_NOSUID);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(true);
   });
@@ -166,7 +167,7 @@ describe("parseFilesystemChecks", () => {
 
   it("FS-VAR-NOEXEC passes when /var mount has noexec", () => {
     const checks = parseFilesystemChecks(secureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "FS-VAR-NOEXEC");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_VAR_NOEXEC);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(true);
   });
@@ -174,13 +175,13 @@ describe("parseFilesystemChecks", () => {
   it("FS-VAR-NOEXEC fails when /var mount lacks noexec", () => {
     const output = secureOutput.replace("/var rw,nosuid,noexec,relatime", "/var rw,relatime");
     const checks = parseFilesystemChecks(output, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "FS-VAR-NOEXEC");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_VAR_NOEXEC);
     expect(check!.passed).toBe(false);
   });
 
   it("FS-SUID-SYSTEM-COUNT passes when SUID count <= 30", () => {
     const checks = parseFilesystemChecks(secureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "FS-SUID-SYSTEM-COUNT");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_SUID_SYSTEM_COUNT);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(true);
     expect(check!.currentValue).toMatch(/22 SUID files/);
@@ -190,7 +191,7 @@ describe("parseFilesystemChecks", () => {
     // Replace trailing 22 with 45 (22 is the last element in the joined array)
     const output = secureOutput.replace(/\b22$/, "45");
     const checks = parseFilesystemChecks(output, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "FS-SUID-SYSTEM-COUNT");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_SUID_SYSTEM_COUNT);
     expect(check!.passed).toBe(false);
     expect(check!.currentValue).toMatch(/45 SUID files/);
   });
@@ -200,7 +201,7 @@ describe("parseFilesystemChecks", () => {
     it("[FS-TMP-STICKY-BIT] passes with 1777 (4-digit, starts with 1)", () => {
       const output = "1777 root root\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-TMP-STICKY-BIT");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_TMP_STICKY_BIT);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toBe("Permissions: 1777");
     });
@@ -208,7 +209,7 @@ describe("parseFilesystemChecks", () => {
     it("[FS-TMP-STICKY-BIT] fails with 0777 (starts with 0, not 1)", () => {
       const output = "0777 root root\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-TMP-STICKY-BIT");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_TMP_STICKY_BIT);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toBe("Permissions: 0777");
     });
@@ -216,14 +217,14 @@ describe("parseFilesystemChecks", () => {
     it("[FS-TMP-STICKY-BIT] fails with 777 (3-digit, no leading 1)", () => {
       const output = "777 root root\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-TMP-STICKY-BIT");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_TMP_STICKY_BIT);
       expect(check!.passed).toBe(false);
     });
 
     it("[FS-TMP-STICKY-BIT] currentValue says 'Unable to determine' when no stat line", () => {
       const output = "no stat output\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-TMP-STICKY-BIT");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_TMP_STICKY_BIT);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toBe("Unable to determine");
     });
@@ -232,7 +233,7 @@ describe("parseFilesystemChecks", () => {
     it("[FS-NO-WORLD-WRITABLE] detects /etc/ path as world-writable", () => {
       const output = "/etc/some-file\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-NO-WORLD-WRITABLE");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_NO_WORLD_WRITABLE);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toMatch(/1 world-writable/);
     });
@@ -240,34 +241,34 @@ describe("parseFilesystemChecks", () => {
     it("[FS-NO-WORLD-WRITABLE] detects /usr/local/ path (not /usr/bin/ or /usr/sbin/)", () => {
       const output = "/usr/local/bin/app\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-NO-WORLD-WRITABLE");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_NO_WORLD_WRITABLE);
       expect(check!.passed).toBe(false);
     });
 
     it("[FS-NO-WORLD-WRITABLE] does not count /usr/bin/ paths as world-writable", () => {
       const output = "/usr/bin/something\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-NO-WORLD-WRITABLE");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_NO_WORLD_WRITABLE);
       expect(check!.passed).toBe(true);
     });
 
     it("[FS-NO-WORLD-WRITABLE] does not count /usr/sbin/ paths as world-writable", () => {
       const output = "/usr/sbin/something\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-NO-WORLD-WRITABLE");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_NO_WORLD_WRITABLE);
       expect(check!.passed).toBe(true);
     });
 
     it("[FS-NO-WORLD-WRITABLE] passes when only /var paths present (not /etc or /usr)", () => {
       const output = "/var/something\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-NO-WORLD-WRITABLE");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_NO_WORLD_WRITABLE);
       expect(check!.passed).toBe(true);
     });
 
     it("[FS-NO-WORLD-WRITABLE] N/A forces false", () => {
       const checks = parseFilesystemChecks("N/A", "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-NO-WORLD-WRITABLE");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_NO_WORLD_WRITABLE);
       expect(check!.passed).toBe(false);
     });
 
@@ -276,7 +277,7 @@ describe("parseFilesystemChecks", () => {
       const suidLines = Array(15).fill("/usr/bin/suid").join("\n");
       const output = suidLines + "\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-SUID-THRESHOLD");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_SUID_THRESHOLD);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toMatch(/15 SUID/);
     });
@@ -285,14 +286,14 @@ describe("parseFilesystemChecks", () => {
       const suidLines = Array(16).fill("/usr/bin/suid").join("\n");
       const output = suidLines + "\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-SUID-THRESHOLD");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_SUID_THRESHOLD);
       expect(check!.passed).toBe(false);
     });
 
     it("[FS-SUID-THRESHOLD] passes with 0 SUID binaries", () => {
       const output = "no suid here\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-SUID-THRESHOLD");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_SUID_THRESHOLD);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toMatch(/0 SUID/);
     });
@@ -300,14 +301,14 @@ describe("parseFilesystemChecks", () => {
     it("[FS-SUID-THRESHOLD] skips /usr/bin/ lines containing N/A", () => {
       const output = "/usr/bin/test N/A\n/usr/bin/real\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-SUID-THRESHOLD");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_SUID_THRESHOLD);
       expect(check!.currentValue).toMatch(/1 SUID/);
     });
 
     it("[FS-SUID-THRESHOLD] counts /usr/sbin/ paths too", () => {
       const output = "/usr/sbin/something\n/usr/bin/other\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-SUID-THRESHOLD");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_SUID_THRESHOLD);
       expect(check!.currentValue).toMatch(/2 SUID/);
     });
 
@@ -315,7 +316,7 @@ describe("parseFilesystemChecks", () => {
     it("[FS-HOME-PERMISSIONS] passes with perms 750 (other=0)", () => {
       const output = "750 /home/user1\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-HOME-PERMISSIONS");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_HOME_PERMISSIONS);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toBe("Home directories not world-readable");
     });
@@ -323,14 +324,14 @@ describe("parseFilesystemChecks", () => {
     it("[FS-HOME-PERMISSIONS] passes with perms 703 (other=3, not >= 4)", () => {
       const output = "703 /home/user1\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-HOME-PERMISSIONS");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_HOME_PERMISSIONS);
       expect(check!.passed).toBe(true);
     });
 
     it("[FS-HOME-PERMISSIONS] fails with perms 754 (other=4)", () => {
       const output = "754 /home/user1\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-HOME-PERMISSIONS");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_HOME_PERMISSIONS);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toMatch(/1 world-readable/);
     });
@@ -338,14 +339,14 @@ describe("parseFilesystemChecks", () => {
     it("[FS-HOME-PERMISSIONS] fails with perms 757 (other=7)", () => {
       const output = "757 /home/user1\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-HOME-PERMISSIONS");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_HOME_PERMISSIONS);
       expect(check!.passed).toBe(false);
     });
 
     it("[FS-HOME-PERMISSIONS] fails when no home dir lines found", () => {
       const output = "42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-HOME-PERMISSIONS");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_HOME_PERMISSIONS);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toBe("No home directories found");
     });
@@ -353,7 +354,7 @@ describe("parseFilesystemChecks", () => {
     it("[FS-HOME-PERMISSIONS] passes when multiple homes all restricted", () => {
       const output = "700 /home/a\n750 /home/b\n710 /home/c\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-HOME-PERMISSIONS");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_HOME_PERMISSIONS);
       expect(check!.passed).toBe(true);
     });
 
@@ -361,7 +362,7 @@ describe("parseFilesystemChecks", () => {
     it("[FS-DISK-USAGE] passes at 89%", () => {
       const output = "Filesystem Size Used Avail Use% Mounted on\n/dev/sda1 50G 44G 6G 89% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-DISK-USAGE");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_DISK_USAGE);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toMatch(/89%/);
     });
@@ -369,14 +370,14 @@ describe("parseFilesystemChecks", () => {
     it("[FS-DISK-USAGE] fails at exactly 90%", () => {
       const output = "Filesystem Size Used Avail Use% Mounted on\n/dev/sda1 50G 45G 5G 90% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-DISK-USAGE");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_DISK_USAGE);
       expect(check!.passed).toBe(false);
     });
 
     it("[FS-DISK-USAGE] fails when disk usage not determinable", () => {
       const output = "no disk info";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-DISK-USAGE");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_DISK_USAGE);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toBe("Unable to determine disk usage");
     });
@@ -384,7 +385,7 @@ describe("parseFilesystemChecks", () => {
     it("[FS-DISK-USAGE] passes at 1%", () => {
       const output = "/dev/sda1 50G 1G 49G 1% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-DISK-USAGE");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_DISK_USAGE);
       expect(check!.passed).toBe(true);
     });
 
@@ -392,7 +393,7 @@ describe("parseFilesystemChecks", () => {
     it("[FS-HOME-NOSUID] passes when /home has nosuid", () => {
       const output = "/home rw,nosuid,relatime\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-HOME-NOSUID");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_HOME_NOSUID);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toMatch(/nosuid set on \/home/);
     });
@@ -400,7 +401,7 @@ describe("parseFilesystemChecks", () => {
     it("[FS-HOME-NOSUID] fails when /home lacks nosuid", () => {
       const output = "/home rw,relatime\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-HOME-NOSUID");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_HOME_NOSUID);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toMatch(/nosuid not set on \/home/);
     });
@@ -408,70 +409,70 @@ describe("parseFilesystemChecks", () => {
     it("[FS-VAR-TMP-NOEXEC] passes when /var/tmp has noexec", () => {
       const output = "/var/tmp rw,nosuid,noexec\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-VAR-TMP-NOEXEC");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_VAR_TMP_NOEXEC);
       expect(check!.passed).toBe(true);
     });
 
     it("[FS-VAR-TMP-NOEXEC] fails when /var/tmp lacks noexec", () => {
       const output = "/var/tmp rw,nosuid\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-VAR-TMP-NOEXEC");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_VAR_TMP_NOEXEC);
       expect(check!.passed).toBe(false);
     });
 
     it("[FS-VAR-TMP-NOSUID] passes when /var/tmp has nosuid", () => {
       const output = "/var/tmp rw,nosuid,noexec\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-VAR-TMP-NOSUID");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_VAR_TMP_NOSUID);
       expect(check!.passed).toBe(true);
     });
 
     it("[FS-VAR-TMP-NOSUID] fails when /var/tmp lacks nosuid", () => {
       const output = "/var/tmp rw,noexec\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-VAR-TMP-NOSUID");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_VAR_TMP_NOSUID);
       expect(check!.passed).toBe(false);
     });
 
     it("[FS-DEV-SHM-NOEXEC] passes when /dev/shm has noexec", () => {
       const output = "/dev/shm rw,nosuid,noexec\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-DEV-SHM-NOEXEC");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_DEV_SHM_NOEXEC);
       expect(check!.passed).toBe(true);
     });
 
     it("[FS-DEV-SHM-NOEXEC] fails when /dev/shm lacks noexec", () => {
       const output = "/dev/shm rw,nosuid\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-DEV-SHM-NOEXEC");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_DEV_SHM_NOEXEC);
       expect(check!.passed).toBe(false);
     });
 
     it("[FS-DEV-SHM-NOSUID] passes when /dev/shm has nosuid", () => {
       const output = "/dev/shm rw,nosuid,noexec\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-DEV-SHM-NOSUID");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_DEV_SHM_NOSUID);
       expect(check!.passed).toBe(true);
     });
 
     it("[FS-DEV-SHM-NOSUID] fails when /dev/shm lacks nosuid", () => {
       const output = "/dev/shm rw,noexec\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-DEV-SHM-NOSUID");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_DEV_SHM_NOSUID);
       expect(check!.passed).toBe(false);
     });
 
     it("[FS-TMP-NOSUID] passes when /tmp has nosuid", () => {
       const output = "/tmp rw,nosuid,noexec\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-TMP-NOSUID");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_TMP_NOSUID);
       expect(check!.passed).toBe(true);
     });
 
     it("[FS-TMP-NOSUID] fails when /tmp lacks nosuid", () => {
       const output = "/tmp rw,noexec\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-TMP-NOSUID");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_TMP_NOSUID);
       expect(check!.passed).toBe(false);
     });
 
@@ -479,7 +480,7 @@ describe("parseFilesystemChecks", () => {
     it("[FS-HOME-NOEXEC] currentValue shows 'not detected' when /home not in mount output", () => {
       const output = "42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-HOME-NOEXEC");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_HOME_NOEXEC);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toMatch(/not detected/);
     });
@@ -488,7 +489,7 @@ describe("parseFilesystemChecks", () => {
     it("[FS-UMASK-RESTRICTIVE] passes with 027", () => {
       const output = "027\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-UMASK-RESTRICTIVE");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_UMASK_RESTRICTIVE);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toMatch(/umask 027/);
     });
@@ -496,21 +497,21 @@ describe("parseFilesystemChecks", () => {
     it("[FS-UMASK-RESTRICTIVE] passes with 22 (shorthand)", () => {
       const output = "22\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-UMASK-RESTRICTIVE");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_UMASK_RESTRICTIVE);
       expect(check!.passed).toBe(true);
     });
 
     it("[FS-UMASK-RESTRICTIVE] passes with 0027", () => {
       const output = "0027\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-UMASK-RESTRICTIVE");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_UMASK_RESTRICTIVE);
       expect(check!.passed).toBe(true);
     });
 
     it("[FS-UMASK-RESTRICTIVE] fails with 0077 (no match for 77)", () => {
       const output = "0077\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-UMASK-RESTRICTIVE");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_UMASK_RESTRICTIVE);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toBe("Non-restrictive umask detected");
     });
@@ -519,7 +520,7 @@ describe("parseFilesystemChecks", () => {
     it("[FS-NO-UNOWNED-FILES] passes when 0 world-writable files", () => {
       const output = "42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-NO-UNOWNED-FILES");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_NO_UNOWNED_FILES);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toMatch(/No excessive/);
     });
@@ -527,14 +528,14 @@ describe("parseFilesystemChecks", () => {
     it("[FS-NO-UNOWNED-FILES] passes when exactly 2 world-writable files", () => {
       const output = "/etc/file1\n/etc/file2\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-NO-UNOWNED-FILES");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_NO_UNOWNED_FILES);
       expect(check!.passed).toBe(true);
     });
 
     it("[FS-NO-UNOWNED-FILES] fails when 3 world-writable files", () => {
       const output = "/etc/file1\n/etc/file2\n/etc/file3\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-NO-UNOWNED-FILES");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_NO_UNOWNED_FILES);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toMatch(/3 world-writable/);
     });
@@ -543,7 +544,7 @@ describe("parseFilesystemChecks", () => {
     it("[FS-NODEV-REMOVABLE] fails when /media lacks nodev", () => {
       const output = "/media rw,relatime\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-NODEV-REMOVABLE");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_NODEV_REMOVABLE);
       expect(check!.passed).toBe(false);
     });
 
@@ -551,7 +552,7 @@ describe("parseFilesystemChecks", () => {
     it("[FS-VAR-LOG-SEPARATE] passes when /var/log in mount output (not /var/log/subdir)", () => {
       const output = "something /var/log something\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-VAR-LOG-SEPARATE");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_VAR_LOG_SEPARATE);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toBe("/var/log is on a separate partition");
     });
@@ -559,7 +560,7 @@ describe("parseFilesystemChecks", () => {
     it("[FS-VAR-LOG-SEPARATE] fails when only /var/log/ subdir present", () => {
       const output = "/var/log/audit something\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-VAR-LOG-SEPARATE");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_VAR_LOG_SEPARATE);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toBe("/var/log is not on a separate partition");
     });
@@ -567,7 +568,7 @@ describe("parseFilesystemChecks", () => {
     it("[FS-VAR-LOG-SEPARATE] fails when no /var/log line", () => {
       const output = "42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-VAR-LOG-SEPARATE");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_VAR_LOG_SEPARATE);
       expect(check!.passed).toBe(false);
     });
 
@@ -575,14 +576,14 @@ describe("parseFilesystemChecks", () => {
     it("[FS-BOOT-NOSUID] passes when /boot has nosuid", () => {
       const output = "/boot rw,nosuid,noexec\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-BOOT-NOSUID");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_BOOT_NOSUID);
       expect(check!.passed).toBe(true);
     });
 
     it("[FS-BOOT-NOSUID] fails when /boot lacks nosuid", () => {
       const output = "/boot rw,noexec\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-BOOT-NOSUID");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_BOOT_NOSUID);
       expect(check!.passed).toBe(false);
     });
 
@@ -590,7 +591,7 @@ describe("parseFilesystemChecks", () => {
     it("[FS-SUID-SYSTEM-COUNT] passes at exactly 30", () => {
       const output = "42% /\n30";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-SUID-SYSTEM-COUNT");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_SUID_SYSTEM_COUNT);
       expect(check!.passed).toBe(true);
       expect(check!.currentValue).toMatch(/30 SUID files/);
     });
@@ -598,14 +599,14 @@ describe("parseFilesystemChecks", () => {
     it("[FS-SUID-SYSTEM-COUNT] fails at 31", () => {
       const output = "42% /\n31";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-SUID-SYSTEM-COUNT");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_SUID_SYSTEM_COUNT);
       expect(check!.passed).toBe(false);
     });
 
     it("[FS-SUID-SYSTEM-COUNT] fails when no standalone number (null)", () => {
       const output = "no numbers here\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-SUID-SYSTEM-COUNT");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_SUID_SYSTEM_COUNT);
       expect(check!.passed).toBe(false);
       expect(check!.currentValue).toBe("SUID count not determinable");
     });
@@ -631,8 +632,8 @@ describe("parseFilesystemChecks", () => {
     it("[FS-VAR-NOEXEC] detects /var mount separately from /var/tmp", () => {
       const output = "/var rw,noexec,relatime\n/var/tmp rw,relatime\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const varNoexec = checks.find((c: { id: string }) => c.id === "FS-VAR-NOEXEC");
-      const varTmpNoexec = checks.find((c: { id: string }) => c.id === "FS-VAR-TMP-NOEXEC");
+      const varNoexec = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_VAR_NOEXEC);
+      const varTmpNoexec = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_VAR_TMP_NOEXEC);
       expect(varNoexec!.passed).toBe(true);
       expect(varTmpNoexec!.passed).toBe(false);
     });
@@ -641,14 +642,14 @@ describe("parseFilesystemChecks", () => {
     it("[FS-HOME-PERMISSIONS] handles 4-digit perms correctly", () => {
       const output = "1750 /home/user1\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-HOME-PERMISSIONS");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_HOME_PERMISSIONS);
       expect(check!.passed).toBe(true);
     });
 
     it("[FS-HOME-PERMISSIONS] fails with 4-digit perms ending in 5 (1755)", () => {
       const output = "1755 /home/user1\n42% /";
       const checks = parseFilesystemChecks(output, "bare");
-      const check = checks.find((c: { id: string }) => c.id === "FS-HOME-PERMISSIONS");
+      const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.FILESYSTEM.FS_HOME_PERMISSIONS);
       expect(check!.passed).toBe(false);
     });
   });
@@ -657,15 +658,15 @@ describe("parseFilesystemChecks", () => {
     const checks = parseFilesystemChecks(secureOutput, "bare");
 
     const expectedMeta: Array<[string, string, string]> = [
-      ["FS-TMP-STICKY-BIT", "warning", "SAFE"],
-      ["FS-NO-WORLD-WRITABLE", "warning", "SAFE"],
-      ["FS-SUID-THRESHOLD", "info", "SAFE"],
-      ["FS-HOME-PERMISSIONS", "warning", "SAFE"],
-      ["FS-DISK-USAGE", "warning", "SAFE"],
-      ["FS-UMASK-RESTRICTIVE", "info", "SAFE"],
-      ["FS-NO-UNOWNED-FILES", "info", "SAFE"],
-      ["FS-VAR-LOG-SEPARATE", "info", "GUARDED"],
-      ["FS-SUID-SYSTEM-COUNT", "info", "SAFE"],
+      [CHECK_IDS.FILESYSTEM.FS_TMP_STICKY_BIT, "warning", "SAFE"],
+      [CHECK_IDS.FILESYSTEM.FS_NO_WORLD_WRITABLE, "warning", "SAFE"],
+      [CHECK_IDS.FILESYSTEM.FS_SUID_THRESHOLD, "info", "SAFE"],
+      [CHECK_IDS.FILESYSTEM.FS_HOME_PERMISSIONS, "warning", "SAFE"],
+      [CHECK_IDS.FILESYSTEM.FS_DISK_USAGE, "warning", "SAFE"],
+      [CHECK_IDS.FILESYSTEM.FS_UMASK_RESTRICTIVE, "info", "SAFE"],
+      [CHECK_IDS.FILESYSTEM.FS_NO_UNOWNED_FILES, "info", "SAFE"],
+      [CHECK_IDS.FILESYSTEM.FS_VAR_LOG_SEPARATE, "info", "GUARDED"],
+      [CHECK_IDS.FILESYSTEM.FS_SUID_SYSTEM_COUNT, "info", "SAFE"],
     ];
 
     it.each(expectedMeta)("[MUTATION-KILLER] %s has severity=%s, safeToAutoFix=%s", (id, severity, safe) => {

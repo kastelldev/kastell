@@ -1,3 +1,4 @@
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 import { parseAuthChecks } from "../../src/core/audit/checks/auth.js";
 
 describe("parseAuthChecks", () => {
@@ -87,13 +88,13 @@ describe("parseAuthChecks", () => {
 
   it("should return AUTH-NO-EMPTY-PASSWORDS passed when no empty-password accounts", () => {
     const checks = parseAuthChecks(secureOutput, "bare");
-    const auth03 = checks.find((c: { id: string }) => c.id === "AUTH-NO-EMPTY-PASSWORDS");
+    const auth03 = checks.find((c: { id: string }) => c.id === CHECK_IDS.AUTH.AUTH_NO_EMPTY_PASSWORDS);
     expect(auth03!.passed).toBe(true);
   });
 
   it("should return AUTH-NO-EMPTY-PASSWORDS failed when empty-password accounts exist", () => {
     const checks = parseAuthChecks(insecureOutput, "bare");
-    const auth03 = checks.find((c: { id: string }) => c.id === "AUTH-NO-EMPTY-PASSWORDS");
+    const auth03 = checks.find((c: { id: string }) => c.id === CHECK_IDS.AUTH.AUTH_NO_EMPTY_PASSWORDS);
     expect(auth03!.passed).toBe(false);
   });
 
@@ -112,66 +113,66 @@ describe("parseAuthChecks", () => {
       "N/A",
     ].join("\n");
     const checks = parseAuthChecks(nopasswdOutput, "bare");
-    const auth01 = checks.find((c: { id: string }) => c.id === "AUTH-NO-NOPASSWD-ALL");
+    const auth01 = checks.find((c: { id: string }) => c.id === CHECK_IDS.AUTH.AUTH_NO_NOPASSWD_ALL);
     expect(auth01!.passed).toBe(false);
     expect(auth01!.severity).toBe("critical");
   });
 
   it("should return AUTH-SHADOW-PERMISSIONS passed when /etc/shadow is mode 640", () => {
     const checks = parseAuthChecks(secureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "AUTH-SHADOW-PERMISSIONS");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.AUTH.AUTH_SHADOW_PERMISSIONS);
     expect(check!.passed).toBe(true);
     expect(check!.severity).toBe("critical");
   });
 
   it("should return AUTH-SHADOW-PERMISSIONS failed when /etc/shadow is mode 644", () => {
     const checks = parseAuthChecks(insecureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "AUTH-SHADOW-PERMISSIONS");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.AUTH.AUTH_SHADOW_PERMISSIONS);
     expect(check!.passed).toBe(false);
   });
 
   it("should return AUTH-FAILLOCK-CONFIGURED passed when pam_faillock present", () => {
     const checks = parseAuthChecks(secureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "AUTH-FAILLOCK-CONFIGURED");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.AUTH.AUTH_FAILLOCK_CONFIGURED);
     expect(check!.passed).toBe(true);
   });
 
   it("should return AUTH-FAILLOCK-CONFIGURED failed when no faillock module", () => {
     const checks = parseAuthChecks(insecureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "AUTH-FAILLOCK-CONFIGURED");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.AUTH.AUTH_FAILLOCK_CONFIGURED);
     expect(check!.passed).toBe(false);
   });
 
   it("should return AUTH-NO-UID0-DUPS passed when only root has UID 0", () => {
     const checks = parseAuthChecks(secureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "AUTH-NO-UID0-DUPS");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.AUTH.AUTH_NO_UID0_DUPS);
     expect(check!.passed).toBe(true);
     expect(check!.severity).toBe("critical");
   });
 
   it("should return AUTH-NO-UID0-DUPS failed when toor also has UID 0", () => {
     const checks = parseAuthChecks(insecureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "AUTH-NO-UID0-DUPS");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.AUTH.AUTH_NO_UID0_DUPS);
     expect(check!.passed).toBe(false);
   });
 
   it("AUTH-SU-RESTRICTED passes when pam_wheel configured in /etc/pam.d/su", () => {
     const checks = parseAuthChecks(secureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "AUTH-SU-RESTRICTED");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.AUTH.AUTH_SU_RESTRICTED);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(true);
   });
 
   it("AUTH-PASS-MAX-DAYS-SET passes when PASS_MAX_DAYS is 90", () => {
     const checks = parseAuthChecks(secureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "AUTH-PASS-MAX-DAYS-SET");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.AUTH.AUTH_PASS_MAX_DAYS_SET);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(true);
   });
 
   it("AUTH-GSHADOW-PERMISSIONS passes when second perm value is 640", () => {
     const checks = parseAuthChecks(secureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "AUTH-GSHADOW-PERMISSIONS");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.AUTH.AUTH_GSHADOW_PERMISSIONS);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(true);
   });
@@ -183,7 +184,7 @@ describe("parseAuthChecks", () => {
 
   it("AUTH-PWQUALITY-CONFIGURED passes when pam_pwquality is in pam.d", () => {
     const checks = parseAuthChecks(secureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "AUTH-PWQUALITY-CONFIGURED");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.AUTH.AUTH_PWQUALITY_CONFIGURED);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(true);
     expect(check!.severity).toBe("warning");
@@ -191,14 +192,14 @@ describe("parseAuthChecks", () => {
 
   it("AUTH-PWQUALITY-CONFIGURED fails when pam_pwquality absent", () => {
     const checks = parseAuthChecks(insecureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "AUTH-PWQUALITY-CONFIGURED");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.AUTH.AUTH_PWQUALITY_CONFIGURED);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(false);
   });
 
   it("AUTH-UMASK-LOGIN-DEFS passes when UMASK is 027", () => {
     const checks = parseAuthChecks(secureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "AUTH-UMASK-LOGIN-DEFS");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.AUTH.AUTH_UMASK_LOGIN_DEFS);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(true);
     expect(check!.severity).toBe("info");
@@ -206,14 +207,14 @@ describe("parseAuthChecks", () => {
 
   it("AUTH-UMASK-LOGIN-DEFS fails when UMASK is not present", () => {
     const checks = parseAuthChecks(insecureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "AUTH-UMASK-LOGIN-DEFS");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.AUTH.AUTH_UMASK_LOGIN_DEFS);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(false);
   });
 
   it("AUTH-SHA512-HASH passes when ENCRYPT_METHOD is SHA512", () => {
     const checks = parseAuthChecks(secureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "AUTH-SHA512-HASH");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.AUTH.AUTH_SHA512_HASH);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(true);
     expect(check!.severity).toBe("warning");
@@ -221,14 +222,14 @@ describe("parseAuthChecks", () => {
 
   it("AUTH-SHA512-HASH fails when ENCRYPT_METHOD absent or weak", () => {
     const checks = parseAuthChecks(insecureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "AUTH-SHA512-HASH");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.AUTH.AUTH_SHA512_HASH);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(false);
   });
 
   it("AUTH-PWQUALITY-MINLEN passes when minlen >= 12", () => {
     const checks = parseAuthChecks(secureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "AUTH-PWQUALITY-MINLEN");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.AUTH.AUTH_PWQUALITY_MINLEN);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(true);
     expect(check!.severity).toBe("warning");
@@ -237,7 +238,7 @@ describe("parseAuthChecks", () => {
 
   it("AUTH-PWQUALITY-MINLEN fails when minlen not configured", () => {
     const checks = parseAuthChecks(insecureOutput, "bare");
-    const check = checks.find((c: { id: string }) => c.id === "AUTH-PWQUALITY-MINLEN");
+    const check = checks.find((c: { id: string }) => c.id === CHECK_IDS.AUTH.AUTH_PWQUALITY_MINLEN);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(false);
   });
@@ -251,28 +252,28 @@ describe("parseAuthChecks", () => {
       const checks = parseAuthChecks(secureOutput, "bare");
       const ids = checks.map((c) => c.id);
       expect(ids).toEqual([
-        "AUTH-NO-NOPASSWD-ALL",
-        "AUTH-PASSWORD-AGING",
-        "AUTH-NO-EMPTY-PASSWORDS",
-        "AUTH-ROOT-LOGIN-RESTRICTED",
-        "AUTH-PWD-QUALITY",
-        "AUTH-FAILLOCK-CONFIGURED",
-        "AUTH-SHADOW-PERMISSIONS",
-        "AUTH-SUDO-LOG",
-        "AUTH-SUDO-REQUIRETTY",
-        "AUTH-NO-UID0-DUPS",
-        "AUTH-PASS-MIN-DAYS",
-        "AUTH-PASS-WARN-AGE",
-        "AUTH-INACTIVE-LOCK",
-        "AUTH-SUDO-WHEEL-ONLY",
-        "AUTH-MFA-PRESENT",
-        "AUTH-SU-RESTRICTED",
-        "AUTH-PASS-MAX-DAYS-SET",
-        "AUTH-GSHADOW-PERMISSIONS",
-        "AUTH-PWQUALITY-CONFIGURED",
-        "AUTH-UMASK-LOGIN-DEFS",
-        "AUTH-SHA512-HASH",
-        "AUTH-PWQUALITY-MINLEN",
+        CHECK_IDS.AUTH.AUTH_NO_NOPASSWD_ALL,
+        CHECK_IDS.AUTH.AUTH_PASSWORD_AGING,
+        CHECK_IDS.AUTH.AUTH_NO_EMPTY_PASSWORDS,
+        CHECK_IDS.AUTH.AUTH_ROOT_LOGIN_RESTRICTED,
+        CHECK_IDS.AUTH.AUTH_PWD_QUALITY,
+        CHECK_IDS.AUTH.AUTH_FAILLOCK_CONFIGURED,
+        CHECK_IDS.AUTH.AUTH_SHADOW_PERMISSIONS,
+        CHECK_IDS.AUTH.AUTH_SUDO_LOG,
+        CHECK_IDS.AUTH.AUTH_SUDO_REQUIRETTY,
+        CHECK_IDS.AUTH.AUTH_NO_UID0_DUPS,
+        CHECK_IDS.AUTH.AUTH_PASS_MIN_DAYS,
+        CHECK_IDS.AUTH.AUTH_PASS_WARN_AGE,
+        CHECK_IDS.AUTH.AUTH_INACTIVE_LOCK,
+        CHECK_IDS.AUTH.AUTH_SUDO_WHEEL_ONLY,
+        CHECK_IDS.AUTH.AUTH_MFA_PRESENT,
+        CHECK_IDS.AUTH.AUTH_SU_RESTRICTED,
+        CHECK_IDS.AUTH.AUTH_PASS_MAX_DAYS_SET,
+        CHECK_IDS.AUTH.AUTH_GSHADOW_PERMISSIONS,
+        CHECK_IDS.AUTH.AUTH_PWQUALITY_CONFIGURED,
+        CHECK_IDS.AUTH.AUTH_UMASK_LOGIN_DEFS,
+        CHECK_IDS.AUTH.AUTH_SHA512_HASH,
+        CHECK_IDS.AUTH.AUTH_PWQUALITY_MINLEN,
       ]);
     });
   });
@@ -291,7 +292,7 @@ describe("parseAuthChecks", () => {
   describe("AUTH-PASS-MIN-DAYS boundary — passes at >= 1", () => {
     const mkOutput = (val: number) => `PASS_MIN_DAYS\t${val}`;
     const findCheck = (output: string) =>
-      parseAuthChecks(output, "bare").find((c) => c.id === "AUTH-PASS-MIN-DAYS")!;
+      parseAuthChecks(output, "bare").find((c) => c.id === CHECK_IDS.AUTH.AUTH_PASS_MIN_DAYS)!;
 
     it("PASS_MIN_DAYS=0 → fail (boundary: below threshold)", () => {
       const check = findCheck(mkOutput(0));
@@ -314,7 +315,7 @@ describe("parseAuthChecks", () => {
   describe("AUTH-PASS-WARN-AGE boundary — passes at >= 7", () => {
     const mkOutput = (val: number) => `PASS_WARN_AGE\t${val}`;
     const findCheck = (output: string) =>
-      parseAuthChecks(output, "bare").find((c) => c.id === "AUTH-PASS-WARN-AGE")!;
+      parseAuthChecks(output, "bare").find((c) => c.id === CHECK_IDS.AUTH.AUTH_PASS_WARN_AGE)!;
 
     it("PASS_WARN_AGE=6 → fail (boundary: below threshold)", () => {
       const check = findCheck(mkOutput(6));
@@ -337,7 +338,7 @@ describe("parseAuthChecks", () => {
   describe("AUTH-INACTIVE-LOCK boundary — passes at 0..90 inclusive", () => {
     const mkOutput = (val: number) => `INACTIVE=${val}`;
     const findCheck = (output: string) =>
-      parseAuthChecks(output, "bare").find((c) => c.id === "AUTH-INACTIVE-LOCK")!;
+      parseAuthChecks(output, "bare").find((c) => c.id === CHECK_IDS.AUTH.AUTH_INACTIVE_LOCK)!;
 
     it("INACTIVE=0 → pass (boundary: lower inclusive)", () => {
       const check = findCheck(mkOutput(0));
@@ -367,7 +368,7 @@ describe("parseAuthChecks", () => {
   describe("AUTH-PASS-MAX-DAYS-SET boundary — passes at > 0 and <= 365", () => {
     const mkOutput = (val: number) => `PASS_MAX_DAYS\t${val}`;
     const findCheck = (output: string) =>
-      parseAuthChecks(output, "bare").find((c) => c.id === "AUTH-PASS-MAX-DAYS-SET")!;
+      parseAuthChecks(output, "bare").find((c) => c.id === CHECK_IDS.AUTH.AUTH_PASS_MAX_DAYS_SET)!;
 
     it("PASS_MAX_DAYS=0 → fail (boundary: zero not allowed)", () => {
       const check = findCheck(mkOutput(0));
@@ -403,7 +404,7 @@ describe("parseAuthChecks", () => {
   describe("AUTH-PWQUALITY-MINLEN boundary — passes at >= 12", () => {
     const mkOutput = (val: number) => `minlen = ${val}`;
     const findCheck = (output: string) =>
-      parseAuthChecks(output, "bare").find((c) => c.id === "AUTH-PWQUALITY-MINLEN")!;
+      parseAuthChecks(output, "bare").find((c) => c.id === CHECK_IDS.AUTH.AUTH_PWQUALITY_MINLEN)!;
 
     it("minlen=11 → fail (boundary: below threshold)", () => {
       const check = findCheck(mkOutput(11));
@@ -425,7 +426,7 @@ describe("parseAuthChecks", () => {
 
   describe("AUTH-SHADOW-PERMISSIONS — 000/600/640 pass, 644 fail", () => {
     const findCheck = (output: string) =>
-      parseAuthChecks(output, "bare").find((c) => c.id === "AUTH-SHADOW-PERMISSIONS")!;
+      parseAuthChecks(output, "bare").find((c) => c.id === CHECK_IDS.AUTH.AUTH_SHADOW_PERMISSIONS)!;
 
     it("mode 000 → pass", () => {
       const check = findCheck("000");
@@ -469,7 +470,7 @@ describe("parseAuthChecks", () => {
 
   describe("Mutation killers: L19 NOPASSWD regex variations", () => {
     const find = (output: string) =>
-      parseAuthChecks(output, "bare").find((c) => c.id === "AUTH-NO-NOPASSWD-ALL")!;
+      parseAuthChecks(output, "bare").find((c) => c.id === CHECK_IDS.AUTH.AUTH_NO_NOPASSWD_ALL)!;
 
     it("NOPASSWD:ALL without space → fail", () => {
       expect(find("NOPASSWD:ALL").passed).toBe(false);
@@ -504,7 +505,7 @@ describe("parseAuthChecks", () => {
 
   describe("Mutation killers: L38 PASS_MAX_DAYS regex", () => {
     const find = (output: string) =>
-      parseAuthChecks(output, "bare").find((c) => c.id === "AUTH-PASSWORD-AGING")!;
+      parseAuthChecks(output, "bare").find((c) => c.id === CHECK_IDS.AUTH.AUTH_PASSWORD_AGING)!;
 
     it("PASS_MAX_DAYS with tab → pass", () => {
       expect(find("PASS_MAX_DAYS\t90").passed).toBe(true);
@@ -533,7 +534,7 @@ describe("parseAuthChecks", () => {
 
   describe("Mutation killers: L45-48 passMaxDays conditional/equality", () => {
     const findAging = (output: string) =>
-      parseAuthChecks(output, "bare").find((c) => c.id === "AUTH-PASSWORD-AGING")!;
+      parseAuthChecks(output, "bare").find((c) => c.id === CHECK_IDS.AUTH.AUTH_PASSWORD_AGING)!;
 
     it("isNA=true → passed=false even if content has PASS_MAX_DAYS", () => {
       // N/A triggers isNA=true, so passed should be false
@@ -557,7 +558,7 @@ describe("parseAuthChecks", () => {
 
   describe("Mutation killers: L60 lines split/map/filter chain", () => {
     const find = (output: string) =>
-      parseAuthChecks(output, "bare").find((c) => c.id === "AUTH-NO-EMPTY-PASSWORDS")!;
+      parseAuthChecks(output, "bare").find((c) => c.id === CHECK_IDS.AUTH.AUTH_NO_EMPTY_PASSWORDS)!;
 
     it("output with only whitespace lines → no empty pw users detected", () => {
       const check = find("   \n   \n   ");
@@ -581,7 +582,7 @@ describe("parseAuthChecks", () => {
 
   describe("Mutation killers: L65-70 empty password filter skip conditions", () => {
     const find = (output: string) =>
-      parseAuthChecks(output, "bare").find((c) => c.id === "AUTH-NO-EMPTY-PASSWORDS")!;
+      parseAuthChecks(output, "bare").find((c) => c.id === CHECK_IDS.AUTH.AUTH_NO_EMPTY_PASSWORDS)!;
 
     // Each of these lines should be SKIPPED (not treated as a username)
     const skipLines = [
@@ -667,7 +668,7 @@ describe("parseAuthChecks", () => {
 
   describe("Mutation killers: L83-93 emptyPwUsers length and fixCommand", () => {
     const find = (output: string) =>
-      parseAuthChecks(output, "bare").find((c) => c.id === "AUTH-NO-EMPTY-PASSWORDS")!;
+      parseAuthChecks(output, "bare").find((c) => c.id === CHECK_IDS.AUTH.AUTH_NO_EMPTY_PASSWORDS)!;
 
     it("zero empty pw users → passed=true, currentValue says no accounts", () => {
       const check = find("auth required pam_unix.so");
@@ -704,7 +705,7 @@ describe("parseAuthChecks", () => {
 
   describe("Mutation killers: L98-104 AUTH-ROOT-LOGIN-RESTRICTED", () => {
     const find = (output: string) =>
-      parseAuthChecks(output, "bare").find((c) => c.id === "AUTH-ROOT-LOGIN-RESTRICTED")!;
+      parseAuthChecks(output, "bare").find((c) => c.id === CHECK_IDS.AUTH.AUTH_ROOT_LOGIN_RESTRICTED)!;
 
     it("'root' on its own line without prohibit-password → fail", () => {
       const check = find("root");
@@ -747,7 +748,7 @@ describe("parseAuthChecks", () => {
 
   describe("Mutation killers: L117 AUTH-PWD-QUALITY OR logic", () => {
     const find = (output: string) =>
-      parseAuthChecks(output, "bare").find((c) => c.id === "AUTH-PWD-QUALITY")!;
+      parseAuthChecks(output, "bare").find((c) => c.id === CHECK_IDS.AUTH.AUTH_PWD_QUALITY)!;
 
     it("pam_pwquality present → pass", () => {
       expect(find("pam_pwquality.so").passed).toBe(true);
@@ -775,7 +776,7 @@ describe("parseAuthChecks", () => {
 
   describe("Mutation killers: L138 AUTH-FAILLOCK-CONFIGURED pam_tally2 alternative", () => {
     const find = (output: string) =>
-      parseAuthChecks(output, "bare").find((c) => c.id === "AUTH-FAILLOCK-CONFIGURED")!;
+      parseAuthChecks(output, "bare").find((c) => c.id === CHECK_IDS.AUTH.AUTH_FAILLOCK_CONFIGURED)!;
 
     it("pam_faillock → pass", () => {
       expect(find("pam_faillock.so").passed).toBe(true);
@@ -801,7 +802,7 @@ describe("parseAuthChecks", () => {
 
   describe("Mutation killers: L157 AUTH-SHADOW-PERMISSIONS regex", () => {
     const find = (output: string) =>
-      parseAuthChecks(output, "bare").find((c) => c.id === "AUTH-SHADOW-PERMISSIONS")!;
+      parseAuthChecks(output, "bare").find((c) => c.id === CHECK_IDS.AUTH.AUTH_SHADOW_PERMISSIONS)!;
 
     it("660 is not in the secure set → fail", () => {
       const check = find("660");
@@ -821,7 +822,7 @@ describe("parseAuthChecks", () => {
 
   describe("Mutation killers: L178 AUTH-SUDO-LOG", () => {
     const find = (output: string) =>
-      parseAuthChecks(output, "bare").find((c) => c.id === "AUTH-SUDO-LOG")!;
+      parseAuthChecks(output, "bare").find((c) => c.id === CHECK_IDS.AUTH.AUTH_SUDO_LOG)!;
 
     it("log_output → pass", () => {
       expect(find("Defaults log_output").passed).toBe(true);
@@ -844,7 +845,7 @@ describe("parseAuthChecks", () => {
 
   describe("Mutation killers: L197 AUTH-SUDO-REQUIRETTY", () => {
     const find = (output: string) =>
-      parseAuthChecks(output, "bare").find((c) => c.id === "AUTH-SUDO-REQUIRETTY")!;
+      parseAuthChecks(output, "bare").find((c) => c.id === CHECK_IDS.AUTH.AUTH_SUDO_REQUIRETTY)!;
 
     it("requiretty → pass", () => {
       expect(find("Defaults requiretty").passed).toBe(true);
@@ -863,7 +864,7 @@ describe("parseAuthChecks", () => {
 
   describe("Mutation killers: L218 AUTH-NO-UID0-DUPS regex + logical", () => {
     const find = (output: string) =>
-      parseAuthChecks(output, "bare").find((c) => c.id === "AUTH-NO-UID0-DUPS")!;
+      parseAuthChecks(output, "bare").find((c) => c.id === CHECK_IDS.AUTH.AUTH_NO_UID0_DUPS)!;
 
     it("only root → pass (hasOnlyRoot=true)", () => {
       const check = find("root:0:root");
@@ -905,46 +906,46 @@ describe("parseAuthChecks", () => {
   describe("Mutation killers: L237-279 PASS_MIN_DAYS/PASS_WARN_AGE/INACTIVE regex", () => {
     it("PASS_MIN_DAYS with multiple spaces → parsed correctly", () => {
       const check = parseAuthChecks("PASS_MIN_DAYS   5", "bare")
-        .find((c) => c.id === "AUTH-PASS-MIN-DAYS")!;
+        .find((c) => c.id === CHECK_IDS.AUTH.AUTH_PASS_MIN_DAYS)!;
       expect(check.passed).toBe(true);
       expect(check.currentValue).toBe("PASS_MIN_DAYS = 5");
     });
 
     it("PASS_WARN_AGE with tab → parsed correctly", () => {
       const check = parseAuthChecks("PASS_WARN_AGE\t14", "bare")
-        .find((c) => c.id === "AUTH-PASS-WARN-AGE")!;
+        .find((c) => c.id === CHECK_IDS.AUTH.AUTH_PASS_WARN_AGE)!;
       expect(check.passed).toBe(true);
       expect(check.currentValue).toBe("PASS_WARN_AGE = 14");
     });
 
     it("INACTIVE with = sign (no space) → parsed correctly", () => {
       const check = parseAuthChecks("INACTIVE=30", "bare")
-        .find((c) => c.id === "AUTH-INACTIVE-LOCK")!;
+        .find((c) => c.id === CHECK_IDS.AUTH.AUTH_INACTIVE_LOCK)!;
       expect(check.passed).toBe(true);
     });
 
     it("INACTIVE with = and spaces → parsed correctly", () => {
       const check = parseAuthChecks("INACTIVE = 30", "bare")
-        .find((c) => c.id === "AUTH-INACTIVE-LOCK")!;
+        .find((c) => c.id === CHECK_IDS.AUTH.AUTH_INACTIVE_LOCK)!;
       expect(check.passed).toBe(true);
     });
 
     it("INACTIVE with just space (no =) → parsed correctly", () => {
       const check = parseAuthChecks("INACTIVE 30", "bare")
-        .find((c) => c.id === "AUTH-INACTIVE-LOCK")!;
+        .find((c) => c.id === CHECK_IDS.AUTH.AUTH_INACTIVE_LOCK)!;
       expect(check.passed).toBe(true);
     });
 
     it("inactive lowercase → parsed (case insensitive)", () => {
       const check = parseAuthChecks("inactive=30", "bare")
-        .find((c) => c.id === "AUTH-INACTIVE-LOCK")!;
+        .find((c) => c.id === CHECK_IDS.AUTH.AUTH_INACTIVE_LOCK)!;
       expect(check.passed).toBe(true);
     });
   });
 
   describe("Mutation killers: L299-311 AUTH-SUDO-WHEEL-ONLY parsing", () => {
     const find = (output: string) =>
-      parseAuthChecks(output, "bare").find((c) => c.id === "AUTH-SUDO-WHEEL-ONLY")!;
+      parseAuthChecks(output, "bare").find((c) => c.id === CHECK_IDS.AUTH.AUTH_SUDO_WHEEL_ONLY)!;
 
     it("sudo group with 1 member → pass", () => {
       const check = find("sudo:x:27:admin");
@@ -989,7 +990,7 @@ describe("parseAuthChecks", () => {
 
   describe("Mutation killers: L321 AUTH-MFA-PRESENT", () => {
     const find = (output: string) =>
-      parseAuthChecks(output, "bare").find((c) => c.id === "AUTH-MFA-PRESENT")!;
+      parseAuthChecks(output, "bare").find((c) => c.id === CHECK_IDS.AUTH.AUTH_MFA_PRESENT)!;
 
     it("libpam-google-authenticator → pass", () => {
       expect(find("ii  libpam-google-authenticator").passed).toBe(true);
@@ -1013,7 +1014,7 @@ describe("parseAuthChecks", () => {
 
   describe("Mutation killers: L340 AUTH-SU-RESTRICTED", () => {
     const find = (output: string) =>
-      parseAuthChecks(output, "bare").find((c) => c.id === "AUTH-SU-RESTRICTED")!;
+      parseAuthChecks(output, "bare").find((c) => c.id === CHECK_IDS.AUTH.AUTH_SU_RESTRICTED)!;
 
     it("pam_wheel → pass", () => {
       expect(find("auth required pam_wheel.so use_uid").passed).toBe(true);
@@ -1032,7 +1033,7 @@ describe("parseAuthChecks", () => {
 
   describe("Mutation killers: L359-376 AUTH-PASS-MAX-DAYS-SET detailed", () => {
     const find = (output: string) =>
-      parseAuthChecks(output, "bare").find((c) => c.id === "AUTH-PASS-MAX-DAYS-SET")!;
+      parseAuthChecks(output, "bare").find((c) => c.id === CHECK_IDS.AUTH.AUTH_PASS_MAX_DAYS_SET)!;
 
     it("PASS_MAX_DAYS 90 → pass", () => {
       const check = find("PASS_MAX_DAYS\t90");
@@ -1049,7 +1050,7 @@ describe("parseAuthChecks", () => {
 
   describe("Mutation killers: L381-400 AUTH-GSHADOW-PERMISSIONS", () => {
     const find = (output: string) =>
-      parseAuthChecks(output, "bare").find((c) => c.id === "AUTH-GSHADOW-PERMISSIONS")!;
+      parseAuthChecks(output, "bare").find((c) => c.id === CHECK_IDS.AUTH.AUTH_GSHADOW_PERMISSIONS)!;
 
     it("two standalone perms: 640 + 640 → gshadow pass", () => {
       const check = find("640\n640");
@@ -1093,7 +1094,7 @@ describe("parseAuthChecks", () => {
 
   describe("Mutation killers: L404 AUTH-PWQUALITY-CONFIGURED", () => {
     const find = (output: string) =>
-      parseAuthChecks(output, "bare").find((c) => c.id === "AUTH-PWQUALITY-CONFIGURED")!;
+      parseAuthChecks(output, "bare").find((c) => c.id === CHECK_IDS.AUTH.AUTH_PWQUALITY_CONFIGURED)!;
 
     it("pam_cracklib → pass", () => {
       expect(find("pam_cracklib.so retry=3").passed).toBe(true);
@@ -1112,7 +1113,7 @@ describe("parseAuthChecks", () => {
 
   describe("Mutation killers: L423-441 AUTH-UMASK-LOGIN-DEFS", () => {
     const find = (output: string) =>
-      parseAuthChecks(output, "bare").find((c) => c.id === "AUTH-UMASK-LOGIN-DEFS")!;
+      parseAuthChecks(output, "bare").find((c) => c.id === CHECK_IDS.AUTH.AUTH_UMASK_LOGIN_DEFS)!;
 
     it("UMASK 027 → pass", () => {
       const check = find("UMASK\t027");
@@ -1151,7 +1152,7 @@ describe("parseAuthChecks", () => {
 
   describe("Mutation killers: L444-462 AUTH-SHA512-HASH", () => {
     const find = (output: string) =>
-      parseAuthChecks(output, "bare").find((c) => c.id === "AUTH-SHA512-HASH")!;
+      parseAuthChecks(output, "bare").find((c) => c.id === CHECK_IDS.AUTH.AUTH_SHA512_HASH)!;
 
     it("ENCRYPT_METHOD SHA512 → pass", () => {
       const check = find("ENCRYPT_METHOD SHA512");
@@ -1196,7 +1197,7 @@ describe("parseAuthChecks", () => {
 
   describe("Mutation killers: L465-483 AUTH-PWQUALITY-MINLEN", () => {
     const find = (output: string) =>
-      parseAuthChecks(output, "bare").find((c) => c.id === "AUTH-PWQUALITY-MINLEN")!;
+      parseAuthChecks(output, "bare").find((c) => c.id === CHECK_IDS.AUTH.AUTH_PWQUALITY_MINLEN)!;
 
     it("minlen = 14 → pass", () => {
       const check = find("minlen = 14");
@@ -1301,56 +1302,56 @@ describe("parseAuthChecks", () => {
     });
 
     it("AUTH-NO-NOPASSWD-ALL passes (no NOPASSWD in insecure output)", () => {
-      expect(checks.find((c) => c.id === "AUTH-NO-NOPASSWD-ALL")!.passed).toBe(true);
+      expect(checks.find((c) => c.id === CHECK_IDS.AUTH.AUTH_NO_NOPASSWD_ALL)!.passed).toBe(true);
     });
 
     it("AUTH-PASSWORD-AGING fails", () => {
-      expect(checks.find((c) => c.id === "AUTH-PASSWORD-AGING")!.passed).toBe(false);
+      expect(checks.find((c) => c.id === CHECK_IDS.AUTH.AUTH_PASSWORD_AGING)!.passed).toBe(false);
     });
 
     it("AUTH-NO-EMPTY-PASSWORDS fails with user list", () => {
-      const check = checks.find((c) => c.id === "AUTH-NO-EMPTY-PASSWORDS")!;
+      const check = checks.find((c) => c.id === CHECK_IDS.AUTH.AUTH_NO_EMPTY_PASSWORDS)!;
       expect(check.passed).toBe(false);
       expect(check.currentValue).toContain("testuser");
       expect(check.currentValue).toContain("olduser");
     });
 
     it("AUTH-ROOT-LOGIN-RESTRICTED fails (root + toor, no prohibit-password)", () => {
-      expect(checks.find((c) => c.id === "AUTH-ROOT-LOGIN-RESTRICTED")!.passed).toBe(false);
+      expect(checks.find((c) => c.id === CHECK_IDS.AUTH.AUTH_ROOT_LOGIN_RESTRICTED)!.passed).toBe(false);
     });
 
     it("AUTH-PWD-QUALITY fails", () => {
-      expect(checks.find((c) => c.id === "AUTH-PWD-QUALITY")!.passed).toBe(false);
+      expect(checks.find((c) => c.id === CHECK_IDS.AUTH.AUTH_PWD_QUALITY)!.passed).toBe(false);
     });
 
     it("AUTH-FAILLOCK-CONFIGURED fails", () => {
-      expect(checks.find((c) => c.id === "AUTH-FAILLOCK-CONFIGURED")!.passed).toBe(false);
+      expect(checks.find((c) => c.id === CHECK_IDS.AUTH.AUTH_FAILLOCK_CONFIGURED)!.passed).toBe(false);
     });
 
     it("AUTH-SUDO-WHEEL-ONLY fails (5 members)", () => {
-      const check = checks.find((c) => c.id === "AUTH-SUDO-WHEEL-ONLY")!;
+      const check = checks.find((c) => c.id === CHECK_IDS.AUTH.AUTH_SUDO_WHEEL_ONLY)!;
       expect(check.passed).toBe(false);
       expect(check.currentValue).toContain("5 sudo member");
     });
 
     it("AUTH-NO-UID0-DUPS fails (toor present)", () => {
-      expect(checks.find((c) => c.id === "AUTH-NO-UID0-DUPS")!.passed).toBe(false);
+      expect(checks.find((c) => c.id === CHECK_IDS.AUTH.AUTH_NO_UID0_DUPS)!.passed).toBe(false);
     });
 
     it("AUTH-MFA-PRESENT fails", () => {
-      expect(checks.find((c) => c.id === "AUTH-MFA-PRESENT")!.passed).toBe(false);
+      expect(checks.find((c) => c.id === CHECK_IDS.AUTH.AUTH_MFA_PRESENT)!.passed).toBe(false);
     });
 
     it("AUTH-SU-RESTRICTED fails", () => {
-      expect(checks.find((c) => c.id === "AUTH-SU-RESTRICTED")!.passed).toBe(false);
+      expect(checks.find((c) => c.id === CHECK_IDS.AUTH.AUTH_SU_RESTRICTED)!.passed).toBe(false);
     });
 
     it("AUTH-SUDO-LOG fails", () => {
-      expect(checks.find((c) => c.id === "AUTH-SUDO-LOG")!.passed).toBe(false);
+      expect(checks.find((c) => c.id === CHECK_IDS.AUTH.AUTH_SUDO_LOG)!.passed).toBe(false);
     });
 
     it("AUTH-SUDO-REQUIRETTY fails", () => {
-      expect(checks.find((c) => c.id === "AUTH-SUDO-REQUIRETTY")!.passed).toBe(false);
+      expect(checks.find((c) => c.id === CHECK_IDS.AUTH.AUTH_SUDO_REQUIRETTY)!.passed).toBe(false);
     });
   });
 
@@ -1364,7 +1365,7 @@ describe("parseAuthChecks", () => {
 
     it("AUTH-NO-EMPTY-PASSWORDS has no safeToAutoFix (conditional fixCommand)", () => {
       const checks = parseAuthChecks("baduser", "bare");
-      const check = checks.find((c) => c.id === "AUTH-NO-EMPTY-PASSWORDS")!;
+      const check = checks.find((c) => c.id === CHECK_IDS.AUTH.AUTH_NO_EMPTY_PASSWORDS)!;
       // This check does NOT have safeToAutoFix set
       expect(check.safeToAutoFix).toBeUndefined();
     });
@@ -1375,34 +1376,34 @@ describe("parseAuthChecks", () => {
     const findById = (id: string) => checks.find((c) => c.id === id)!;
 
     it("critical checks", () => {
-      expect(findById("AUTH-NO-NOPASSWD-ALL").severity).toBe("critical");
-      expect(findById("AUTH-NO-EMPTY-PASSWORDS").severity).toBe("critical");
-      expect(findById("AUTH-SHADOW-PERMISSIONS").severity).toBe("critical");
-      expect(findById("AUTH-NO-UID0-DUPS").severity).toBe("critical");
+      expect(findById(CHECK_IDS.AUTH.AUTH_NO_NOPASSWD_ALL).severity).toBe("critical");
+      expect(findById(CHECK_IDS.AUTH.AUTH_NO_EMPTY_PASSWORDS).severity).toBe("critical");
+      expect(findById(CHECK_IDS.AUTH.AUTH_SHADOW_PERMISSIONS).severity).toBe("critical");
+      expect(findById(CHECK_IDS.AUTH.AUTH_NO_UID0_DUPS).severity).toBe("critical");
     });
 
     it("warning checks", () => {
-      expect(findById("AUTH-ROOT-LOGIN-RESTRICTED").severity).toBe("warning");
-      expect(findById("AUTH-FAILLOCK-CONFIGURED").severity).toBe("warning");
-      expect(findById("AUTH-SUDO-LOG").severity).toBe("warning");
-      expect(findById("AUTH-GSHADOW-PERMISSIONS").severity).toBe("warning");
-      expect(findById("AUTH-PWQUALITY-CONFIGURED").severity).toBe("warning");
-      expect(findById("AUTH-SHA512-HASH").severity).toBe("warning");
-      expect(findById("AUTH-PWQUALITY-MINLEN").severity).toBe("warning");
+      expect(findById(CHECK_IDS.AUTH.AUTH_ROOT_LOGIN_RESTRICTED).severity).toBe("warning");
+      expect(findById(CHECK_IDS.AUTH.AUTH_FAILLOCK_CONFIGURED).severity).toBe("warning");
+      expect(findById(CHECK_IDS.AUTH.AUTH_SUDO_LOG).severity).toBe("warning");
+      expect(findById(CHECK_IDS.AUTH.AUTH_GSHADOW_PERMISSIONS).severity).toBe("warning");
+      expect(findById(CHECK_IDS.AUTH.AUTH_PWQUALITY_CONFIGURED).severity).toBe("warning");
+      expect(findById(CHECK_IDS.AUTH.AUTH_SHA512_HASH).severity).toBe("warning");
+      expect(findById(CHECK_IDS.AUTH.AUTH_PWQUALITY_MINLEN).severity).toBe("warning");
     });
 
     it("info checks", () => {
-      expect(findById("AUTH-PASSWORD-AGING").severity).toBe("info");
-      expect(findById("AUTH-PWD-QUALITY").severity).toBe("info");
-      expect(findById("AUTH-SUDO-REQUIRETTY").severity).toBe("info");
-      expect(findById("AUTH-PASS-MIN-DAYS").severity).toBe("info");
-      expect(findById("AUTH-PASS-WARN-AGE").severity).toBe("info");
-      expect(findById("AUTH-INACTIVE-LOCK").severity).toBe("info");
-      expect(findById("AUTH-SUDO-WHEEL-ONLY").severity).toBe("info");
-      expect(findById("AUTH-MFA-PRESENT").severity).toBe("info");
-      expect(findById("AUTH-SU-RESTRICTED").severity).toBe("info");
-      expect(findById("AUTH-PASS-MAX-DAYS-SET").severity).toBe("info");
-      expect(findById("AUTH-UMASK-LOGIN-DEFS").severity).toBe("info");
+      expect(findById(CHECK_IDS.AUTH.AUTH_PASSWORD_AGING).severity).toBe("info");
+      expect(findById(CHECK_IDS.AUTH.AUTH_PWD_QUALITY).severity).toBe("info");
+      expect(findById(CHECK_IDS.AUTH.AUTH_SUDO_REQUIRETTY).severity).toBe("info");
+      expect(findById(CHECK_IDS.AUTH.AUTH_PASS_MIN_DAYS).severity).toBe("info");
+      expect(findById(CHECK_IDS.AUTH.AUTH_PASS_WARN_AGE).severity).toBe("info");
+      expect(findById(CHECK_IDS.AUTH.AUTH_INACTIVE_LOCK).severity).toBe("info");
+      expect(findById(CHECK_IDS.AUTH.AUTH_SUDO_WHEEL_ONLY).severity).toBe("info");
+      expect(findById(CHECK_IDS.AUTH.AUTH_MFA_PRESENT).severity).toBe("info");
+      expect(findById(CHECK_IDS.AUTH.AUTH_SU_RESTRICTED).severity).toBe("info");
+      expect(findById(CHECK_IDS.AUTH.AUTH_PASS_MAX_DAYS_SET).severity).toBe("info");
+      expect(findById(CHECK_IDS.AUTH.AUTH_UMASK_LOGIN_DEFS).severity).toBe("info");
     });
   });
 
@@ -1411,28 +1412,28 @@ describe("parseAuthChecks", () => {
     const findById = (id: string) => checks.find((c) => c.id === id)!;
 
     const expectedMeta: Array<[string, string, string]> = [
-      ["AUTH-NO-NOPASSWD-ALL", "critical", "SAFE"],
-      ["AUTH-PASSWORD-AGING", "info", "SAFE"],
-      ["AUTH-NO-EMPTY-PASSWORDS", "critical", ""],
-      ["AUTH-ROOT-LOGIN-RESTRICTED", "warning", "SAFE"],
-      ["AUTH-PWD-QUALITY", "info", "SAFE"],
-      ["AUTH-FAILLOCK-CONFIGURED", "warning", "SAFE"],
-      ["AUTH-SHADOW-PERMISSIONS", "critical", "SAFE"],
-      ["AUTH-SUDO-LOG", "warning", "SAFE"],
-      ["AUTH-SUDO-REQUIRETTY", "info", "SAFE"],
-      ["AUTH-NO-UID0-DUPS", "critical", "SAFE"],
-      ["AUTH-PASS-MIN-DAYS", "info", "SAFE"],
-      ["AUTH-PASS-WARN-AGE", "info", "SAFE"],
-      ["AUTH-INACTIVE-LOCK", "info", "SAFE"],
-      ["AUTH-SUDO-WHEEL-ONLY", "info", "SAFE"],
-      ["AUTH-MFA-PRESENT", "info", "SAFE"],
-      ["AUTH-SU-RESTRICTED", "info", "SAFE"],
-      ["AUTH-PASS-MAX-DAYS-SET", "info", "SAFE"],
-      ["AUTH-GSHADOW-PERMISSIONS", "warning", "SAFE"],
-      ["AUTH-PWQUALITY-CONFIGURED", "warning", "SAFE"],
-      ["AUTH-UMASK-LOGIN-DEFS", "info", "SAFE"],
-      ["AUTH-SHA512-HASH", "warning", "SAFE"],
-      ["AUTH-PWQUALITY-MINLEN", "warning", "SAFE"],
+      [CHECK_IDS.AUTH.AUTH_NO_NOPASSWD_ALL, "critical", "SAFE"],
+      [CHECK_IDS.AUTH.AUTH_PASSWORD_AGING, "info", "SAFE"],
+      [CHECK_IDS.AUTH.AUTH_NO_EMPTY_PASSWORDS, "critical", ""],
+      [CHECK_IDS.AUTH.AUTH_ROOT_LOGIN_RESTRICTED, "warning", "SAFE"],
+      [CHECK_IDS.AUTH.AUTH_PWD_QUALITY, "info", "SAFE"],
+      [CHECK_IDS.AUTH.AUTH_FAILLOCK_CONFIGURED, "warning", "SAFE"],
+      [CHECK_IDS.AUTH.AUTH_SHADOW_PERMISSIONS, "critical", "SAFE"],
+      [CHECK_IDS.AUTH.AUTH_SUDO_LOG, "warning", "SAFE"],
+      [CHECK_IDS.AUTH.AUTH_SUDO_REQUIRETTY, "info", "SAFE"],
+      [CHECK_IDS.AUTH.AUTH_NO_UID0_DUPS, "critical", "SAFE"],
+      [CHECK_IDS.AUTH.AUTH_PASS_MIN_DAYS, "info", "SAFE"],
+      [CHECK_IDS.AUTH.AUTH_PASS_WARN_AGE, "info", "SAFE"],
+      [CHECK_IDS.AUTH.AUTH_INACTIVE_LOCK, "info", "SAFE"],
+      [CHECK_IDS.AUTH.AUTH_SUDO_WHEEL_ONLY, "info", "SAFE"],
+      [CHECK_IDS.AUTH.AUTH_MFA_PRESENT, "info", "SAFE"],
+      [CHECK_IDS.AUTH.AUTH_SU_RESTRICTED, "info", "SAFE"],
+      [CHECK_IDS.AUTH.AUTH_PASS_MAX_DAYS_SET, "info", "SAFE"],
+      [CHECK_IDS.AUTH.AUTH_GSHADOW_PERMISSIONS, "warning", "SAFE"],
+      [CHECK_IDS.AUTH.AUTH_PWQUALITY_CONFIGURED, "warning", "SAFE"],
+      [CHECK_IDS.AUTH.AUTH_UMASK_LOGIN_DEFS, "info", "SAFE"],
+      [CHECK_IDS.AUTH.AUTH_SHA512_HASH, "warning", "SAFE"],
+      [CHECK_IDS.AUTH.AUTH_PWQUALITY_MINLEN, "warning", "SAFE"],
     ];
 
     it.each(expectedMeta)("[MUTATION-KILLER] %s has severity=%s, safeToAutoFix=%s", (id, severity, safe) => {

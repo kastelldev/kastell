@@ -1,4 +1,5 @@
 import { parseSSHChecks } from "../../src/core/audit/checks/ssh.js";
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 import type { AuditCheck } from "../../src/core/audit/types.js";
 
 describe("parseSSHChecks", () => {
@@ -63,7 +64,7 @@ describe("parseSSHChecks", () => {
 
   it("should return SSH-PASSWORD-AUTH failed when PasswordAuthentication is yes", () => {
     const checks = parseSSHChecks(insecureOutput, "bare");
-    const ssh01 = checks.find((c) => c.id === "SSH-PASSWORD-AUTH");
+    const ssh01 = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_PASSWORD_AUTH);
     expect(ssh01).toBeDefined();
     expect(ssh01!.passed).toBe(false);
     expect(ssh01!.severity).toBe("critical");
@@ -73,7 +74,7 @@ describe("parseSSHChecks", () => {
 
   it("should return SSH-ROOT-LOGIN failed when PermitRootLogin is yes", () => {
     const checks = parseSSHChecks(insecureOutput, "bare");
-    const ssh02 = checks.find((c) => c.id === "SSH-ROOT-LOGIN");
+    const ssh02 = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_ROOT_LOGIN);
     expect(ssh02).toBeDefined();
     expect(ssh02!.passed).toBe(false);
     expect(ssh02!.severity).toBe("critical");
@@ -81,7 +82,7 @@ describe("parseSSHChecks", () => {
 
   it("should return SSH-EMPTY-PASSWORDS failed when PermitEmptyPasswords is yes", () => {
     const checks = parseSSHChecks(insecureOutput, "bare");
-    const ssh03 = checks.find((c) => c.id === "SSH-EMPTY-PASSWORDS");
+    const ssh03 = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_EMPTY_PASSWORDS);
     expect(ssh03).toBeDefined();
     expect(ssh03!.passed).toBe(false);
     expect(ssh03!.severity).toBe("critical");
@@ -89,14 +90,14 @@ describe("parseSSHChecks", () => {
 
   it("should return SSH-PUBKEY-AUTH failed when PubkeyAuthentication is no", () => {
     const checks = parseSSHChecks(insecureOutput, "bare");
-    const ssh04 = checks.find((c) => c.id === "SSH-PUBKEY-AUTH");
+    const ssh04 = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_PUBKEY_AUTH);
     expect(ssh04).toBeDefined();
     expect(ssh04!.passed).toBe(false);
   });
 
   it("should return SSH-MAX-AUTH-TRIES failed when MaxAuthTries > 5", () => {
     const checks = parseSSHChecks(insecureOutput, "bare");
-    const ssh05 = checks.find((c) => c.id === "SSH-MAX-AUTH-TRIES");
+    const ssh05 = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_MAX_AUTH_TRIES);
     expect(ssh05).toBeDefined();
     expect(ssh05!.passed).toBe(false);
     expect(ssh05!.severity).toBe("warning");
@@ -104,65 +105,65 @@ describe("parseSSHChecks", () => {
 
   it("should return SSH-X11-FORWARDING failed when X11Forwarding is yes", () => {
     const checks = parseSSHChecks(insecureOutput, "bare");
-    const ssh06 = checks.find((c) => c.id === "SSH-X11-FORWARDING");
+    const ssh06 = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_X11_FORWARDING);
     expect(ssh06).toBeDefined();
     expect(ssh06!.passed).toBe(false);
   });
 
   it("should return SSH-CLIENT-ALIVE-INTERVAL passed with 300, failed with 0", () => {
     const passChecks = parseSSHChecks("clientaliveinterval 300", "bare");
-    const pass = passChecks.find((c) => c.id === "SSH-CLIENT-ALIVE-INTERVAL");
+    const pass = passChecks.find((c) => c.id === CHECK_IDS.SSH.SSH_CLIENT_ALIVE_INTERVAL);
     expect(pass!.passed).toBe(true);
 
     const failChecks = parseSSHChecks("clientaliveinterval 0", "bare");
-    const fail = failChecks.find((c) => c.id === "SSH-CLIENT-ALIVE-INTERVAL");
+    const fail = failChecks.find((c) => c.id === CHECK_IDS.SSH.SSH_CLIENT_ALIVE_INTERVAL);
     expect(fail!.passed).toBe(false);
   });
 
   it("should return SSH-IGNORE-RHOSTS passed with yes, failed with no", () => {
     const passChecks = parseSSHChecks("ignorerhosts yes", "bare");
-    const pass = passChecks.find((c) => c.id === "SSH-IGNORE-RHOSTS");
+    const pass = passChecks.find((c) => c.id === CHECK_IDS.SSH.SSH_IGNORE_RHOSTS);
     expect(pass!.passed).toBe(true);
     expect(pass!.severity).toBe("critical");
 
     const failChecks = parseSSHChecks("ignorerhosts no", "bare");
-    const fail = failChecks.find((c) => c.id === "SSH-IGNORE-RHOSTS");
+    const fail = failChecks.find((c) => c.id === CHECK_IDS.SSH.SSH_IGNORE_RHOSTS);
     expect(fail!.passed).toBe(false);
   });
 
   it("should return SSH-STRONG-CIPHERS failed when output contains 3des-cbc", () => {
     const failChecks = parseSSHChecks("ciphers 3des-cbc,aes256-ctr", "bare");
-    const fail = failChecks.find((c) => c.id === "SSH-STRONG-CIPHERS");
+    const fail = failChecks.find((c) => c.id === CHECK_IDS.SSH.SSH_STRONG_CIPHERS);
     expect(fail!.passed).toBe(false);
 
     const passChecks = parseSSHChecks("ciphers aes256-ctr,aes192-ctr,aes128-ctr", "bare");
-    const pass = passChecks.find((c) => c.id === "SSH-STRONG-CIPHERS");
+    const pass = passChecks.find((c) => c.id === CHECK_IDS.SSH.SSH_STRONG_CIPHERS);
     expect(pass!.passed).toBe(true);
   });
 
   it("should return SSH-STRONG-MACS failed when output contains hmac-md5", () => {
     const failChecks = parseSSHChecks("macs hmac-md5,hmac-sha2-256", "bare");
-    const fail = failChecks.find((c) => c.id === "SSH-STRONG-MACS");
+    const fail = failChecks.find((c) => c.id === CHECK_IDS.SSH.SSH_STRONG_MACS);
     expect(fail!.passed).toBe(false);
 
     const passChecks = parseSSHChecks("macs hmac-sha2-256,hmac-sha2-512", "bare");
-    const pass = passChecks.find((c) => c.id === "SSH-STRONG-MACS");
+    const pass = passChecks.find((c) => c.id === CHECK_IDS.SSH.SSH_STRONG_MACS);
     expect(pass!.passed).toBe(true);
   });
 
   it("should return SSH-STRONG-KEX failed when output contains diffie-hellman-group1-sha1", () => {
     const failChecks = parseSSHChecks("kexalgorithms diffie-hellman-group1-sha1,curve25519-sha256", "bare");
-    const fail = failChecks.find((c) => c.id === "SSH-STRONG-KEX");
+    const fail = failChecks.find((c) => c.id === CHECK_IDS.SSH.SSH_STRONG_KEX);
     expect(fail!.passed).toBe(false);
 
     const passChecks = parseSSHChecks("kexalgorithms curve25519-sha256,diffie-hellman-group16-sha512", "bare");
-    const pass = passChecks.find((c) => c.id === "SSH-STRONG-KEX");
+    const pass = passChecks.find((c) => c.id === CHECK_IDS.SSH.SSH_STRONG_KEX);
     expect(pass!.passed).toBe(true);
   });
 
   it("should not count umac-64-etm as a weak MAC", () => {
     const checks = parseSSHChecks("macs umac-64-etm@openssh.com,hmac-sha2-256", "bare");
-    const mac = checks.find((c) => c.id === "SSH-STRONG-MACS");
+    const mac = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_STRONG_MACS);
     expect(mac!.passed).toBe(true);
   });
 
@@ -193,7 +194,7 @@ describe("parseSSHChecks", () => {
 
   it("SSH-MAX-STARTUPS passes with maxstartups 10:30:60", () => {
     const checks = parseSSHChecks(secureOutput, "bare");
-    const check = checks.find((c) => c.id === "SSH-MAX-STARTUPS");
+    const check = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_MAX_STARTUPS);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(true);
     expect(check!.severity).toBe("warning");
@@ -202,7 +203,7 @@ describe("parseSSHChecks", () => {
 
   it("SSH-MAX-STARTUPS fails with maxstartups 100", () => {
     const checks = parseSSHChecks("maxstartups 100", "bare");
-    const check = checks.find((c) => c.id === "SSH-MAX-STARTUPS");
+    const check = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_MAX_STARTUPS);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(false);
     expect(check!.currentValue).toBe("100");
@@ -210,7 +211,7 @@ describe("parseSSHChecks", () => {
 
   it("SSH-STRICT-MODES passes with strictmodes yes", () => {
     const checks = parseSSHChecks(secureOutput, "bare");
-    const check = checks.find((c) => c.id === "SSH-STRICT-MODES");
+    const check = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_STRICT_MODES);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(true);
     expect(check!.severity).toBe("warning");
@@ -218,14 +219,14 @@ describe("parseSSHChecks", () => {
 
   it("SSH-STRICT-MODES fails with strictmodes no", () => {
     const checks = parseSSHChecks("strictmodes no", "bare");
-    const check = checks.find((c) => c.id === "SSH-STRICT-MODES");
+    const check = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_STRICT_MODES);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(false);
   });
 
   it("SSH-NO-AGENT-FORWARDING passes with allowagentforwarding no", () => {
     const checks = parseSSHChecks(secureOutput, "bare");
-    const check = checks.find((c) => c.id === "SSH-NO-AGENT-FORWARDING");
+    const check = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_NO_AGENT_FORWARDING);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(true);
     expect(check!.severity).toBe("warning");
@@ -233,14 +234,14 @@ describe("parseSSHChecks", () => {
 
   it("SSH-NO-AGENT-FORWARDING fails with allowagentforwarding yes", () => {
     const checks = parseSSHChecks("allowagentforwarding yes", "bare");
-    const check = checks.find((c) => c.id === "SSH-NO-AGENT-FORWARDING");
+    const check = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_NO_AGENT_FORWARDING);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(false);
   });
 
   it("SSH-PRINT-MOTD passes with printmotd no", () => {
     const checks = parseSSHChecks(secureOutput, "bare");
-    const check = checks.find((c) => c.id === "SSH-PRINT-MOTD");
+    const check = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_PRINT_MOTD);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(true);
     expect(check!.severity).toBe("info");
@@ -248,7 +249,7 @@ describe("parseSSHChecks", () => {
 
   it("SSH-PRINT-MOTD fails with printmotd yes", () => {
     const checks = parseSSHChecks("printmotd yes", "bare");
-    const check = checks.find((c) => c.id === "SSH-PRINT-MOTD");
+    const check = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_PRINT_MOTD);
     expect(check).toBeDefined();
     expect(check!.passed).toBe(false);
   });
@@ -284,7 +285,7 @@ describe("[MUTATION-KILLER] SSH check string assertions", () => {
 
   const expectedChecks = [
     {
-      id: "SSH-PASSWORD-AUTH",
+      id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH,
       name: "Password Authentication Disabled",
       severity: "critical",
       expectedValue: "no",
@@ -292,7 +293,7 @@ describe("[MUTATION-KILLER] SSH check string assertions", () => {
       explain: "Password authentication allows brute-force attacks. Key-based auth is significantly more secure.",
     },
     {
-      id: "SSH-ROOT-LOGIN",
+      id: CHECK_IDS.SSH.SSH_ROOT_LOGIN,
       name: "Root Login Restricted",
       severity: "critical",
       expectedValue: "no or prohibit-password",
@@ -300,7 +301,7 @@ describe("[MUTATION-KILLER] SSH check string assertions", () => {
       explain: "Direct root login increases attack surface. Use a regular user with sudo instead.",
     },
     {
-      id: "SSH-EMPTY-PASSWORDS",
+      id: CHECK_IDS.SSH.SSH_EMPTY_PASSWORDS,
       name: "Empty Passwords Denied",
       severity: "critical",
       expectedValue: "no",
@@ -308,7 +309,7 @@ describe("[MUTATION-KILLER] SSH check string assertions", () => {
       explain: "Allowing empty passwords lets anyone log in without credentials.",
     },
     {
-      id: "SSH-PUBKEY-AUTH",
+      id: CHECK_IDS.SSH.SSH_PUBKEY_AUTH,
       name: "Public Key Authentication Enabled",
       severity: "warning",
       expectedValue: "yes",
@@ -316,7 +317,7 @@ describe("[MUTATION-KILLER] SSH check string assertions", () => {
       explain: "Public key authentication provides strong cryptographic identity verification.",
     },
     {
-      id: "SSH-MAX-AUTH-TRIES",
+      id: CHECK_IDS.SSH.SSH_MAX_AUTH_TRIES,
       name: "Max Auth Tries Limited",
       severity: "warning",
       expectedValue: "5 or less",
@@ -324,7 +325,7 @@ describe("[MUTATION-KILLER] SSH check string assertions", () => {
       explain: "Limiting authentication attempts slows down brute-force attacks.",
     },
     {
-      id: "SSH-X11-FORWARDING",
+      id: CHECK_IDS.SSH.SSH_X11_FORWARDING,
       name: "X11 Forwarding Disabled",
       severity: "info",
       expectedValue: "no",
@@ -332,7 +333,7 @@ describe("[MUTATION-KILLER] SSH check string assertions", () => {
       explain: "X11 forwarding can be exploited for display hijacking on servers that don't need GUI access.",
     },
     {
-      id: "SSH-CLIENT-ALIVE-INTERVAL",
+      id: CHECK_IDS.SSH.SSH_CLIENT_ALIVE_INTERVAL,
       name: "Client Alive Interval Configured",
       severity: "warning",
       expectedValue: "300 or less (non-zero)",
@@ -340,7 +341,7 @@ describe("[MUTATION-KILLER] SSH check string assertions", () => {
       explain: "Setting a client alive interval disconnects idle sessions, reducing the risk of session hijacking.",
     },
     {
-      id: "SSH-CLIENT-ALIVE-COUNT",
+      id: CHECK_IDS.SSH.SSH_CLIENT_ALIVE_COUNT,
       name: "Client Alive Count Max Limited",
       severity: "warning",
       expectedValue: "3 or less",
@@ -348,7 +349,7 @@ describe("[MUTATION-KILLER] SSH check string assertions", () => {
       explain: "Limiting alive count ensures unresponsive sessions are terminated after a short time.",
     },
     {
-      id: "SSH-LOGIN-GRACE-TIME",
+      id: CHECK_IDS.SSH.SSH_LOGIN_GRACE_TIME,
       name: "Login Grace Time Restricted",
       severity: "warning",
       expectedValue: "60 or less",
@@ -356,7 +357,7 @@ describe("[MUTATION-KILLER] SSH check string assertions", () => {
       explain: "Restricting login grace time limits how long an unauthenticated connection is held open.",
     },
     {
-      id: "SSH-IGNORE-RHOSTS",
+      id: CHECK_IDS.SSH.SSH_IGNORE_RHOSTS,
       name: "Ignore Rhosts Files",
       severity: "critical",
       expectedValue: "yes",
@@ -364,7 +365,7 @@ describe("[MUTATION-KILLER] SSH check string assertions", () => {
       explain: "Rhosts-based authentication is insecure and allows host-based trust without cryptographic verification.",
     },
     {
-      id: "SSH-HOSTBASED-AUTH",
+      id: CHECK_IDS.SSH.SSH_HOSTBASED_AUTH,
       name: "Host-Based Authentication Disabled",
       severity: "critical",
       expectedValue: "no",
@@ -372,7 +373,7 @@ describe("[MUTATION-KILLER] SSH check string assertions", () => {
       explain: "Host-based authentication trusts remote hosts without user credentials, enabling lateral movement.",
     },
     {
-      id: "SSH-MAX-SESSIONS",
+      id: CHECK_IDS.SSH.SSH_MAX_SESSIONS,
       name: "Max Sessions Limited",
       severity: "warning",
       expectedValue: "10 or less",
@@ -380,7 +381,7 @@ describe("[MUTATION-KILLER] SSH check string assertions", () => {
       explain: "Limiting max sessions per connection prevents resource exhaustion and reduces attack surface.",
     },
     {
-      id: "SSH-USE-DNS",
+      id: CHECK_IDS.SSH.SSH_USE_DNS,
       name: "DNS Lookup Disabled",
       severity: "info",
       expectedValue: "no",
@@ -388,7 +389,7 @@ describe("[MUTATION-KILLER] SSH check string assertions", () => {
       explain: "Disabling DNS lookups speeds up SSH connections and avoids DNS-based information disclosure.",
     },
     {
-      id: "SSH-PERMIT-USER-ENV",
+      id: CHECK_IDS.SSH.SSH_PERMIT_USER_ENV,
       name: "User Environment Passthrough Disabled",
       severity: "warning",
       expectedValue: "no",
@@ -396,7 +397,7 @@ describe("[MUTATION-KILLER] SSH check string assertions", () => {
       explain: "Allowing user environment passthrough can be used to bypass security restrictions via environment variables.",
     },
     {
-      id: "SSH-LOG-LEVEL",
+      id: CHECK_IDS.SSH.SSH_LOG_LEVEL,
       name: "SSH Logging Level Adequate",
       severity: "info",
       expectedValue: "VERBOSE or INFO",
@@ -404,7 +405,7 @@ describe("[MUTATION-KILLER] SSH check string assertions", () => {
       explain: "Verbose or INFO logging ensures sufficient detail is captured for security audit and incident response.",
     },
     {
-      id: "SSH-STRONG-CIPHERS",
+      id: CHECK_IDS.SSH.SSH_STRONG_CIPHERS,
       name: "No Weak SSH Ciphers",
       severity: "warning",
       expectedValue: "No weak ciphers (3des, arcfour, blowfish, cast)",
@@ -412,7 +413,7 @@ describe("[MUTATION-KILLER] SSH check string assertions", () => {
       explain: "Weak ciphers like 3DES and Blowfish are vulnerable to known cryptographic attacks.",
     },
     {
-      id: "SSH-STRONG-MACS",
+      id: CHECK_IDS.SSH.SSH_STRONG_MACS,
       name: "No Weak SSH MACs",
       severity: "warning",
       expectedValue: "No weak MACs (md5, umac-64)",
@@ -420,7 +421,7 @@ describe("[MUTATION-KILLER] SSH check string assertions", () => {
       explain: "Weak MACs like MD5-based algorithms do not provide sufficient integrity protection for SSH sessions.",
     },
     {
-      id: "SSH-STRONG-KEX",
+      id: CHECK_IDS.SSH.SSH_STRONG_KEX,
       name: "No Weak KEX Algorithms",
       severity: "warning",
       expectedValue: "No weak KEX (sha1, diffie-hellman-group1, diffie-hellman-group-exchange-sha1)",
@@ -428,7 +429,7 @@ describe("[MUTATION-KILLER] SSH check string assertions", () => {
       explain: "Weak key exchange algorithms based on SHA-1 are vulnerable to collision attacks.",
     },
     {
-      id: "SSH-MAX-STARTUPS",
+      id: CHECK_IDS.SSH.SSH_MAX_STARTUPS,
       name: "MaxStartups Limits Concurrent Unauthenticated Connections",
       severity: "warning",
       expectedValue: "10:30:60 or stricter (start <= 10)",
@@ -436,7 +437,7 @@ describe("[MUTATION-KILLER] SSH check string assertions", () => {
       explain: "MaxStartups limits concurrent unauthenticated SSH connections, mitigating brute-force and resource exhaustion attacks.",
     },
     {
-      id: "SSH-STRICT-MODES",
+      id: CHECK_IDS.SSH.SSH_STRICT_MODES,
       name: "StrictModes Enabled",
       severity: "warning",
       expectedValue: "yes",
@@ -444,7 +445,7 @@ describe("[MUTATION-KILLER] SSH check string assertions", () => {
       explain: "StrictModes checks file permissions on user SSH files before accepting login, preventing exploitation of misconfigured authorized_keys.",
     },
     {
-      id: "SSH-NO-AGENT-FORWARDING",
+      id: CHECK_IDS.SSH.SSH_NO_AGENT_FORWARDING,
       name: "SSH Agent Forwarding Disabled",
       severity: "warning",
       expectedValue: "no",
@@ -452,7 +453,7 @@ describe("[MUTATION-KILLER] SSH check string assertions", () => {
       explain: "SSH agent forwarding exposes the authentication agent to the remote server, enabling key theft if the server is compromised.",
     },
     {
-      id: "SSH-PRINT-MOTD",
+      id: CHECK_IDS.SSH.SSH_PRINT_MOTD,
       name: "PrintMotd Handled by PAM",
       severity: "info",
       expectedValue: "no",
@@ -569,121 +570,121 @@ describe("[MUTATION-KILLER] SSH N/A output string assertions", () => {
 describe("[MUTATION-KILLER] SSH comparator edge cases", () => {
   it("[MUTATION-KILLER] SSH-ROOT-LOGIN passes with 'without-password'", () => {
     const checks = parseSSHChecks("permitrootlogin without-password", "bare");
-    const check = checks.find((c) => c.id === "SSH-ROOT-LOGIN");
+    const check = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_ROOT_LOGIN);
     expect(check!.passed).toBe(true);
   });
 
   it("[MUTATION-KILLER] SSH-ROOT-LOGIN passes with 'no'", () => {
     const checks = parseSSHChecks("permitrootlogin no", "bare");
-    const check = checks.find((c) => c.id === "SSH-ROOT-LOGIN");
+    const check = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_ROOT_LOGIN);
     expect(check!.passed).toBe(true);
   });
 
   it("[MUTATION-KILLER] SSH-MAX-AUTH-TRIES passes with exactly 5", () => {
     const checks = parseSSHChecks("maxauthtries 5", "bare");
-    const check = checks.find((c) => c.id === "SSH-MAX-AUTH-TRIES");
+    const check = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_MAX_AUTH_TRIES);
     expect(check!.passed).toBe(true);
   });
 
   it("[MUTATION-KILLER] SSH-MAX-AUTH-TRIES passes with 1", () => {
     const checks = parseSSHChecks("maxauthtries 1", "bare");
-    const check = checks.find((c) => c.id === "SSH-MAX-AUTH-TRIES");
+    const check = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_MAX_AUTH_TRIES);
     expect(check!.passed).toBe(true);
   });
 
   it("[MUTATION-KILLER] SSH-CLIENT-ALIVE-INTERVAL passes with exactly 1", () => {
     const checks = parseSSHChecks("clientaliveinterval 1", "bare");
-    const check = checks.find((c) => c.id === "SSH-CLIENT-ALIVE-INTERVAL");
+    const check = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_CLIENT_ALIVE_INTERVAL);
     expect(check!.passed).toBe(true);
   });
 
   it("[MUTATION-KILLER] SSH-CLIENT-ALIVE-COUNT passes with exactly 1", () => {
     const checks = parseSSHChecks("clientalivecountmax 1", "bare");
-    const check = checks.find((c) => c.id === "SSH-CLIENT-ALIVE-COUNT");
+    const check = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_CLIENT_ALIVE_COUNT);
     expect(check!.passed).toBe(true);
   });
 
   it("[MUTATION-KILLER] SSH-CLIENT-ALIVE-COUNT fails with 0", () => {
     const checks = parseSSHChecks("clientalivecountmax 0", "bare");
-    const check = checks.find((c) => c.id === "SSH-CLIENT-ALIVE-COUNT");
+    const check = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_CLIENT_ALIVE_COUNT);
     expect(check!.passed).toBe(false);
   });
 
   it("[MUTATION-KILLER] SSH-LOGIN-GRACE-TIME passes with exactly 1", () => {
     const checks = parseSSHChecks("logingracetime 1", "bare");
-    const check = checks.find((c) => c.id === "SSH-LOGIN-GRACE-TIME");
+    const check = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_LOGIN_GRACE_TIME);
     expect(check!.passed).toBe(true);
   });
 
   it("[MUTATION-KILLER] SSH-LOGIN-GRACE-TIME fails with 0", () => {
     const checks = parseSSHChecks("logingracetime 0", "bare");
-    const check = checks.find((c) => c.id === "SSH-LOGIN-GRACE-TIME");
+    const check = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_LOGIN_GRACE_TIME);
     expect(check!.passed).toBe(false);
   });
 
   it("[MUTATION-KILLER] SSH-MAX-SESSIONS passes with exactly 1", () => {
     const checks = parseSSHChecks("maxsessions 1", "bare");
-    const check = checks.find((c) => c.id === "SSH-MAX-SESSIONS");
+    const check = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_MAX_SESSIONS);
     expect(check!.passed).toBe(true);
   });
 
   it("[MUTATION-KILLER] SSH-MAX-SESSIONS fails with 0", () => {
     const checks = parseSSHChecks("maxsessions 0", "bare");
-    const check = checks.find((c) => c.id === "SSH-MAX-SESSIONS");
+    const check = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_MAX_SESSIONS);
     expect(check!.passed).toBe(false);
   });
 
   it("[MUTATION-KILLER] SSH-MAX-SESSIONS fails with 11", () => {
     const checks = parseSSHChecks("maxsessions 11", "bare");
-    const check = checks.find((c) => c.id === "SSH-MAX-SESSIONS");
+    const check = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_MAX_SESSIONS);
     expect(check!.passed).toBe(false);
   });
 
   it("[MUTATION-KILLER] SSH-LOG-LEVEL passes with INFO", () => {
     const checks = parseSSHChecks("loglevel INFO", "bare");
-    const check = checks.find((c) => c.id === "SSH-LOG-LEVEL");
+    const check = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_LOG_LEVEL);
     expect(check!.passed).toBe(true);
   });
 
   it("[MUTATION-KILLER] SSH-LOG-LEVEL fails with QUIET", () => {
     const checks = parseSSHChecks("loglevel QUIET", "bare");
-    const check = checks.find((c) => c.id === "SSH-LOG-LEVEL");
+    const check = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_LOG_LEVEL);
     expect(check!.passed).toBe(false);
   });
 
   it("[MUTATION-KILLER] SSH-STRONG-CIPHERS fails with arcfour", () => {
     const checks = parseSSHChecks("ciphers arcfour128,aes256-ctr", "bare");
-    const check = checks.find((c) => c.id === "SSH-STRONG-CIPHERS");
+    const check = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_STRONG_CIPHERS);
     expect(check!.passed).toBe(false);
   });
 
   it("[MUTATION-KILLER] SSH-STRONG-CIPHERS fails with blowfish", () => {
     const checks = parseSSHChecks("ciphers blowfish-cbc,aes256-ctr", "bare");
-    const check = checks.find((c) => c.id === "SSH-STRONG-CIPHERS");
+    const check = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_STRONG_CIPHERS);
     expect(check!.passed).toBe(false);
   });
 
   it("[MUTATION-KILLER] SSH-STRONG-CIPHERS fails with cast", () => {
     const checks = parseSSHChecks("ciphers cast128-cbc,aes256-ctr", "bare");
-    const check = checks.find((c) => c.id === "SSH-STRONG-CIPHERS");
+    const check = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_STRONG_CIPHERS);
     expect(check!.passed).toBe(false);
   });
 
   it("[MUTATION-KILLER] SSH-STRONG-KEX fails with diffie-hellman-group-exchange-sha1", () => {
     const checks = parseSSHChecks("kexalgorithms diffie-hellman-group-exchange-sha1,curve25519-sha256", "bare");
-    const check = checks.find((c) => c.id === "SSH-STRONG-KEX");
+    const check = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_STRONG_KEX);
     expect(check!.passed).toBe(false);
   });
 
   it("[MUTATION-KILLER] SSH-MAX-STARTUPS passes with start=5 (stricter)", () => {
     const checks = parseSSHChecks("maxstartups 5:30:60", "bare");
-    const check = checks.find((c) => c.id === "SSH-MAX-STARTUPS");
+    const check = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_MAX_STARTUPS);
     expect(check!.passed).toBe(true);
   });
 
   it("[MUTATION-KILLER] SSH-MAX-STARTUPS fails with start=11", () => {
     const checks = parseSSHChecks("maxstartups 11:30:60", "bare");
-    const check = checks.find((c) => c.id === "SSH-MAX-STARTUPS");
+    const check = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_MAX_STARTUPS);
     expect(check!.passed).toBe(false);
   });
 });

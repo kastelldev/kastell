@@ -1,3 +1,4 @@
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 import { parseCloudMetaChecks } from "../../src/core/audit/checks/cloudmeta.js";
 
 describe("parseCloudMetaChecks", () => {
