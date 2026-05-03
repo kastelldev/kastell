@@ -1,3 +1,4 @@
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 import { COMPLIANCE_MAP, FRAMEWORK_VERSIONS, cis, pci, hipaa } from "../../src/core/audit/compliance/mapper.js";
 import { CHECK_REGISTRY, mergeComplianceRefs } from "../../src/core/audit/checks/index.js";
 import type { AuditCategory, AuditCheck, ComplianceCoverage } from "../../src/core/audit/types.js";
@@ -95,7 +96,7 @@ describe("Compliance mapper CI guards", () => {
   describe("mergeComplianceRefs", () => {
     it("injects compliance refs without mutating originals", () => {
       const mockCheck: AuditCheck = {
-        id: "SSH-PASSWORD-AUTH",
+        id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH,
         category: "SSH",
         name: "Password Authentication",
         severity: "critical",
@@ -110,7 +111,7 @@ describe("Compliance mapper CI guards", () => {
         maxScore: 100,
       };
       const map = {
-        "SSH-PASSWORD-AUTH": [
+        [CHECK_IDS.SSH.SSH_PASSWORD_AUTH]: [
           {
             framework: "CIS",
             controlId: "5.2.8",
@@ -271,7 +272,7 @@ describe("hipaa() builder — exact output values", () => {
 
 describe("COMPLIANCE_MAP — exact spot-check assertions", () => {
   it("SSH-PASSWORD-AUTH has CIS control 5.2.8 as first ref", () => {
-    const refs = COMPLIANCE_MAP["SSH-PASSWORD-AUTH"];
+    const refs = COMPLIANCE_MAP[CHECK_IDS.SSH.SSH_PASSWORD_AUTH];
     expect(refs).toBeDefined();
     expect(refs[0].framework).toBe("CIS");
     expect(refs[0].controlId).toBe("5.2.8");
@@ -280,19 +281,19 @@ describe("COMPLIANCE_MAP — exact spot-check assertions", () => {
   });
 
   it("SSH-PASSWORD-AUTH has exactly 3 compliance refs", () => {
-    const refs = COMPLIANCE_MAP["SSH-PASSWORD-AUTH"];
+    const refs = COMPLIANCE_MAP[CHECK_IDS.SSH.SSH_PASSWORD_AUTH];
     expect(refs).toHaveLength(3);
   });
 
   it("SSH-PASSWORD-AUTH refs include PCI-DSS and HIPAA", () => {
-    const refs = COMPLIANCE_MAP["SSH-PASSWORD-AUTH"];
+    const refs = COMPLIANCE_MAP[CHECK_IDS.SSH.SSH_PASSWORD_AUTH];
     const frameworks = refs.map((r) => r.framework);
     expect(frameworks).toContain("PCI-DSS");
     expect(frameworks).toContain("HIPAA");
   });
 
   it("SSH-ROOT-LOGIN has exactly 2 refs (CIS + PCI-DSS)", () => {
-    const refs = COMPLIANCE_MAP["SSH-ROOT-LOGIN"];
+    const refs = COMPLIANCE_MAP[CHECK_IDS.SSH.SSH_ROOT_LOGIN];
     expect(refs).toHaveLength(2);
     const frameworks = refs.map((r) => r.framework);
     expect(frameworks).toContain("CIS");
@@ -300,14 +301,14 @@ describe("COMPLIANCE_MAP — exact spot-check assertions", () => {
   });
 
   it("SSH-EMPTY-PASSWORDS has exactly 1 ref (CIS only)", () => {
-    const refs = COMPLIANCE_MAP["SSH-EMPTY-PASSWORDS"];
+    const refs = COMPLIANCE_MAP[CHECK_IDS.SSH.SSH_EMPTY_PASSWORDS];
     expect(refs).toHaveLength(1);
     expect(refs[0].framework).toBe("CIS");
     expect(refs[0].controlId).toBe("5.2.11");
   });
 
   it("FW-UFW-ACTIVE has CIS 3.5.1.1 as first CIS ref", () => {
-    const refs = COMPLIANCE_MAP["FW-UFW-ACTIVE"];
+    const refs = COMPLIANCE_MAP[CHECK_IDS.FIREWALL.FW_UFW_ACTIVE];
     expect(refs).toBeDefined();
     const cisRef = refs.find((r) => r.framework === "CIS");
     expect(cisRef).toBeDefined();
@@ -315,7 +316,7 @@ describe("COMPLIANCE_MAP — exact spot-check assertions", () => {
   });
 
   it("LOG-SYSLOG-ACTIVE has refs from all 3 frameworks", () => {
-    const refs = COMPLIANCE_MAP["LOG-SYSLOG-ACTIVE"];
+    const refs = COMPLIANCE_MAP[CHECK_IDS.LOGGING.LOG_SYSLOG_ACTIVE];
     const frameworks = refs.map((r) => r.framework);
     expect(frameworks).toContain("CIS");
     expect(frameworks).toContain("PCI-DSS");
@@ -323,19 +324,19 @@ describe("COMPLIANCE_MAP — exact spot-check assertions", () => {
   });
 
   it("LOG-AUDIT-LOGIN-RULES CIS ref has level L2", () => {
-    const refs = COMPLIANCE_MAP["LOG-AUDIT-LOGIN-RULES"];
+    const refs = COMPLIANCE_MAP[CHECK_IDS.LOGGING.LOG_AUDIT_LOGIN_RULES];
     const cisRef = refs.find((r) => r.framework === "CIS");
     expect(cisRef!.level).toBe("L2");
   });
 
   it("FINT-AIDE-INSTALLED has CIS level L2", () => {
-    const refs = COMPLIANCE_MAP["FINT-AIDE-INSTALLED"];
+    const refs = COMPLIANCE_MAP[CHECK_IDS.FILEINTEGRITY.FINT_AIDE_INSTALLED];
     const cisRef = refs.find((r) => r.framework === "CIS");
     expect(cisRef!.level).toBe("L2");
   });
 
   it("CRYPTO-NO-SSLV3 has 3 refs: CIS + PCI-DSS + HIPAA with coverage=full", () => {
-    const refs = COMPLIANCE_MAP["CRYPTO-NO-SSLV3"];
+    const refs = COMPLIANCE_MAP[CHECK_IDS.CRYPTO.CRYPTO_NO_SSLV3];
     expect(refs).toHaveLength(3);
     // PCI ref has coverage full
     const pciRef = refs.find((r) => r.framework === "PCI-DSS");
@@ -346,7 +347,7 @@ describe("COMPLIANCE_MAP — exact spot-check assertions", () => {
   });
 
   it("DCK-ROOTLESS-MODE maps to PCI-DSS 2.2.5 with coverage=partial", () => {
-    const refs = COMPLIANCE_MAP["DCK-ROOTLESS-MODE"];
+    const refs = COMPLIANCE_MAP[CHECK_IDS.DOCKER.DCK_ROOTLESS_MODE];
     expect(refs).toBeDefined();
     expect(refs[0].framework).toBe("PCI-DSS");
     expect(refs[0].controlId).toBe("2.2.5");
@@ -354,7 +355,7 @@ describe("COMPLIANCE_MAP — exact spot-check assertions", () => {
   });
 
   it("SECRETS-SSH-KEY-PERMS has both PCI-DSS and HIPAA refs", () => {
-    const refs = COMPLIANCE_MAP["SECRETS-SSH-KEY-PERMS"];
+    const refs = COMPLIANCE_MAP[CHECK_IDS.SECRETS.SECRETS_SSH_KEY_PERMS];
     const frameworks = refs.map((r) => r.framework);
     expect(frameworks).toContain("PCI-DSS");
     expect(frameworks).toContain("HIPAA");
@@ -426,7 +427,7 @@ describe("COMPLIANCE_MAP — exact spot-check assertions", () => {
 
 describe("mergeComplianceRefs — additional mutation-killing assertions", () => {
   it("returns a NEW array (not the same reference as input)", () => {
-    const mockCheck: AuditCheck = { id: "SSH-ROOT-LOGIN", category: "SSH", name: "Root Login", severity: "critical", passed: false, currentValue: "yes", expectedValue: "no" };
+    const mockCheck: AuditCheck = { id: CHECK_IDS.SSH.SSH_ROOT_LOGIN, category: "SSH", name: "Root Login", severity: "critical", passed: false, currentValue: "yes", expectedValue: "no" };
     const mockCategory: AuditCategory = { name: "SSH", checks: [mockCheck], score: 0, maxScore: 100 };
     const result = mergeComplianceRefs([mockCategory], COMPLIANCE_MAP);
     expect(result).not.toBe([mockCategory]);
@@ -441,7 +442,7 @@ describe("mergeComplianceRefs — additional mutation-killing assertions", () =>
   });
 
   it("merges multiple refs when check has 3 compliance mappings", () => {
-    const mockCheck: AuditCheck = { id: "SSH-PASSWORD-AUTH", category: "SSH", name: "Pw Auth", severity: "critical", passed: false, currentValue: "yes", expectedValue: "no" };
+    const mockCheck: AuditCheck = { id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH, category: "SSH", name: "Pw Auth", severity: "critical", passed: false, currentValue: "yes", expectedValue: "no" };
     const mockCategory: AuditCategory = { name: "SSH", checks: [mockCheck], score: 0, maxScore: 100 };
     const result = mergeComplianceRefs([mockCategory], COMPLIANCE_MAP);
     expect(result[0].checks[0].complianceRefs).toHaveLength(3);
@@ -449,7 +450,7 @@ describe("mergeComplianceRefs — additional mutation-killing assertions", () =>
 
   it("preserves all other check fields when merging refs", () => {
     const mockCheck: AuditCheck = {
-      id: "SSH-PASSWORD-AUTH",
+      id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH,
       category: "SSH",
       name: "Password Authentication",
       severity: "critical",
@@ -460,7 +461,7 @@ describe("mergeComplianceRefs — additional mutation-killing assertions", () =>
     const mockCategory: AuditCategory = { name: "SSH", checks: [mockCheck], score: 0, maxScore: 100 };
     const result = mergeComplianceRefs([mockCategory], COMPLIANCE_MAP);
     const merged = result[0].checks[0];
-    expect(merged.id).toBe("SSH-PASSWORD-AUTH");
+    expect(merged.id).toBe(CHECK_IDS.SSH.SSH_PASSWORD_AUTH);
     expect(merged.category).toBe("SSH");
     expect(merged.name).toBe("Password Authentication");
     expect(merged.severity).toBe("critical");

@@ -1,3 +1,4 @@
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 import { calculateComplianceScores, calculateComplianceDetail, filterByProfile } from "../../src/core/audit/compliance/scoring.js";
 import type { AuditCategory, AuditCheck, AuditResult } from "../../src/core/audit/types.js";
 
@@ -21,17 +22,17 @@ describe("calculateComplianceScores", () => {
 
   it("returns empty array when no compliance refs exist", () => {
     const cat = makeCategory("SSH", [
-      makeCheck("SSH-ROOT-LOGIN", true, undefined),
+      makeCheck(CHECK_IDS.SSH.SSH_ROOT_LOGIN, true, undefined),
     ]);
     expect(calculateComplianceScores([cat])).toEqual([]);
   });
 
   it("calculates pass rate for single framework", () => {
     const cat = makeCategory("SSH", [
-      makeCheck("SSH-ROOT-LOGIN", true, [
+      makeCheck(CHECK_IDS.SSH.SSH_ROOT_LOGIN, true, [
         { framework: "CIS", controlId: "5.2.10", version: "CIS Ubuntu 22.04 v2.0.0", description: "Test", coverage: "full", level: "L1" },
       ]),
-      makeCheck("SSH-PASSWORD-AUTH", false, [
+      makeCheck(CHECK_IDS.SSH.SSH_PASSWORD_AUTH, false, [
         { framework: "CIS", controlId: "5.2.8", version: "CIS Ubuntu 22.04 v2.0.0", description: "Test", coverage: "full", level: "L1" },
       ]),
     ]);
@@ -171,10 +172,10 @@ describe("calculateComplianceDetail", () => {
 
   it("returns per-control check lists", () => {
     const cat = makeCategory("SSH", [
-      makeCheck("SSH-ROOT-LOGIN", true, [
+      makeCheck(CHECK_IDS.SSH.SSH_ROOT_LOGIN, true, [
         { framework: "CIS", controlId: "5.2.10", version: "CIS Ubuntu 22.04 v2.0.0", description: "Disable root", coverage: "full", level: "L1" },
       ]),
-      makeCheck("SSH-PASSWORD-AUTH", false, [
+      makeCheck(CHECK_IDS.SSH.SSH_PASSWORD_AUTH, false, [
         { framework: "CIS", controlId: "5.2.10", version: "CIS Ubuntu 22.04 v2.0.0", description: "Disable root", coverage: "full", level: "L1" },
       ]),
     ]);

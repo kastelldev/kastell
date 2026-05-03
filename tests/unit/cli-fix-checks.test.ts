@@ -1,3 +1,4 @@
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 import { fixSafeCommand } from "../../src/commands/fix.js";
 
 // Mock all dependencies
@@ -157,7 +158,7 @@ describe("CLI fix --checks", () => {
     const mockPreview = jest.requireMock("../../src/core/audit/fix.js").previewSafeFixes;
     const mockRunForbiddenFixes = jest.requireMock("../../src/core/audit/fix.js").runForbiddenFixes;
 
-    const forbiddenFix = [{ checkId: "SSH-ROOT-LOGIN", command: "echo test", tier: "FORBIDDEN" as const }];
+    const forbiddenFix = [{ checkId: CHECK_IDS.SSH.SSH_ROOT_LOGIN, command: "echo test", tier: "FORBIDDEN" as const }];
     const safeCheck = { id: "KERN-SYNCOOKIES", name: "SYN cookies", severity: "warning", category: "Kernel", tier: "SAFE", impact: 5, commands: ["echo test"] };
     mockPreview.mockReturnValueOnce({
       safePlan: { groups: [{ checks: [safeCheck] }] },

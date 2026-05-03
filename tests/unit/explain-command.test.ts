@@ -1,3 +1,4 @@
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 import { explainCommand } from "../../src/commands/explain.js";
 
 jest.mock("../../src/core/audit/explainCheck.js", () => ({
@@ -34,11 +35,11 @@ describe("explainCommand", () => {
 
   it("prints terminal output for valid check ID", async () => {
     mockedFind.mockReturnValue({
-      match: { id: "SSH-PASSWORD-AUTH", name: "Test", category: "SSH", severity: "critical", explain: "test", fixTier: "FORBIDDEN", complianceRefs: [] },
+      match: { id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH, name: "Test", category: "SSH", severity: "critical", explain: "test", fixTier: "FORBIDDEN", complianceRefs: [] },
       suggestions: [],
     });
 
-    await explainCommand("SSH-PASSWORD-AUTH", {});
+    await explainCommand(CHECK_IDS.SSH.SSH_PASSWORD_AUTH, {});
     expect(formatExplainTerminal).toHaveBeenCalled();
     expect(consoleSpy).toHaveBeenCalledWith("terminal output");
   });
@@ -64,7 +65,7 @@ describe("explainCommand", () => {
   });
 
   it("exits with error and suggestions for unknown ID", async () => {
-    mockedFind.mockReturnValue({ match: null, suggestions: ["SSH-PASSWORD-AUTH"] });
+    mockedFind.mockReturnValue({ match: null, suggestions: [CHECK_IDS.SSH.SSH_PASSWORD_AUTH] });
 
     await expect(explainCommand("SSH-PASWORD", {})).rejects.toThrow("exit");
     expect(exitSpy).toHaveBeenCalledWith(1);

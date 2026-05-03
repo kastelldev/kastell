@@ -1,3 +1,4 @@
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 import {
   saveFixHistory,
   loadFixHistory,
@@ -98,7 +99,7 @@ function makeEntry(overrides: Partial<FixHistoryEntry> = {}): FixHistoryEntry {
     serverIp: "1.2.3.4",
     serverName: "test-server",
     timestamp: "2026-03-29T10:00:00Z",
-    checks: ["SSH-PERMIT-ROOT", "SSH-PASSWORD-AUTH"],
+    checks: ["SSH-PERMIT-ROOT", CHECK_IDS.SSH.SSH_PASSWORD_AUTH],
     scoreBefore: 65,
     scoreAfter: 78,
     status: "applied",

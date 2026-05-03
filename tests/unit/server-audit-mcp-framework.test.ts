@@ -10,6 +10,7 @@ import { handleServerAudit, serverAuditSchema } from "../../src/mcp/tools/server
 import type { AuditResult } from "../../src/core/audit/types";
 import type { ComplianceRef } from "../../src/core/audit/types";
 import { z } from "zod";
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 
 jest.mock("../../src/utils/config");
 jest.mock("../../src/core/audit/index");
@@ -57,7 +58,7 @@ const sampleAuditResult: AuditResult = {
       name: "SSH",
       checks: [
         {
-          id: "SSH-PASSWORD-AUTH",
+          id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH,
           category: "SSH",
           name: "Password Authentication",
           severity: "critical",
@@ -67,7 +68,7 @@ const sampleAuditResult: AuditResult = {
           complianceRefs: [cisL1Ref, pciRef],
         },
         {
-          id: "SSH-ROOT-LOGIN",
+          id: CHECK_IDS.SSH.SSH_ROOT_LOGIN,
           category: "SSH",
           name: "Root Login",
           severity: "critical",

@@ -1,3 +1,4 @@
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 import { serverExplainHandler, serverExplainSchema } from "../../src/mcp/tools/serverExplain.js";
 import { clearCheckCatalogCache } from "../../src/core/audit/explainCheck.js";
 
@@ -5,10 +6,10 @@ beforeEach(() => { clearCheckCatalogCache(); });
 
 describe("serverExplainHandler", () => {
   it("returns check details for valid ID", async () => {
-    const result = await serverExplainHandler({ checkId: "SSH-PASSWORD-AUTH" });
+    const result = await serverExplainHandler({ checkId: CHECK_IDS.SSH.SSH_PASSWORD_AUTH });
     expect(result.content[0].type).toBe("text");
     const parsed = JSON.parse(result.content[0].text);
-    expect(parsed.id).toBe("SSH-PASSWORD-AUTH");
+    expect(parsed.id).toBe(CHECK_IDS.SSH.SSH_PASSWORD_AUTH);
     expect(parsed.category).toBe("SSH");
     expect(parsed.severity).toBe("critical");
     expect(parsed.explain).toBeDefined();
@@ -21,7 +22,7 @@ describe("serverExplainHandler", () => {
     expect(result.isError).toBe(true);
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.error).toContain("Unknown check ID");
-    expect(parsed.error).toContain("SSH-PASSWORD-AUTH");
+    expect(parsed.error).toContain(CHECK_IDS.SSH.SSH_PASSWORD_AUTH);
     expect(parsed.hint).toBeDefined();
   });
 
@@ -36,7 +37,7 @@ describe("serverExplainHandler", () => {
 
 describe("serverExplainSchema", () => {
   it("requires checkId string", () => {
-    const result = serverExplainSchema.safeParse({ checkId: "SSH-PASSWORD-AUTH" });
+    const result = serverExplainSchema.safeParse({ checkId: CHECK_IDS.SSH.SSH_PASSWORD_AUTH });
     expect(result.success).toBe(true);
   });
 

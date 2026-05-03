@@ -1,3 +1,4 @@
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 import { previewFixes, runFix, isFixCommandAllowed, resolveTier, KNOWN_AUDIT_FIX_PREFIXES, FORBIDDEN_CATEGORIES, previewSafeFixes } from "../../src/core/audit/fix.js";
 import type { AuditResult, AuditCheck, AuditCategory, FixTier } from "../../src/core/audit/types.js";
 import * as ssh from "../../src/utils/ssh.js";
@@ -60,9 +61,9 @@ describe("previewFixes", () => {
   it("should return grouped fixes by severity (critical first)", () => {
     const result = makeResult([
       makeCategory("SSH", [
-        makeCheck({ id: "SSH-PASSWORD-AUTH", category: "SSH", severity: "critical", passed: false, fixCommand: "sed -i 's/yes/no/' /etc/ssh/sshd_config" }),
-        makeCheck({ id: "SSH-ROOT-LOGIN", category: "SSH", severity: "info", passed: false, fixCommand: "sed -i 's/a/b/' /etc/test" }),
-        makeCheck({ id: "SSH-EMPTY-PASSWORDS", category: "SSH", severity: "warning", passed: false, fixCommand: "systemctl restart sshd" }),
+        makeCheck({ id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH, category: "SSH", severity: "critical", passed: false, fixCommand: "sed -i 's/yes/no/' /etc/ssh/sshd_config" }),
+        makeCheck({ id: CHECK_IDS.SSH.SSH_ROOT_LOGIN, category: "SSH", severity: "info", passed: false, fixCommand: "sed -i 's/a/b/' /etc/test" }),
+        makeCheck({ id: CHECK_IDS.SSH.SSH_EMPTY_PASSWORDS, category: "SSH", severity: "warning", passed: false, fixCommand: "systemctl restart sshd" }),
       ]),
     ]);
 
@@ -76,22 +77,22 @@ describe("previewFixes", () => {
   it("should exclude checks without fixCommand", () => {
     const result = makeResult([
       makeCategory("SSH", [
-        makeCheck({ id: "SSH-PASSWORD-AUTH", severity: "critical", passed: false, fixCommand: "chmod 600 /etc/ssh/sshd_config" }),
-        makeCheck({ id: "SSH-ROOT-LOGIN", severity: "warning", passed: false }), // no fixCommand
+        makeCheck({ id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH, severity: "critical", passed: false, fixCommand: "chmod 600 /etc/ssh/sshd_config" }),
+        makeCheck({ id: CHECK_IDS.SSH.SSH_ROOT_LOGIN, severity: "warning", passed: false }), // no fixCommand
       ]),
     ]);
 
     const plan = previewFixes(result);
     const allChecks = plan.groups.flatMap(g => g.checks);
     expect(allChecks).toHaveLength(1);
-    expect(allChecks[0].id).toBe("SSH-PASSWORD-AUTH");
+    expect(allChecks[0].id).toBe(CHECK_IDS.SSH.SSH_PASSWORD_AUTH);
   });
 
   it("should include pre-condition checks for SSH password disable", () => {
     const result = makeResult([
       makeCategory("SSH", [
         makeCheck({
-          id: "SSH-PASSWORD-AUTH",
+          id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH,
           category: "SSH",
           name: "Password Authentication",
           severity: "critical",
@@ -110,11 +111,11 @@ describe("previewFixes", () => {
   it("should batch fixes by category for efficiency", () => {
     const result = makeResult([
       makeCategory("SSH", [
-        makeCheck({ id: "SSH-PASSWORD-AUTH", category: "SSH", severity: "critical", passed: false, fixCommand: "sed -i 's/x/y/' /etc/a" }),
-        makeCheck({ id: "SSH-ROOT-LOGIN", category: "SSH", severity: "critical", passed: false, fixCommand: "sed -i 's/p/q/' /etc/b" }),
+        makeCheck({ id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH, category: "SSH", severity: "critical", passed: false, fixCommand: "sed -i 's/x/y/' /etc/a" }),
+        makeCheck({ id: CHECK_IDS.SSH.SSH_ROOT_LOGIN, category: "SSH", severity: "critical", passed: false, fixCommand: "sed -i 's/p/q/' /etc/b" }),
       ]),
       makeCategory("Firewall", [
-        makeCheck({ id: "FW-UFW-ACTIVE", category: "Firewall", severity: "critical", passed: false, fixCommand: "ufw enable" }),
+        makeCheck({ id: CHECK_IDS.FIREWALL.FW_UFW_ACTIVE, category: "Firewall", severity: "critical", passed: false, fixCommand: "ufw enable" }),
       ]),
     ]);
 
@@ -128,8 +129,8 @@ describe("previewFixes", () => {
   it("should calculate estimatedImpact for each group", () => {
     const result = makeResult([
       makeCategory("SSH", [
-        makeCheck({ id: "SSH-PASSWORD-AUTH", category: "SSH", severity: "critical", passed: false, fixCommand: "chmod 600 /etc/ssh/sshd_config" }),
-        makeCheck({ id: "SSH-ROOT-LOGIN", category: "SSH", severity: "info", passed: true }),
+        makeCheck({ id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH, category: "SSH", severity: "critical", passed: false, fixCommand: "chmod 600 /etc/ssh/sshd_config" }),
+        makeCheck({ id: CHECK_IDS.SSH.SSH_ROOT_LOGIN, category: "SSH", severity: "info", passed: true }),
       ]),
     ]);
 
@@ -146,7 +147,7 @@ describe("runFix", () => {
   it("should call sshExec with fix commands for confirmed checks", async () => {
     const result = makeResult([
       makeCategory("SSH", [
-        makeCheck({ id: "SSH-PASSWORD-AUTH", category: "SSH", severity: "critical", passed: false, fixCommand: "sed -i 's/PermitRootLogin yes/no/' /etc/ssh/sshd_config" }),
+        makeCheck({ id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH, category: "SSH", severity: "critical", passed: false, fixCommand: "sed -i 's/PermitRootLogin yes/no/' /etc/ssh/sshd_config" }),
       ]),
     ]);
 
@@ -155,13 +156,13 @@ describe("runFix", () => {
 
     const fixResult = await runFix("1.2.3.4", result, { dryRun: false });
     expect(mockedSshExec).toHaveBeenCalledWith("1.2.3.4", expect.stringContaining("PermitRootLogin"));
-    expect(fixResult.applied).toContain("SSH-PASSWORD-AUTH");
+    expect(fixResult.applied).toContain(CHECK_IDS.SSH.SSH_PASSWORD_AUTH);
   });
 
   it("should skip checks the user declined", async () => {
     const result = makeResult([
       makeCategory("SSH", [
-        makeCheck({ id: "SSH-PASSWORD-AUTH", category: "SSH", severity: "critical", passed: false, fixCommand: "sed -i 's/PermitRootLogin yes/no/' /etc/ssh/sshd_config" }),
+        makeCheck({ id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH, category: "SSH", severity: "critical", passed: false, fixCommand: "sed -i 's/PermitRootLogin yes/no/' /etc/ssh/sshd_config" }),
       ]),
     ]);
 
@@ -169,13 +170,13 @@ describe("runFix", () => {
 
     const fixResult = await runFix("1.2.3.4", result, { dryRun: false });
     expect(mockedSshExec).not.toHaveBeenCalled();
-    expect(fixResult.skipped).toContain("SSH-PASSWORD-AUTH");
+    expect(fixResult.skipped).toContain(CHECK_IDS.SSH.SSH_PASSWORD_AUTH);
   });
 
   it("should not execute commands in dry-run mode", async () => {
     const result = makeResult([
       makeCategory("SSH", [
-        makeCheck({ id: "SSH-PASSWORD-AUTH", category: "SSH", severity: "critical", passed: false, fixCommand: "sed -i 's/PermitRootLogin yes/no/' /etc/ssh/sshd_config" }),
+        makeCheck({ id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH, category: "SSH", severity: "critical", passed: false, fixCommand: "sed -i 's/PermitRootLogin yes/no/' /etc/ssh/sshd_config" }),
       ]),
     ]);
 
@@ -188,7 +189,7 @@ describe("runFix", () => {
   it("should record errors when sshExec fails", async () => {
     const result = makeResult([
       makeCategory("SSH", [
-        makeCheck({ id: "SSH-PASSWORD-AUTH", category: "SSH", severity: "critical", passed: false, fixCommand: "sed -i 's/PermitRootLogin yes/no/' /etc/ssh/sshd_config" }),
+        makeCheck({ id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH, category: "SSH", severity: "critical", passed: false, fixCommand: "sed -i 's/PermitRootLogin yes/no/' /etc/ssh/sshd_config" }),
       ]),
     ]);
 
@@ -197,13 +198,13 @@ describe("runFix", () => {
 
     const fixResult = await runFix("1.2.3.4", result, { dryRun: false });
     expect(fixResult.errors).toHaveLength(1);
-    expect(fixResult.errors[0]).toContain("SSH-PASSWORD-AUTH");
+    expect(fixResult.errors[0]).toContain(CHECK_IDS.SSH.SSH_PASSWORD_AUTH);
   });
 
   it("should record errors when sshExec throws a non-Error", async () => {
     const result = makeResult([
       makeCategory("SSH", [
-        makeCheck({ id: "SSH-PASSWORD-AUTH", category: "SSH", severity: "critical", passed: false, fixCommand: "sed -i 's/PermitRootLogin yes/no/' /etc/ssh/sshd_config" }),
+        makeCheck({ id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH, category: "SSH", severity: "critical", passed: false, fixCommand: "sed -i 's/PermitRootLogin yes/no/' /etc/ssh/sshd_config" }),
       ]),
     ]);
 
@@ -212,14 +213,14 @@ describe("runFix", () => {
 
     const fixResult = await runFix("1.2.3.4", result, { dryRun: false });
     expect(fixResult.errors).toHaveLength(1);
-    expect(fixResult.errors[0]).toContain("SSH-PASSWORD-AUTH");
+    expect(fixResult.errors[0]).toContain(CHECK_IDS.SSH.SSH_PASSWORD_AUTH);
   });
 
   it("should record error when pre-condition check fails", async () => {
     const result = makeResult([
       makeCategory("SSH", [
         makeCheck({
-          id: "SSH-PASSWORD-AUTH",
+          id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH,
           category: "SSH",
           name: "Password Authentication",
           severity: "critical",
@@ -282,7 +283,7 @@ describe("runFix", () => {
     const result = makeResult([
       makeCategory("SSH", [
         makeCheck({
-          id: "SSH-ROOT-LOGIN",
+          id: CHECK_IDS.SSH.SSH_ROOT_LOGIN,
           category: "SSH",
           severity: "warning",
           passed: false,
@@ -304,7 +305,7 @@ describe("runFix", () => {
     const result = makeResult([
       makeCategory("SSH", [
         makeCheck({
-          id: "SSH-ROOT-LOGIN",
+          id: CHECK_IDS.SSH.SSH_ROOT_LOGIN,
           category: "SSH",
           severity: "warning",
           passed: false,
@@ -325,7 +326,7 @@ describe("runFix", () => {
     const result = makeResult([
       makeCategory("Firewall", [
         makeCheck({
-          id: "FW-UFW-ACTIVE",
+          id: CHECK_IDS.FIREWALL.FW_UFW_ACTIVE,
           category: "Firewall",
           name: "UFW Active",
           severity: "warning",

@@ -1,3 +1,4 @@
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 import type { AuditResult } from "../../src/core/audit/types";
 
 const mockResult: AuditResult = {
@@ -11,7 +12,7 @@ const mockResult: AuditResult = {
       name: "SSH",
       checks: [
         {
-          id: "SSH-PASSWORD-AUTH",
+          id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH,
           category: "SSH",
           name: "Password Auth",
           severity: "critical",
@@ -20,7 +21,7 @@ const mockResult: AuditResult = {
           expectedValue: "no",
         },
         {
-          id: "SSH-ROOT-LOGIN",
+          id: CHECK_IDS.SSH.SSH_ROOT_LOGIN,
           category: "SSH",
           name: "Root Login",
           severity: "critical",
@@ -38,7 +39,7 @@ const mockResult: AuditResult = {
       name: "Firewall",
       checks: [
         {
-          id: "FW-UFW-ACTIVE",
+          id: CHECK_IDS.FIREWALL.FW_UFW_ACTIVE,
           category: "Firewall",
           name: "UFW Enabled",
           severity: "critical",
@@ -93,7 +94,7 @@ describe("formatTerminal", () => {
     const output = formatTerminal(mockResult);
 
     // Failed check SSH-ROOT-LOGIN should appear
-    expect(output).toContain("SSH-ROOT-LOGIN");
+    expect(output).toContain(CHECK_IDS.SSH.SSH_ROOT_LOGIN);
     expect(output).toContain("Root Login");
   });
 
@@ -124,7 +125,7 @@ describe("formatTerminal", () => {
           name: "SSH",
           checks: [
             {
-              id: "SSH-PASSWORD-AUTH",
+              id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH,
               category: "SSH",
               name: "Password Auth",
               severity: "critical",
@@ -193,7 +194,7 @@ describe("formatTerminal", () => {
     expect(output).toContain("Firewall");
     expect(output).toContain("100%");
     // Passing category's check IDs should NOT appear individually
-    expect(output).not.toContain("FW-UFW-ACTIVE");
+    expect(output).not.toContain(CHECK_IDS.FIREWALL.FW_UFW_ACTIVE);
   });
 
   it("shows failed checks inline under failing category", async () => {
@@ -202,7 +203,7 @@ describe("formatTerminal", () => {
 
     // SSH-ROOT-LOGIN should appear inline under SSH category
     const sshIndex = output.indexOf("SSH");
-    const rootLoginIndex = output.indexOf("SSH-ROOT-LOGIN");
+    const rootLoginIndex = output.indexOf(CHECK_IDS.SSH.SSH_ROOT_LOGIN);
     expect(rootLoginIndex).toBeGreaterThan(sshIndex);
   });
 
@@ -249,7 +250,7 @@ describe("explain mode", () => {
           name: "SSH",
           checks: [
             {
-              id: "SSH-PASSWORD-AUTH",
+              id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH,
               category: "SSH",
               name: "Password Auth",
               severity: "critical",
@@ -279,7 +280,7 @@ describe("explain mode", () => {
           name: "SSH",
           checks: [
             {
-              id: "SSH-ROOT-LOGIN",
+              id: CHECK_IDS.SSH.SSH_ROOT_LOGIN,
               category: "SSH",
               name: "Root Login",
               severity: "critical",
@@ -309,7 +310,7 @@ describe("explain mode", () => {
           name: "SSH",
           checks: [
             {
-              id: "SSH-ROOT-LOGIN",
+              id: CHECK_IDS.SSH.SSH_ROOT_LOGIN,
               category: "SSH",
               name: "Root Login",
               severity: "critical",

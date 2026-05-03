@@ -1,3 +1,4 @@
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 import {
   findCheckById,
   clearCheckCatalogCache,
@@ -10,29 +11,29 @@ beforeEach(() => { clearCheckCatalogCache(); });
 
 describe("findCheckById", () => {
   it("returns exact match", () => {
-    const result = findCheckById("SSH-PASSWORD-AUTH");
+    const result = findCheckById(CHECK_IDS.SSH.SSH_PASSWORD_AUTH);
     expect(result.match).not.toBeNull();
-    expect(result.match!.id).toBe("SSH-PASSWORD-AUTH");
+    expect(result.match!.id).toBe(CHECK_IDS.SSH.SSH_PASSWORD_AUTH);
     expect(result.suggestions).toEqual([]);
   });
 
   it("returns case-insensitive match", () => {
     const result = findCheckById("ssh-password-auth");
     expect(result.match).not.toBeNull();
-    expect(result.match!.id).toBe("SSH-PASSWORD-AUTH");
+    expect(result.match!.id).toBe(CHECK_IDS.SSH.SSH_PASSWORD_AUTH);
   });
 
   it("returns null match with suggestions for close typo", () => {
     const result = findCheckById("SSH-PASWORD-AUTH");
     expect(result.match).toBeNull();
     expect(result.suggestions.length).toBeGreaterThan(0);
-    expect(result.suggestions).toContain("SSH-PASSWORD-AUTH");
+    expect(result.suggestions).toContain(CHECK_IDS.SSH.SSH_PASSWORD_AUTH);
   });
 
   it("returns substring match when single check contains input", () => {
     const result = findCheckById("ssh-password");
     expect(result.match).not.toBeNull();
-    expect(result.match!.id).toBe("SSH-PASSWORD-AUTH");
+    expect(result.match!.id).toBe(CHECK_IDS.SSH.SSH_PASSWORD_AUTH);
   });
 
   it("returns suggestions when multiple checks match substring", () => {
@@ -50,10 +51,10 @@ describe("findCheckById", () => {
 
 describe("formatExplainTerminal", () => {
   it("includes check ID, category, severity, explain text, and fix command", () => {
-    const result = findCheckById("SSH-PASSWORD-AUTH");
+    const result = findCheckById(CHECK_IDS.SSH.SSH_PASSWORD_AUTH);
     const output = formatExplainTerminal(result.match!);
     const plain = output.replace(/\x1b\[[0-9;]*m/g, "");
-    expect(plain).toContain("SSH-PASSWORD-AUTH");
+    expect(plain).toContain(CHECK_IDS.SSH.SSH_PASSWORD_AUTH);
     expect(plain).toContain("SSH");
     expect(plain).toContain("CRITICAL");
     expect(plain).toContain("brute-force");
@@ -61,7 +62,7 @@ describe("formatExplainTerminal", () => {
   });
 
   it("includes compliance references when present", () => {
-    const result = findCheckById("SSH-PASSWORD-AUTH");
+    const result = findCheckById(CHECK_IDS.SSH.SSH_PASSWORD_AUTH);
     const output = formatExplainTerminal(result.match!);
     const plain = output.replace(/\x1b\[[0-9;]*m/g, "");
     expect(plain).toContain("CIS");
@@ -71,10 +72,10 @@ describe("formatExplainTerminal", () => {
 
 describe("formatExplainJson", () => {
   it("returns valid JSON with all fields", () => {
-    const result = findCheckById("SSH-PASSWORD-AUTH");
+    const result = findCheckById(CHECK_IDS.SSH.SSH_PASSWORD_AUTH);
     const json = formatExplainJson(result.match!);
     const parsed = JSON.parse(json);
-    expect(parsed.id).toBe("SSH-PASSWORD-AUTH");
+    expect(parsed.id).toBe(CHECK_IDS.SSH.SSH_PASSWORD_AUTH);
     expect(parsed.category).toBe("SSH");
     expect(parsed.severity).toBe("critical");
     expect(parsed.explain).toBeDefined();
@@ -85,7 +86,7 @@ describe("formatExplainJson", () => {
 
 describe("formatExplainMarkdown", () => {
   it("includes YAML frontmatter and markdown headings", () => {
-    const result = findCheckById("SSH-PASSWORD-AUTH");
+    const result = findCheckById(CHECK_IDS.SSH.SSH_PASSWORD_AUTH);
     const md = formatExplainMarkdown(result.match!);
     expect(md).toMatch(/^---\n/);
     expect(md).toContain("id: SSH-PASSWORD-AUTH");

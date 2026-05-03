@@ -1,3 +1,4 @@
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 import * as auditCore from "../../src/core/audit/index";
 import * as serverSelect from "../../src/utils/serverSelect";
 import * as ssh from "../../src/utils/ssh";
@@ -54,7 +55,7 @@ const mockAuditResult = {
       name: "SSH",
       checks: [
         {
-          id: "SSH-PASSWORD-AUTH",
+          id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH,
           category: "SSH",
           name: "Password Auth",
           severity: "critical" as const,
@@ -64,7 +65,7 @@ const mockAuditResult = {
           fixCommand: "sed -i 's/PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config",
         },
         {
-          id: "SSH-ROOT-LOGIN",
+          id: CHECK_IDS.SSH.SSH_ROOT_LOGIN,
           category: "SSH",
           name: "Root Login",
           severity: "critical" as const,
@@ -81,7 +82,7 @@ const mockAuditResult = {
       name: "Firewall",
       checks: [
         {
-          id: "FW-UFW-ACTIVE",
+          id: CHECK_IDS.FIREWALL.FW_UFW_ACTIVE,
           category: "Firewall",
           name: "UFW Enabled",
           severity: "critical" as const,
@@ -472,7 +473,7 @@ describe("auditCommand", () => {
   it("shows score delta after successful fix", async () => {
     const loggerSpy = jest.spyOn(console, "log");
     mockedFix.runFix.mockResolvedValue({
-      applied: ["SSH-ROOT-LOGIN"],
+      applied: [CHECK_IDS.SSH.SSH_ROOT_LOGIN],
       skipped: [],
       errors: [],
     });
@@ -502,7 +503,7 @@ describe("auditCommand", () => {
   it("does not call runPostFixReAudit when zero fixes applied", async () => {
     mockedFix.runFix.mockResolvedValue({
       applied: [],
-      skipped: ["SSH-ROOT-LOGIN"],
+      skipped: [CHECK_IDS.SSH.SSH_ROOT_LOGIN],
       errors: [],
     });
 
@@ -514,7 +515,7 @@ describe("auditCommand", () => {
 
   it("handles runPostFixReAudit returning null gracefully", async () => {
     mockedFix.runFix.mockResolvedValue({
-      applied: ["SSH-ROOT-LOGIN"],
+      applied: [CHECK_IDS.SSH.SSH_ROOT_LOGIN],
       skipped: [],
       errors: [],
     });
@@ -548,10 +549,10 @@ describe("auditCommand", () => {
       serverIp: "1.2.3.4",
       lastUpdated: "2026-04-20T10:00:00Z",
       bestScore: 80,
-      passedChecks: ["FW-UFW-ACTIVE", "SSH-PASSWORD-AUTH"],
+      passedChecks: [CHECK_IDS.FIREWALL.FW_UFW_ACTIVE, CHECK_IDS.SSH.SSH_PASSWORD_AUTH],
     });
     mockedRegression.checkRegression.mockReturnValue({
-      regressions: ["SSH-ROOT-LOGIN"],
+      regressions: [CHECK_IDS.SSH.SSH_ROOT_LOGIN],
       newPasses: [],
       baselineScore: 80,
       currentScore: 72,
@@ -578,11 +579,11 @@ describe("auditCommand", () => {
       serverIp: "1.2.3.4",
       lastUpdated: "2026-04-20T10:00:00Z",
       bestScore: 70,
-      passedChecks: ["SSH-PASSWORD-AUTH"],
+      passedChecks: [CHECK_IDS.SSH.SSH_PASSWORD_AUTH],
     });
     mockedRegression.checkRegression.mockReturnValue({
       regressions: [],
-      newPasses: ["FW-UFW-ACTIVE"],
+      newPasses: [CHECK_IDS.FIREWALL.FW_UFW_ACTIVE],
       baselineScore: 70,
       currentScore: 72,
     });

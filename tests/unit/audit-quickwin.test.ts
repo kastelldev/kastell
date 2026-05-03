@@ -1,3 +1,4 @@
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 import { calculateQuickWins } from "../../src/core/audit/quickwin.js";
 import type { AuditResult, AuditCheck, AuditCategory, QuickWin } from "../../src/core/audit/types.js";
 
@@ -46,11 +47,11 @@ describe("calculateQuickWins", () => {
   it("should return top fixes sorted by score impact", () => {
     const result = makeResult([
       makeCategory("SSH", [
-        makeCheck({ id: "SSH-PASSWORD-AUTH", category: "SSH", severity: "critical", passed: false, fixCommand: "fix-critical" }),
-        makeCheck({ id: "SSH-ROOT-LOGIN", category: "SSH", severity: "info", passed: false, fixCommand: "fix-info" }),
+        makeCheck({ id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH, category: "SSH", severity: "critical", passed: false, fixCommand: "fix-critical" }),
+        makeCheck({ id: CHECK_IDS.SSH.SSH_ROOT_LOGIN, category: "SSH", severity: "info", passed: false, fixCommand: "fix-info" }),
       ]),
       makeCategory("Firewall", [
-        makeCheck({ id: "FW-UFW-ACTIVE", category: "Firewall", severity: "warning", passed: false, fixCommand: "fix-warning" }),
+        makeCheck({ id: CHECK_IDS.FIREWALL.FW_UFW_ACTIVE, category: "Firewall", severity: "warning", passed: false, fixCommand: "fix-warning" }),
       ]),
     ]);
 
@@ -65,8 +66,8 @@ describe("calculateQuickWins", () => {
   it("should include projected score after applying fixes", () => {
     const result = makeResult([
       makeCategory("SSH", [
-        makeCheck({ id: "SSH-PASSWORD-AUTH", category: "SSH", severity: "critical", passed: false, fixCommand: "fix-it" }),
-        makeCheck({ id: "SSH-ROOT-LOGIN", category: "SSH", severity: "warning", passed: true }),
+        makeCheck({ id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH, category: "SSH", severity: "critical", passed: false, fixCommand: "fix-it" }),
+        makeCheck({ id: CHECK_IDS.SSH.SSH_ROOT_LOGIN, category: "SSH", severity: "warning", passed: true }),
       ]),
     ]);
 
@@ -132,8 +133,8 @@ describe("calculateQuickWins", () => {
   it("should exclude checks without fixCommand", () => {
     const result = makeResult([
       makeCategory("SSH", [
-        makeCheck({ id: "SSH-PASSWORD-AUTH", category: "SSH", severity: "critical", passed: false }), // no fixCommand
-        makeCheck({ id: "SSH-ROOT-LOGIN", category: "SSH", severity: "warning", passed: false, fixCommand: "fix-it" }),
+        makeCheck({ id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH, category: "SSH", severity: "critical", passed: false }), // no fixCommand
+        makeCheck({ id: CHECK_IDS.SSH.SSH_ROOT_LOGIN, category: "SSH", severity: "warning", passed: false, fixCommand: "fix-it" }),
       ]),
     ]);
 
@@ -146,7 +147,7 @@ describe("calculateQuickWins", () => {
   it("should return empty array when no fixable checks exist", () => {
     const result = makeResult([
       makeCategory("SSH", [
-        makeCheck({ id: "SSH-PASSWORD-AUTH", category: "SSH", severity: "critical", passed: true }),
+        makeCheck({ id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH, category: "SSH", severity: "critical", passed: true }),
       ]),
     ]);
 

@@ -4,22 +4,23 @@
  * are flagged as skipped and shown in terminal output without affecting scores.
  */
 
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 import type { AuditCategory, AuditResult } from "../../src/core/audit/types";
 
 // Helper: build a Docker "not installed" category (32 checks all with "Docker not installed")
 function makeDockerSkippedCategory(): AuditCategory {
   const ids = [
-    "DCK-NO-TCP-SOCKET", "DCK-NO-PRIVILEGED", "DCK-VERSION-CURRENT",
-    "DCK-USER-NAMESPACE", "DCK-NO-HOST-NETWORK", "DCK-LOGGING-DRIVER",
-    "DCK-LIVE-RESTORE", "DCK-NO-NEW-PRIVILEGES", "DCK-ICC-DISABLED",
-    "DCK-TLS-VERIFY", "DCK-SOCKET-PERMS", "DCK-NO-ROOT-CONTAINERS",
-    "DCK-READ-ONLY-ROOTFS", "DCK-LOG-MAX-SIZE", "DCK-DEFAULT-ULIMITS",
-    "DCK-SECCOMP-ENABLED", "DCK-CONTENT-TRUST", "DCK-NO-SENSITIVE-MOUNTS",
-    "DCK-APPARMOR-PROFILE", "DCK-NO-PRIVILEGED-PORTS", "DCK-NETWORK-DISABLED",
-    "DCK-LOG-DRIVER-CONFIGURED", "DCK-ROOTLESS-MODE", "DCK-NO-HOST-NETWORK-INSPECT",
-    "DCK-HEALTH-CHECK", "DCK-BRIDGE-NFCALL", "DCK-NO-INSECURE-REGISTRY",
-    "DCK-NO-EXPERIMENTAL", "DCK-AUTH-PLUGIN", "DCK-REGISTRY-CERTS",
-    "DCK-SWARM-INACTIVE", "DCK-PID-MODE",
+    CHECK_IDS.DOCKER.DCK_NO_TCP_SOCKET, CHECK_IDS.DOCKER.DCK_NO_PRIVILEGED, CHECK_IDS.DOCKER.DCK_VERSION_CURRENT,
+    CHECK_IDS.DOCKER.DCK_USER_NAMESPACE, CHECK_IDS.DOCKER.DCK_NO_HOST_NETWORK, CHECK_IDS.DOCKER.DCK_LOGGING_DRIVER,
+    CHECK_IDS.DOCKER.DCK_LIVE_RESTORE, CHECK_IDS.DOCKER.DCK_NO_NEW_PRIVILEGES, CHECK_IDS.DOCKER.DCK_ICC_DISABLED,
+    CHECK_IDS.DOCKER.DCK_TLS_VERIFY, CHECK_IDS.DOCKER.DCK_SOCKET_PERMS, CHECK_IDS.DOCKER.DCK_NO_ROOT_CONTAINERS,
+    CHECK_IDS.DOCKER.DCK_READ_ONLY_ROOTFS, CHECK_IDS.DOCKER.DCK_LOG_MAX_SIZE, CHECK_IDS.DOCKER.DCK_DEFAULT_ULIMITS,
+    CHECK_IDS.DOCKER.DCK_SECCOMP_ENABLED, CHECK_IDS.DOCKER.DCK_CONTENT_TRUST, CHECK_IDS.DOCKER.DCK_NO_SENSITIVE_MOUNTS,
+    CHECK_IDS.DOCKER.DCK_APPARMOR_PROFILE, CHECK_IDS.DOCKER.DCK_NO_PRIVILEGED_PORTS, CHECK_IDS.DOCKER.DCK_NETWORK_DISABLED,
+    CHECK_IDS.DOCKER.DCK_LOG_DRIVER_CONFIGURED, CHECK_IDS.DOCKER.DCK_ROOTLESS_MODE, CHECK_IDS.DOCKER.DCK_NO_HOST_NETWORK_INSPECT,
+    CHECK_IDS.DOCKER.DCK_HEALTH_CHECK, CHECK_IDS.DOCKER.DCK_BRIDGE_NFCALL, CHECK_IDS.DOCKER.DCK_NO_INSECURE_REGISTRY,
+    CHECK_IDS.DOCKER.DCK_NO_EXPERIMENTAL, CHECK_IDS.DOCKER.DCK_AUTH_PLUGIN, CHECK_IDS.DOCKER.DCK_REGISTRY_CERTS,
+    CHECK_IDS.DOCKER.DCK_SWARM_INACTIVE, CHECK_IDS.DOCKER.DCK_PID_MODE,
   ];
   return {
     name: "Docker",
@@ -42,7 +43,7 @@ function makeSshCategory(): AuditCategory {
     name: "SSH",
     checks: [
       {
-        id: "SSH-PASSWORD-AUTH",
+        id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH,
         category: "SSH",
         name: "Password Auth",
         severity: "critical" as const,
@@ -125,7 +126,7 @@ describe("detectSkippedCategories", () => {
       name: "Docker",
       checks: [
         {
-          id: "DCK-NO-TCP-SOCKET",
+          id: CHECK_IDS.DOCKER.DCK_NO_TCP_SOCKET,
           category: "Docker",
           name: "No TCP Socket",
           severity: "info" as const,
@@ -134,7 +135,7 @@ describe("detectSkippedCategories", () => {
           expectedValue: "No TCP socket",
         },
         {
-          id: "DCK-NO-PRIVILEGED",
+          id: CHECK_IDS.DOCKER.DCK_NO_PRIVILEGED,
           category: "Docker",
           name: "No Privileged",
           severity: "info" as const,
