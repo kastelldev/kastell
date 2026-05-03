@@ -417,36 +417,39 @@ export async function runForbiddenFixes(
   const skipped: string[] = [];
   const errors: string[] = [];
 
-  for (const fix of forbiddenFixes) {
-    const { proceed } = await inquirer.prompt([{
-      type: "confirm",
-      name: "proceed",
-      message: `Apply FORBIDDEN fix ${fix.checkId}? Command: ${fix.command.slice(0, 80)}`,
-      default: false,
-    }]);
+  try {
+    for (const fix of forbiddenFixes) {
+      const { proceed } = await inquirer.prompt([{
+        type: "confirm",
+        name: "proceed",
+        message: `Apply FORBIDDEN fix ${fix.checkId}? Command: ${fix.command.slice(0, 80)}`,
+        default: false,
+      }]);
 
-    if (!proceed) {
-      skipped.push(fix.checkId);
-      continue;
-    }
-
-    try {
-      if (!isFixCommandAllowed(fix.command)) {
-        errors.push(`${fix.checkId}: fix command rejected — ${fix.command.slice(0, 60)}`);
+      if (!proceed) {
+        skipped.push(fix.checkId);
         continue;
       }
-      const result = await sshExec(ip, raw(fix.command));
-      if (result.code !== 0) {
-        errors.push(`${fix.checkId}: command failed (exit ${result.code})${result.stderr ? ` — ${result.stderr}` : ""}`);
-      } else {
-        applied.push(fix.checkId);
+
+      try {
+        if (!isFixCommandAllowed(fix.command)) {
+          errors.push(`${fix.checkId}: fix command rejected — ${fix.command.slice(0, 60)}`);
+          continue;
+        }
+        const result = await sshExec(ip, raw(fix.command));
+        if (result.code !== 0) {
+          errors.push(`${fix.checkId}: command failed (exit ${result.code})${result.stderr ? ` — ${result.stderr}` : ""}`);
+        } else {
+          applied.push(fix.checkId);
+        }
+      } catch (err) {
+        errors.push(`${fix.checkId}: ${getErrorMessage(err)}`);
       }
-    } catch (err) {
-      errors.push(`${fix.checkId}: ${getErrorMessage(err)}`);
     }
+  } finally {
+    sshMasterClose(ip);
   }
 
-  sshMasterClose(ip);
   return { applied, skipped, errors };
 }
 
