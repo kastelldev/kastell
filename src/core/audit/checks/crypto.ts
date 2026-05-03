@@ -100,7 +100,7 @@ const CRYPTO_CHECKS: CryptoCheckDef[] = [
     explain: "Weak Diffie-Hellman group1 and group14 key exchanges are susceptible to Logjam attack, allowing MitM decryption of SSH sessions.",
   },
   {
-    id: "CRYPTO-SSH-ED25519-KEY",
+    id: CHECK_IDS.CRYPTO.CRYPTO_SSH_ED25519_KEY,
     name: "SSH ED25519 Host Key Present",
     severity: "info",
     check: (output) => {
@@ -193,7 +193,7 @@ const CRYPTO_CHECKS: CryptoCheckDef[] = [
     explain: "Expired TLS certificates cause browser warnings and trust errors, disrupting service and indicating poor certificate lifecycle management.",
   },
   {
-    id: "CRYPTO-NO-SSLV3",
+    id: CHECK_IDS.CRYPTO.CRYPTO_NO_SSLV3,
     name: "SSLv3 Disabled",
     severity: "warning",
     check: (output) => {

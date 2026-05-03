@@ -2,16 +2,11 @@
 // MCP SDK isolation: This file is the entry point for kastell-mcp binary only.
 // The main kastell CLI (src/index.ts) must NEVER import from this module.
 // See tests/unit/dep-isolation.test.ts for the guard test.
-import { fileURLToPath } from "url";
-import { dirname } from "path";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createMcpServer } from "./server.js";
 import { migrateConfigIfNeeded } from "../utils/migration.js";
 import { KASTELL_VERSION } from "../utils/version.js";
 import { extractReason } from "../utils/errors.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 // Graceful handling of unhandled rejections (security audit MEDIUM-007)
 process.on("unhandledRejection", (reason) => {

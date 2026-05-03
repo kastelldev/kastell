@@ -379,7 +379,7 @@ const SERVICES_CHECKS: ServicesCheckDef[] = [
       "The discard service silently drops all received data and provides no useful function on modern servers.",
   },
   {
-    id: "SVC-NO-ECHO-SVC",
+    id: CHECK_IDS.SERVICES.SVC_NO_ECHO_SVC,
     name: "echo Service Disabled",
     severity: "info",
     check: (output) => {
@@ -397,7 +397,7 @@ const SERVICES_CHECKS: ServicesCheckDef[] = [
       "The echo network service can be paired with chargen to create infinite traffic loops between hosts.",
   },
   {
-    id: "SVC-RUNNING-COUNT-REASONABLE",
+    id: CHECK_IDS.SERVICES.SVC_RUNNING_COUNT_REASONABLE,
     name: "Running Service Count Reasonable",
     severity: "info",
     check: (output) => {
@@ -434,7 +434,7 @@ const SERVICES_CHECKS: ServicesCheckDef[] = [
   },
   // NEW checks (Wave 1 gap closure)
   {
-    id: "SVC-NO-WILDCARD-LISTENERS",
+    id: CHECK_IDS.SERVICES.SVC_NO_WILDCARD_LISTENERS,
     name: "No Excessive Wildcard Listeners",
     severity: "warning",
     check: (output) => {
@@ -474,7 +474,7 @@ const SERVICES_CHECKS: ServicesCheckDef[] = [
       "Services listening on 0.0.0.0 accept connections on all network interfaces, increasing attack surface from untrusted networks.",
   },
   {
-    id: "SVC-NO-XINETD-SERVICES",
+    id: CHECK_IDS.SERVICES.SVC_NO_XINETD_SERVICES,
     name: "xinetd Legacy Service Disabled",
     severity: "info",
     check: (output) => {
@@ -495,7 +495,7 @@ const SERVICES_CHECKS: ServicesCheckDef[] = [
       "xinetd is a legacy super-daemon with known security weaknesses; modern systems should use systemd socket activation instead.",
   },
   {
-    id: "SVC-NO-WORLD-READABLE-CONFIGS",
+    id: CHECK_IDS.SERVICES.SVC_NO_WORLD_READABLE_CONFIGS,
     name: "No World-Readable Service Configs",
     severity: "info",
     check: (output) => {

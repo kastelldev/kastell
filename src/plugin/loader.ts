@@ -79,8 +79,6 @@ export async function loadPlugins(
 
       const manifest = validateManifest(manifestParsed);
 
-      const entryPath = join(pluginDir, manifest.entry);
-
       const resolvedDir = resolve(pluginDir);
       const resolvedEntry = resolve(resolvedDir, manifest.entry);
       if (!resolvedEntry.startsWith(resolvedDir + sep) && resolvedEntry !== resolvedDir) {
