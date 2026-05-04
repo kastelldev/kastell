@@ -1,6 +1,5 @@
 import inquirer from "inquirer";
 import ora from "ora";
-import chalk from "chalk";
 import { promptApiToken } from "../utils/serverSelect.js";
 import { addServerRecord, validateIpAddress } from "../core/manage.js";
 import { logger } from "../utils/logger.js";

@@ -16,7 +16,6 @@ import { getTemplate, getTemplateDefaults, VALID_TEMPLATE_NAMES } from "../utils
 import { SUPPORTED_PROVIDERS, PROVIDER_ENV_KEYS, invalidProviderError, PROVIDER_DISPLAY_NAMES } from "../constants.js";
 import { deployServer } from "../core/deploy.js";
 import inquirer from "inquirer";
-import chalk from "chalk";
 import type { DefaultsConfig } from "../types/index.js";
 import { addServerRecord, validateIpAddress, validateServerName } from "../core/manage.js";
 import { saveDefaults } from "../core/defaults.js";
