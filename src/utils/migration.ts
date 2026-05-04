@@ -2,10 +2,9 @@ import { existsSync, cpSync } from "fs";
 import { secureMkdirSync, secureWriteFileSync } from "./secureWrite.js";
 import { homedir } from "os";
 import { join } from "path";
-import chalk from "chalk";
 import { KASTELL_DIR } from "./paths.js";
 import { getServersRaw, atomicWriteServers } from "./config.js";
-import { debugLog } from "./logger.js";
+import { logger, debugLog } from "./logger.js";
 
 const OLD_CONFIG_DIR = join(homedir(), ".quicklify");
 const NEW_CONFIG_DIR = KASTELL_DIR;
@@ -24,17 +23,9 @@ export function migrateConfigIfNeeded(): void {
       secureMkdirSync(NEW_CONFIG_DIR, { recursive: true });
       cpSync(OLD_CONFIG_DIR, NEW_CONFIG_DIR, { recursive: true });
       secureWriteFileSync(MIGRATED_FLAG, new Date().toISOString());
-      console.warn(
-        chalk.yellow(
-          "Migrated config from ~/.quicklify to ~/.kastell. You can safely remove ~/.quicklify.",
-        ),
-      );
+      logger.warning("Migrated config from ~/.quicklify to ~/.kastell. You can safely remove ~/.quicklify.");
     } catch {
-      console.warn(
-        chalk.yellow(
-          "Warning: Could not migrate config from ~/.quicklify to ~/.kastell. You may need to copy files manually.",
-        ),
-      );
+      logger.warning("Could not migrate config from ~/.quicklify to ~/.kastell. You may need to copy files manually.");
     }
   }
 

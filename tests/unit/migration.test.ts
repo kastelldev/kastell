@@ -15,7 +15,14 @@ jest.mock("../../src/utils/secureWrite", () => ({
   secureWriteFileSync: jest.fn(),
 }));
 
+// Mock logger
+jest.mock("../../src/utils/logger", () => ({
+  logger: { warning: jest.fn(), info: jest.fn(), error: jest.fn() },
+  debugLog: jest.fn(),
+}));
+
 const mockSecureWrite = jest.requireMock("../../src/utils/secureWrite");
+const mockLogger = jest.requireMock("../../src/utils/logger");
 
 // Mock chalk to avoid ANSI codes in test output
 jest.mock("chalk", () => {
@@ -35,15 +42,8 @@ const mockedFs = fs as jest.Mocked<typeof fs>;
 import { migrateConfigIfNeeded } from "../../src/utils/migration";
 
 describe("migrateConfigIfNeeded", () => {
-  let consoleWarnSpy: jest.SpyInstance;
-
   beforeEach(() => {
     jest.clearAllMocks();
-    consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation();
-  });
-
-  afterEach(() => {
-    consoleWarnSpy.mockRestore();
   });
 
   it("should do nothing when ~/.kastell already exists (no overwrite)", () => {
@@ -99,7 +99,7 @@ describe("migrateConfigIfNeeded", () => {
     );
   });
 
-  it("should show chalk.yellow warning after successful migration", () => {
+  it("should show warning after successful migration", () => {
     mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
       const path = String(p);
       if (path.includes(".kastell")) return false;
@@ -109,7 +109,7 @@ describe("migrateConfigIfNeeded", () => {
 
     migrateConfigIfNeeded();
 
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
+    expect(mockLogger.logger.warning).toHaveBeenCalledWith(
       expect.stringContaining("Migrated config from ~/.quicklify to ~/.kastell"),
     );
   });

@@ -18,7 +18,7 @@ jest.mock("../../src/utils/logger", () => ({
     succeed: jest.fn(),
     fail: jest.fn(),
   })),
-  logger: { error: jest.fn(), info: jest.fn(), success: jest.fn() },
+  logger: { error: jest.fn(), info: jest.fn(), success: jest.fn(), warning: jest.fn() },
 }));
 
 jest.mock("chalk", () => {

@@ -145,7 +145,7 @@ describe("scheduleCommand", () => {
 
       await runSubcommand(["fix", "--server", "my-server", "--cron", "0 3 * * *"]);
 
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(loggerUtils.logger.warning).toHaveBeenCalledWith(
         expect.stringContaining("Windows detected"),
       );
     });

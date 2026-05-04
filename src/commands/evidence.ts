@@ -6,7 +6,7 @@
 import { readFileSync } from "fs";
 import chalk from "chalk";
 import { resolveServer } from "../utils/serverSelect.js";
-import { createSpinner } from "../utils/logger.js";
+import { logger, createSpinner } from "../utils/logger.js";
 import { collectEvidence } from "../core/evidence.js";
 import type { EvidenceOptions } from "../core/evidence.js";
 
@@ -84,7 +84,5 @@ export async function evidenceCommand(
     console.log(manifest);
   }
 
-  console.log(
-    chalk.yellow("  WARNING: Evidence directory may contain sensitive server data."),
-  );
+  logger.warning("Evidence directory may contain sensitive server data.");
 }

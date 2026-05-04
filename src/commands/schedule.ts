@@ -34,8 +34,8 @@ function installScheduleAction(type: ScheduleType, exampleCron: string) {
     }
 
     if (result.windowsFallback) {
-      console.log(chalk.yellow("Windows detected. Schedule saved. Run this command with Task Scheduler:"));
-      console.log(chalk.white(`  ${result.command}`));
+      logger.warning("Windows detected. Schedule saved. Run this command with Task Scheduler:");
+      logger.info(`  ${result.command}`);
     } else {
       logger.success(`${type === "fix" ? "Fix" : "Audit"} schedule installed for ${server.name}: ${opts.cron}`);
     }
