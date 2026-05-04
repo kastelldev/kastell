@@ -89,13 +89,14 @@ export async function handleServerLock(params: {
 
     await mcpLog(mcpServer, "Hardening complete");
 
-    return mcpSuccess({
+    const data = {
       success: result.success,
       steps: result.steps,
       ...(result.stepErrors && { stepErrors: result.stepErrors }),
       scoreBefore: result.scoreBefore,
       scoreAfter: result.scoreAfter,
-    });
+    };
+    return mcpSuccess(data);
   } catch (error: unknown) {
     return mcpError(sanitizeStderr(getErrorMessage(error)));
   }

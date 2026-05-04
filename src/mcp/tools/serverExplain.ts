@@ -8,6 +8,24 @@ export const serverExplainSchema = z.object({
 
 type ServerExplainParams = z.infer<typeof serverExplainSchema>;
 
+const serverExplainOutputSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  category: z.string(),
+  severity: z.string(),
+  description: z.string(),
+  fix: z.string(),
+  why: z.string(),
+  fixTier: z.string(),
+  compliance: z.array(z.object({
+    framework: z.string(),
+    controlId: z.string(),
+    description: z.string(),
+  })).optional(),
+});
+
+type ServerExplainOutput = z.infer<typeof serverExplainOutputSchema>;
+
 export async function serverExplainHandler(params: ServerExplainParams) {
   const result = findCheckById(params.checkId);
 
@@ -18,5 +36,20 @@ export async function serverExplainHandler(params: ServerExplainParams) {
     );
   }
 
-  return mcpSuccess({ ...result.match });
+  const data: ServerExplainOutput = {
+    id: result.match.id,
+    name: result.match.name,
+    category: result.match.category,
+    severity: result.match.severity,
+    description: result.match.explain,
+    fix: result.match.fixCommand ?? "",
+    why: "",
+    fixTier: result.match.fixTier,
+    compliance: result.match.complianceRefs?.map((ref) => ({
+      framework: ref.framework,
+      controlId: ref.controlId,
+      description: ref.description,
+    })),
+  };
+  return mcpSuccess(data);
 }

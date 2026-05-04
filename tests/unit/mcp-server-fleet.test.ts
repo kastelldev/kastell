@@ -62,9 +62,9 @@ describe("MCP server_fleet tool", () => {
 
       expect(result.isError).toBeUndefined();
       const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.servers).toBe(2);
-      expect(parsed.rows).toHaveLength(2);
-      expect(parsed.rows[0].name).toBe("web-01");
+      expect(parsed.servers).toHaveLength(2);
+      expect(parsed.total).toBe(2);
+      expect(parsed.servers[0].name).toBe("web-01");
     });
 
     it("passes sort option to runFleet", async () => {
@@ -99,8 +99,8 @@ describe("MCP server_fleet tool", () => {
         expect.objectContaining({ categories: true }),
       );
       const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.rows[0].weakestCategory).toBe("Firewall");
-      expect(parsed.rows[0].weakestCategoryScore).toBe(45);
+      expect(parsed.servers[0].weakestCategory).toBe("Firewall");
+      expect(parsed.servers[0].weakestCategoryScore).toBe(45);
     });
 
     it("returns rows matching FleetRow shape with all fields", async () => {
@@ -110,7 +110,7 @@ describe("MCP server_fleet tool", () => {
       const result = await handleServerFleet({ sort: "name" });
 
       const parsed = JSON.parse(result.content[0].text);
-      const row = parsed.rows[0];
+      const row = parsed.servers[0];
       expect(row).toMatchObject({
         name: "web-01",
         ip: "1.2.3.4",

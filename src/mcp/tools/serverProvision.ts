@@ -136,7 +136,7 @@ export async function handleServerProvision(
 
     await mcpLog(mcpServer, "Provision complete");
 
-    return mcpSuccess({
+    const data = {
       success: true,
       message: `Server "${server.name}" provisioned on ${server.provider}`,
       server: {
@@ -151,7 +151,8 @@ export async function handleServerProvision(
       },
       ...(result.hint ? { hint: result.hint } : {}),
       suggested_actions: suggestedActions,
-    });
+    };
+    return mcpSuccess(data);
   } catch (error: unknown) {
     return mcpError(sanitizeStderr(getErrorMessage(error)));
   }
