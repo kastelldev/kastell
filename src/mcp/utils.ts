@@ -24,6 +24,7 @@ export type McpContentBlock = {
 
 export type McpResponse = {
   content: Array<McpContentBlock>;
+  structuredContent?: Record<string, unknown>;
   isError?: boolean;
 };
 
@@ -82,7 +83,10 @@ export function mcpSuccess(data: Record<string, unknown>, opts?: { largeResult?:
   if (opts?.largeResult) {
     block._meta = { "anthropic/maxResultSizeChars": LARGE_RESULT_SIZE };
   }
-  return { content: [block] };
+  return {
+    content: [block],
+    structuredContent: data,
+  };
 }
 
 // ─── mcpError ────────────────────────────────────────────────────────────────
