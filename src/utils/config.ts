@@ -8,13 +8,23 @@ import { secureMkdirSync, secureWriteFileSync } from "./secureWrite.js";
 
 const SERVERS_FILE = join(KASTELL_DIR, "servers.json");
 
+export function getServersRaw(): ServerRecord[] {
+  // Same as getServers but without mode default — for migration use only
+  const raw = readFileSync(SERVERS_FILE, "utf-8");
+  const parsed = JSON.parse(raw);
+  if (!Array.isArray(parsed)) {
+    throw new Error("servers.json corrupt");
+  }
+  return parsed as ServerRecord[];
+}
+
 
 function ensureConfigDir(): void {
   secureMkdirSync(KASTELL_DIR, { recursive: true });
 }
 
 /** Atomic write: write to tmp file, then rename to prevent corruption on crash */
-function atomicWriteServers(servers: ServerRecord[]): void {
+export function atomicWriteServers(servers: ServerRecord[]): void {
   const tmpFile = SERVERS_FILE + ".tmp";
   secureWriteFileSync(tmpFile, JSON.stringify(servers, null, 2));
   renameSync(tmpFile, SERVERS_FILE);
@@ -47,11 +57,7 @@ export function getServers(): ServerRecord[] {
     }
     return true;
   });
-  const needsMigration = validRecords.some((s: Record<string, unknown>) => !s.mode);
-  const servers = validRecords.map((s: ServerRecord) => ({ ...s, mode: s.mode || "coolify" }) as ServerRecord);
-  if (needsMigration) {
-    atomicWriteServers(servers);
-  }
+  const servers = validRecords.map((s: ServerRecord) => ({ ...s, mode: s.mode ?? "coolify" }) as ServerRecord);
   return servers;
 }
 
