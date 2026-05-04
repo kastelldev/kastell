@@ -15,7 +15,7 @@ export const serverCompareSchema = {
   detail: z.boolean().default(false).describe("Return check-level diff instead of category summary. Default: false."),
 };
 
-const serverCompareOutputSchema = z.union([
+export const serverCompareOutputSchema = z.union([
   z.object({
     format: z.literal("category"),
     serverA: z.string(),

@@ -702,7 +702,7 @@ describe("handleServerSecure — secure-setup", () => {
       success: true, sshHardening: true, fail2ban: true, sshKeyCount: 2,
     });
     const result = await handleServerSecure({ action: "secure-setup" });
-    expect(result.isError).toBeUndefined();
+    expect(result.isError).toBeFalsy();
     const data = JSON.parse(result.content[0].text);
     expect(data.success).toBe(true);
     expect(data.message).toContain("complete");

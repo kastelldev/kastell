@@ -157,7 +157,7 @@ describe("MCP server_audit tool", () => {
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.overallScore).toBe(72);
     expect(parsed.categories).toHaveLength(2);
-    expect(parsed.serverName).toBe("coolify-test");
+    expect(parsed.server).toBe("coolify-test");
   });
 
   it('should return just the score number for format "score"', async () => {
@@ -172,7 +172,7 @@ describe("MCP server_audit tool", () => {
 
     expect(result.isError).toBeUndefined();
     const parsed = JSON.parse(result.content[0].text);
-    expect(parsed.score).toBe(72);
+    expect(parsed.overallScore).toBe(72);
   });
 
   it("should return mcpError when runAudit fails", async () => {

@@ -18,7 +18,7 @@ export const serverFleetSchema = {
     .describe("Include weakest audit category per server. Default: false."),
 };
 
-const serverFleetOutputSchema = z.object({
+export const serverFleetOutputSchema = z.object({
   servers: z.array(z.object({
     name: z.string(),
     ip: z.string(),

@@ -33,18 +33,9 @@ export async function handleSecureSetup(
   const result = await applySecureSetup(server.ip, port ? { port } : undefined);
 
   if (!result.success) {
-    return {
-      content: [{ type: "text", text: JSON.stringify({
-        server: server.name,
-        ip: server.ip,
-        error: result.error,
-        ...(result.hint ? { hint: result.hint } : {}),
-        suggested_actions: [
-          { command: `server_info { action: 'health', server: '${server.name}' }`, reason: "Check if server is reachable" },
-        ],
-      }) }],
-      isError: true,
-    };
+    return mcpError(result.error ?? "Setup failed", `Server: ${server.name} (${server.ip}). ${result.hint ?? ""}`, [
+      { command: `server_info { action: 'health', server: '${server.name}' }`, reason: "Check if server is reachable" },
+    ]);
   }
 
   const message = result.fail2ban
@@ -52,7 +43,23 @@ export async function handleSecureSetup(
     : "Security setup partially complete: SSH hardened, fail2ban failed";
 
   return {
-    content: [{ type: "text", text: JSON.stringify({
+    content: [{
+      type: "text" as const,
+      text: JSON.stringify({
+        success: true,
+        server: server.name,
+        ip: server.ip,
+        message,
+        sshHardening: result.sshHardening,
+        fail2ban: result.fail2ban,
+        sshKeyCount: result.sshKeyCount,
+        ...(result.hint ? { hint: result.hint } : {}),
+        suggested_actions: [
+          { command: `server_secure { action: 'secure-audit', server: '${server.name}' }`, reason: "Verify security configuration" },
+        ],
+      }),
+    }],
+    structuredContent: {
       success: true,
       server: server.name,
       ip: server.ip,
@@ -61,11 +68,8 @@ export async function handleSecureSetup(
       fail2ban: result.fail2ban,
       sshKeyCount: result.sshKeyCount,
       ...(result.hint ? { hint: result.hint } : {}),
-      suggested_actions: [
-        { command: `server_secure { action: 'secure-audit', server: '${server.name}' }`, reason: "Verify security configuration" },
-      ],
-    }) }],
-    ...(!result.fail2ban ? { isError: true } : {}),
+    },
+    isError: !result.fail2ban,
   };
 }
 
@@ -73,15 +77,7 @@ export async function handleSecureAudit(server: ServerRecord): Promise<McpRespon
   const result = await runSecureAudit(server.ip);
 
   if (result.error) {
-    return {
-      content: [{ type: "text", text: JSON.stringify({
-        server: server.name,
-        ip: server.ip,
-        error: result.error,
-        ...(result.hint ? { hint: result.hint } : {}),
-      }) }],
-      isError: true,
-    };
+    return mcpError(result.error ?? "Operation failed", `Server: ${server.name} (${server.ip}). ${result.hint ?? ""}`);
   }
 
   const suggestedActions = result.score < 100
@@ -110,15 +106,7 @@ export async function handleFirewallSetup(server: ServerRecord): Promise<McpResp
   const result = await setupFirewall(server.ip, platform);
 
   if (!result.success) {
-    return {
-      content: [{ type: "text", text: JSON.stringify({
-        server: server.name,
-        ip: server.ip,
-        error: result.error,
-        ...(result.hint ? { hint: result.hint } : {}),
-      }) }],
-      isError: true,
-    };
+    return mcpError(result.error ?? "Firewall setup failed", `Server: ${server.name} (${server.ip}). ${result.hint ?? ""}`);
   }
 
   const ports = getPortsForPlatform(platform);
@@ -149,15 +137,7 @@ export async function handleFirewallAdd(
   const result = await addFirewallRule(server.ip, port, protocol);
 
   if (!result.success) {
-    return {
-      content: [{ type: "text", text: JSON.stringify({
-        server: server.name,
-        ip: server.ip,
-        error: result.error,
-        ...(result.hint ? { hint: result.hint } : {}),
-      }) }],
-      isError: true,
-    };
+    return mcpError(result.error ?? "Operation failed", `Server: ${server.name} (${server.ip}). ${result.hint ?? ""}`);
   }
 
   return mcpSuccess({
@@ -187,16 +167,7 @@ export async function handleFirewallRemove(
   const result = await removeFirewallRule(server.ip, port, protocol, platform);
 
   if (!result.success) {
-    return {
-      content: [{ type: "text", text: JSON.stringify({
-        server: server.name,
-        ip: server.ip,
-        error: result.error,
-        ...(result.hint ? { hint: result.hint } : {}),
-        ...(result.warning ? { warning: result.warning } : {}),
-      }) }],
-      isError: true,
-    };
+    return mcpError(result.error ?? "Operation failed", `Server: ${server.name} (${server.ip}). ${result.hint ?? ""} ${result.warning ?? ""}`.trim());
   }
 
   return mcpSuccess({
@@ -215,15 +186,7 @@ export async function handleFirewallStatus(server: ServerRecord): Promise<McpRes
   const result = await getFirewallStatus(server.ip);
 
   if (result.error) {
-    return {
-      content: [{ type: "text", text: JSON.stringify({
-        server: server.name,
-        ip: server.ip,
-        error: result.error,
-        ...(result.hint ? { hint: result.hint } : {}),
-      }) }],
-      isError: true,
-    };
+    return mcpError(result.error ?? "Operation failed", `Server: ${server.name} (${server.ip}). ${result.hint ?? ""}`);
   }
 
   const suggestedActions = !result.status.active
@@ -257,15 +220,7 @@ export async function handleDomainSet(
   const result = await setDomain(server.ip, domainName, ssl, resolvePlatform(server));
 
   if (!result.success) {
-    return {
-      content: [{ type: "text", text: JSON.stringify({
-        server: server.name,
-        ip: server.ip,
-        error: result.error,
-        ...(result.hint ? { hint: result.hint } : {}),
-      }) }],
-      isError: true,
-    };
+    return mcpError(result.error ?? "Operation failed", `Server: ${server.name} (${server.ip}). ${result.hint ?? ""}`);
   }
 
   const protocol = ssl ? "https" : "http";
@@ -287,15 +242,7 @@ export async function handleDomainRemove(server: ServerRecord): Promise<McpRespo
   const result = await removeDomain(server.ip, platform);
 
   if (!result.success) {
-    return {
-      content: [{ type: "text", text: JSON.stringify({
-        server: server.name,
-        ip: server.ip,
-        error: result.error,
-        ...(result.hint ? { hint: result.hint } : {}),
-      }) }],
-      isError: true,
-    };
+    return mcpError(result.error ?? "Operation failed", `Server: ${server.name} (${server.ip}). ${result.hint ?? ""}`);
   }
 
   return mcpSuccess({
@@ -324,16 +271,7 @@ export async function handleDomainCheck(
   const result = await checkDns(server.ip, domainName);
 
   if (result.error) {
-    return {
-      content: [{ type: "text", text: JSON.stringify({
-        server: server.name,
-        ip: server.ip,
-        domain: domainName,
-        error: result.error,
-        ...(result.hint ? { hint: result.hint } : {}),
-      }) }],
-      isError: true,
-    };
+    return mcpError(result.error ?? "Operation failed", `Server: ${server.name} (${server.ip}). ${result.hint ?? ""}`);
   }
 
   return mcpSuccess({
@@ -354,15 +292,7 @@ export async function handleDomainInfo(server: ServerRecord): Promise<McpRespons
   const result = await getDomain(server.ip, platform);
 
   if (result.error) {
-    return {
-      content: [{ type: "text", text: JSON.stringify({
-        server: server.name,
-        ip: server.ip,
-        error: result.error,
-        ...(result.hint ? { hint: result.hint } : {}),
-      }) }],
-      isError: true,
-    };
+    return mcpError(result.error ?? "Operation failed", `Server: ${server.name} (${server.ip}). ${result.hint ?? ""}`);
   }
 
   const domainSuggestedActions = [];

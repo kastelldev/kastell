@@ -8,7 +8,7 @@ export const serverExplainSchema = z.object({
 
 type ServerExplainParams = z.infer<typeof serverExplainSchema>;
 
-const serverExplainOutputSchema = z.object({
+export const serverExplainOutputSchema = z.object({
   id: z.string(),
   name: z.string(),
   category: z.string(),

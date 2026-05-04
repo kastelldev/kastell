@@ -85,18 +85,9 @@ export async function handleServerMaintain(params: {
         const result = await updateServer(server, apiToken, platform);
 
         if (!result.success) {
-          return {
-            content: [{ type: "text", text: JSON.stringify({
-              server: server.name,
-              ip: server.ip,
-              error: result.error,
-              ...(result.hint ? { hint: result.hint } : {}),
-              suggested_actions: [
-                { command: `server_info { action: 'health', server: '${server.name}' }`, reason: "Check if server is reachable" },
-              ],
-            }) }],
-            isError: true,
-          };
+          return mcpError(result.error ?? "Update failed", `Server: ${server.name} (${server.ip}). ${result.hint ?? ""}`, [
+            { command: `server_info { action: 'health', server: '${server.name}' }`, reason: "Check if server is reachable" },
+          ]);
         }
 
         const displayName = result.displayName ?? "Platform";
@@ -142,18 +133,9 @@ export async function handleServerMaintain(params: {
         const result = await rebootAndWait(server, token);
 
         if (!result.success) {
-          return {
-            content: [{ type: "text", text: JSON.stringify({
-              server: server.name,
-              ip: server.ip,
-              error: result.error,
-              ...(result.hint ? { hint: result.hint } : {}),
-              suggested_actions: [
-                { command: `server_info { action: 'status', server: '${server.name}' }`, reason: "Check current server status" },
-              ],
-            }) }],
-            isError: true,
-          };
+          return mcpError(result.error ?? "Restart failed", `Server: ${server.name} (${server.ip}). ${result.hint ?? ""}`, [
+            { command: `server_info { action: 'status', server: '${server.name}' }`, reason: "Check current server status" },
+          ]);
         }
 
         return mcpSuccess({
@@ -204,8 +186,9 @@ export async function handleServerMaintain(params: {
           skipReboot: params.skipReboot ?? false,
         });
 
-        const suggestedActions = [];
         const hasFailure = result.steps.some((s) => s.status === "failure");
+
+        const suggestedActions: { command: string; reason: string }[] = [];
 
         if (hasFailure) {
           suggestedActions.push(
@@ -219,23 +202,31 @@ export async function handleServerMaintain(params: {
           );
         }
 
-        return {
-          content: [{ type: "text", text: JSON.stringify({
-            success: result.success,
-            server: result.server,
-            ip: result.ip,
-            provider: result.provider,
-            steps: result.steps,
-            summary: {
-              total: result.steps.length,
-              success: result.steps.filter((s) => s.status === "success").length,
-              failure: result.steps.filter((s) => s.status === "failure").length,
-              skipped: result.steps.filter((s) => s.status === "skipped").length,
-            },
-            suggested_actions: suggestedActions,
-          }) }],
-          ...(hasFailure ? { isError: true } : {}),
+        const payload = {
+          success: result.success,
+          server: result.server,
+          ip: result.ip,
+          provider: result.provider,
+          steps: result.steps,
+          summary: {
+            total: result.steps.length,
+            success: result.steps.filter((s) => s.status === "success").length,
+            failure: result.steps.filter((s) => s.status === "failure").length,
+            skipped: result.steps.filter((s) => s.status === "skipped").length,
+          },
+          suggested_actions: suggestedActions,
         };
+
+        // Partial success: mcpSuccess can't express isError=true, use inline response
+        if (hasFailure) {
+          return {
+            content: [{ type: "text" as const, text: JSON.stringify(payload) }],
+            structuredContent: payload,
+            isError: true,
+          };
+        }
+
+        return mcpSuccess(payload);
       }
       default: {
         return mcpError(`Unknown action: ${params.action as string}`);

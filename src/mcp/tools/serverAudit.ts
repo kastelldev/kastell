@@ -18,6 +18,51 @@ import { FRAMEWORK_KEY_MAP } from "../../core/audit/compliance/types.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { filterChecksByProfile, isValidProfile, listAllProfileNames } from "../../core/audit/profiles.js";
 import { saveBaselineSafe, loadBaseline, checkRegression, formatRegressionSummary, extractPassedCheckIds, shouldUpdateBaseline } from "../../core/audit/regression.js";
+import { AuditCategorySchema, AuditCheckSchema, ComplianceControlSchema } from "../schemas/index.js";
+import type { AuditCategory } from "../schemas/audit.js";
+
+const auditSummarySchema = z.object({
+  format: z.literal("summary"),
+  server: z.string(),
+  ip: z.string(),
+  overallScore: z.number(),
+  skippedCategories: z.array(z.string()).optional(),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })).optional(),
+});
+
+const auditJsonSchema = z.object({
+  format: z.literal("json"),
+  server: z.string(),
+  ip: z.string(),
+  overallScore: z.number(),
+  categories: z.array(AuditCategorySchema),
+  checks: z.array(AuditCheckSchema).optional(),
+  complianceDetail: z.array(z.object({
+    framework: z.string(),
+    passedControls: z.number(),
+    totalControls: z.number(),
+    passRate: z.number(),
+    controls: z.array(ComplianceControlSchema),
+  })).optional(),
+  skippedCategories: z.array(z.string()).optional(),
+  baselineRegression: z.record(z.string(), z.unknown()).optional(),
+});
+
+const auditScoreSchema = z.object({
+  format: z.literal("score"),
+  server: z.string(),
+  ip: z.string(),
+  overallScore: z.number(),
+});
+
+// Schema exported for MCP output typing
+export const serverAuditOutputSchema = z.discriminatedUnion("format", [
+  auditSummarySchema,
+  auditJsonSchema,
+  auditScoreSchema,
+]);
+
+export type ServerAuditOutput = z.infer<typeof serverAuditOutputSchema>;
 
 
 export const serverAuditSchema = {
@@ -171,11 +216,27 @@ export async function handleServerAudit(params: {
       if (regression) {
         jsonResult.baselineRegression = regression;
       }
-      return mcpSuccess(jsonResult, { largeResult: true });
+      const data = {
+        format: "json" as const,
+        server: auditResult.serverName,
+        ip: auditResult.serverIp,
+        overallScore: auditResult.overallScore,
+        categories: filteredResult.categories as unknown as AuditCategory[],
+        complianceDetail: jsonResult.complianceDetail,
+        skippedCategories: filteredResult.skippedCategories,
+        baselineRegression: jsonResult.baselineRegression,
+      };
+      return mcpSuccess(data, { largeResult: true });
     }
 
     if (format === "score") {
-      return mcpSuccess({ score: auditResult.overallScore });
+      const data = {
+        format: "score" as const,
+        server: auditResult.serverName,
+        ip: auditResult.serverIp,
+        overallScore: auditResult.overallScore,
+      };
+      return mcpSuccess(data);
     }
 
     // summary format: compact text for AI consumption
@@ -244,17 +305,17 @@ export async function handleServerAudit(params: {
       `Timestamp: ${filteredResult.timestamp}`,
     );
 
-    const responseData: Record<string, unknown> = {
-      summary: summaryParts.join("\n"),
+    const responseData = {
+      format: "summary" as const,
+      server: auditResult.serverName,
+      ip: auditResult.serverIp,
       overallScore: auditResult.overallScore,
+      summary: summaryParts.join("\n"),
       suggested_actions: [
         { command: `server_audit { server: '${server.name}', format: 'json' }`, reason: "Get full audit details" },
       ],
+      skippedCategories: filteredResult.skippedCategories,
     };
-
-    if (filteredResult.skippedCategories && filteredResult.skippedCategories.length > 0) {
-      responseData.skippedCategories = filteredResult.skippedCategories;
-    }
 
     // Save snapshot if requested (uses unfiltered auditResult)
     if (params.snapshot !== undefined) {
