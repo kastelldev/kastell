@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import chalk from "chalk";
 import inquirer from "inquirer";
+import { logger } from "../utils/logger.js";
 import {
   setToken,
   removeToken,
@@ -49,15 +50,9 @@ export async function authSetAction(provider: string): Promise<void> {
   const success = setToken(provider, trimmed);
 
   if (success) {
-    console.log(
-      chalk.green(
-        `${PROVIDER_DISPLAY_NAMES[provider]} token saved to OS keychain.`,
-      ),
-    );
+    console.log(chalk.green(`${PROVIDER_DISPLAY_NAMES[provider]} token saved to OS keychain.`));
   } else {
-    console.error(
-      chalk.red(`Failed to save ${PROVIDER_DISPLAY_NAMES[provider]} token.`),
-    );
+    console.error(chalk.red(`Failed to save ${PROVIDER_DISPLAY_NAMES[provider]} token.`));
   }
 }
 
@@ -70,17 +65,9 @@ export async function authRemoveAction(provider: string): Promise<void> {
   const success = removeToken(provider);
 
   if (success) {
-    console.log(
-      chalk.green(
-        `${PROVIDER_DISPLAY_NAMES[provider]} token removed from OS keychain.`,
-      ),
-    );
+    console.log(chalk.green(`${PROVIDER_DISPLAY_NAMES[provider]} token removed from OS keychain.`));
   } else {
-    console.error(
-      chalk.red(
-        `No token found for ${PROVIDER_DISPLAY_NAMES[provider]} in OS keychain.`,
-      ),
-    );
+    console.error(chalk.red(`No token found for ${PROVIDER_DISPLAY_NAMES[provider]} in OS keychain.`));
   }
 }
 
@@ -88,19 +75,17 @@ export async function authListAction(): Promise<void> {
   const providers = listStoredProviders();
 
   if (providers.length === 0) {
-    console.log("No tokens stored in OS keychain.");
+    logger.info("No tokens stored in OS keychain.");
     return;
   }
 
-  console.log("Tokens stored in OS keychain:\n");
+  logger.info("Tokens stored in OS keychain:");
   for (const provider of providers) {
     const displayName =
       PROVIDER_DISPLAY_NAMES[provider as SupportedProvider] ?? provider;
-    console.log(`  ${chalk.green("\u2713")} ${displayName}`);
+    logger.success(displayName);
   }
-  console.log(
-    `\n${chalk.dim("Tokens from environment variables are not listed here.")}`,
-  );
+  logger.info("Tokens from environment variables are not listed here.");
 }
 
 export function registerAuthCommands(program: Command): void {

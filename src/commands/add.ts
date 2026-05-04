@@ -122,14 +122,12 @@ export async function addCommand(options: AddOptions = {}): Promise<void> {
     spinner.warn("Could not verify Coolify. Server added anyway.");
   }
 
-  console.log();
-  console.log(chalk.green("Server added successfully!"));
-  console.log(`  Name: ${server.name}`);
-  console.log(`  IP: ${server.ip}`);
-  console.log(`  Provider: ${server.provider}`);
+  logger.success("Server added successfully!");
+  logger.info(`  Name: ${server.name}`);
+  logger.info(`  IP: ${server.ip}`);
+  logger.info(`  Provider: ${server.provider}`);
   if (!server.id.startsWith("manual-")) {
-    console.log(`  Cloud ID: ${server.id}`);
+    logger.info(`  Cloud ID: ${server.id}`);
   }
-  console.log();
-  console.log("All commands now work for this server (status, update, backup, etc.)");
+  logger.success("All commands now work for this server (status, update, backup, etc.)");
 }

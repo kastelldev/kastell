@@ -114,12 +114,10 @@ async function runRegisterPath(): Promise<void> {
   }
 
   const server = result.server;
-  console.log();
-  console.log(chalk.green("Server added successfully!"));
-  console.log(`  Name: ${server.name}`);
-  console.log(`  IP: ${server.ip}`);
-  console.log(`  Provider: ${server.provider}`);
-  console.log();
+  logger.success("Server added successfully!");
+  logger.info(`  Name: ${server.name}`);
+  logger.info(`  IP: ${server.ip}`);
+  logger.info(`  Provider: ${server.provider}`);
 
   const { runAudit } = await inquirer.prompt([
     {
