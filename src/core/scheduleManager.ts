@@ -13,6 +13,7 @@ import { sanitizedEnv } from "../utils/ssh.js";
 import { dispatchWithCooldown } from "../core/notify.js";
 import { ValidationError } from "../utils/errors.js";
 import { extractReason } from "../utils/errors.js";
+import { debugLog } from "../utils/logger.js";
 
 export type ScheduleType = "fix" | "audit" | "doctor-fix";
 
@@ -199,7 +200,8 @@ export function cleanOldScheduleLogs(): void {
 
   try {
     files = readdirSync(SCHEDULE_LOGS_DIR);
-  } catch {
+  } catch (error) {
+    debugLog?.("schedule file readdir failed", { cause: error });
     return;
   }
 
@@ -210,8 +212,9 @@ export function cleanOldScheduleLogs(): void {
       if (mtime.getTime() < cutoff) {
         unlinkSync(filePath);
       }
-    } catch {
+    } catch (error) {
       // Skip files we can't stat/unlink
+      debugLog?.("schedule file stat/unlink failed", { cause: error });
     }
   }
 }

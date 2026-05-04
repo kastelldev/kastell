@@ -3,7 +3,7 @@ import { isServerMode } from "../types/index.js";
 import type { Platform, KastellResult } from "../types/index.js";
 import { getBareCloudInit } from "../utils/cloudInit.js";
 import { getAdapter } from "../adapters/factory.js";
-import { logger, createSpinner } from "../utils/logger.js";
+import { logger, debugLog, createSpinner } from "../utils/logger.js";
 import { getErrorMessage, mapProviderError } from "../utils/errorMapper.js";
 import { openBrowser } from "../utils/openBrowser.js";
 import { assertValidIp, removeStaleHostKey, sshExec } from "../utils/ssh.js";
@@ -207,8 +207,9 @@ async function waitForReady(
           assertValidIp(details.ip);
           currentIp = details.ip;
           break;
-        } catch {
+        } catch (error) {
           // Invalid IP format from API — skip and retry
+          debugLog?.("invalid IP format from provider API", { cause: error });
         }
       }
       refreshAttempts++;
@@ -258,8 +259,9 @@ async function barePostSetup(
         await sshExec(serverIp, raw("echo ok"));
         sshReady = true;
         break;
-      } catch {
+      } catch (error) {
         cloudInitSpinner.text = `Waiting for server to accept SSH... (attempt ${attempt}/60)`;
+        debugLog?.("SSH not ready during cloud-init", { cause: error });
         await new Promise((r) => setTimeout(r, POLL_DELAY_MS));
       }
     }
@@ -274,8 +276,9 @@ async function barePostSetup(
         } else {
           cloudInitSpinner.warn("Cloud-init may not have finished — continuing anyway");
         }
-      } catch {
+      } catch (error) {
         cloudInitSpinner.warn("Could not check cloud-init status — continuing anyway");
+        debugLog?.("cloud-init status check failed", { cause: error });
       }
     } else {
       cloudInitSpinner.warn("SSH not available after 5 min — continuing anyway");

@@ -5,6 +5,7 @@ import { spawnSync } from "child_process";
 import { platform } from "os";
 import { join } from "path";
 import { KASTELL_DIR } from "./paths.js";
+import { debugLog } from "./logger.js";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -75,7 +76,9 @@ function getOrCreatePersistedValue(filePath: string, generate: () => string): st
     if (existsSync(filePath)) {
       return readFileSync(filePath, "utf8").trim();
     }
-  } catch { /* regenerate */ }
+  } catch (error) { /* regenerate */
+    debugLog?.("encryption primary method failed, using fallback", { cause: error });
+  }
   ensureKastellDir();
   const value = generate();
   secureWriteFileSync(filePath, value);

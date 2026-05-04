@@ -8,6 +8,7 @@ import { saveServer } from "../utils/config.js";
 import { getTemplateDefaults } from "../utils/templates.js";
 import { getErrorMessage, mapProviderError } from "../utils/errorMapper.js";
 import { assertValidIp, clearKnownHostKey } from "../utils/ssh.js";
+import { debugLog } from "../utils/logger.js";
 import type { CloudProvider } from "../providers/base.js";
 import type { ServerRecord, Platform } from "../types/index.js";
 import { IP_WAIT, BOOT_WAIT, BOOT_WAIT_DEFAULT, invalidProviderError } from "../constants.js";
@@ -175,8 +176,9 @@ export async function provisionServer(config: ProvisionConfig): Promise<Provisio
     try {
       const status = await provider.getServerStatus(serverId);
       if (status === "running") break;
-    } catch {
+    } catch (error) {
       // Ignore polling errors, retry
+      debugLog?.("provision polling error, retrying", { cause: error });
     }
     if (i === bootConfig.attempts - 1) {
       const totalSec = Math.round((bootConfig.attempts * bootConfig.interval) / 1000);
@@ -202,20 +204,23 @@ export async function provisionServer(config: ProvisionConfig): Promise<Provisio
             assertValidIp(details.ip);
             serverIp = details.ip;
             break;
-          } catch {
+          } catch (error) {
             // Invalid IP format, keep polling
+            debugLog?.("invalid IP format during polling", { cause: error });
           }
         }
-      } catch {
+      } catch (error) {
         // Ignore polling errors, retry
+        debugLog?.("provision polling error, retrying", { cause: error });
       }
     }
   } else {
     // Validate the IP we already have
     try {
       assertValidIp(serverIp);
-    } catch {
+    } catch (error) {
       process.stderr.write(`[provision] IP validation failed for ${serverIp}, marking as pending\n`);
+      debugLog?.("IP validation failed, marking as pending", { cause: error });
       serverIp = "pending";
     }
   }

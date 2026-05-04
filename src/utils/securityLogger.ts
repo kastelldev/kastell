@@ -1,5 +1,6 @@
 import { appendFileSync, statSync, renameSync, mkdirSync } from "fs";
 import { KASTELL_DIR, SECURITY_LOG } from "./paths.js";
+import { debugLog } from "./logger.js";
 
 export type SecurityLogLevel = "info" | "warn" | "error";
 export type SecurityLogCategory = "destructive" | "auth" | "ssh" | "mcp" | "config";
@@ -27,8 +28,9 @@ function rotateIfNeeded(maxBytes: number): void {
     if (stat.size >= maxBytes) {
       renameSync(SECURITY_LOG, SECURITY_LOG + ".1");
     }
-  } catch {
+  } catch (error) {
     // File doesn't exist yet — no rotation needed
+    debugLog?.("security log rotation check failed", { cause: error });
   }
 }
 
@@ -50,8 +52,9 @@ export function logSecurityEvent(
       encoding: "utf8",
       mode: 0o600,
     });
-  } catch {
+  } catch (error) {
     // Security log failure MUST NOT crash the main operation — silent fail
+    debugLog?.("security log write failed", { cause: error });
   }
 }
 
@@ -64,8 +67,9 @@ export class SecurityLogger {
     // Fallback warn for modules that can't use logSecurityEvent
     try {
       console.warn(`[SECURITY] ${message}`, context ?? {});
-    } catch {
+    } catch (error) {
       // Silent fail - security logging must never crash the main operation
+      debugLog?.("security log flush failed", { cause: error });
     }
   }
 }

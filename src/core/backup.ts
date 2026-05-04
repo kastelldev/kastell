@@ -49,7 +49,8 @@ export function listBackups(serverName: string): string[] {
       .filter((name) => existsSync(join(dir, name, "manifest.json")))
       .sort()
       .reverse();
-  } catch {
+  } catch (error) {
+    debugLog?.("listBackups readdir failed", { cause: error });
     return [];
   }
 }
@@ -59,7 +60,8 @@ export function loadManifest(backupPath: string): BackupManifest | undefined {
   if (!existsSync(manifestPath)) return undefined;
   try {
     return JSON.parse(readFileSync(manifestPath, "utf-8"));
-  } catch {
+  } catch (error) {
+    debugLog?.("loadManifest JSON parse failed", { cause: error });
     return undefined;
   }
 }
@@ -74,7 +76,8 @@ export function listOrphanBackups(activeServerNames: string[]): string[] {
         return existsSync(fullPath) && !activeServerNames.includes(name);
       })
       .sort();
-  } catch {
+  } catch (error) {
+    debugLog?.("listOrphanBackups readdir failed", { cause: error });
     return [];
   }
 }
@@ -85,7 +88,8 @@ export function cleanupServerBackups(serverName: string): { removed: boolean; pa
   try {
     rmSync(dir, { recursive: true, force: true });
     return { removed: true, path: dir };
-  } catch {
+  } catch (error) {
+    debugLog?.("cleanupServerBackups rmSync failed", { cause: error });
     return { removed: false, path: dir };
   }
 }
@@ -213,8 +217,9 @@ export async function restoreBareBackup(
 export async function tryRestartCoolify(ip: string): Promise<void> {
   try {
     await sshExec(ip, buildStartCoolifyCommand());
-  } catch {
+  } catch (error) {
     // Best-effort — swallow errors
+    debugLog?.("tryRestartCoolify failed", { cause: error });
   }
 }
 

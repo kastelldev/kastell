@@ -6,7 +6,7 @@ import { getProviderToken } from "../core/tokens.js";
 import { isBareServer } from "../utils/modeGuard.js";
 import { resolvePlatform } from "../adapters/factory.js";
 import { platformDefaults } from "../core/domain.js";
-import { logger, createSpinner } from "../utils/logger.js";
+import { logger, debugLog, createSpinner } from "../utils/logger.js";
 import { RESTART_DELAY_MS } from "../constants.js";
 
 function showDryRun(server: { name: string; ip: string; provider: string }): void {
@@ -83,8 +83,9 @@ export async function restartCommand(query?: string, options?: { dryRun?: boolea
         }
         return;
       }
-    } catch {
+    } catch (error) {
       // Server might be temporarily unreachable during reboot
+      debugLog?.("server unreachable during reboot check", { cause: error });
     }
     attempts++;
     pollSpinner.text = `Waiting for server... (${attempts}/${maxAttempts})`;

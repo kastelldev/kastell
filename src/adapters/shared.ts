@@ -35,8 +35,9 @@ export async function sharedHealthCheck(
         validateStatus: () => true,
       });
       return { status: "running" };
-    } catch {
+    } catch (error) {
       // HTTPS failed, fall back to HTTP
+      debugLog?.("HTTPS health check failed, falling back to HTTP", { cause: error });
     }
   }
   try {
@@ -45,7 +46,8 @@ export async function sharedHealthCheck(
       validateStatus: () => true,
     });
     return { status: "running" };
-  } catch {
+  } catch (error) {
+    debugLog?.("HTTP health check failed", { cause: error });
     return { status: "not reachable" };
   }
 }

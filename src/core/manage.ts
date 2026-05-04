@@ -8,6 +8,7 @@ import { detectPlatform } from "../adapters/factory.js";
 import type { ServerRecord, ServerMode, Platform } from "../types/index.js";
 import { SUPPORTED_PROVIDERS, invalidProviderError, COOLIFY_PORT, DOKPLOY_PORT } from "../constants.js";
 import { extractReason } from "../utils/errors.js";
+import { debugLog } from "../utils/logger.js";
 
 // Re-export from dedicated module for backward compatibility
 export { isSafeMode } from "../utils/safeMode.js";
@@ -119,8 +120,8 @@ export async function addServerRecord(params: AddServerParams): Promise<AddServe
   let cloudId: string | null = null;
   try {
     cloudId = await provider.findServerByIp(params.ip);
-  } catch {
-    // Non-fatal: API lookup failure keeps manual-{timestamp} id
+  } catch (error) {
+    debugLog?.("cloud ID lookup failed, using manual id", { cause: error });
   }
 
   // Resolve mode and platform — auto-detect if no explicit mode provided
@@ -129,7 +130,8 @@ export async function addServerRecord(params: AddServerParams): Promise<AddServe
     try {
       const detected = await detectPlatform(params.ip);
       modeStr = detected; // "coolify" | "dokploy" | "bare"
-    } catch {
+    } catch (error) {
+      debugLog?.("invalid IP format during mode detection, using bare", { cause: error });
       modeStr = "bare"; // safe fallback — bare is least privileged
     }
   }

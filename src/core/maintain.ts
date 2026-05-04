@@ -5,6 +5,7 @@ import type { ServerRecord } from "../types/index.js";
 import type { PlatformAdapter } from "../adapters/interface.js";
 import { getAdapter, resolvePlatform } from "../adapters/factory.js";
 import { adapterDisplayName } from "../adapters/shared.js";
+import { debugLog } from "../utils/logger.js";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -81,8 +82,9 @@ export async function rebootAndWait(
         if (status === "running") {
           return { success: true, finalStatus: "running" };
         }
-      } catch {
+      } catch (error) {
         // Server may be temporarily unreachable during reboot
+        debugLog?.("server unreachable during reboot check", { cause: error });
       }
       await new Promise((resolve) => setTimeout(resolve, intervalMs));
     }

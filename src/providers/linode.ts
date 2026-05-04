@@ -6,6 +6,7 @@ import { BusinessError } from "../utils/errors.js";
 import { withRetry } from "../utils/retry.js";
 import type { Region, ServerSize, ServerConfig, ServerResult, SnapshotInfo, ServerMode } from "../types/index.js";
 import { formatSnapshotCost } from "../constants.js";
+import { debugLog } from "../utils/logger.js";
 
 export const LinodeInstanceSchema = z.object({
   id: z.number(),
@@ -120,6 +121,8 @@ export class LinodeProvider implements CloudProvider {
         status: instance.status === "provisioning" ? "initializing" : instance.status,
       };
     }, extractLinodeError);
+  } catch (error: unknown) {
+    debugLog?.("linode profile fetch failed", { cause: error });
   }
 
   async getServerDetails(serverId: string): Promise<ServerResult> {

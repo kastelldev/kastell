@@ -4,6 +4,7 @@ import { ValidationError } from "../utils/errors.js";
 import { secureWriteFileSync, secureMkdirSync } from "../utils/secureWrite.js";
 import { KASTELL_DIR } from "../utils/paths.js";
 import type { PluginManifest, PluginCheck } from "./sdk/types.js";
+import { debugLog } from "../utils/logger.js";
 
 const PLUGIN_CACHE_PATH = join(KASTELL_DIR, "plugin-manifests.json");
 

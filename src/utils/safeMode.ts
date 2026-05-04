@@ -5,6 +5,7 @@ import chalk from "chalk";
 import { logSecurityEvent } from "./securityLogger.js";
 import type { SecurityLogCategory } from "./securityLogger.js";
 import { KASTELL_DIR } from "./paths.js";
+import { debugLog } from "./logger.js";
 
 let _safeModeWarningShown = false;
 

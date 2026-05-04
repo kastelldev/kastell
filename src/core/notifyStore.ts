@@ -7,6 +7,7 @@ import type { NotifyConfig } from "./notify.js";
 import { isKeychainAvailable as _isKeychainAvailable, getKeychainEntry as _getKeychainEntry } from "../utils/keyring.js";
 import { encryptData, decryptData, getMachineKey, isEncryptedPayload } from "../utils/encryption.js";
 import { KASTELL_DIR } from "../utils/paths.js";
+import { debugLog } from "../utils/logger.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -62,7 +63,8 @@ function writeSecretsFile(data: Record<string, string>): void {
 function readChannelMetadata(): Record<string, boolean> {
   try {
     return JSON.parse(readFileSync(NOTIFY_CHANNELS_FILE, "utf-8")) as Record<string, boolean>;
-  } catch {
+  } catch (error) {
+    debugLog?.("no legacy notification file", { cause: error });
     return {};
   }
 }
