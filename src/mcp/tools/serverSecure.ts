@@ -51,6 +51,119 @@ export const serverSecureSchema = {
 
 type Action = z.infer<typeof serverSecureSchema.action>;
 
+// ─── Output Schema ────────────────────────────────────────────────────────────
+
+const secureSetupOutputSchema = z.object({
+  success: z.boolean(),
+  server: z.string(),
+  ip: z.string(),
+  message: z.string(),
+  sshHardening: z.boolean(),
+  fail2ban: z.boolean(),
+  sshKeyCount: z.number(),
+  hint: z.string().optional(),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+const secureAuditOutputSchema = z.object({
+  server: z.string(),
+  ip: z.string(),
+  score: z.number(),
+  maxScore: z.number(),
+  checks: z.object({
+    passwordAuth: z.boolean(),
+    rootLogin: z.boolean(),
+    fail2ban: z.boolean(),
+    sshPort: z.boolean(),
+  }),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+const firewallSetupOutputSchema = z.object({
+  success: z.boolean(),
+  server: z.string(),
+  ip: z.string(),
+  message: z.string(),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+const firewallAddOutputSchema = z.object({
+  success: z.boolean(),
+  server: z.string(),
+  ip: z.string(),
+  message: z.string(),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+const firewallRemoveOutputSchema = z.object({
+  success: z.boolean(),
+  server: z.string(),
+  ip: z.string(),
+  message: z.string(),
+  warning: z.string().optional(),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+const firewallStatusOutputSchema = z.object({
+  server: z.string(),
+  ip: z.string(),
+  active: z.boolean(),
+  rules: z.array(z.string()),
+  ruleCount: z.number(),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+const domainSetOutputSchema = z.object({
+  success: z.boolean(),
+  server: z.string(),
+  ip: z.string(),
+  message: z.string(),
+  url: z.string(),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+const domainRemoveOutputSchema = z.object({
+  success: z.boolean(),
+  server: z.string(),
+  ip: z.string(),
+  message: z.string(),
+  url: z.string(),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+const domainCheckOutputSchema = z.object({
+  server: z.string(),
+  ip: z.string(),
+  domain: z.string(),
+  resolvedIp: z.string(),
+  match: z.boolean(),
+  hint: z.string().optional(),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+const domainInfoOutputSchema = z.object({
+  server: z.string(),
+  ip: z.string(),
+  fqdn: z.string().nullable(),
+  message: z.string(),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+export const serverSecureOutputSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("secure-setup") }).merge(secureSetupOutputSchema),
+  z.object({ action: z.literal("secure-audit") }).merge(secureAuditOutputSchema),
+  z.object({ action: z.literal("firewall-setup") }).merge(firewallSetupOutputSchema),
+  z.object({ action: z.literal("firewall-add") }).merge(firewallAddOutputSchema),
+  z.object({ action: z.literal("firewall-remove") }).merge(firewallRemoveOutputSchema),
+  z.object({ action: z.literal("firewall-status") }).merge(firewallStatusOutputSchema),
+  z.object({ action: z.literal("domain-set") }).merge(domainSetOutputSchema),
+  z.object({ action: z.literal("domain-remove") }).merge(domainRemoveOutputSchema),
+  z.object({ action: z.literal("domain-check") }).merge(domainCheckOutputSchema),
+  z.object({ action: z.literal("domain-info") }).merge(domainInfoOutputSchema),
+]);
+
+export type ServerSecureOutput = z.infer<typeof serverSecureOutputSchema>;
+
 /** Actions that only read state — never blocked by SAFE_MODE */
 const READ_ONLY_ACTIONS: readonly Action[] = ["secure-audit", "firewall-status", "domain-check", "domain-info"];
 

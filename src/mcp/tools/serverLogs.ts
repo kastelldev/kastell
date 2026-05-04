@@ -30,6 +30,36 @@ export const serverLogsSchema = {
   ),
 };
 
+// ─── Output Schema ────────────────────────────────────────────────────────────
+
+const serverLogsLogsOutputSchema = z.object({
+  server: z.string(),
+  ip: z.string(),
+  service: z.string(),
+  lines: z.number(),
+  logs: z.string(),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+const serverLogsMonitorOutputSchema = z.object({
+  server: z.string(),
+  ip: z.string(),
+  metrics: z.object({
+    cpu: z.object({ percent: z.number() }),
+    mem: z.object({ percent: z.number(), total: z.number(), used: z.number() }),
+    disk: z.object({ percent: z.number(), total: z.number(), used: z.number() }),
+  }),
+  containers: z.array(z.object({ id: z.string(), name: z.string(), status: z.string() })).optional(),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+export const serverLogsOutputSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("logs"), ...serverLogsLogsOutputSchema.shape }),
+  z.object({ action: z.literal("monitor"), ...serverLogsMonitorOutputSchema.shape }),
+]);
+
+export type ServerLogsOutput = z.infer<typeof serverLogsOutputSchema>;
+
 interface SuggestedAction {
   command: string;
   reason: string;

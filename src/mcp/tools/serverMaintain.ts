@@ -30,6 +30,55 @@ export const serverMaintainSchema = {
   ),
 };
 
+// ─── Output Schema ────────────────────────────────────────────────────────────
+
+const serverMaintainUpdateOutputSchema = z.object({
+  success: z.boolean(),
+  server: z.string(),
+  ip: z.string(),
+  message: z.string(),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+const serverMaintainRestartOutputSchema = z.object({
+  success: z.boolean(),
+  server: z.string(),
+  ip: z.string(),
+  message: z.string(),
+  finalStatus: z.string(),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+const serverMaintainMaintainOutputSchema = z.object({
+  success: z.boolean(),
+  server: z.string(),
+  ip: z.string(),
+  provider: z.string(),
+  steps: z.array(z.object({
+    step: z.string(),
+    status: z.string(),
+    message: z.string().optional(),
+    error: z.string().optional(),
+  })),
+  summary: z.object({
+    total: z.number(),
+    success: z.number(),
+    failure: z.number(),
+    skipped: z.number(),
+  }),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+export const serverMaintainOutputSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("update") }).merge(serverMaintainUpdateOutputSchema),
+  z.object({ action: z.literal("restart") }).merge(serverMaintainRestartOutputSchema),
+  z.object({ action: z.literal("maintain") }).merge(serverMaintainMaintainOutputSchema),
+]);
+
+export type ServerMaintainOutput = z.infer<typeof serverMaintainOutputSchema>;
+
+// ─── Handler ──────────────────────────────────────────────────────────────────
+
 export async function handleServerMaintain(params: {
   action: "update" | "restart" | "maintain";
   server?: string;

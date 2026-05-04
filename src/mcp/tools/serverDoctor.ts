@@ -21,6 +21,25 @@ export const serverDoctorSchema = {
   force: z.boolean().default(false).describe("Skip per-finding confirmation prompts (CI-safe). Requires autoFix: true."),
 };
 
+// ─── Output Schema ────────────────────────────────────────────────────────────
+
+ 
+export const serverDoctorOutputSchema = z.object({
+  server: z.string(),
+  total: z.number(),
+  critical: z.number(),
+  warning: z.number(),
+  info: z.number(),
+  score: z.number(),
+  ranAt: z.string(),
+  usedFreshData: z.boolean(),
+  findings: z.array(z.string()),
+});
+
+export type ServerDoctorOutput = z.infer<typeof serverDoctorOutputSchema>;
+
+// ─── Handler ──────────────────────────────────────────────────────────────────
+
 export async function handleServerDoctor(params: {
   server?: string;
   fresh?: boolean;

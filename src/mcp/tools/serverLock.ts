@@ -21,6 +21,21 @@ export const serverLockSchema = {
   force: z.boolean().default(false).describe("Force lock even if server already appears hardened."),
 };
 
+// ─── Output Schema ────────────────────────────────────────────────────────────
+
+ 
+export const serverLockOutputSchema = z.object({
+  success: z.boolean(),
+  steps: z.number(),
+  scoreBefore: z.number(),
+  scoreAfter: z.number(),
+  stepErrors: z.record(z.string(), z.unknown()).optional(),
+});
+
+export type ServerLockOutput = z.infer<typeof serverLockOutputSchema>;
+
+// ─── Handler ──────────────────────────────────────────────────────────────────
+
 export async function handleServerLock(params: {
   server?: string;
   production?: boolean;

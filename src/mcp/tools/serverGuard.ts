@@ -16,6 +16,23 @@ export const serverGuardSchema = {
   action: z.enum(["start", "stop", "status"]).describe("Guard action: 'start' installs guard cron, 'stop' removes it, 'status' shows current state and recent breaches."),
 };
 
+// ─── Output Schema ────────────────────────────────────────────────────────────
+
+ 
+export const serverGuardOutputSchema = z.object({
+  success: z.boolean(),
+  message: z.string().optional(),
+  isActive: z.boolean().optional(),
+  lastRunAt: z.string().optional(),
+  breaches: z.array(z.record(z.string(), z.unknown())).optional(),
+  logTail: z.array(z.string()).optional(),
+  installedAt: z.string().optional(),
+});
+
+export type ServerGuardOutput = z.infer<typeof serverGuardOutputSchema>;
+
+// ─── Handler ──────────────────────────────────────────────────────────────────
+
 export async function handleServerGuard(params: {
   server?: string;
   action: "start" | "stop" | "status";

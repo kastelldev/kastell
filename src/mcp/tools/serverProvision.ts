@@ -8,6 +8,28 @@ import { SUPPORTED_PROVIDERS } from "../../constants.js";
 import type { SupportedProvider } from "../../constants.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
+// ─── Output Schema ───────────────────────────────────────────────────────────
+
+ 
+export const serverProvisionOutputSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+  server: z.object({
+    id: z.string(),
+    name: z.string(),
+    provider: z.string(),
+    ip: z.string(),
+    region: z.string(),
+    size: z.string(),
+    mode: z.string(),
+    createdAt: z.string(),
+  }),
+  hint: z.string().optional(),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+export type ServerProvisionOutput = z.infer<typeof serverProvisionOutputSchema>;
+
 // ─── Schema ──────────────────────────────────────────────────────────────────
 
 export const serverProvisionSchema = {

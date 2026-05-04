@@ -37,6 +37,81 @@ interface SuggestedAction {
   reason: string;
 }
 
+// ─── Output Schema ────────────────────────────────────────────────────────────
+
+const serverInfoListOutputSchema = z.object({
+  servers: z.array(z.object({
+    name: z.string(),
+    ip: z.string(),
+    provider: z.string(),
+    region: z.string(),
+    size: z.string(),
+    id: z.string(),
+    mode: z.string(),
+    createdAt: z.string(),
+  })),
+  total: z.number(),
+  message: z.string().optional(),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+const serverInfoStatusOutputSchema = z.object({
+  results: z.array(z.object({
+    name: z.string(),
+    ip: z.string(),
+    provider: z.string(),
+    region: z.string(),
+    size: z.string(),
+    mode: z.string(),
+    serverStatus: z.string(),
+    platformStatus: z.string(),
+    error: z.string().optional(),
+  })),
+  summary: z.object({
+    total: z.number(),
+    running: z.number(),
+    notReachable: z.number(),
+    errors: z.number(),
+  }),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+const serverInfoHealthOutputSchema = z.object({
+  results: z.array(z.record(z.string(), z.unknown())),
+  summary: z.object({
+    total: z.number(),
+    running: z.number(),
+    notReachable: z.number(),
+    bare: z.number(),
+  }),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+const serverInfoSizesOutputSchema = z.object({
+  provider: z.string(),
+  region: z.string(),
+  mode: z.string(),
+  sizes: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    vcpu: z.number(),
+    ram: z.string(),
+    disk: z.string(),
+    price: z.number(),
+  })),
+  total: z.number(),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+export const serverInfoOutputSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("list") }).merge(serverInfoListOutputSchema),
+  z.object({ action: z.literal("status") }).merge(serverInfoStatusOutputSchema),
+  z.object({ action: z.literal("health") }).merge(serverInfoHealthOutputSchema),
+  z.object({ action: z.literal("sizes") }).merge(serverInfoSizesOutputSchema),
+]);
+
+export type ServerInfoOutput = z.infer<typeof serverInfoOutputSchema>;
+
 function formatServerList(servers: ServerRecord[]): Record<string, unknown> {
   if (servers.length === 0) {
     return {
