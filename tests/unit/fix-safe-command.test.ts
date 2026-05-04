@@ -1155,8 +1155,6 @@ describe("fixSafeCommand", () => {
       mockedPrompt.mockResolvedValue({ confirm: true });
       mockedBackupServer.mockResolvedValue({ success: true, backupPath: "/tmp/backup" } as BackupResult);
 
-      const consoleSpy = jest.spyOn(console, "log").mockImplementation(() => { /* noop */ });
-
       // Handler returns diff info
       mockedTryHandlerDispatch.mockImplementation(async (_ip, check, applied, _errors) => {
         applied.push(check.id);
@@ -1168,12 +1166,10 @@ describe("fixSafeCommand", () => {
 
       await fixSafeCommand(undefined, { safe: true, diff: true });
 
-      // Should print diff line
-      expect(consoleSpy).toHaveBeenCalledWith(
+      // Should print diff line via logger.step
+      expect(mockedLogger.step).toHaveBeenCalledWith(
         expect.stringContaining("net.ipv4.tcp_syncookies"),
       );
-
-      consoleSpy.mockRestore();
     });
   });
 

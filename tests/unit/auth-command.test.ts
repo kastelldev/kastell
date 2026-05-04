@@ -58,7 +58,7 @@ describe("auth commands", () => {
       await authSetAction("aws");
       expect(mockPrompt).not.toHaveBeenCalled();
       expect(mockSetToken).not.toHaveBeenCalled();
-      const output = consoleErrors.join(" ");
+      const output = consoleLogs.join(" ");
       expect(output).toContain("Invalid provider");
     });
 
@@ -66,7 +66,7 @@ describe("auth commands", () => {
       mockIsKeychainAvailable.mockReturnValue(false);
       await authSetAction("hetzner");
       expect(mockPrompt).not.toHaveBeenCalled();
-      const output = consoleErrors.join(" ");
+      const output = consoleLogs.join(" ");
       expect(output).toContain("keychain");
     });
 
@@ -74,7 +74,7 @@ describe("auth commands", () => {
       mockPrompt.mockResolvedValue({ token: "my-token" });
       mockSetToken.mockReturnValue(false);
       await authSetAction("hetzner");
-      const output = consoleErrors.join(" ");
+      const output = consoleLogs.join(" ");
       expect(output).toContain("Failed");
     });
 
@@ -103,14 +103,14 @@ describe("auth commands", () => {
     it("should show error for invalid provider", async () => {
       await authRemoveAction("aws");
       expect(mockRemoveToken).not.toHaveBeenCalled();
-      const output = consoleErrors.join(" ");
+      const output = consoleLogs.join(" ");
       expect(output).toContain("Invalid provider");
     });
 
     it("should show failure message when removeToken returns false", async () => {
       mockRemoveToken.mockReturnValue(false);
       await authRemoveAction("hetzner");
-      const output = consoleErrors.join(" ");
+      const output = consoleLogs.join(" ");
       expect(output).toContain("No token found");
     });
   });

@@ -4,7 +4,6 @@
  */
 
 import { readFileSync } from "fs";
-import chalk from "chalk";
 import { resolveServer } from "../utils/serverSelect.js";
 import { logger, createSpinner } from "../utils/logger.js";
 import { collectEvidence } from "../core/evidence.js";
@@ -67,12 +66,12 @@ export async function evidenceCommand(
 
   // Summary table
   console.log("");
-  console.log(chalk.bold("  Evidence Summary"));
-  console.log(chalk.dim("  ─────────────────────────────────────────────"));
-  console.log(`  ${chalk.cyan("Directory")}   ${evidenceDir}`);
-  console.log(`  ${chalk.cyan("Files")}       ${totalFiles} collected, ${skippedFiles} skipped`);
-  console.log(`  ${chalk.cyan("Platform")}    ${platform}`);
-  console.log(`  ${chalk.cyan("Collected")}   ${collectedAt}`);
+  logger.title("  Evidence Summary");
+  logger.step("  ─────────────────────────────────────────────");
+  logger.info(`  Directory   ${evidenceDir}`);
+  logger.info(`  Files       ${totalFiles} collected, ${skippedFiles} skipped`);
+  logger.info(`  Platform    ${platform}`);
+  logger.info(`  Collected   ${collectedAt}`);
   console.log("");
 
   if (skippedFiles > 0) {

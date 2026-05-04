@@ -463,9 +463,9 @@ export async function fixSafeCommand(
         // --diff display for handler-applied fixes
         if (options.diff && dispatch.diff) {
           const d = dispatch.diff;
-          console.log(chalk.cyan(`  [${d.handlerType}] ${d.key}: ${d.before} -> ${d.after}`));
+          logger.step(`  [${d.handlerType}] ${d.key}: ${d.before} -> ${d.after}`);
         } else if (options.diff) {
-          console.log(chalk.dim(`  ${check.id}: Shell command — diff not available`));
+          logger.step(`  ${check.id}: Shell command — diff not available`);
         }
         continue;
       }
@@ -484,7 +484,7 @@ export async function fixSafeCommand(
         collectedDiffs.push({ checkId: check.id, category: check.category, severity: check.severity });
         // --diff display for shell-applied fixes (no diff available)
         if (options.diff) {
-          console.log(chalk.dim(`  ${check.id}: Shell command — diff not available`));
+          logger.step(`  ${check.id}: Shell command — diff not available`);
         }
       }
     } catch (err) {

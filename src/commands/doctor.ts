@@ -30,7 +30,7 @@ function displayFindings(result: DoctorResult): void {
     for (const [severity, findings] of Object.entries(bySeverity) as [string, DoctorFinding[]][]) {
       if (findings.length === 0) continue;
       const label = SEVERITY_LABEL[severity] ?? severity.toUpperCase();
-      console.log(`\n  ${label} (${findings.length})`);
+      logger.title(`\n  ${label} (${findings.length})`);
       for (const finding of findings) {
         logger.warning(`  ${finding.description}`);
         logger.step(`  Run: ${finding.command}`);

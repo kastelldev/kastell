@@ -1,4 +1,3 @@
-import chalk from "chalk";
 import { loadBaseline, listBaselines, formatBaselineStatus, deleteBaseline, formatRelativeTime } from "../core/audit/regression.js";
 import { logger } from "../utils/logger.js";
 import { confirmOrCancel } from "../utils/prompts.js";
@@ -21,7 +20,7 @@ export async function regressionStatusCommand(server?: string): Promise<void> {
   }
 
   const header = `${"Server".padEnd(20)} ${"Best Score".padEnd(12)} ${"Checks".padEnd(8)} Last Updated`;
-  console.log(chalk.bold(header));
+  logger.title(header);
 
   for (const b of baselines) {
     console.log(
