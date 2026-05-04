@@ -128,4 +128,44 @@ describe("migrateConfigIfNeeded", () => {
     // Should not throw
     expect(() => migrateConfigIfNeeded()).not.toThrow();
   });
+
+  it("should migrate mode field for servers missing it", () => {
+    const servers = [
+      { id: "1", name: "no-mode", provider: "hetzner", ip: "1.1.1.1", region: "nbg1", size: "cax11", createdAt: "2026-01-01T00:00:00Z" },
+    ];
+    // .kastell exists (skip dir migration), servers.json exists
+    mockedFs.existsSync.mockReturnValue(true);
+    mockedFs.readFileSync.mockReturnValue(JSON.stringify(servers));
+
+    migrateConfigIfNeeded();
+
+    expect(mockSecureWrite.secureWriteFileSync).toHaveBeenCalledWith(
+      expect.stringContaining("servers.json.tmp"),
+      expect.stringContaining('"mode": "coolify"'),
+    );
+  });
+
+  it("should NOT write when all servers already have mode", () => {
+    const servers = [
+      { id: "1", name: "has-mode", provider: "hetzner", ip: "1.1.1.1", region: "nbg1", size: "cax11", createdAt: "2026-01-01T00:00:00Z", mode: "coolify" },
+    ];
+    mockedFs.existsSync.mockReturnValue(true);
+    mockedFs.readFileSync.mockReturnValue(JSON.stringify(servers));
+
+    migrateConfigIfNeeded();
+
+    // secureWriteFileSync should not be called for servers.json.tmp (only .migrated flag would be called)
+    const calls = mockSecureWrite.secureWriteFileSync.mock.calls;
+    const serverWriteCalls = calls.filter((c: string[]) => String(c[0]).includes("servers.json"));
+    expect(serverWriteCalls).toHaveLength(0);
+  });
+
+  it("should handle mode migration failure gracefully", () => {
+    mockedFs.existsSync.mockReturnValue(true);
+    mockedFs.readFileSync.mockImplementation(() => {
+      throw new Error("corrupt file");
+    });
+
+    expect(() => migrateConfigIfNeeded()).not.toThrow();
+  });
 });

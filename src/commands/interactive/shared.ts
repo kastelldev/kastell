@@ -1,7 +1,6 @@
 import inquirer from "inquirer";
 import chalk from "chalk";
-
-export const BACK = "__back__";
+import { BACK_SIGNAL } from "../../utils/prompts.js";
 
 export const validateRequired = (msg: string) => (v: string) =>
   v.trim().length > 0 ? true : msg;
@@ -19,7 +18,7 @@ export const validateColonPair = (msg: string) => (v: string) => {
 };
 
 export function backChoice(): { name: string; value: string } {
-  return { name: chalk.dim("← Back"), value: BACK };
+  return { name: chalk.dim("← Back"), value: BACK_SIGNAL };
 }
 
 export async function promptList(
@@ -35,5 +34,5 @@ export async function promptList(
       loop: false,
     },
   ]);
-  return answer === BACK ? null : answer;
+  return answer === (BACK_SIGNAL as string) ? null : answer;
 }

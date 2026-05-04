@@ -129,7 +129,7 @@ describe("config", () => {
       expect(() => getServers()).toThrow(/corrupt/);
     });
 
-    it("should auto-migrate and persist records missing mode field", () => {
+    it("should apply mode default in-memory without writing to disk", () => {
       const servers = [
         {
           id: "1",
@@ -139,37 +139,14 @@ describe("config", () => {
           region: "nbg1",
           size: "cax11",
           createdAt: "2026-01-01T00:00:00Z",
-          // no mode field — should trigger migration write
         },
       ];
       mockedFs.existsSync.mockReturnValue(true);
       mockedFs.readFileSync.mockReturnValue(JSON.stringify(servers));
-      getServers();
-      // Should write via atomic pattern (secureWriteFileSync + renameSync)
-      expect(secureWriteFileSync).toHaveBeenCalledWith(
-        expect.stringContaining("servers.json.tmp"),
-        expect.any(String),
-      );
-      expect(mockedFs.renameSync).toHaveBeenCalled();
-    });
-
-    it("should NOT write when all records already have mode", () => {
-      const servers = [
-        {
-          id: "1",
-          name: "has-mode",
-          provider: "hetzner",
-          ip: "1.1.1.1",
-          region: "nbg1",
-          size: "cax11",
-          createdAt: "2026-01-01T00:00:00Z",
-          mode: "coolify",
-        },
-      ];
-      mockedFs.existsSync.mockReturnValue(true);
-      mockedFs.readFileSync.mockReturnValue(JSON.stringify(servers));
-      getServers();
-      expect(mockedFs.writeFileSync).not.toHaveBeenCalled();
+      const result = getServers();
+      expect(result[0].mode).toBe("coolify");
+      expect(secureWriteFileSync).not.toHaveBeenCalled();
+      expect(mockedFs.renameSync).not.toHaveBeenCalled();
     });
   });
 

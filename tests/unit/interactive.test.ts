@@ -98,7 +98,7 @@ describe("interactiveMenu", () => {
     // First: select "secure", sub-prompt returns back
     mockedInquirer.prompt
       .mockResolvedValueOnce({ action: "secure" }) // main menu
-      .mockResolvedValueOnce({ answer: "__back__" }) // secure sub-prompt → back
+      .mockResolvedValueOnce({ answer: "__BACK__" }) // secure sub-prompt → back
       .mockResolvedValueOnce({ action: "exit" }); // main menu again → exit
 
     expect(await interactiveMenu()).toBeNull();
@@ -108,7 +108,7 @@ describe("interactiveMenu", () => {
   it("returns to main menu when back is selected, then picks direct command", async () => {
     mockedInquirer.prompt
       .mockResolvedValueOnce({ action: "logs" }) // main menu
-      .mockResolvedValueOnce({ answer: "__back__" }) // logs sub → back
+      .mockResolvedValueOnce({ answer: "__BACK__" }) // logs sub → back
       .mockResolvedValueOnce({ action: "list" }); // main menu → direct
 
     expect(await interactiveMenu()).toEqual(["list"]);
@@ -143,7 +143,7 @@ describe("interactiveMenu", () => {
   it("init: back on mode returns to main menu", async () => {
     mockedInquirer.prompt
       .mockResolvedValueOnce({ action: "init" })
-      .mockResolvedValueOnce({ answer: "__back__" }) // mode → back
+      .mockResolvedValueOnce({ answer: "__BACK__" }) // mode → back
       .mockResolvedValueOnce({ action: "exit" });
 
     expect(await interactiveMenu()).toBeNull();
@@ -153,7 +153,7 @@ describe("interactiveMenu", () => {
     mockedInquirer.prompt
       .mockResolvedValueOnce({ action: "init" })
       .mockResolvedValueOnce({ answer: "coolify" }) // mode
-      .mockResolvedValueOnce({ answer: "__back__" }) // template → back
+      .mockResolvedValueOnce({ answer: "__BACK__" }) // template → back
       .mockResolvedValueOnce({ action: "exit" });
 
     expect(await interactiveMenu()).toBeNull();
@@ -188,7 +188,7 @@ describe("interactiveMenu", () => {
   it("logs: back on service returns to main menu", async () => {
     mockedInquirer.prompt
       .mockResolvedValueOnce({ action: "logs" })
-      .mockResolvedValueOnce({ answer: "__back__" })
+      .mockResolvedValueOnce({ answer: "__BACK__" })
       .mockResolvedValueOnce({ action: "exit" });
 
     expect(await interactiveMenu()).toBeNull();
@@ -198,7 +198,7 @@ describe("interactiveMenu", () => {
     mockedInquirer.prompt
       .mockResolvedValueOnce({ action: "logs" })
       .mockResolvedValueOnce({ answer: "coolify" })
-      .mockResolvedValueOnce({ answer: "__back__" })
+      .mockResolvedValueOnce({ answer: "__BACK__" })
       .mockResolvedValueOnce({ action: "exit" });
 
     expect(await interactiveMenu()).toBeNull();
@@ -229,7 +229,7 @@ describe("interactiveMenu", () => {
   it("firewall: back on subcommand returns to main menu", async () => {
     mockedInquirer.prompt
       .mockResolvedValueOnce({ action: "firewall" })
-      .mockResolvedValueOnce({ answer: "__back__" })
+      .mockResolvedValueOnce({ answer: "__BACK__" })
       .mockResolvedValueOnce({ action: "exit" });
 
     expect(await interactiveMenu()).toBeNull();
@@ -240,7 +240,7 @@ describe("interactiveMenu", () => {
       .mockResolvedValueOnce({ action: "firewall" })
       .mockResolvedValueOnce({ answer: "remove" })
       .mockResolvedValueOnce({ port: "443" })
-      .mockResolvedValueOnce({ answer: "__back__" }) // protocol → back
+      .mockResolvedValueOnce({ answer: "__BACK__" }) // protocol → back
       .mockResolvedValueOnce({ action: "exit" });
 
     expect(await interactiveMenu()).toBeNull();
@@ -259,7 +259,7 @@ describe("interactiveMenu", () => {
   it("secure: back returns to main menu", async () => {
     mockedInquirer.prompt
       .mockResolvedValueOnce({ action: "secure" })
-      .mockResolvedValueOnce({ answer: "__back__" })
+      .mockResolvedValueOnce({ answer: "__BACK__" })
       .mockResolvedValueOnce({ action: "exit" });
 
     expect(await interactiveMenu()).toBeNull();
@@ -313,7 +313,7 @@ describe("interactiveMenu", () => {
   it("domain: back returns to main menu", async () => {
     mockedInquirer.prompt
       .mockResolvedValueOnce({ action: "domain" })
-      .mockResolvedValueOnce({ answer: "__back__" })
+      .mockResolvedValueOnce({ answer: "__BACK__" })
       .mockResolvedValueOnce({ action: "exit" });
 
     expect(await interactiveMenu()).toBeNull();
@@ -332,7 +332,7 @@ describe("interactiveMenu", () => {
   it("snapshot: back returns to main menu", async () => {
     mockedInquirer.prompt
       .mockResolvedValueOnce({ action: "snapshot" })
-      .mockResolvedValueOnce({ answer: "__back__" })
+      .mockResolvedValueOnce({ answer: "__BACK__" })
       .mockResolvedValueOnce({ action: "exit" });
 
     expect(await interactiveMenu()).toBeNull();
@@ -450,7 +450,7 @@ describe("interactiveMenu", () => {
   it("ssh: back returns to main menu", async () => {
     mockedInquirer.prompt
       .mockResolvedValueOnce({ action: "ssh" })
-      .mockResolvedValueOnce({ answer: "__back__" })
+      .mockResolvedValueOnce({ answer: "__BACK__" })
       .mockResolvedValueOnce({ action: "exit" });
 
     expect(await interactiveMenu()).toBeNull();
@@ -516,7 +516,7 @@ describe("interactiveMenu", () => {
   it("auth: back on action returns to main menu", async () => {
     mockedInquirer.prompt
       .mockResolvedValueOnce({ action: "auth" })
-      .mockResolvedValueOnce({ answer: "__back__" })
+      .mockResolvedValueOnce({ answer: "__BACK__" })
       .mockResolvedValueOnce({ action: "exit" });
 
     expect(await interactiveMenu()).toBeNull();
@@ -526,7 +526,7 @@ describe("interactiveMenu", () => {
     mockedInquirer.prompt
       .mockResolvedValueOnce({ action: "auth" })
       .mockResolvedValueOnce({ answer: "set" })
-      .mockResolvedValueOnce({ answer: "__back__" })
+      .mockResolvedValueOnce({ answer: "__BACK__" })
       .mockResolvedValueOnce({ action: "exit" });
 
     expect(await interactiveMenu()).toBeNull();
@@ -671,7 +671,7 @@ describe("promptFix — nested menu", () => {
   it("back at group level: returns null", async () => {
     mockedInquirer.prompt
       .mockResolvedValueOnce({ action: "fix" })
-      .mockResolvedValueOnce({ answer: "__back__" }) // promptList returns null
+      .mockResolvedValueOnce({ answer: "__BACK__" }) // promptList returns null
       .mockResolvedValueOnce({ action: "exit" });
 
     expect(await interactiveMenu()).toBeNull();
@@ -681,7 +681,7 @@ describe("promptFix — nested menu", () => {
     mockedInquirer.prompt
       .mockResolvedValueOnce({ action: "fix" })
       .mockResolvedValueOnce({ answer: "apply" })
-      .mockResolvedValueOnce({ answer: "__back__" }) // promptList returns null
+      .mockResolvedValueOnce({ answer: "__BACK__" }) // promptList returns null
       .mockResolvedValueOnce({ action: "exit" });
 
     expect(await interactiveMenu()).toBeNull();
@@ -691,7 +691,7 @@ describe("promptFix — nested menu", () => {
     mockedInquirer.prompt
       .mockResolvedValueOnce({ action: "fix" })
       .mockResolvedValueOnce({ answer: "history" })
-      .mockResolvedValueOnce({ answer: "__back__" }) // promptList returns null
+      .mockResolvedValueOnce({ answer: "__BACK__" }) // promptList returns null
       .mockResolvedValueOnce({ action: "exit" });
 
     expect(await interactiveMenu()).toBeNull();

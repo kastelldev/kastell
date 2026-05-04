@@ -18,37 +18,29 @@ const MIGRATED_FLAG = join(NEW_CONFIG_DIR, ".migrated");
  * - Otherwise copies contents and creates .migrated flag.
  */
 export function migrateConfigIfNeeded(): void {
-  // If new config dir already exists, skip (no overwrite risk)
-  if (existsSync(NEW_CONFIG_DIR)) {
-    return;
-  }
-
-  // If old config dir doesn't exist, skip (fresh install)
-  if (!existsSync(OLD_CONFIG_DIR)) {
-    return;
-  }
-
-  try {
-    secureMkdirSync(NEW_CONFIG_DIR, { recursive: true });
-    cpSync(OLD_CONFIG_DIR, NEW_CONFIG_DIR, { recursive: true });
-    secureWriteFileSync(MIGRATED_FLAG, new Date().toISOString());
-    console.warn(
-      chalk.yellow(
-        "Migrated config from ~/.quicklify to ~/.kastell. You can safely remove ~/.quicklify.",
-      ),
-    );
-  } catch {
-    // If copy fails, log warning and continue -- don't crash the CLI
-    console.warn(
-      chalk.yellow(
-        "Warning: Could not migrate config from ~/.quicklify to ~/.kastell. You may need to copy files manually.",
-      ),
-    );
+  // Directory migration: ~/.quicklify → ~/.kastell
+  if (!existsSync(NEW_CONFIG_DIR) && existsSync(OLD_CONFIG_DIR)) {
+    try {
+      secureMkdirSync(NEW_CONFIG_DIR, { recursive: true });
+      cpSync(OLD_CONFIG_DIR, NEW_CONFIG_DIR, { recursive: true });
+      secureWriteFileSync(MIGRATED_FLAG, new Date().toISOString());
+      console.warn(
+        chalk.yellow(
+          "Migrated config from ~/.quicklify to ~/.kastell. You can safely remove ~/.quicklify.",
+        ),
+      );
+    } catch {
+      console.warn(
+        chalk.yellow(
+          "Warning: Could not migrate config from ~/.quicklify to ~/.kastell. You may need to copy files manually.",
+        ),
+      );
+    }
   }
 
   // Mode field migration: v1.x configs may lack "mode" field
   const SERVERS_FILE_PATH = join(KASTELL_DIR, "servers.json");
-  if (!existsSync(SERVERS_FILE_PATH)) return; // No servers.json yet — skip mode migration
+  if (!existsSync(SERVERS_FILE_PATH)) return;
   try {
     const servers = getServersRaw();
     const needsMode = servers.some((s) => !s.mode);
@@ -58,7 +50,6 @@ export function migrateConfigIfNeeded(): void {
       debugLog?.("migrated server mode fields to include platform mode");
     }
   } catch {
-    // Non-fatal: mode migration failure doesn't block CLI startup
     debugLog?.("mode field migration failed");
   }
 }
