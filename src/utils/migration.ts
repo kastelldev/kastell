@@ -40,7 +40,7 @@ export function migrateConfigIfNeeded(): void {
       atomicWriteServers(migrated);
       debugLog?.("migrated server mode fields to include platform mode");
     }
-  } catch {
-    debugLog?.("mode field migration failed");
+  } catch (error) {
+    debugLog?.("mode field migration failed", { cause: error });
   }
 }
