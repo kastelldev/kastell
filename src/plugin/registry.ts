@@ -4,6 +4,7 @@ import { ValidationError } from "../utils/errors.js";
 import { secureWriteFileSync, secureMkdirSync } from "../utils/secureWrite.js";
 import { KASTELL_DIR } from "../utils/paths.js";
 import type { PluginManifest, PluginCheck } from "./sdk/types.js";
+import { debugLog } from "../utils/logger.js";
 
 const PLUGIN_CACHE_PATH = join(KASTELL_DIR, "plugin-manifests.json");
 
@@ -112,7 +113,8 @@ export function loadPluginCache(): PluginManifest[] {
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
     return parsed as PluginManifest[];
-  } catch {
+  } catch (error) {
+    debugLog?.("plugin registry read failed, creating new", { cause: error });
     return [];
   }
 }
@@ -123,8 +125,8 @@ export function savePluginCache(manifests: PluginManifest[]): void {
     try {
       const existing = readFileSync(PLUGIN_CACHE_PATH, "utf-8");
       if (existing === content) return;
-    } catch {
-      // fall through to write
+    } catch (error) {
+      debugLog?.("plugin cache comparison failed, rewriting", { cause: error });
     }
   }
   secureMkdirSync(KASTELL_DIR);

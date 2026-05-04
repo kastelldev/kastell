@@ -5,6 +5,7 @@ import chalk from "chalk";
 import { logSecurityEvent } from "./securityLogger.js";
 import type { SecurityLogCategory } from "./securityLogger.js";
 import { KASTELL_DIR } from "./paths.js";
+import { debugLog } from "./logger.js";
 
 let _safeModeWarningShown = false;
 
@@ -65,8 +66,8 @@ function getSecurityLogMaxBytes(): number | undefined {
         }
       }
     }
-  } catch {
-    // Config read failure — use default
+  } catch (error) {
+    debugLog?.("config read failed, using default safe mode", { cause: error });
   }
   _cachedMaxBytes = undefined;
   return undefined;
