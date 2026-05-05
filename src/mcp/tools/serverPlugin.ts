@@ -9,7 +9,7 @@ export const serverPluginSchema = z.object({
 
 type ServerPluginParams = z.infer<typeof serverPluginSchema>;
 
-export const serverPluginOutputSchema = z.union([
+export const serverPluginOutputSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("list"),
     plugins: z.array(z.object({
