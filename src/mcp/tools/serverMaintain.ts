@@ -141,6 +141,7 @@ export async function handleServerMaintain(params: {
 
         const displayName = result.displayName ?? "Platform";
         return mcpSuccess({
+          action: "update" as const,
           success: true,
           server: server.name,
           ip: server.ip,
@@ -188,6 +189,7 @@ export async function handleServerMaintain(params: {
         }
 
         return mcpSuccess({
+          action: "restart" as const,
           success: true,
           server: server.name,
           ip: server.ip,
@@ -252,6 +254,7 @@ export async function handleServerMaintain(params: {
         }
 
         const payload = {
+          action: "maintain" as const,
           success: result.success,
           server: result.server,
           ip: result.ip,

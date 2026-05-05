@@ -45,6 +45,7 @@ export async function handleBackupCreate(server: ServerRecord): Promise<McpRespo
   }
 
   return mcpSuccess({
+    action: "backup-create" as const,
     success: true,
     server: server.name,
     ip: server.ip,
@@ -62,6 +63,7 @@ export async function handleBackupList(server: ServerRecord): Promise<McpRespons
 
   if (backupIds.length === 0) {
     return mcpSuccess({
+      action: "backup-list" as const,
       server: server.name,
       backups: [],
       message: "No backups found for this server",
@@ -85,6 +87,7 @@ export async function handleBackupList(server: ServerRecord): Promise<McpRespons
   });
 
   return mcpSuccess({
+    action: "backup-list" as const,
     server: server.name,
     backupCount: backupIds.length,
     backups,
@@ -134,6 +137,7 @@ export async function handleBackupRestore(
   }
 
   const successPayload: Record<string, unknown> = {
+    action: "backup-restore",
     success: true,
     server: server.name,
     ip: server.ip,
@@ -192,6 +196,7 @@ export async function handleSnapshotCreate(server: ServerRecord): Promise<McpRes
   }
 
   return mcpSuccess({
+    action: "snapshot-create" as const,
     success: true,
     server: server.name,
     ip: server.ip,
@@ -231,6 +236,7 @@ export async function handleSnapshotList(server: ServerRecord): Promise<McpRespo
 
   if (result.snapshots.length === 0) {
     return mcpSuccess({
+      action: "snapshot-list" as const,
       server: server.name,
       snapshots: [],
       message: "No snapshots found",
@@ -241,6 +247,7 @@ export async function handleSnapshotList(server: ServerRecord): Promise<McpRespo
   }
 
   return mcpSuccess({
+    action: "snapshot-list" as const,
     server: server.name,
     ip: server.ip,
     snapshotCount: result.snapshots.length,
@@ -297,6 +304,7 @@ export async function handleSnapshotDelete(
   }
 
   return mcpSuccess({
+    action: "snapshot-delete" as const,
     success: true,
     server: server.name,
     ip: server.ip,
@@ -354,6 +362,7 @@ export async function handleSnapshotRestore(
   }
 
   return mcpSuccess({
+    action: "snapshot-restore" as const,
     success: true,
     server: server.name,
     ip: server.ip,

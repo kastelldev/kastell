@@ -231,7 +231,7 @@ export async function handleServerInfo(params: {
     switch (params.action) {
       case "list": {
         const servers = getServers();
-        return mcpSuccess(formatServerList(servers));
+        return mcpSuccess({ action: "list" as const, ...formatServerList(servers) });
       }
 
       case "status": {
@@ -269,7 +269,7 @@ export async function handleServerInfo(params: {
           }
 
           const result = await checkServerStatus(server, token);
-          return mcpSuccess(formatStatusResults([result]));
+          return mcpSuccess({ action: "status" as const, ...formatStatusResults([result]) });
         }
 
         // All servers
@@ -293,7 +293,7 @@ export async function handleServerInfo(params: {
         }
 
         const results = await checkAllServersStatus(servers, tokenMap);
-        return mcpSuccess(formatStatusResults(results));
+        return mcpSuccess({ action: "status" as const, ...formatStatusResults(results) });
       }
 
       case "health": {
@@ -335,6 +335,7 @@ export async function handleServerInfo(params: {
             }
 
             return mcpSuccess({
+              action: "health" as const,
               server: server.name,
               ip: server.ip,
               mode: "bare",
@@ -347,7 +348,7 @@ export async function handleServerInfo(params: {
           // Platform server: use adapter health check
           const platform = resolvePlatform(server);
           if (!platform) {
-            return mcpSuccess({ server: server.name, ip: server.ip, platformStatus: "unknown" });
+            return mcpSuccess({ action: "health" as const, server: server.name, ip: server.ip, platformStatus: "unknown" });
           }
           const adapter = getAdapter(platform);
           const healthResult = await adapter.healthCheck(server.ip, server.domain);
@@ -357,6 +358,7 @@ export async function handleServerInfo(params: {
             : [{ command: `http://${server.ip}:${port}`, reason: `Access ${platform} dashboard` }];
 
           return mcpSuccess({
+            action: "health" as const,
             server: server.name,
             ip: server.ip,
             platformStatus: healthResult.status,
@@ -406,6 +408,7 @@ export async function handleServerInfo(params: {
           : [{ command: "server_info { action: 'status' }", reason: "All healthy, check full status" }];
 
         return mcpSuccess({
+          action: "health" as const,
           results: healthResults,
           summary: {
             total: healthResults.length,
@@ -446,6 +449,7 @@ export async function handleServerInfo(params: {
         const sizes = await provider.getAvailableServerTypes(params.region, mode);
 
         return mcpSuccess({
+          action: "sizes" as const,
           provider: params.provider,
           region: params.region,
           mode,

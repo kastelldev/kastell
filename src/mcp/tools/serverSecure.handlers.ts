@@ -46,6 +46,7 @@ export async function handleSecureSetup(
     content: [{
       type: "text" as const,
       text: JSON.stringify({
+        action: "secure-setup",
         success: true,
         server: server.name,
         ip: server.ip,
@@ -60,6 +61,7 @@ export async function handleSecureSetup(
       }),
     }],
     structuredContent: {
+      action: "secure-setup",
       success: true,
       server: server.name,
       ip: server.ip,
@@ -85,6 +87,7 @@ export async function handleSecureAudit(server: ServerRecord): Promise<McpRespon
     : [{ command: `server_secure { action: 'firewall-status', server: '${server.name}' }`, reason: "Check firewall configuration" }];
 
   return mcpSuccess({
+    action: "secure-audit" as const,
     server: server.name,
     ip: server.ip,
     score: result.score,
@@ -112,6 +115,7 @@ export async function handleFirewallSetup(server: ServerRecord): Promise<McpResp
   const ports = getPortsForPlatform(platform);
   const platformLabel = platform ?? "bare";
   return mcpSuccess({
+    action: "firewall-setup" as const,
     success: true,
     server: server.name,
     ip: server.ip,
@@ -141,6 +145,7 @@ export async function handleFirewallAdd(
   }
 
   return mcpSuccess({
+    action: "firewall-add" as const,
     success: true,
     server: server.name,
     ip: server.ip,
@@ -171,6 +176,7 @@ export async function handleFirewallRemove(
   }
 
   return mcpSuccess({
+    action: "firewall-remove" as const,
     success: true,
     server: server.name,
     ip: server.ip,
@@ -194,6 +200,7 @@ export async function handleFirewallStatus(server: ServerRecord): Promise<McpRes
     : [{ command: `server_secure { action: 'firewall-add', server: '${server.name}', port: 3000 }`, reason: "Open additional ports if needed" }];
 
   return mcpSuccess({
+    action: "firewall-status" as const,
     server: server.name,
     ip: server.ip,
     active: result.status.active,
@@ -225,6 +232,7 @@ export async function handleDomainSet(
 
   const protocol = ssl ? "https" : "http";
   return mcpSuccess({
+    action: "domain-set" as const,
     success: true,
     server: server.name,
     ip: server.ip,
@@ -246,6 +254,7 @@ export async function handleDomainRemove(server: ServerRecord): Promise<McpRespo
   }
 
   return mcpSuccess({
+    action: "domain-remove" as const,
     success: true,
     server: server.name,
     ip: server.ip,
@@ -275,6 +284,7 @@ export async function handleDomainCheck(
   }
 
   return mcpSuccess({
+    action: "domain-check" as const,
     server: server.name,
     ip: server.ip,
     domain: domainName,
@@ -310,6 +320,7 @@ export async function handleDomainInfo(server: ServerRecord): Promise<McpRespons
   }
 
   return mcpSuccess({
+    action: "domain-info" as const,
     server: server.name,
     ip: server.ip,
     fqdn: result.fqdn,

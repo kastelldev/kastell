@@ -75,6 +75,7 @@ export async function handleServerGuard(params: {
           return mcpError(result.error ?? "Failed to start guard", result.hint);
         }
         return mcpSuccess({
+          action: "start" as const,
           success: true,
           message: `Guard installed on ${server.name}. Runs every 5 minutes via cron.`,
         });
@@ -86,6 +87,7 @@ export async function handleServerGuard(params: {
           return mcpError(result.error ?? "Failed to stop guard", result.hint);
         }
         return mcpSuccess({
+          action: "stop" as const,
           success: true,
           message: `Guard removed from ${server.name}.`,
         });
@@ -97,6 +99,7 @@ export async function handleServerGuard(params: {
           return mcpError(result.error ?? "Failed to check guard status");
         }
         return mcpSuccess({
+          action: "status" as const,
           isActive: result.isActive,
           lastRunAt: result.lastRunAt,
           breaches: result.breaches,

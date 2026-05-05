@@ -460,6 +460,7 @@ export async function handleServerFix(
     // ── Early exit if no SAFE fixes after filter ──────────────────────────
     if (filteredChecks.length === 0) {
       return mcpSuccess({
+        action: "apply" as const,
         dryRun: effectiveDryRun,
         ...(safeModeForcedDryRun ? { safeModeForcedDryRun } : {}),
         applied: [],
@@ -481,6 +482,7 @@ export async function handleServerFix(
     } else if (params.target !== undefined) {
       if (auditResult.overallScore >= params.target) {
         return mcpSuccess({
+          action: "apply" as const,
           dryRun: effectiveDryRun,
           applied: [],
           message: `Current score ${auditResult.overallScore} already meets target ${params.target} — no fixes needed.`,
@@ -501,6 +503,7 @@ export async function handleServerFix(
       })).filter((g) => g.checks.length > 0);
 
       return mcpSuccess({
+        action: "apply" as const,
         dryRun: true,
         ...(safeModeForcedDryRun ? { safeModeForcedDryRun } : {}),
         preview: { groups: previewGroups },
@@ -655,6 +658,7 @@ export async function handleServerFix(
     }
 
     return mcpSuccess({
+      action: "apply" as const,
       dryRun: false,
       applied,
       errors,

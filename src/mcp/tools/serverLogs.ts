@@ -156,6 +156,7 @@ export async function handleServerLogs(params: {
         }
 
         return mcpSuccess({
+          action: "logs" as const,
           server: server.name,
           ip: server.ip,
           service,
@@ -195,6 +196,7 @@ export async function handleServerLogs(params: {
         }
 
         return mcpSuccess({
+          action: "monitor" as const,
           server: server.name,
           ip: server.ip,
           metrics: result.metrics,

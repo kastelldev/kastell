@@ -176,6 +176,7 @@ export async function handleServerManage(params: {
               ];
 
         return mcpSuccess({
+          action: "add" as const,
           success: true,
           message: `Server "${serverName}" added successfully`,
           server: {
@@ -239,6 +240,7 @@ export async function handleServerManage(params: {
         }
 
         return mcpSuccess({
+          action: "remove" as const,
           success: true,
           message: `Server "${result.server!.name}" removed from local config`,
           note: "The cloud server is still running. Use 'destroy' to delete it from the provider.",
@@ -330,6 +332,7 @@ export async function handleServerManage(params: {
         }
 
         return mcpSuccess({
+          action: "destroy" as const,
           success: true,
           message: `Server "${result.server!.name}" destroyed`,
           cloudDeleted: result.cloudDeleted,
