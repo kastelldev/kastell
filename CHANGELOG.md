@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.4] - 2026-05-07
+
+### Added
+- **MCP Structured Content** — all 17 MCP tools now return `structuredContent` with Zod `outputSchema` for type-safe AI model consumption
+- **Shared MCP schemas** — reusable Zod schemas in `src/mcp/schemas/` (audit, common, health, server)
+- **MCP SDK round-trip tests** — 26 tests verifying `normalizeObjectSchema` + `safeParseAsync` for all 17 outputSchemas
+- **Plugin manifest** — `.claude-plugin/plugin.json` with mcpServers, skills, hooks for Claude Code plugin distribution
+
+### Fixed
+- **outputSchema wrap pattern** — `z.discriminatedUnion` wrapped in `z.object({ result })` to satisfy MCP SDK's `normalizeObjectSchema` (was crashing with `_zod undefined`)
+- **`mcpSuccess` auto-wrap** — handler returns flat data, `mcpSuccess` wraps as `{ result: data }` for structuredContent; `_kastell_version` only in `content.text`
+- **Plugin manifest paths** — `./` prefix required for CC plugin validator; `agents` field removed (unsupported by CC)
+
+### Changed
+- **P131 code quality sweep** — catch blocks with debugLog, console.log→logger migration, mode field migration consolidation, BACK/BACK_SIGNAL merge
+- **P130 file split** — `interactive.ts` → 8 modules, `lock.ts` → 8 modules (+1962/−1834 lines)
+
 ## [2.2.0] - 2026-05-03
 
 ### Added
