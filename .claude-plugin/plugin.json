@@ -27,9 +27,9 @@
     "dokploy",
     "fleet"
   ],
-  "skills": "kastell-plugin/skills/",
-  "agents": "kastell-plugin/agents/",
-  "hooks": "kastell-plugin/hooks/hooks.json",
+  "skills": "./kastell-plugin/skills/",
+  "agents": "./kastell-plugin/agents/",
+  "hooks": "./kastell-plugin/hooks/hooks.json",
   "mcpServers": {
     "kastell": {
       "command": "node",
