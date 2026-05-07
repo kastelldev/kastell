@@ -23,6 +23,7 @@ jest.mock("../../src/mcp/utils.js", () => ({
 jest.mock("../../src/utils/version.js", () => ({ getKastellVersion: () => "2.2.0" }));
 
 import { z } from "zod";
+import { normalizeObjectSchema, safeParseAsync } from "@modelcontextprotocol/sdk/server/zod-compat.js";
 import * as configUtils from "../../src/utils/config.js";
 import * as coreAudit from "../../src/core/audit/index.js";
 import * as coreManage from "../../src/core/manage.js";
@@ -59,6 +60,11 @@ import { serverCompareOutputSchema } from "../../src/mcp/tools/serverCompare.js"
 import { serverPluginOutputSchema } from "../../src/mcp/tools/serverPlugin.js";
 import { serverLogsOutputSchema } from "../../src/mcp/tools/serverLogs.js";
 import { serverGuardOutputSchema } from "../../src/mcp/tools/serverGuard.js";
+import { serverBackupOutputSchema } from "../../src/mcp/tools/serverBackup.js";
+import { serverEvidenceOutputSchema } from "../../src/mcp/tools/serverEvidence.js";
+import { serverFixOutputSchema } from "../../src/mcp/tools/serverFix.js";
+import { serverExplainOutputSchema } from "../../src/mcp/tools/serverExplain.js";
+import { serverSecureOutputSchema } from "../../src/mcp/tools/serverSecure.js";
 
 import { mcpSuccess } from "../../src/mcp/utils.js";
 import type { McpResponse } from "../../src/mcp/utils.js";
@@ -210,5 +216,51 @@ describe("structuredContent verification", () => {
       const validation = validateAgainstSchema(serverPluginOutputSchema, sc);
       expect(validation.valid).toBe(true);
     });
+  });
+});
+
+describe("MCP SDK round-trip verification", () => {
+  const allSchemas: Array<{ name: string; schema: z.ZodType }> = [
+    { name: "serverAudit", schema: serverAuditOutputSchema },
+    { name: "serverProvision", schema: serverProvisionOutputSchema },
+    { name: "serverLock", schema: serverLockOutputSchema },
+    { name: "serverInfo", schema: serverInfoOutputSchema },
+    { name: "serverManage", schema: serverManageOutputSchema },
+    { name: "serverMaintain", schema: serverMaintainOutputSchema },
+    { name: "serverDoctor", schema: serverDoctorOutputSchema },
+    { name: "serverFleet", schema: serverFleetOutputSchema },
+    { name: "serverCompare", schema: serverCompareOutputSchema },
+    { name: "serverPlugin", schema: serverPluginOutputSchema },
+    { name: "serverLogs", schema: serverLogsOutputSchema },
+    { name: "serverGuard", schema: serverGuardOutputSchema },
+    { name: "serverBackup", schema: serverBackupOutputSchema },
+    { name: "serverEvidence", schema: serverEvidenceOutputSchema },
+    { name: "serverFix", schema: serverFixOutputSchema },
+    { name: "serverExplain", schema: serverExplainOutputSchema },
+    { name: "serverSecure", schema: serverSecureOutputSchema },
+  ];
+
+  it.each(allSchemas)("$name outputSchema should survive normalizeObjectSchema", ({ schema }) => {
+    const normalized = normalizeObjectSchema(schema);
+    expect(normalized).toBeDefined();
+    expect(normalized).not.toBeUndefined();
+  });
+
+  it("should validate structuredContent through SDK safeParseAsync", async () => {
+    const response = mcpSuccess({ action: "list" as const, plugins: [], count: 0 });
+    const sc = response.structuredContent;
+    const normalized = normalizeObjectSchema(serverPluginOutputSchema);
+    expect(normalized).toBeDefined();
+    const parseResult = await safeParseAsync(normalized!, sc);
+    expect(parseResult.success).toBe(true);
+  });
+
+  it("should validate discriminatedUnion structuredContent through SDK safeParseAsync", async () => {
+    const response = mcpSuccess({ action: "list", servers: [], total: 0, message: "No servers", suggested_actions: [{ command: "kastell init", reason: "Deploy your first server" }] });
+    const sc = response.structuredContent;
+    const normalized = normalizeObjectSchema(serverInfoOutputSchema);
+    expect(normalized).toBeDefined();
+    const parseResult = await safeParseAsync(normalized!, sc);
+    expect(parseResult.success).toBe(true);
   });
 });
