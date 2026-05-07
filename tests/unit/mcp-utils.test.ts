@@ -153,7 +153,7 @@ describe("mcpSuccess structuredContent", () => {
     const data = { score: 85, server: "test-box" };
     const result = mcpSuccess(data);
     expect(result.structuredContent).toBeDefined();
-    expect(result.structuredContent).toEqual({ score: 85, server: "test-box" });
+    expect(result.structuredContent).toEqual({ result: { score: 85, server: "test-box" } });
     expect(result.structuredContent).not.toHaveProperty("_kastell_version");
   });
 
@@ -168,7 +168,7 @@ describe("mcpSuccess structuredContent", () => {
   it("should include structuredContent with largeResult", () => {
     const data = { data: "big" };
     const result = mcpSuccess(data, { largeResult: true });
-    expect(result.structuredContent).toEqual({ data: "big" });
+    expect(result.structuredContent).toEqual({ result: { data: "big" } });
     expect(result.content[0]._meta).toBeDefined();
   });
 

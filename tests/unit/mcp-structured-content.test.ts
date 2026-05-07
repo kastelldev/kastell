@@ -146,7 +146,8 @@ describe("structuredContent verification", () => {
     it("should NOT include _kastell_version in structuredContent", () => {
       const response = mcpSuccess({ success: true, server: "test" });
       expect(response.structuredContent).not.toHaveProperty("_kastell_version");
-      expect(response.structuredContent).toHaveProperty("success", true);
+      expect(response.structuredContent).toHaveProperty("result");
+      expect((response.structuredContent as Record<string, unknown>).result).toHaveProperty("success", true);
     });
   });
 

@@ -19,21 +19,23 @@ export const serverFleetSchema = {
 };
 
 export const serverFleetOutputSchema = z.object({
-  servers: z.array(z.object({
-    name: z.string(),
-    ip: z.string(),
-    provider: z.string(),
-    status: z.enum(["ONLINE", "DEGRADED", "OFFLINE"]),
-    auditScore: z.number().nullable(),
-    responseTime: z.number().nullable(),
-    weakestCategory: z.string().optional(),
-    weakestCategoryScore: z.number().optional(),
-  })),
-  total: z.number(),
-  suggested_actions: z.array(z.object({
-    command: z.string(),
-    reason: z.string(),
-  })).optional(),
+  result: z.object({
+    servers: z.array(z.object({
+      name: z.string(),
+      ip: z.string(),
+      provider: z.string(),
+      status: z.enum(["ONLINE", "DEGRADED", "OFFLINE"]),
+      auditScore: z.number().nullable(),
+      responseTime: z.number().nullable(),
+      weakestCategory: z.string().optional(),
+      weakestCategoryScore: z.number().optional(),
+    })),
+    total: z.number(),
+    suggested_actions: z.array(z.object({
+      command: z.string(),
+      reason: z.string(),
+    })).optional(),
+  }),
 });
 
 type ServerFleetOutput = z.infer<typeof serverFleetOutputSchema>;
@@ -56,7 +58,7 @@ export async function handleServerFleet(params: {
       categories: params.categories,
     });
 
-    const data: ServerFleetOutput = {
+    const data = {
       servers: rows as FleetRow[],
       total: rows.length,
     };

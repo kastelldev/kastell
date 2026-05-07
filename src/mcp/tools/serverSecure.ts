@@ -149,18 +149,20 @@ const domainInfoOutputSchema = z.object({
   suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
 });
 
-export const serverSecureOutputSchema = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("secure-setup") }).merge(secureSetupOutputSchema),
-  z.object({ action: z.literal("secure-audit") }).merge(secureAuditOutputSchema),
-  z.object({ action: z.literal("firewall-setup") }).merge(firewallSetupOutputSchema),
-  z.object({ action: z.literal("firewall-add") }).merge(firewallAddOutputSchema),
-  z.object({ action: z.literal("firewall-remove") }).merge(firewallRemoveOutputSchema),
-  z.object({ action: z.literal("firewall-status") }).merge(firewallStatusOutputSchema),
-  z.object({ action: z.literal("domain-set") }).merge(domainSetOutputSchema),
-  z.object({ action: z.literal("domain-remove") }).merge(domainRemoveOutputSchema),
-  z.object({ action: z.literal("domain-check") }).merge(domainCheckOutputSchema),
-  z.object({ action: z.literal("domain-info") }).merge(domainInfoOutputSchema),
-]);
+export const serverSecureOutputSchema = z.object({
+  result: z.discriminatedUnion("action", [
+    z.object({ action: z.literal("secure-setup") }).merge(secureSetupOutputSchema),
+    z.object({ action: z.literal("secure-audit") }).merge(secureAuditOutputSchema),
+    z.object({ action: z.literal("firewall-setup") }).merge(firewallSetupOutputSchema),
+    z.object({ action: z.literal("firewall-add") }).merge(firewallAddOutputSchema),
+    z.object({ action: z.literal("firewall-remove") }).merge(firewallRemoveOutputSchema),
+    z.object({ action: z.literal("firewall-status") }).merge(firewallStatusOutputSchema),
+    z.object({ action: z.literal("domain-set") }).merge(domainSetOutputSchema),
+    z.object({ action: z.literal("domain-remove") }).merge(domainRemoveOutputSchema),
+    z.object({ action: z.literal("domain-check") }).merge(domainCheckOutputSchema),
+    z.object({ action: z.literal("domain-info") }).merge(domainInfoOutputSchema),
+  ]),
+});
 
 export type ServerSecureOutput = z.infer<typeof serverSecureOutputSchema>;
 

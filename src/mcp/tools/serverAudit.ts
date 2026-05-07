@@ -56,11 +56,13 @@ const auditScoreSchema = z.object({
 });
 
 // Schema exported for MCP output typing
-export const serverAuditOutputSchema = z.discriminatedUnion("format", [
-  auditSummarySchema,
-  auditJsonSchema,
-  auditScoreSchema,
-]);
+export const serverAuditOutputSchema = z.object({
+  result: z.discriminatedUnion("format", [
+    auditSummarySchema,
+    auditJsonSchema,
+    auditScoreSchema,
+  ]),
+});
 
 export type ServerAuditOutput = z.infer<typeof serverAuditOutputSchema>;
 

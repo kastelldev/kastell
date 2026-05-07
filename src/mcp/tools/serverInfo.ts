@@ -103,12 +103,14 @@ const serverInfoSizesOutputSchema = z.object({
   suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
 });
 
-export const serverInfoOutputSchema = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("list") }).merge(serverInfoListOutputSchema),
-  z.object({ action: z.literal("status") }).merge(serverInfoStatusOutputSchema),
-  z.object({ action: z.literal("health") }).merge(serverInfoHealthOutputSchema),
-  z.object({ action: z.literal("sizes") }).merge(serverInfoSizesOutputSchema),
-]);
+export const serverInfoOutputSchema = z.object({
+  result: z.discriminatedUnion("action", [
+    z.object({ action: z.literal("list") }).merge(serverInfoListOutputSchema),
+    z.object({ action: z.literal("status") }).merge(serverInfoStatusOutputSchema),
+    z.object({ action: z.literal("health") }).merge(serverInfoHealthOutputSchema),
+    z.object({ action: z.literal("sizes") }).merge(serverInfoSizesOutputSchema),
+  ]),
+});
 
 export type ServerInfoOutput = z.infer<typeof serverInfoOutputSchema>;
 

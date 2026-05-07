@@ -105,15 +105,17 @@ const snapshotRestoreOutputSchema = z.object({
   suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
 });
 
-export const serverBackupOutputSchema = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("backup-create") }).merge(backupCreateOutputSchema),
-  z.object({ action: z.literal("backup-list") }).merge(backupListOutputSchema),
-  z.object({ action: z.literal("backup-restore") }).merge(backupRestoreOutputSchema),
-  z.object({ action: z.literal("snapshot-create") }).merge(snapshotCreateOutputSchema),
-  z.object({ action: z.literal("snapshot-list") }).merge(snapshotListOutputSchema),
-  z.object({ action: z.literal("snapshot-delete") }).merge(snapshotDeleteOutputSchema),
-  z.object({ action: z.literal("snapshot-restore") }).merge(snapshotRestoreOutputSchema),
-]);
+export const serverBackupOutputSchema = z.object({
+  result: z.discriminatedUnion("action", [
+    z.object({ action: z.literal("backup-create") }).merge(backupCreateOutputSchema),
+    z.object({ action: z.literal("backup-list") }).merge(backupListOutputSchema),
+    z.object({ action: z.literal("backup-restore") }).merge(backupRestoreOutputSchema),
+    z.object({ action: z.literal("snapshot-create") }).merge(snapshotCreateOutputSchema),
+    z.object({ action: z.literal("snapshot-list") }).merge(snapshotListOutputSchema),
+    z.object({ action: z.literal("snapshot-delete") }).merge(snapshotDeleteOutputSchema),
+    z.object({ action: z.literal("snapshot-restore") }).merge(snapshotRestoreOutputSchema),
+  ]),
+});
 
 export type ServerBackupOutput = z.infer<typeof serverBackupOutputSchema>;
 

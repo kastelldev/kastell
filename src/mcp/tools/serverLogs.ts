@@ -53,10 +53,12 @@ const serverLogsMonitorOutputSchema = z.object({
   suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
 });
 
-export const serverLogsOutputSchema = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("logs"), ...serverLogsLogsOutputSchema.shape }),
-  z.object({ action: z.literal("monitor"), ...serverLogsMonitorOutputSchema.shape }),
-]);
+export const serverLogsOutputSchema = z.object({
+  result: z.discriminatedUnion("action", [
+    z.object({ action: z.literal("logs"), ...serverLogsLogsOutputSchema.shape }),
+    z.object({ action: z.literal("monitor"), ...serverLogsMonitorOutputSchema.shape }),
+  ]),
+});
 
 export type ServerLogsOutput = z.infer<typeof serverLogsOutputSchema>;
 

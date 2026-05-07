@@ -25,15 +25,17 @@ export const serverDoctorSchema = {
 
  
 export const serverDoctorOutputSchema = z.object({
-  server: z.string(),
-  total: z.number(),
-  critical: z.number(),
-  warning: z.number(),
-  info: z.number(),
-  score: z.number(),
-  ranAt: z.string(),
-  usedFreshData: z.boolean(),
-  findings: z.array(z.string()),
+  result: z.object({
+    server: z.string(),
+    total: z.number(),
+    critical: z.number(),
+    warning: z.number(),
+    info: z.number(),
+    score: z.number(),
+    ranAt: z.string(),
+    usedFreshData: z.boolean(),
+    findings: z.array(z.string()),
+  }),
 });
 
 export type ServerDoctorOutput = z.infer<typeof serverDoctorOutputSchema>;

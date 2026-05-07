@@ -69,11 +69,13 @@ const serverMaintainMaintainOutputSchema = z.object({
   suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
 });
 
-export const serverMaintainOutputSchema = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("update") }).merge(serverMaintainUpdateOutputSchema),
-  z.object({ action: z.literal("restart") }).merge(serverMaintainRestartOutputSchema),
-  z.object({ action: z.literal("maintain") }).merge(serverMaintainMaintainOutputSchema),
-]);
+export const serverMaintainOutputSchema = z.object({
+  result: z.discriminatedUnion("action", [
+    z.object({ action: z.literal("update") }).merge(serverMaintainUpdateOutputSchema),
+    z.object({ action: z.literal("restart") }).merge(serverMaintainRestartOutputSchema),
+    z.object({ action: z.literal("maintain") }).merge(serverMaintainMaintainOutputSchema),
+  ]),
+});
 
 export type ServerMaintainOutput = z.infer<typeof serverMaintainOutputSchema>;
 

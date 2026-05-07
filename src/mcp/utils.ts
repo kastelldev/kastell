@@ -85,7 +85,8 @@ export function mcpSuccess(data: Record<string, unknown>, opts?: { largeResult?:
   }
   return {
     content: [block],
-    structuredContent: data,
+    // Wrap in { result: ... } so MCP SDK's normalizeObjectSchema sees z.object
+    structuredContent: { result: data },
   };
 }
 

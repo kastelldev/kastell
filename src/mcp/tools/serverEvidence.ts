@@ -45,14 +45,16 @@ export const serverEvidenceSchema = {
 
  
 export const serverEvidenceOutputSchema = z.object({
-  evidenceDir: z.string(),
-  serverName: z.string(),
-  serverIp: z.string(),
-  platform: z.string(),
-  collectedAt: z.string(),
-  totalFiles: z.number(),
-  skippedFiles: z.number(),
-  manifestPath: z.string(),
+  result: z.object({
+    evidenceDir: z.string(),
+    serverName: z.string(),
+    serverIp: z.string(),
+    platform: z.string(),
+    collectedAt: z.string(),
+    totalFiles: z.number(),
+    skippedFiles: z.number(),
+    manifestPath: z.string(),
+  }),
 });
 
 export type ServerEvidenceOutput = z.infer<typeof serverEvidenceOutputSchema>;

@@ -86,11 +86,13 @@ const serverManageDestroyOutputSchema = z.object({
   suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
 });
 
-export const serverManageOutputSchema = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("add") }).merge(serverManageAddOutputSchema),
-  z.object({ action: z.literal("remove") }).merge(serverManageRemoveOutputSchema),
-  z.object({ action: z.literal("destroy") }).merge(serverManageDestroyOutputSchema),
-]);
+export const serverManageOutputSchema = z.object({
+  result: z.discriminatedUnion("action", [
+    z.object({ action: z.literal("add") }).merge(serverManageAddOutputSchema),
+    z.object({ action: z.literal("remove") }).merge(serverManageRemoveOutputSchema),
+    z.object({ action: z.literal("destroy") }).merge(serverManageDestroyOutputSchema),
+  ]),
+});
 
 export type ServerManageOutput = z.infer<typeof serverManageOutputSchema>;
 

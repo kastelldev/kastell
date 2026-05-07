@@ -25,11 +25,13 @@ export const serverLockSchema = {
 
  
 export const serverLockOutputSchema = z.object({
-  success: z.boolean(),
-  steps: z.number(),
-  scoreBefore: z.number(),
-  scoreAfter: z.number(),
-  stepErrors: z.record(z.string(), z.unknown()).optional(),
+  result: z.object({
+    success: z.boolean(),
+    steps: z.number(),
+    scoreBefore: z.number(),
+    scoreAfter: z.number(),
+    stepErrors: z.record(z.string(), z.unknown()).optional(),
+  }),
 });
 
 export type ServerLockOutput = z.infer<typeof serverLockOutputSchema>;

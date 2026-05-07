@@ -11,6 +11,13 @@
   "files": [
     "bin/",
     "dist/",
+    ".claude-plugin/",
+    "kastell-plugin/skills/",
+    "kastell-plugin/agents/",
+    "kastell-plugin/hooks/",
+    "kastell-plugin/.claude-plugin/",
+    "kastell-plugin/.mcp.json",
+    "kastell-plugin/README.md",
     "README.md",
     "LICENSE",
     "NOTICE",

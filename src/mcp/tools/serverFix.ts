@@ -194,14 +194,16 @@ const serverFixRollbackToOutputSchema = z.object({
   scoreAfter: z.number().nullable(),
 });
 
-export const serverFixOutputSchema = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("apply"), dryRun: z.literal(true) }).merge(serverFixApplyDryRunOutputSchema),
-  z.object({ action: z.literal("apply"), dryRun: z.literal(false) }).merge(serverFixApplyLiveOutputSchema),
-  serverFixHistoryOutputSchema,
-  serverFixRollbackOutputSchema,
-  serverFixRollbackAllOutputSchema,
-  serverFixRollbackToOutputSchema,
-]);
+export const serverFixOutputSchema = z.object({
+  result: z.discriminatedUnion("action", [
+    z.object({ action: z.literal("apply"), dryRun: z.literal(true) }).merge(serverFixApplyDryRunOutputSchema),
+    z.object({ action: z.literal("apply"), dryRun: z.literal(false) }).merge(serverFixApplyLiveOutputSchema),
+    serverFixHistoryOutputSchema,
+    serverFixRollbackOutputSchema,
+    serverFixRollbackAllOutputSchema,
+    serverFixRollbackToOutputSchema,
+  ]),
+});
 
 export type ServerFixOutput = z.infer<typeof serverFixOutputSchema>;
 
@@ -258,7 +260,7 @@ export async function handleServerFix(
     if (params.action === "history") {
       const entries = loadFixHistory(server.ip);
       return mcpSuccess({
-        action: "history",
+        action: "history" as const,
         server: { name: server.name, ip: server.ip },
         entries: entries.slice(-20),
         totalEntries: entries.length,
@@ -315,7 +317,7 @@ export async function handleServerFix(
       await saveRollbackEntry(entry, scoreAfter);
 
       return mcpSuccess({
-        action: "rollback",
+        action: "rollback" as const,
         fixId,
         restored,
         errors: rollbackErrors,
@@ -334,7 +336,7 @@ export async function handleServerFix(
       const scoreAfter = await auditScoreAfterRollback(server, platform, mcpServer, rolledBack.length);
 
       return mcpSuccess({
-        action: "rollback-all",
+        action: "rollback-all" as const,
         rolledBack,
         errors: rbErrors,
         scoreAfter,
@@ -355,7 +357,7 @@ export async function handleServerFix(
       const scoreAfter = await auditScoreAfterRollback(server, platform, mcpServer, rolledBack.length);
 
       return mcpSuccess({
-        action: "rollback-to",
+        action: "rollback-to" as const,
         targetFixId: params.rollbackId,
         rolledBack,
         errors: rbErrors,

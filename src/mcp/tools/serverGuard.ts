@@ -20,13 +20,15 @@ export const serverGuardSchema = {
 
  
 export const serverGuardOutputSchema = z.object({
-  success: z.boolean(),
-  message: z.string().optional(),
-  isActive: z.boolean().optional(),
-  lastRunAt: z.string().optional(),
-  breaches: z.array(z.record(z.string(), z.unknown())).optional(),
-  logTail: z.array(z.string()).optional(),
-  installedAt: z.string().optional(),
+  result: z.object({
+    success: z.boolean(),
+    message: z.string().optional(),
+    isActive: z.boolean().optional(),
+    lastRunAt: z.string().optional(),
+    breaches: z.array(z.record(z.string(), z.unknown())).optional(),
+    logTail: z.array(z.string()).optional(),
+    installedAt: z.string().optional(),
+  }),
 });
 
 export type ServerGuardOutput = z.infer<typeof serverGuardOutputSchema>;
