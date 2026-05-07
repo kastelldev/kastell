@@ -26,7 +26,6 @@ export const serverExplainOutputSchema = z.object({
   }),
 });
 
-type ServerExplainOutput = z.infer<typeof serverExplainOutputSchema>;
 
 export async function serverExplainHandler(params: ServerExplainParams) {
   const result = findCheckById(params.checkId);

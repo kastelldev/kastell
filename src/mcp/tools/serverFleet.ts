@@ -38,7 +38,6 @@ export const serverFleetOutputSchema = z.object({
   }),
 });
 
-type ServerFleetOutput = z.infer<typeof serverFleetOutputSchema>;
 
 export async function handleServerFleet(params: {
   sort?: "score" | "name" | "provider";

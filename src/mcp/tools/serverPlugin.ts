@@ -31,7 +31,6 @@ export const serverPluginOutputSchema = z.object({
   ]),
 });
 
-type ServerPluginOutput = z.infer<typeof serverPluginOutputSchema>;
 
 export async function handleServerPlugin(params: ServerPluginParams) {
   if (params.action === "list") {
