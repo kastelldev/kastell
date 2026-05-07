@@ -44,6 +44,60 @@ export const serverManageSchema = {
     .describe("Server mode for 'add' action: 'coolify', 'dokploy', or 'bare'. Default: coolify"),
 };
 
+// ─── Output Schema ────────────────────────────────────────────────────────────
+
+const serverManageAddOutputSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+  server: z.object({
+    name: z.string(),
+    ip: z.string(),
+    provider: z.string(),
+    id: z.string(),
+    mode: z.string(),
+  }),
+  platformStatus: z.string().nullable(),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+const serverManageRemoveOutputSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+  note: z.string(),
+  server: z.object({
+    name: z.string(),
+    ip: z.string(),
+    provider: z.string(),
+  }),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+const serverManageDestroyOutputSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+  cloudDeleted: z.boolean(),
+  localRemoved: z.boolean(),
+  note: z.string().optional(),
+  server: z.object({
+    name: z.string(),
+    ip: z.string(),
+    provider: z.string(),
+  }),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+export const serverManageOutputSchema = z.object({
+  result: z.discriminatedUnion("action", [
+    z.object({ action: z.literal("add") }).merge(serverManageAddOutputSchema),
+    z.object({ action: z.literal("remove") }).merge(serverManageRemoveOutputSchema),
+    z.object({ action: z.literal("destroy") }).merge(serverManageDestroyOutputSchema),
+  ]),
+});
+
+export type ServerManageOutput = z.infer<typeof serverManageOutputSchema>;
+
+// ─── Handler ──────────────────────────────────────────────────────────────────
+
 export async function handleServerManage(params: {
   action: "add" | "remove" | "destroy";
   server?: string;
@@ -124,6 +178,7 @@ export async function handleServerManage(params: {
               ];
 
         return mcpSuccess({
+          action: "add" as const,
           success: true,
           message: `Server "${serverName}" added successfully`,
           server: {
@@ -187,6 +242,7 @@ export async function handleServerManage(params: {
         }
 
         return mcpSuccess({
+          action: "remove" as const,
           success: true,
           message: `Server "${result.server!.name}" removed from local config`,
           note: "The cloud server is still running. Use 'destroy' to delete it from the provider.",
@@ -278,6 +334,7 @@ export async function handleServerManage(params: {
         }
 
         return mcpSuccess({
+          action: "destroy" as const,
           success: true,
           message: `Server "${result.server!.name}" destroyed`,
           cloudDeleted: result.cloudDeleted,

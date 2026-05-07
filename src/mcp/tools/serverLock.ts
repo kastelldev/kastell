@@ -21,6 +21,23 @@ export const serverLockSchema = {
   force: z.boolean().default(false).describe("Force lock even if server already appears hardened."),
 };
 
+// ─── Output Schema ────────────────────────────────────────────────────────────
+
+ 
+export const serverLockOutputSchema = z.object({
+  result: z.object({
+    success: z.boolean(),
+    steps: z.number(),
+    scoreBefore: z.number(),
+    scoreAfter: z.number(),
+    stepErrors: z.record(z.string(), z.unknown()).optional(),
+  }),
+});
+
+export type ServerLockOutput = z.infer<typeof serverLockOutputSchema>;
+
+// ─── Handler ──────────────────────────────────────────────────────────────────
+
 export async function handleServerLock(params: {
   server?: string;
   production?: boolean;
@@ -89,13 +106,14 @@ export async function handleServerLock(params: {
 
     await mcpLog(mcpServer, "Hardening complete");
 
-    return mcpSuccess({
+    const data = {
       success: result.success,
       steps: result.steps,
       ...(result.stepErrors && { stepErrors: result.stepErrors }),
       scoreBefore: result.scoreBefore,
       scoreAfter: result.scoreAfter,
-    });
+    };
+    return mcpSuccess(data);
   } catch (error: unknown) {
     return mcpError(sanitizeStderr(getErrorMessage(error)));
   }

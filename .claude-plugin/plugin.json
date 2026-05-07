@@ -1,0 +1,39 @@
+{
+  "name": "kastell",
+  "version": "2.2.0",
+  "description": "Server security auditing, hardening, and fleet management. 457 security checks across 30 categories, CIS/PCI-DSS/HIPAA compliance, 24-step production hardening, and 17 MCP tools. Supports Hetzner, DigitalOcean, Vultr, Linode with Coolify, Dokploy, and bare VPS modes.",
+  "author": {
+    "name": "kastelldev",
+    "email": "hello@omrfc.dev",
+    "url": "https://kastell.dev"
+  },
+  "homepage": "https://kastell.dev",
+  "repository": "https://github.com/kastelldev/kastell",
+  "license": "Apache-2.0",
+  "keywords": [
+    "server",
+    "security",
+    "audit",
+    "hardening",
+    "mcp",
+    "infrastructure",
+    "vps",
+    "cloud",
+    "hetzner",
+    "digitalocean",
+    "vultr",
+    "linode",
+    "coolify",
+    "dokploy",
+    "fleet"
+  ],
+  "skills": "../kastell-plugin/skills/",
+  "agents": "../kastell-plugin/agents/",
+  "hooks": "../kastell-plugin/hooks/hooks.json",
+  "mcpServers": {
+    "kastell": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/bin/kastell-mcp"]
+    }
+  }
+}

@@ -34,6 +34,91 @@ export const serverBackupSchema = {
   ),
 };
 
+// ─── Output Schema ────────────────────────────────────────────────────────────
+
+const backupCreateOutputSchema = z.object({
+  success: z.boolean(),
+  server: z.string(),
+  ip: z.string(),
+  backupPath: z.string(),
+  manifest: z.string(),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+const backupListOutputSchema = z.object({
+  server: z.string(),
+  backupCount: z.number(),
+  backups: z.array(z.object({
+    backupId: z.string(),
+    timestamp: z.string().optional(),
+    coolifyVersion: z.string().optional(),
+    files: z.number().optional(),
+    status: z.string().optional(),
+  })),
+  message: z.string().optional(),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+const backupRestoreOutputSchema = z.object({
+  success: z.boolean(),
+  server: z.string(),
+  ip: z.string(),
+  backupId: z.string(),
+  steps: z.array(z.object({ status: z.string(), message: z.string() })),
+  hint: z.string().optional(),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+const snapshotCreateOutputSchema = z.object({
+  success: z.boolean(),
+  server: z.string(),
+  ip: z.string(),
+  snapshot: z.object({ id: z.string(), name: z.string(), createdAt: z.string() }),
+  costEstimate: z.string(),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+const snapshotListOutputSchema = z.object({
+  server: z.string(),
+  ip: z.string(),
+  snapshotCount: z.number(),
+  snapshots: z.array(z.object({ id: z.string(), name: z.string(), createdAt: z.string() })),
+  message: z.string().optional(),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+const snapshotDeleteOutputSchema = z.object({
+  success: z.boolean(),
+  server: z.string(),
+  ip: z.string(),
+  snapshotId: z.string(),
+  message: z.string(),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+const snapshotRestoreOutputSchema = z.object({
+  success: z.boolean(),
+  server: z.string(),
+  ip: z.string(),
+  snapshotId: z.string(),
+  message: z.string(),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+export const serverBackupOutputSchema = z.object({
+  result: z.discriminatedUnion("action", [
+    z.object({ action: z.literal("backup-create") }).merge(backupCreateOutputSchema),
+    z.object({ action: z.literal("backup-list") }).merge(backupListOutputSchema),
+    z.object({ action: z.literal("backup-restore") }).merge(backupRestoreOutputSchema),
+    z.object({ action: z.literal("snapshot-create") }).merge(snapshotCreateOutputSchema),
+    z.object({ action: z.literal("snapshot-list") }).merge(snapshotListOutputSchema),
+    z.object({ action: z.literal("snapshot-delete") }).merge(snapshotDeleteOutputSchema),
+    z.object({ action: z.literal("snapshot-restore") }).merge(snapshotRestoreOutputSchema),
+  ]),
+});
+
+export type ServerBackupOutput = z.infer<typeof serverBackupOutputSchema>;
+
 type Action = z.infer<typeof serverBackupSchema.action>;
 
 export async function handleServerBackup(params: {

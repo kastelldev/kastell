@@ -125,7 +125,7 @@ describe("MCP→Core Integration", () => {
       expect(mockedCoreAudit.runAudit).toHaveBeenCalledWith("1.2.3.4", "my-server", "coolify");
       expect(response.isError).toBeFalsy();
       const body = JSON.parse(response.content[0].text);
-      expect(body.score).toBe(72);
+      expect(body.overallScore).toBe(72);
     });
 
     it("should return error when runAudit fails", async () => {

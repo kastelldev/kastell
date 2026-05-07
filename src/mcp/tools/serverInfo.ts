@@ -37,6 +37,83 @@ interface SuggestedAction {
   reason: string;
 }
 
+// ─── Output Schema ────────────────────────────────────────────────────────────
+
+const serverInfoListOutputSchema = z.object({
+  servers: z.array(z.object({
+    name: z.string(),
+    ip: z.string(),
+    provider: z.string(),
+    region: z.string(),
+    size: z.string(),
+    id: z.string(),
+    mode: z.string(),
+    createdAt: z.string(),
+  })),
+  total: z.number(),
+  message: z.string().optional(),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+const serverInfoStatusOutputSchema = z.object({
+  results: z.array(z.object({
+    name: z.string(),
+    ip: z.string(),
+    provider: z.string(),
+    region: z.string(),
+    size: z.string(),
+    mode: z.string(),
+    serverStatus: z.string(),
+    platformStatus: z.string(),
+    error: z.string().optional(),
+  })),
+  summary: z.object({
+    total: z.number(),
+    running: z.number(),
+    notReachable: z.number(),
+    errors: z.number(),
+  }),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+const serverInfoHealthOutputSchema = z.object({
+  results: z.array(z.record(z.string(), z.unknown())),
+  summary: z.object({
+    total: z.number(),
+    running: z.number(),
+    notReachable: z.number(),
+    bare: z.number(),
+  }),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+const serverInfoSizesOutputSchema = z.object({
+  provider: z.string(),
+  region: z.string(),
+  mode: z.string(),
+  sizes: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    vcpu: z.number(),
+    ram: z.string(),
+    disk: z.string(),
+    price: z.number(),
+  })),
+  total: z.number(),
+  suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
+});
+
+export const serverInfoOutputSchema = z.object({
+  result: z.discriminatedUnion("action", [
+    z.object({ action: z.literal("list") }).merge(serverInfoListOutputSchema),
+    z.object({ action: z.literal("status") }).merge(serverInfoStatusOutputSchema),
+    z.object({ action: z.literal("health") }).merge(serverInfoHealthOutputSchema),
+    z.object({ action: z.literal("sizes") }).merge(serverInfoSizesOutputSchema),
+  ]),
+});
+
+export type ServerInfoOutput = z.infer<typeof serverInfoOutputSchema>;
+
 function formatServerList(servers: ServerRecord[]): Record<string, unknown> {
   if (servers.length === 0) {
     return {
@@ -156,7 +233,7 @@ export async function handleServerInfo(params: {
     switch (params.action) {
       case "list": {
         const servers = getServers();
-        return mcpSuccess(formatServerList(servers));
+        return mcpSuccess({ action: "list" as const, ...formatServerList(servers) });
       }
 
       case "status": {
@@ -194,7 +271,7 @@ export async function handleServerInfo(params: {
           }
 
           const result = await checkServerStatus(server, token);
-          return mcpSuccess(formatStatusResults([result]));
+          return mcpSuccess({ action: "status" as const, ...formatStatusResults([result]) });
         }
 
         // All servers
@@ -218,7 +295,7 @@ export async function handleServerInfo(params: {
         }
 
         const results = await checkAllServersStatus(servers, tokenMap);
-        return mcpSuccess(formatStatusResults(results));
+        return mcpSuccess({ action: "status" as const, ...formatStatusResults(results) });
       }
 
       case "health": {
@@ -260,6 +337,7 @@ export async function handleServerInfo(params: {
             }
 
             return mcpSuccess({
+              action: "health" as const,
               server: server.name,
               ip: server.ip,
               mode: "bare",
@@ -272,7 +350,7 @@ export async function handleServerInfo(params: {
           // Platform server: use adapter health check
           const platform = resolvePlatform(server);
           if (!platform) {
-            return mcpSuccess({ server: server.name, ip: server.ip, platformStatus: "unknown" });
+            return mcpSuccess({ action: "health" as const, server: server.name, ip: server.ip, platformStatus: "unknown" });
           }
           const adapter = getAdapter(platform);
           const healthResult = await adapter.healthCheck(server.ip, server.domain);
@@ -282,6 +360,7 @@ export async function handleServerInfo(params: {
             : [{ command: `http://${server.ip}:${port}`, reason: `Access ${platform} dashboard` }];
 
           return mcpSuccess({
+            action: "health" as const,
             server: server.name,
             ip: server.ip,
             platformStatus: healthResult.status,
@@ -331,6 +410,7 @@ export async function handleServerInfo(params: {
           : [{ command: "server_info { action: 'status' }", reason: "All healthy, check full status" }];
 
         return mcpSuccess({
+          action: "health" as const,
           results: healthResults,
           summary: {
             total: healthResults.length,
@@ -371,6 +451,7 @@ export async function handleServerInfo(params: {
         const sizes = await provider.getAvailableServerTypes(params.region, mode);
 
         return mcpSuccess({
+          action: "sizes" as const,
           provider: params.provider,
           region: params.region,
           mode,

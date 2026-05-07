@@ -16,6 +16,25 @@ export const serverGuardSchema = {
   action: z.enum(["start", "stop", "status"]).describe("Guard action: 'start' installs guard cron, 'stop' removes it, 'status' shows current state and recent breaches."),
 };
 
+// ─── Output Schema ────────────────────────────────────────────────────────────
+
+ 
+export const serverGuardOutputSchema = z.object({
+  result: z.object({
+    success: z.boolean(),
+    message: z.string().optional(),
+    isActive: z.boolean().optional(),
+    lastRunAt: z.string().optional(),
+    breaches: z.array(z.record(z.string(), z.unknown())).optional(),
+    logTail: z.array(z.string()).optional(),
+    installedAt: z.string().optional(),
+  }),
+});
+
+export type ServerGuardOutput = z.infer<typeof serverGuardOutputSchema>;
+
+// ─── Handler ──────────────────────────────────────────────────────────────────
+
 export async function handleServerGuard(params: {
   server?: string;
   action: "start" | "stop" | "status";
@@ -58,6 +77,7 @@ export async function handleServerGuard(params: {
           return mcpError(result.error ?? "Failed to start guard", result.hint);
         }
         return mcpSuccess({
+          action: "start" as const,
           success: true,
           message: `Guard installed on ${server.name}. Runs every 5 minutes via cron.`,
         });
@@ -69,6 +89,7 @@ export async function handleServerGuard(params: {
           return mcpError(result.error ?? "Failed to stop guard", result.hint);
         }
         return mcpSuccess({
+          action: "stop" as const,
           success: true,
           message: `Guard removed from ${server.name}.`,
         });
@@ -80,6 +101,7 @@ export async function handleServerGuard(params: {
           return mcpError(result.error ?? "Failed to check guard status");
         }
         return mcpSuccess({
+          action: "status" as const,
           isActive: result.isActive,
           lastRunAt: result.lastRunAt,
           breaches: result.breaches,

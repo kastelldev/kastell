@@ -146,6 +146,38 @@ describe("mcpError", () => {
   });
 });
 
+// ─── mcpSuccess structuredContent ─────────────────────────────────────────────
+
+describe("mcpSuccess structuredContent", () => {
+  it("should include structuredContent without _kastell_version", () => {
+    const data = { score: 85, server: "test-box" };
+    const result = mcpSuccess(data);
+    expect(result.structuredContent).toBeDefined();
+    expect(result.structuredContent).toEqual({ result: { score: 85, server: "test-box" } });
+    expect(result.structuredContent).not.toHaveProperty("_kastell_version");
+  });
+
+  it("should keep _kastell_version in text content", () => {
+    const data = { score: 85 };
+    const result = mcpSuccess(data);
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed._kastell_version).toBeDefined();
+    expect(result.structuredContent).not.toHaveProperty("_kastell_version");
+  });
+
+  it("should include structuredContent with largeResult", () => {
+    const data = { data: "big" };
+    const result = mcpSuccess(data, { largeResult: true });
+    expect(result.structuredContent).toEqual({ result: { data: "big" } });
+    expect(result.content[0]._meta).toBeDefined();
+  });
+
+  it("should NOT include structuredContent in mcpError", () => {
+    const result = mcpError("something failed", "check logs");
+    expect(result.structuredContent).toBeUndefined();
+  });
+});
+
 // ─── requireProviderToken ─────────────────────────────────────────────────────
 
 describe("requireProviderToken", () => {

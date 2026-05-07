@@ -96,7 +96,7 @@ describe("handleSecureSetup", () => {
 
     const result = await handleSecureSetup(mockServer, undefined);
 
-    expect(result.isError).toBeUndefined();
+    expect(result.isError).toBeFalsy();
     const payload = JSON.parse(result.content[0].text);
     expect(payload.success).toBe(true);
     expect(payload.server).toBe("test-server");
@@ -168,7 +168,7 @@ describe("handleSecureAudit", () => {
 
     const result = await handleSecureAudit(mockServer);
 
-    expect(result.isError).toBeUndefined();
+    expect(result.isError).toBeFalsy();
     const payload = JSON.parse(result.content[0].text);
     expect(payload.score).toBe(100);
     expect(payload.server).toBe("test-server");
@@ -215,7 +215,7 @@ describe("handleFirewallSetup", () => {
 
     const result = await handleFirewallSetup(mockServer);
 
-    expect(result.isError).toBeUndefined();
+    expect(result.isError).toBeFalsy();
     const payload = JSON.parse(result.content[0].text);
     expect(payload.success).toBe(true);
     expect(payload.server).toBe("test-server");
@@ -258,7 +258,7 @@ describe("handleFirewallAdd", () => {
 
     const result = await handleFirewallAdd(mockServer, 443, "tcp");
 
-    expect(result.isError).toBeUndefined();
+    expect(result.isError).toBeFalsy();
     const payload = JSON.parse(result.content[0].text);
     expect(payload.success).toBe(true);
     expect(payload.server).toBe("test-server");
@@ -301,7 +301,7 @@ describe("handleFirewallRemove", () => {
 
     const result = await handleFirewallRemove(mockServer, 8080, "tcp");
 
-    expect(result.isError).toBeUndefined();
+    expect(result.isError).toBeFalsy();
     const payload = JSON.parse(result.content[0].text);
     expect(payload.success).toBe(true);
   });
@@ -330,7 +330,7 @@ describe("handleFirewallStatus", () => {
 
     const result = await handleFirewallStatus(mockServer);
 
-    expect(result.isError).toBeUndefined();
+    expect(result.isError).toBeFalsy();
     const payload = JSON.parse(result.content[0].text);
     expect(payload.active).toBe(true);
     expect(payload.ruleCount).toBe(1);
@@ -376,7 +376,7 @@ describe("handleDomainSet", () => {
 
     const result = await handleDomainSet(mockServer, "coolify.example.com", true);
 
-    expect(result.isError).toBeUndefined();
+    expect(result.isError).toBeFalsy();
     const payload = JSON.parse(result.content[0].text);
     expect(payload.success).toBe(true);
     expect(payload.url).toBe("https://coolify.example.com");
@@ -422,7 +422,7 @@ describe("handleDomainRemove", () => {
 
     const result = await handleDomainRemove(mockServer);
 
-    expect(result.isError).toBeUndefined();
+    expect(result.isError).toBeFalsy();
     const payload = JSON.parse(result.content[0].text);
     expect(payload.success).toBe(true);
   });
@@ -461,7 +461,7 @@ describe("handleDomainCheck", () => {
 
     const result = await handleDomainCheck(mockServer, "coolify.example.com");
 
-    expect(result.isError).toBeUndefined();
+    expect(result.isError).toBeFalsy();
     const payload = JSON.parse(result.content[0].text);
     expect(payload.match).toBe(true);
     expect(payload.resolvedIp).toBe("1.2.3.4");
@@ -496,7 +496,7 @@ describe("handleDomainInfo", () => {
 
     const result = await handleDomainInfo(mockServer);
 
-    expect(result.isError).toBeUndefined();
+    expect(result.isError).toBeFalsy();
     const payload = JSON.parse(result.content[0].text);
     expect(payload.fqdn).toBe("coolify.example.com");
   });

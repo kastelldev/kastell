@@ -9,10 +9,35 @@ export const serverPluginSchema = z.object({
 
 type ServerPluginParams = z.infer<typeof serverPluginSchema>;
 
+export const serverPluginOutputSchema = z.object({
+  result: z.discriminatedUnion("action", [
+    z.object({
+      action: z.literal("list"),
+      plugins: z.array(z.object({
+        name: z.string(),
+        version: z.string().optional(),
+        status: z.string(),
+      })),
+      count: z.number(),
+    }),
+    z.object({
+      action: z.literal("validate"),
+      results: z.array(z.object({
+        name: z.string(),
+        valid: z.boolean(),
+        errors: z.array(z.string()).optional(),
+      })),
+    }),
+  ]),
+});
+
+type ServerPluginOutput = z.infer<typeof serverPluginOutputSchema>;
+
 export async function handleServerPlugin(params: ServerPluginParams) {
   if (params.action === "list") {
     const plugins = listPlugins();
     return mcpSuccess({
+      action: "list" as const,
       plugins,
       count: plugins.length,
     });
@@ -20,7 +45,10 @@ export async function handleServerPlugin(params: ServerPluginParams) {
 
   if (params.action === "validate") {
     const results = validatePlugins(params.name);
-    return mcpSuccess({ results });
+    return mcpSuccess({
+      action: "validate" as const,
+      results,
+    });
   }
 
   return mcpError(`Unexpected action: ${params.action}`);

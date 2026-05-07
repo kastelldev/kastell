@@ -41,6 +41,26 @@ export const serverEvidenceSchema = {
     .describe("Overwrite existing evidence directory."),
 };
 
+// ─── Output Schema ────────────────────────────────────────────────────────────
+
+ 
+export const serverEvidenceOutputSchema = z.object({
+  result: z.object({
+    evidenceDir: z.string(),
+    serverName: z.string(),
+    serverIp: z.string(),
+    platform: z.string(),
+    collectedAt: z.string(),
+    totalFiles: z.number(),
+    skippedFiles: z.number(),
+    manifestPath: z.string(),
+  }),
+});
+
+export type ServerEvidenceOutput = z.infer<typeof serverEvidenceOutputSchema>;
+
+// ─── Handler ──────────────────────────────────────────────────────────────────
+
 export async function handleServerEvidence(params: {
   server?: string;
   name?: string;
@@ -88,7 +108,7 @@ export async function handleServerEvidence(params: {
     const { evidenceDir, serverName, serverIp, totalFiles, skippedFiles, collectedAt, manifestPath } =
       result.data;
 
-    return mcpSuccess({
+    const data = {
       evidenceDir,
       serverName,
       serverIp,
@@ -97,7 +117,8 @@ export async function handleServerEvidence(params: {
       totalFiles,
       skippedFiles,
       manifestPath,
-    }, { largeResult: true });
+    };
+    return mcpSuccess(data, { largeResult: true });
   } catch (error: unknown) {
     return mcpError(sanitizeStderr(getErrorMessage(error)));
   }

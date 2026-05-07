@@ -117,6 +117,96 @@ export const serverFixSchema = {
     .describe("Bypass regression gate and force baseline update"),
 };
 
+// ─── Output Schema ────────────────────────────────────────────────────────────
+
+const serverFixApplyDryRunOutputSchema = z.object({
+  dryRun: z.boolean(),
+  safeModeForcedDryRun: z.boolean().optional(),
+  preview: z.object({
+    groups: z.array(z.object({
+      severity: z.string(),
+      checks: z.array(z.object({
+        id: z.string(),
+        name: z.string(),
+        category: z.string(),
+        severity: z.string(),
+      })),
+    })),
+  }),
+  rejectedChecks: z.array(z.object({ id: z.string(), reason: z.string() })),
+  guardedCount: z.number(),
+  forbiddenCount: z.number(),
+  scoreBefore: z.number(),
+  baselineRegression: z.record(z.string(), z.unknown()).optional(),
+  regressionWarning: z.object({
+    regressions: z.array(z.string()),
+    scoreRegressed: z.boolean(),
+    message: z.string(),
+  }).optional(),
+});
+
+const serverFixApplyLiveOutputSchema = z.object({
+  dryRun: z.boolean(),
+  applied: z.array(z.string()),
+  errors: z.array(z.string()),
+  rejectedChecks: z.array(z.object({ id: z.string(), reason: z.string() })),
+  scoreBefore: z.number(),
+  scoreAfter: z.number().nullable(),
+  targetWarning: z.string().optional(),
+  diffSummary: z.array(z.string()).optional(),
+  reportFile: z.string().optional(),
+  baselineRegression: z.record(z.string(), z.unknown()).optional(),
+  regressionWarning: z.object({
+    regressions: z.array(z.string()),
+    scoreRegressed: z.boolean(),
+    message: z.string(),
+  }).optional(),
+});
+
+const serverFixHistoryOutputSchema = z.object({
+  action: z.literal("history"),
+  server: z.object({ name: z.string(), ip: z.string() }),
+  entries: z.array(z.record(z.string(), z.unknown())),
+  totalEntries: z.number(),
+});
+
+const serverFixRollbackOutputSchema = z.object({
+  action: z.literal("rollback"),
+  fixId: z.string(),
+  restored: z.array(z.string()),
+  errors: z.array(z.string()),
+  scoreBefore: z.number(),
+  scoreAfter: z.number().nullable(),
+});
+
+const serverFixRollbackAllOutputSchema = z.object({
+  action: z.literal("rollback-all"),
+  rolledBack: z.array(z.string()),
+  errors: z.array(z.string()),
+  scoreAfter: z.number().nullable(),
+});
+
+const serverFixRollbackToOutputSchema = z.object({
+  action: z.literal("rollback-to"),
+  targetFixId: z.string(),
+  rolledBack: z.array(z.string()),
+  errors: z.array(z.string()),
+  scoreAfter: z.number().nullable(),
+});
+
+export const serverFixOutputSchema = z.object({
+  result: z.discriminatedUnion("action", [
+    z.object({ action: z.literal("apply"), dryRun: z.literal(true) }).merge(serverFixApplyDryRunOutputSchema),
+    z.object({ action: z.literal("apply"), dryRun: z.literal(false) }).merge(serverFixApplyLiveOutputSchema),
+    serverFixHistoryOutputSchema,
+    serverFixRollbackOutputSchema,
+    serverFixRollbackAllOutputSchema,
+    serverFixRollbackToOutputSchema,
+  ]),
+});
+
+export type ServerFixOutput = z.infer<typeof serverFixOutputSchema>;
+
 /** Severity ordering for display (critical first) */
 const SEVERITY_ORDER: Array<"critical" | "warning" | "info"> = [
   "critical",
@@ -170,7 +260,7 @@ export async function handleServerFix(
     if (params.action === "history") {
       const entries = loadFixHistory(server.ip);
       return mcpSuccess({
-        action: "history",
+        action: "history" as const,
         server: { name: server.name, ip: server.ip },
         entries: entries.slice(-20),
         totalEntries: entries.length,
@@ -227,7 +317,7 @@ export async function handleServerFix(
       await saveRollbackEntry(entry, scoreAfter);
 
       return mcpSuccess({
-        action: "rollback",
+        action: "rollback" as const,
         fixId,
         restored,
         errors: rollbackErrors,
@@ -246,7 +336,7 @@ export async function handleServerFix(
       const scoreAfter = await auditScoreAfterRollback(server, platform, mcpServer, rolledBack.length);
 
       return mcpSuccess({
-        action: "rollback-all",
+        action: "rollback-all" as const,
         rolledBack,
         errors: rbErrors,
         scoreAfter,
@@ -267,7 +357,7 @@ export async function handleServerFix(
       const scoreAfter = await auditScoreAfterRollback(server, platform, mcpServer, rolledBack.length);
 
       return mcpSuccess({
-        action: "rollback-to",
+        action: "rollback-to" as const,
         targetFixId: params.rollbackId,
         rolledBack,
         errors: rbErrors,
@@ -372,6 +462,7 @@ export async function handleServerFix(
     // ── Early exit if no SAFE fixes after filter ──────────────────────────
     if (filteredChecks.length === 0) {
       return mcpSuccess({
+        action: "apply" as const,
         dryRun: effectiveDryRun,
         ...(safeModeForcedDryRun ? { safeModeForcedDryRun } : {}),
         applied: [],
@@ -393,6 +484,7 @@ export async function handleServerFix(
     } else if (params.target !== undefined) {
       if (auditResult.overallScore >= params.target) {
         return mcpSuccess({
+          action: "apply" as const,
           dryRun: effectiveDryRun,
           applied: [],
           message: `Current score ${auditResult.overallScore} already meets target ${params.target} — no fixes needed.`,
@@ -413,6 +505,7 @@ export async function handleServerFix(
       })).filter((g) => g.checks.length > 0);
 
       return mcpSuccess({
+        action: "apply" as const,
         dryRun: true,
         ...(safeModeForcedDryRun ? { safeModeForcedDryRun } : {}),
         preview: { groups: previewGroups },
@@ -567,6 +660,7 @@ export async function handleServerFix(
     }
 
     return mcpSuccess({
+      action: "apply" as const,
       dryRun: false,
       applied,
       errors,

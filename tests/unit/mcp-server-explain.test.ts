@@ -12,8 +12,8 @@ describe("serverExplainHandler", () => {
     expect(parsed.id).toBe(CHECK_IDS.SSH.SSH_PASSWORD_AUTH);
     expect(parsed.category).toBe("SSH");
     expect(parsed.severity).toBe("critical");
-    expect(parsed.explain).toBeDefined();
-    expect(parsed.complianceRefs).toBeInstanceOf(Array);
+    expect(parsed.description).toBeDefined();
+    expect(parsed.compliance).toBeInstanceOf(Array);
     expect(parsed._kastell_version).toBeDefined();
   });
 
