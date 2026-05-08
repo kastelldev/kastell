@@ -30,6 +30,24 @@ jobs:
 
       - run: npm test
 
-      - run: npm publish
+      - name: Check if version already published
+        id: check-version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if npm view "kastell@$VERSION" version 2>/dev/null; then
+            echo "already_published=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::Version $VERSION already exists on npm — skipping publish (was it published manually?)"
+          else
+            echo "already_published=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish to npm
+        if: steps.check-version.outputs.already_published != 'true'
+        run: |
+          npm publish
+          echo "::notice::Published kastell@${{ steps.check-version.outputs.version }} to npm"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
