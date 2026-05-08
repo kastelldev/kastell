@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.5] - 2026-05-08
+
+### Fixed
+- **MCP price field type** — `serverInfo sizes` outputSchema `price` field changed from `z.number()` to `z.string()` to match actual API response format (e.g. "€3.79/mo")
+- **Plugin env token mapping** — `.mcp.json` now maps `HETZNER_TOKEN`, `DIGITALOCEAN_TOKEN`, `VULTR_TOKEN`, `LINODE_TOKEN` from host environment to MCP server process
+- **CI publish pre-check** — `publish.yml` now runs `npm view` before publish; skips with warning if version already exists on npm
+
+### Changed
+- Plugin description updated to reflect 17 MCP tools (was 13)
+- README version banner updated
+
 ## [2.2.4] - 2026-05-07
 
 ### Added
