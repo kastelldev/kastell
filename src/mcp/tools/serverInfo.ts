@@ -97,7 +97,7 @@ const serverInfoSizesOutputSchema = z.object({
     vcpu: z.number(),
     ram: z.string(),
     disk: z.string(),
-    price: z.number(),
+    price: z.string(),
   })),
   total: z.number(),
   suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),

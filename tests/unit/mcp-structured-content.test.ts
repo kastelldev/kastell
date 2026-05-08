@@ -263,4 +263,24 @@ describe("MCP SDK round-trip verification", () => {
     const parseResult = await safeParseAsync(normalized!, sc);
     expect(parseResult.success).toBe(true);
   });
+
+  it("should validate serverInfo sizes action through SDK safeParseAsync", async () => {
+    const response = mcpSuccess({
+      action: "sizes",
+      provider: "hetzner",
+      region: "nbg1",
+      mode: "coolify",
+      sizes: [
+        { id: "cax11", name: "CAX11", vcpu: 2, ram: "4 GB", disk: "40 GB", price: "€3.79/mo" },
+        { id: "cax21", name: "CAX21", vcpu: 4, ram: "8 GB", disk: "80 GB", price: "€7.49/mo" },
+      ],
+      total: 2,
+      suggested_actions: [{ command: "kastell provision", reason: "Create a server" }],
+    });
+    const sc = response.structuredContent;
+    const normalized = normalizeObjectSchema(serverInfoOutputSchema);
+    expect(normalized).toBeDefined();
+    const parseResult = await safeParseAsync(normalized!, sc);
+    expect(parseResult.success).toBe(true);
+  });
 });
