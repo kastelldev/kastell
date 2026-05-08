@@ -2,7 +2,14 @@
   "mcpServers": {
     "kastell": {
       "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/../../dist/mcp-bundle.mjs"]
+      "args": ["${CLAUDE_PLUGIN_ROOT}/../../dist/mcp-bundle.mjs"],
+      "env": {
+        "HETZNER_TOKEN": "${HETZNER_TOKEN}",
+        "DIGITALOCEAN_TOKEN": "${DIGITALOCEAN_TOKEN}",
+        "VULTR_TOKEN": "${VULTR_TOKEN}",
+        "LINODE_TOKEN": "${LINODE_TOKEN}",
+        "KASTELL_SAFE_MODE": "true"
+      }
     }
   }
 }
