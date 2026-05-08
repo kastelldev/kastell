@@ -26,7 +26,8 @@
   ],
   "scripts": {
     "dev": "tsx src/index.ts",
-    "build": "tsc",
+    "build": "tsc && node scripts/bundle-mcp.mjs",
+    "bundle:mcp": "node scripts/bundle-mcp.mjs",
     "start": "node dist/index.js",
     "test": "jest --config jest.config.cjs",
     "test:watch": "jest --config jest.config.cjs --watch",
@@ -107,6 +108,7 @@
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.12.0",
     "@types/semver": "7.7.0",
+    "esbuild": "^0.28.0",
     "eslint": "^10.0.2",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-no-secrets": "^2.3.3",

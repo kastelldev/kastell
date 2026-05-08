@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/destroy-block.cjs"
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/kastell-plugin/hooks/destroy-block.cjs"
           }
         ]
       },
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/pre-commit-audit-guard.cjs"
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/kastell-plugin/hooks/pre-commit-audit-guard.cjs"
           }
         ]
       }
@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/session-log.cjs"
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/kastell-plugin/hooks/session-log.cjs"
           }
         ]
       }
@@ -38,7 +38,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/session-audit.cjs"
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/kastell-plugin/hooks/session-audit.cjs"
           }
         ]
       }
@@ -48,7 +48,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/stop-quality-check.cjs"
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/kastell-plugin/hooks/stop-quality-check.cjs"
           }
         ]
       }

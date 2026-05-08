@@ -1,7 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { readFileSync } from "fs";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
+import { KASTELL_VERSION } from "../utils/version.js";
 import { serverInfoSchema, handleServerInfo, serverInfoOutputSchema } from "./tools/serverInfo.js";
 import { serverLogsSchema, handleServerLogs, serverLogsOutputSchema } from "./tools/serverLogs.js";
 import { serverManageSchema, handleServerManage, serverManageOutputSchema } from "./tools/serverManage.js";
@@ -21,15 +19,10 @@ import { serverCompareSchema, handleServerCompare, serverCompareOutputSchema } f
 import { serverPluginSchema, handleServerPlugin, serverPluginOutputSchema } from "./tools/serverPlugin.js";
 import { setMcpVersion } from "./utils.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const pkgPath = join(__dirname, "..", "..", "package.json");
-const pkg = JSON.parse(readFileSync(pkgPath, "utf-8")) as { name: string; version: string };
-
 export function createMcpServer(): McpServer {
-  setMcpVersion(pkg.version);
+  setMcpVersion(KASTELL_VERSION);
   const server = new McpServer(
-    { name: pkg.name, version: pkg.version },
+    { name: "kastell", version: KASTELL_VERSION },
     {
       capabilities: { logging: {} },
       instructions: `Kastell manages self-hosted servers across 4 cloud providers (Hetzner, DigitalOcean, Vultr, Linode) and 3 platforms (Coolify, Dokploy, bare VPS).

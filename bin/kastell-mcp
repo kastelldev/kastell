@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import('../dist/mcp/index.js').catch((err) => {
+import('../dist/mcp-bundle.mjs').catch((err) => {
   process.stderr.write(`kastell-mcp: ${err}\n`);
   process.exit(1);
 });

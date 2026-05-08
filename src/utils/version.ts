@@ -1,14 +1,27 @@
-import { readFileSync } from "fs";
-import { join } from "path";
+import { readFileSync, existsSync } from "fs";
+import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
 let cachedVersion: string | null = null;
 
+function findPackageJson(): string | null {
+  let dir = fileURLToPath(new URL(".", import.meta.url));
+  for (let i = 0; i < 5; i++) {
+    const candidate = join(dir, "package.json");
+    if (existsSync(candidate)) return candidate;
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return null;
+}
+
 export function getKastellVersion(): string {
   if (cachedVersion !== null) return cachedVersion;
   try {
-    const __dirname = fileURLToPath(new URL(".", import.meta.url));
-    const pkg = JSON.parse(readFileSync(join(__dirname, "../../package.json"), "utf-8")) as { version: string };
+    const pkgPath = findPackageJson();
+    if (!pkgPath) return "0.0.0";
+    const pkg = JSON.parse(readFileSync(pkgPath, "utf-8")) as { version: string };
     cachedVersion = pkg.version;
     return cachedVersion;
   } catch {
