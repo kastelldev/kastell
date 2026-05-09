@@ -7,9 +7,11 @@ import {
   destroyCloudServer,
 } from "../../core/manage.js";
 import { logSafeModeBlock } from "../../utils/safeMode.js";
-import { mcpSuccess, mcpError } from "../utils.js";
+import { mcpSuccess, mcpError, elicitMissingParams, ELICIT_PROVIDER_SCHEMA, ELICIT_SERVER_NAME_SCHEMA } from "../utils.js";
 import { getErrorMessage, sanitizeStderr } from "../../utils/errorMapper.js";
 import { SUPPORTED_PROVIDERS } from "../../constants.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { SupportedProvider } from "../../constants.js";
 
 export const serverManageSchema = {
   action: z
@@ -25,14 +27,16 @@ export const serverManageSchema = {
     .enum(SUPPORTED_PROVIDERS)
     .optional()
     .describe(
-      "Cloud provider: 'hetzner', 'digitalocean', 'vultr', 'linode' (required for 'add' action)",
+      "Cloud provider: 'hetzner', 'digitalocean', 'vultr', 'linode' (required for 'add' action). If omitted and client supports elicitation, a form will be shown.",
     ),
-  ip: z.string().optional().describe("Server public IP address (required for 'add' action)"),
+  ip: z.string().optional().describe(
+    "Server public IP address (required for 'add' action). If omitted and client supports elicitation, a form will be shown.",
+  ),
   name: z
     .string()
     .optional()
     .describe(
-      "Server name, 3-63 chars, lowercase alphanumeric and hyphens (required for 'add' action)",
+      "Server name, 3-63 chars, lowercase alphanumeric and hyphens (required for 'add' action). If omitted and client supports elicitation, a form will be shown.",
     ),
   skipVerify: z
     .boolean()
@@ -106,7 +110,58 @@ export async function handleServerManage(params: {
   name?: string;
   skipVerify?: boolean;
   mode?: "coolify" | "dokploy" | "bare";
-}): Promise<{ content: Array<{ type: "text"; text: string }>; isError?: boolean }> {
+}, mcpServer?: McpServer): Promise<{ content: Array<{ type: "text"; text: string }>; isError?: boolean }> {
+  if (params.action === "add") {
+    const missing = {
+      name: !params.name,
+      ip: !params.ip,
+      provider: !params.provider,
+    };
+
+    if (Object.values(missing).some(Boolean)) {
+      const elicit = await elicitMissingParams(mcpServer, "Provide server registration details:", {
+        type: "object",
+        properties: {
+          ...(missing.name ? { name: ELICIT_SERVER_NAME_SCHEMA } : {}),
+          ...(missing.ip ? {
+            ip: { type: "string", title: "IP Address", description: "Server public IPv4 address" },
+          } : {}),
+          ...(missing.provider ? { provider: ELICIT_PROVIDER_SCHEMA } : {}),
+          mode: {
+            type: "string", title: "Server Mode",
+            oneOf: [
+              { const: "coolify", title: "Coolify" },
+              { const: "dokploy", title: "Dokploy" },
+              { const: "bare", title: "Bare VPS" },
+            ],
+          },
+        },
+        required: [
+          ...(missing.name ? ["name"] : []),
+          ...(missing.ip ? ["ip"] : []),
+          ...(missing.provider ? ["provider"] : []),
+        ],
+      });
+
+      if (elicit.status === "cancelled") return mcpSuccess({ status: "cancelled", message: "Server registration cancelled by user." });
+      if (elicit.status === "unsupported") {
+        const missingFields = Object.entries(missing).filter(([, v]) => v).map(([k]) => k);
+        return mcpError(
+          `Required parameter(s) missing: ${missingFields.join(", ")}`,
+          "Provide all required parameters for 'add' action.",
+        );
+      }
+
+      params = {
+        ...params,
+        name: (elicit.content.name as string) ?? params.name,
+        ip: (elicit.content.ip as string) ?? params.ip,
+        provider: (elicit.content.provider as SupportedProvider) ?? params.provider,
+        mode: (elicit.content.mode as "coolify" | "dokploy" | "bare") ?? params.mode,
+      };
+    }
+  }
+
   try {
     switch (params.action) {
       case "add": {

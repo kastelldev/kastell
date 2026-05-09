@@ -2,7 +2,7 @@ import { z } from "zod";
 import { isSafeMode } from "../../core/manage.js";
 import { logSafeModeBlock } from "../../utils/safeMode.js";
 import { provisionServer } from "../../core/provision.js";
-import { mcpSuccess, mcpError, mcpLog } from "../utils.js";
+import { mcpSuccess, mcpError, mcpLog, elicitMissingParams, ELICIT_PROVIDER_SCHEMA, ELICIT_SERVER_NAME_SCHEMA } from "../utils.js";
 import { getErrorMessage, sanitizeStderr } from "../../utils/errorMapper.js";
 import { SUPPORTED_PROVIDERS } from "../../constants.js";
 import type { SupportedProvider } from "../../constants.js";
@@ -35,7 +35,9 @@ export type ServerProvisionOutput = z.infer<typeof serverProvisionOutputSchema>;
 // ─── Schema ──────────────────────────────────────────────────────────────────
 
 export const serverProvisionSchema = {
-  provider: z.enum(SUPPORTED_PROVIDERS).describe("Cloud provider to create server on"),
+  provider: z.enum(SUPPORTED_PROVIDERS).optional().describe(
+    "Cloud provider to create server on. If omitted and client supports elicitation, a form will be shown.",
+  ),
   region: z
     .string()
     .optional()
@@ -48,11 +50,9 @@ export const serverProvisionSchema = {
     .describe(
       "Server type/plan ID (e.g. 'cax11' for Hetzner, 's-2vcpu-2gb' for DigitalOcean). Uses template defaults if omitted",
     ),
-  name: z
-    .string()
-    .describe(
-      "Server hostname, 3-63 chars, lowercase, starts with letter, only alphanumeric and hyphens, ends with letter or number",
-    ),
+  name: z.string().optional().describe(
+    "Server hostname, 3-63 chars, lowercase, starts with letter, only alphanumeric and hyphens, ends with letter or number. If omitted and client supports elicitation, a form will be shown.",
+  ),
   template: z
     .enum(["starter", "production", "dev"])
     .default("starter")
@@ -71,10 +71,10 @@ export const serverProvisionSchema = {
 
 export async function handleServerProvision(
   params: {
-    provider: SupportedProvider;
+    provider?: SupportedProvider;
     region?: string;
     size?: string;
-    name: string;
+    name?: string;
     template?: "starter" | "production" | "dev";
     mode?: "coolify" | "dokploy" | "bare";
   },
@@ -82,7 +82,38 @@ export async function handleServerProvision(
 ): Promise<{ content: Array<{ type: "text"; text: string }>; isError?: boolean }> {
   const mode = params.mode ?? "coolify";
 
-  // SAFE_MODE guard
+  let provider = params.provider;
+  let name = params.name;
+
+  if (!provider || !name) {
+    const elicit = await elicitMissingParams(mcpServer, "Provide server provisioning details:", {
+      type: "object",
+      properties: {
+        ...(!provider ? { provider: ELICIT_PROVIDER_SCHEMA } : {}),
+        ...(!name ? { name: ELICIT_SERVER_NAME_SCHEMA } : {}),
+      },
+      required: [
+        ...(!provider ? ["provider"] : []),
+        ...(!name ? ["name"] : []),
+      ],
+    });
+
+    if (elicit.status === "cancelled") {
+      return mcpSuccess({ status: "cancelled", message: "Provisioning cancelled by user." });
+    }
+    if (elicit.status === "unsupported") {
+      const missing = [!provider && "provider", !name && "name"].filter(Boolean);
+      return mcpError(
+        `Required parameter(s) missing: ${missing.join(", ")}`,
+        "Provide all required parameters, or use a client that supports elicitation.",
+      );
+    }
+
+    provider = (elicit.content.provider as SupportedProvider) ?? provider;
+    name = (elicit.content.name as string) ?? name;
+  }
+
+  // SAFE_MODE guard — check AFTER elicitation (spec requirement)
   if (isSafeMode()) {
     logSafeModeBlock("provision", { category: "destructive" });
     return mcpError(
@@ -91,14 +122,14 @@ export async function handleServerProvision(
     );
   }
 
-  await mcpLog(mcpServer, `Provisioning ${params.provider} server: ${params.name}`);
+  await mcpLog(mcpServer, `Provisioning ${provider} server: ${name}`);
 
   try {
     const result = await provisionServer({
-      provider: params.provider,
+      provider: provider!,
       region: params.region,
       size: params.size,
-      name: params.name,
+      name: name!,
       template: params.template,
       mode,
     });

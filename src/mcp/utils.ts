@@ -111,6 +111,60 @@ export function mcpError(
   };
 }
 
+
+// ─── Elicitation Helpers ─────────────────────────────────────────────────────
+
+import type { ElicitRequestFormParams } from "@modelcontextprotocol/sdk/types.js";
+import { SUPPORTED_PROVIDERS, PROVIDER_DISPLAY_NAMES } from "../constants.js";
+
+export const ELICIT_PROVIDER_SCHEMA = {
+  type: "string" as const, title: "Cloud Provider",
+  oneOf: SUPPORTED_PROVIDERS.map((p) => ({ const: p, title: PROVIDER_DISPLAY_NAMES[p] })),
+};
+
+export const ELICIT_SERVER_NAME_SCHEMA = {
+  type: "string" as const, title: "Server Name",
+  description: "3-63 chars, lowercase, alphanumeric + hyphens",
+  minLength: 3, maxLength: 63,
+};
+
+export type ElicitResult =
+  | { status: "accepted"; content: Record<string, unknown> }
+  | { status: "cancelled" }
+  | { status: "unsupported" };
+
+export function supportsElicitation(server: McpServer | undefined): boolean {
+  if (!server) return false;
+  try {
+    const caps = (server.server as { getClientCapabilities?: () => Record<string, unknown> })
+      .getClientCapabilities?.();
+    return caps?.elicitation !== undefined;
+  } catch {
+    return false;
+  }
+}
+
+export async function elicitMissingParams(
+  server: McpServer | undefined,
+  message: string,
+  requestedSchema: object,
+): Promise<ElicitResult> {
+  if (!supportsElicitation(server)) {
+    return { status: "unsupported" };
+  }
+
+  // SDK type: ElicitRequestFormParams — mode is optional (defaults to "form")
+  const result = await server!.server.elicitInput({
+    message,
+    requestedSchema: requestedSchema as ElicitRequestFormParams["requestedSchema"],
+  });
+
+  if (result.action === "accept" && result.content) {
+    return { status: "accepted", content: result.content as Record<string, unknown> };
+  }
+  return { status: "cancelled" };
+}
+
 // ─── requireProviderToken ─────────────────────────────────────────────────────
 
 /**

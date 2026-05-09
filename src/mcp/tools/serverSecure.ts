@@ -3,8 +3,10 @@ import { getServers } from "../../utils/config.js";
 import {
   resolveServerForMcp,
   mcpError,
+  mcpSuccess,
   mcpLog,
   type McpResponse,
+  elicitMissingParams,
 } from "../utils.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { requireManagedMode } from "../../utils/modeGuard.js";
@@ -177,6 +179,35 @@ export async function handleServerSecure(params: {
   domain?: string;
   ssl?: boolean;
 }, mcpServer?: McpServer): Promise<McpResponse> {
+  if (["firewall-add", "firewall-remove"].includes(params.action) && !params.port) {
+    const elicit = await elicitMissingParams(mcpServer, `Provide port for ${params.action}:`, {
+      type: "object",
+      properties: {
+        port: { type: "number", title: "Port", description: "Port number (1-65535)", minimum: 1, maximum: 65535 },
+        protocol: { type: "string", title: "Protocol", oneOf: [{ const: "tcp", title: "TCP" }, { const: "udp", title: "UDP" }] },
+      },
+      required: ["port"],
+    });
+
+    if (elicit.status === "cancelled") return mcpSuccess({ status: "cancelled", message: `${params.action} cancelled by user.` });
+    if (elicit.status === "unsupported") return mcpError(`Parameter 'port' is required for ${params.action}`);
+    params = { ...params, port: elicit.content.port as number, protocol: (elicit.content.protocol as "tcp" | "udp") ?? params.protocol };
+  }
+
+  if (params.action === "domain-set" && !params.domain) {
+    const elicit = await elicitMissingParams(mcpServer, "Provide domain for domain-set:", {
+      type: "object",
+      properties: {
+        domain: { type: "string", title: "Domain", description: "Domain name (e.g. example.com)" },
+      },
+      required: ["domain"],
+    });
+
+    if (elicit.status === "cancelled") return mcpSuccess({ status: "cancelled", message: `${params.action} cancelled by user.` });
+    if (elicit.status === "unsupported") return mcpError("Parameter 'domain' is required for domain-set");
+    params = { ...params, domain: elicit.content.domain as string };
+  }
+
   try {
     const servers = getServers();
     if (servers.length === 0) {

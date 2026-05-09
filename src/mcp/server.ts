@@ -1,4 +1,5 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
 import { KASTELL_VERSION } from "../utils/version.js";
 import { serverInfoSchema, handleServerInfo, serverInfoOutputSchema } from "./tools/serverInfo.js";
 import { serverLogsSchema, handleServerLogs, serverLogsOutputSchema } from "./tools/serverLogs.js";
@@ -18,13 +19,16 @@ import { serverExplainSchema, serverExplainHandler, serverExplainOutputSchema } 
 import { serverCompareSchema, handleServerCompare, serverCompareOutputSchema } from "./tools/serverCompare.js";
 import { serverPluginSchema, handleServerPlugin, serverPluginOutputSchema } from "./tools/serverPlugin.js";
 import { setMcpVersion } from "./utils.js";
+import { readCheckCatalog, readCheckDetail } from "./resources/checks.js";
+import { readServerList, readServerAudit } from "./resources/servers.js";
+import { hardenPrompt, diagnosePrompt, setupPrompt } from "./prompts/workflows.js";
 
 export function createMcpServer(): McpServer {
   setMcpVersion(KASTELL_VERSION);
   const server = new McpServer(
     { name: "kastell", version: KASTELL_VERSION },
     {
-      capabilities: { logging: {} },
+      capabilities: { logging: {}, resources: {}, prompts: {} },
       instructions: `Kastell manages self-hosted servers across 4 cloud providers (Hetzner, DigitalOcean, Vultr, Linode) and 3 platforms (Coolify, Dokploy, bare VPS).
 
 Workflow: provision a server -> add to config -> secure/harden -> audit -> maintain.
@@ -96,7 +100,7 @@ Bare servers: use service 'system' or 'docker' for logs (not 'coolify'). server_
       openWorldHint: true,
     },
   }, async (params) => {
-    return handleServerManage(params);
+    return handleServerManage(params, server);
   });
 
   server.registerTool("server_maintain", {
@@ -322,6 +326,71 @@ Bare servers: use service 'system' or 'docker' for logs (not 'coolify'). server_
   }, async (params) => {
     return handleServerPlugin(params);
   });
+
+  // ─── Resources ────────────────────────────────────────────────────────────
+
+  server.registerResource(
+    "check-catalog",
+    "kastell://checks",
+    { description: "Full audit check catalog (457 checks with id, name, category, severity)" },
+    async () => readCheckCatalog(),
+  );
+
+  server.registerResource(
+    "check-detail",
+    new ResourceTemplate("kastell://checks/{id}", { list: undefined }),
+    { description: "Detailed information about a specific audit check" },
+    async (_uri, { id }) => readCheckDetail(id as string),
+  );
+
+  server.registerResource(
+    "server-list",
+    "kastell://servers",
+    { description: "List of all registered Kastell servers" },
+    async () => readServerList(),
+  );
+
+  server.registerResource(
+    "server-audit",
+    new ResourceTemplate("kastell://servers/{name}/audit", { list: undefined }),
+    { description: "Latest cached audit score for a specific server" },
+    async (_uri, { name }) => readServerAudit(name as string),
+  );
+
+  // ─── Prompts ─────────────────────────────────────────────────────────────
+
+  server.registerPrompt(
+    "harden",
+    {
+      title: "Harden Server",
+      description: "Full hardening workflow: lock → audit → conditional fix chain",
+      argsSchema: { server: z.string().describe("Server name to harden") },
+    },
+    (args) => hardenPrompt(args),
+  );
+
+  server.registerPrompt(
+    "diagnose",
+    {
+      title: "Diagnose Server",
+      description: "Diagnose server issues: doctor → logs → audit findings summary",
+      argsSchema: {
+        server: z.string().describe("Server name to diagnose"),
+        service: z.string().optional().describe("Log source: coolify, docker, or system"),
+      },
+    },
+    (args) => diagnosePrompt(args),
+  );
+
+  server.registerPrompt(
+    "setup",
+    {
+      title: "Setup New Server",
+      description: "New server setup: provision → lock → audit verification chain",
+      argsSchema: { name: z.string().describe("Server name to create") },
+    },
+    (args) => setupPrompt(args),
+  );
 
   return server;
 }
