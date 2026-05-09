@@ -815,7 +815,7 @@ describe("handleServerSecure — firewall-add", () => {
   it("should error when port missing", async () => {
     const result = await handleServerSecure({ action: "firewall-add" });
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain("Port is required");
+    expect(result.content[0].text).toContain("Parameter 'port' is required");
   });
 });
 
@@ -834,7 +834,7 @@ describe("handleServerSecure — firewall-remove", () => {
   it("should error when port missing", async () => {
     const result = await handleServerSecure({ action: "firewall-remove" });
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain("Port is required");
+    expect(result.content[0].text).toContain("Parameter 'port' is required");
   });
 
   it("should include warning for Coolify port", async () => {
@@ -892,7 +892,7 @@ describe("handleServerSecure — domain-set", () => {
   it("should error when domain missing", async () => {
     const result = await handleServerSecure({ action: "domain-set" });
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain("Domain is required");
+    expect(result.content[0].text).toContain("Parameter 'domain' is required");
   });
 
   it("should return isError on failure", async () => {

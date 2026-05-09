@@ -7,7 +7,7 @@ import {
   destroyCloudServer,
 } from "../../core/manage.js";
 import { logSafeModeBlock } from "../../utils/safeMode.js";
-import { mcpSuccess, mcpError, supportsElicitation, elicitMissingParams } from "../utils.js";
+import { mcpSuccess, mcpError, elicitMissingParams } from "../utils.js";
 import { getErrorMessage, sanitizeStderr } from "../../utils/errorMapper.js";
 import { SUPPORTED_PROVIDERS } from "../../constants.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
