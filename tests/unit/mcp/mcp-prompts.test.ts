@@ -1,4 +1,12 @@
-import { hardenPrompt, diagnosePrompt, setupPrompt } from "../../../src/mcp/prompts/workflows.js";
+import { hardenPrompt, diagnosePrompt, setupPrompt, getServerNameCompletions } from "../../../src/mcp/prompts/workflows.js";
+
+jest.mock("../../../src/utils/config.js", () => ({
+  getServers: jest.fn().mockReturnValue([
+    { name: "prod-1", ip: "1.2.3.4", provider: "hetzner", mode: "coolify" },
+    { name: "prod-2", ip: "5.6.7.8", provider: "hetzner", mode: "coolify" },
+    { name: "staging", ip: "9.0.1.2", provider: "digitalocean", mode: "bare" },
+  ]),
+}));
 
 describe("hardenPrompt", () => {
   it("returns workflow instructions with server name", () => {
@@ -39,6 +47,23 @@ describe("setupPrompt", () => {
     expect(text).toContain("server_provision");
     expect(text).toContain("server_lock");
     expect(text).toContain("server_audit");
+  });
+});
+
+describe("getServerNameCompletions", () => {
+  it("returns matching server names for partial input", () => {
+    const result = getServerNameCompletions("prod");
+    expect(result.values).toEqual(["prod-1", "prod-2"]);
+  });
+
+  it("returns all servers for empty input", () => {
+    const result = getServerNameCompletions("");
+    expect(result.values).toHaveLength(3);
+  });
+
+  it("returns empty for non-matching input", () => {
+    const result = getServerNameCompletions("xyz");
+    expect(result.values).toHaveLength(0);
   });
 });
 

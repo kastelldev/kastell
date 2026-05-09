@@ -1,3 +1,4 @@
+import { getServers } from "../../utils/config.js";
 import type { GetPromptResult } from "@modelcontextprotocol/sdk/types.js";
 
 export function hardenPrompt(args: { server: string }): GetPromptResult {
@@ -60,5 +61,18 @@ export function setupPrompt(args: { name: string }): GetPromptResult {
 5. Report the final server details (IP, provider, mode) and audit score.`,
       },
     }],
+  };
+}
+
+export function getServerNameCompletions(partial: string): { values: string[]; hasMore: boolean; total: number } {
+  const servers = getServers();
+  const matching = servers
+    .filter((s) => s.name.startsWith(partial))
+    .map((s) => s.name);
+
+  return {
+    values: matching.slice(0, 20),
+    hasMore: matching.length > 20,
+    total: matching.length,
   };
 }
