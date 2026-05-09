@@ -7,7 +7,7 @@ import {
   destroyCloudServer,
 } from "../../core/manage.js";
 import { logSafeModeBlock } from "../../utils/safeMode.js";
-import { mcpSuccess, mcpError, elicitMissingParams } from "../utils.js";
+import { mcpSuccess, mcpError, elicitMissingParams, ELICIT_PROVIDER_SCHEMA, ELICIT_SERVER_NAME_SCHEMA } from "../utils.js";
 import { getErrorMessage, sanitizeStderr } from "../../utils/errorMapper.js";
 import { SUPPORTED_PROVIDERS } from "../../constants.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -111,36 +111,22 @@ export async function handleServerManage(params: {
   skipVerify?: boolean;
   mode?: "coolify" | "dokploy" | "bare";
 }, mcpServer?: McpServer): Promise<{ content: Array<{ type: "text"; text: string }>; isError?: boolean }> {
-  // Elicit missing params for 'add' action only
   if (params.action === "add") {
     const missing = {
       name: !params.name,
       ip: !params.ip,
       provider: !params.provider,
     };
-    const hasMissing = Object.values(missing).some(Boolean);
 
-    if (hasMissing) {
+    if (Object.values(missing).some(Boolean)) {
       const elicit = await elicitMissingParams(mcpServer, "Provide server registration details:", {
         type: "object",
         properties: {
-          ...(missing.name ? {
-            name: { type: "string", title: "Server Name", description: "3-63 chars, lowercase", minLength: 3, maxLength: 63 },
-          } : {}),
+          ...(missing.name ? { name: ELICIT_SERVER_NAME_SCHEMA } : {}),
           ...(missing.ip ? {
             ip: { type: "string", title: "IP Address", description: "Server public IPv4 address" },
           } : {}),
-          ...(missing.provider ? {
-            provider: {
-              type: "string", title: "Cloud Provider",
-              oneOf: [
-                { const: "hetzner", title: "Hetzner" },
-                { const: "digitalocean", title: "DigitalOcean" },
-                { const: "vultr", title: "Vultr" },
-                { const: "linode", title: "Linode" },
-              ],
-            },
-          } : {}),
+          ...(missing.provider ? { provider: ELICIT_PROVIDER_SCHEMA } : {}),
           mode: {
             type: "string", title: "Server Mode",
             oneOf: [

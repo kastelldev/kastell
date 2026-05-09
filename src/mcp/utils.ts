@@ -115,6 +115,18 @@ export function mcpError(
 // ─── Elicitation Helpers ─────────────────────────────────────────────────────
 
 import type { ElicitRequestFormParams } from "@modelcontextprotocol/sdk/types.js";
+import { SUPPORTED_PROVIDERS, PROVIDER_DISPLAY_NAMES } from "../constants.js";
+
+export const ELICIT_PROVIDER_SCHEMA = {
+  type: "string" as const, title: "Cloud Provider",
+  oneOf: SUPPORTED_PROVIDERS.map((p) => ({ const: p, title: PROVIDER_DISPLAY_NAMES[p] })),
+};
+
+export const ELICIT_SERVER_NAME_SCHEMA = {
+  type: "string" as const, title: "Server Name",
+  description: "3-63 chars, lowercase, alphanumeric + hyphens",
+  minLength: 3, maxLength: 63,
+};
 
 export type ElicitResult =
   | { status: "accepted"; content: Record<string, unknown> }

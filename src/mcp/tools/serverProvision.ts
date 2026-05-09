@@ -2,7 +2,7 @@ import { z } from "zod";
 import { isSafeMode } from "../../core/manage.js";
 import { logSafeModeBlock } from "../../utils/safeMode.js";
 import { provisionServer } from "../../core/provision.js";
-import { mcpSuccess, mcpError, mcpLog, elicitMissingParams } from "../utils.js";
+import { mcpSuccess, mcpError, mcpLog, elicitMissingParams, ELICIT_PROVIDER_SCHEMA, ELICIT_SERVER_NAME_SCHEMA } from "../utils.js";
 import { getErrorMessage, sanitizeStderr } from "../../utils/errorMapper.js";
 import { SUPPORTED_PROVIDERS } from "../../constants.js";
 import type { SupportedProvider } from "../../constants.js";
@@ -82,7 +82,6 @@ export async function handleServerProvision(
 ): Promise<{ content: Array<{ type: "text"; text: string }>; isError?: boolean }> {
   const mode = params.mode ?? "coolify";
 
-  // Elicit missing required params
   let provider = params.provider;
   let name = params.name;
 
@@ -90,28 +89,8 @@ export async function handleServerProvision(
     const elicit = await elicitMissingParams(mcpServer, "Provide server provisioning details:", {
       type: "object",
       properties: {
-        ...(!provider ? {
-          provider: {
-            type: "string",
-            title: "Cloud Provider",
-            description: "Which cloud provider to use",
-            oneOf: [
-              { const: "hetzner", title: "Hetzner" },
-              { const: "digitalocean", title: "DigitalOcean" },
-              { const: "vultr", title: "Vultr" },
-              { const: "linode", title: "Linode" },
-            ],
-          },
-        } : {}),
-        ...(!name ? {
-          name: {
-            type: "string",
-            title: "Server Name",
-            description: "Hostname (3-63 chars, lowercase, alphanumeric + hyphens)",
-            minLength: 3,
-            maxLength: 63,
-          },
-        } : {}),
+        ...(!provider ? { provider: ELICIT_PROVIDER_SCHEMA } : {}),
+        ...(!name ? { name: ELICIT_SERVER_NAME_SCHEMA } : {}),
       },
       required: [
         ...(!provider ? ["provider"] : []),

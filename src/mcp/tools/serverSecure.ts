@@ -179,7 +179,6 @@ export async function handleServerSecure(params: {
   domain?: string;
   ssl?: boolean;
 }, mcpServer?: McpServer): Promise<McpResponse> {
-  // Elicit missing params based on action
   if (["firewall-add", "firewall-remove"].includes(params.action) && !params.port) {
     const elicit = await elicitMissingParams(mcpServer, `Provide port for ${params.action}:`, {
       type: "object",
@@ -204,7 +203,7 @@ export async function handleServerSecure(params: {
       required: ["domain"],
     });
 
-    if (elicit.status === "cancelled") return mcpSuccess({ status: "cancelled", message: "Domain setup cancelled by user." });
+    if (elicit.status === "cancelled") return mcpSuccess({ status: "cancelled", message: `${params.action} cancelled by user.` });
     if (elicit.status === "unsupported") return mcpError("Parameter 'domain' is required for domain-set");
     params = { ...params, domain: elicit.content.domain as string };
   }
