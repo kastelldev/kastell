@@ -1,4 +1,4 @@
-import { getServers } from "../../utils/config.js";
+import { getServers, findServer } from "../../utils/config.js";
 import { loadAuditHistory } from "../../core/audit/history.js";
 import type { ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
 
@@ -21,8 +21,7 @@ export function readServerList(): ReadResourceResult {
 }
 
 export function readServerAudit(serverName: string): ReadResourceResult {
-  const servers = getServers();
-  const server = servers.find((s) => s.name === serverName);
+  const server = findServer(serverName);
 
   if (!server) {
     return {

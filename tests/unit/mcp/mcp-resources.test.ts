@@ -48,6 +48,13 @@ jest.mock("../../../src/utils/config.js", () => ({
     { id: "1", name: "prod-1", provider: "hetzner", ip: "1.2.3.4", mode: "coolify", region: "nbg1", size: "cax11", createdAt: "2026-01-01" },
     { id: "2", name: "staging", provider: "digitalocean", ip: "5.6.7.8", mode: "bare", region: "fra1", size: "s-2vcpu", createdAt: "2026-02-01" },
   ]),
+  findServer: jest.fn().mockImplementation((name: string) => {
+    const servers = [
+      { id: "1", name: "prod-1", provider: "hetzner", ip: "1.2.3.4", mode: "coolify", region: "nbg1", size: "cax11", createdAt: "2026-01-01" },
+      { id: "2", name: "staging", provider: "digitalocean", ip: "5.6.7.8", mode: "bare", region: "fra1", size: "s-2vcpu", createdAt: "2026-02-01" },
+    ];
+    return servers.find((s) => s.name === name) ?? null;
+  }),
 }));
 
 jest.mock("../../../src/core/audit/history.js", () => ({
