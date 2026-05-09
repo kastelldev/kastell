@@ -96,7 +96,7 @@ Bare servers: use service 'system' or 'docker' for logs (not 'coolify'). server_
       openWorldHint: true,
     },
   }, async (params) => {
-    return handleServerManage(params);
+    return handleServerManage(params, server);
   });
 
   server.registerTool("server_maintain", {

@@ -231,3 +231,51 @@ describe("server_secure elicitation", () => {
     expect(result.isError).toBe(true);
   });
 });
+
+import { handleServerManage } from "../../../src/mcp/tools/serverManage.js";
+
+jest.mock("../../../src/core/manage.js");
+
+describe("server_manage elicitation", () => {
+  it("elicits name/ip/provider when add action called without them", async () => {
+    const mcp = mockMcpServer(true, {
+      action: "accept",
+      content: { name: "prod-1", ip: "10.0.0.1", provider: "hetzner" },
+    });
+
+    const result = await handleServerManage(
+      { action: "add" },
+      mcp,
+    );
+
+    expect(mcp.server.elicitInput).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestedSchema: expect.objectContaining({
+          properties: expect.objectContaining({
+            name: expect.any(Object),
+            ip: expect.any(Object),
+            provider: expect.any(Object),
+          }),
+        }),
+      }),
+    );
+  });
+
+  it("does not elicit for remove action", async () => {
+    const mcp = mockMcpServer(true);
+    await handleServerManage(
+      { action: "remove", server: "test" },
+      mcp,
+    );
+    expect(mcp.server.elicitInput).not.toHaveBeenCalled();
+  });
+
+  it("returns error when add params missing and elicitation unsupported", async () => {
+    const mcp = mockMcpServer(false);
+    const result = await handleServerManage(
+      { action: "add" },
+      mcp,
+    );
+    expect(result.isError).toBe(true);
+  });
+});
