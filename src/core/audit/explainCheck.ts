@@ -100,7 +100,7 @@ export function findCheckById(checkId: string): FindCheckResult {
   };
 }
 
-function getFullCheckCatalog(): ExplainResult[] {
+export function getFullCheckCatalog(): ExplainResult[] {
   if (_catalogCache) return _catalogCache;
   _catalogCache = buildCheckCatalog();
   return _catalogCache;
