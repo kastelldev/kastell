@@ -1,5 +1,9 @@
 import { createMcpServer } from "../../../src/mcp/server.js";
 
+jest.mock("../../../src/utils/version.js", () => ({
+  getVersion: jest.fn().mockReturnValue("0.0.0-test"),
+}));
+
 jest.mock("../../../src/core/audit/explainCheck.js", () => ({
   getFullCheckCatalog: jest.fn().mockReturnValue([]),
   findCheckById: jest.fn().mockReturnValue({ match: null, suggestions: [] }),
