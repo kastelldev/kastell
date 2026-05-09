@@ -1,3 +1,8 @@
+jest.mock("../../../src/mcp/utils.js", () => ({
+  ...jest.requireActual("../../../src/mcp/utils.js"),
+  mcpLog: jest.fn().mockResolvedValue(undefined),
+}));
+
 import { supportsElicitation, elicitMissingParams } from "../../../src/mcp/utils.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
@@ -10,6 +15,7 @@ function mockMcpServer(elicitationCapable: boolean, elicitResult?: unknown): Mcp
       action: "accept",
       content: { name: "test-server", provider: "hetzner" },
     }),
+    sendLoggingMessage: jest.fn().mockResolvedValue(undefined),
   };
   return { server } as unknown as McpServer;
 }
@@ -138,7 +144,7 @@ describe("server_provision elicitation", () => {
       mcp,
     );
     expect(result.isError).toBe(true);
-    expect(JSON.parse(result.content[0].text).error).toContain("required");
+    expect(JSON.parse(result.content[0].text).error).toContain("Required");
   });
 
   it("returns cancelled response when user declines elicitation", async () => {
