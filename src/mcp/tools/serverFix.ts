@@ -40,6 +40,7 @@ import {
 } from "../utils.js";
 import { getErrorMessage, sanitizeStderr } from "../../utils/errorMapper.js";
 import { saveBaselineSafe, loadBaseline, checkRegression, extractPassedCheckIds, shouldUpdateBaseline, hasRegression } from "../../core/audit/regression.js";
+import { getPluginBackupPaths, getAppliedPluginNames } from "../../core/audit/pluginFix.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 export const serverFixSchema = {
@@ -532,11 +533,9 @@ export async function handleServerFix(
     const fixId = generateFixId(server.ip);
     const fixCommands = fixCommandsFromChecks(selectedChecks);
     await mcpLog(mcpServer, "Creating remote file backup...");
-    const remoteBackupPath = await backupFilesBeforeFix(
-      server.ip,
-      fixId,
-      fixCommands,
-    );
+    const failedCheckIds = auditResult.categories.flatMap((c) => c.checks.filter((ch) => !ch.passed).map((ch) => ch.id));
+    const pluginBackupPaths = getPluginBackupPaths(failedCheckIds);
+    const remoteBackupPath = await backupFilesBeforeFix(server.ip, fixId, fixCommands, pluginBackupPaths);
 
     // ── LIVE FIX — execute ────────────────────────────────────────────────
     await mcpLog(mcpServer, `Applying ${selectedChecks.length} safe fix(es)...`);
@@ -604,6 +603,7 @@ export async function handleServerFix(
     }
 
     // ── LIVE FIX — save history entry (FIXPRO-02) ────────────────────────
+    const appliedPluginNames = getAppliedPluginNames([...applied]);
     await saveFixHistory({
       fixId,
       serverIp: server.ip,
@@ -614,6 +614,8 @@ export async function handleServerFix(
       scoreAfter,
       status: applied.length > 0 ? "applied" : "failed",
       backupPath: remoteBackupPath,
+      source: appliedPluginNames.length > 0 ? "plugin" : "fix",
+      pluginName: appliedPluginNames.length > 0 ? appliedPluginNames.join(",") : undefined,
     });
 
     // Only save when fixes were applied — a no-op fix run should not overwrite the baseline

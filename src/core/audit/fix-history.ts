@@ -59,7 +59,8 @@ export const fixHistoryEntrySchema = z.object({
   status: z.enum(["applied", "rolled-back", "failed"]),
   backupPath: z.string().regex(/^\/root\/\.kastell\/fix-backups\/fix-[\d-]+$/, "Invalid backup path format").optional(),
   executionLog: z.array(fixExecutionLogSchema).optional(),
-  source: z.enum(["fix", "doctor"]).optional(),
+  source: z.enum(["fix", "doctor", "plugin"]).optional(),
+  pluginName: z.string().optional(),
 }).strict();
 
 export function truncateExecutionLog(log: FixExecutionLogEntry[]): FixExecutionLogEntry[] {
@@ -233,6 +234,7 @@ export async function backupFilesBeforeFix(
   ip: string,
   fixId: string,
   fixCommands: Array<{ checkId: string; fixCommand: string }>,
+  extraBackupPaths?: string[],
 ): Promise<string> {
   const backupDir = `${REMOTE_BACKUP_BASE}/${fixId}`;
 
@@ -246,6 +248,10 @@ export async function backupFilesBeforeFix(
     if (sysctlMatch) {
       sysctlParams.push(sysctlMatch[1]);
     }
+  }
+
+  if (extraBackupPaths) {
+    allFilePaths.push(...extraBackupPaths);
   }
 
   // Single SSH call: create backup dir + mirror dirs + copy files

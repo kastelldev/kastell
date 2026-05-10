@@ -159,6 +159,26 @@ describe("validateManifest", () => {
       expect(result.fixes).toHaveLength(1);
     });
 
+    it("accepts fix with absolute backupPaths", () => {
+      const result = validateManifest({
+        ...VALID_MANIFEST,
+        capabilities: ["audit", "fix"],
+        fixes: [{ checkId: "WP-001", tier: "SAFE", handler: "./fixes/fix001.js", backupPaths: ["/etc/ssh/sshd_config", "/etc/fail2ban/jail.local"] }],
+      });
+      expect(result.fixes).toHaveLength(1);
+      expect(result.fixes?.[0].backupPaths).toHaveLength(2);
+    });
+
+    it("rejects fix with relative backupPaths", () => {
+      expect(() =>
+        validateManifest({
+          ...VALID_MANIFEST,
+          capabilities: ["audit", "fix"],
+          fixes: [{ checkId: "WP-001", tier: "SAFE", handler: "./fixes/fix001.js", backupPaths: ["./relative/path"] }],
+        }),
+      ).toThrow(ValidationError);
+    });
+
     it("rejects fix with checkId not matching checkPrefix", () => {
       expect(() =>
         validateManifest({

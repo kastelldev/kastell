@@ -37,6 +37,7 @@ import {
   rollbackToFix,
 } from "../core/audit/fix-history.js";
 import { saveBaselineSafe, loadBaseline, checkRegression, formatRegressionSummary, extractPassedCheckIds, shouldUpdateBaseline, hasRegression } from "../core/audit/regression.js";
+import { getPluginBackupPaths, getAppliedPluginNames } from "../core/audit/pluginFix.js";
 
 /**
  * `kastell fix --safe` command.
@@ -436,7 +437,9 @@ export async function fixSafeCommand(
   const fixCommands = fixCommandsFromChecks(selectedChecks);
   const remoteBackupSpinner = createSpinner("Creating remote file backup...");
   remoteBackupSpinner.start();
-  const remoteBackupPath = await backupFilesBeforeFix(ip, fixId, fixCommands);
+  const failedCheckIds = auditResult.categories.flatMap((c) => c.checks.filter((ch) => !ch.passed).map((ch) => ch.id));
+  const pluginBackupPaths = getPluginBackupPaths(failedCheckIds);
+  const remoteBackupPath = await backupFilesBeforeFix(ip, fixId, fixCommands, pluginBackupPaths);
   remoteBackupSpinner.stop();
 
   // Apply SAFE fixes (prioritized)
@@ -558,6 +561,7 @@ export async function fixSafeCommand(
   }
 
   // Save to fix history (FIXPRO-02)
+  const appliedPluginNames = getAppliedPluginNames([...applied]);
   await saveFixHistory({
     fixId,
     serverIp: ip,
@@ -568,6 +572,8 @@ export async function fixSafeCommand(
     scoreAfter: newScore,
     status: applied.length > 0 ? "applied" : "failed",
     backupPath: remoteBackupPath,
+    source: appliedPluginNames.length > 0 ? "plugin" : "fix",
+    pluginName: appliedPluginNames.length > 0 ? appliedPluginNames.join(",") : undefined,
   });
 
   // Generate fix report (FIXPRO-07, D-10)

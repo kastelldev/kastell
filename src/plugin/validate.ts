@@ -20,6 +20,7 @@ const PluginFixSchema = z.object({
   checkId: z.string().min(1),
   tier: z.enum(["SAFE", "GUARDED"]),
   handler: z.string().regex(HANDLER_PATH_PATTERN, "Handler must be relative ./path.js"),
+  backupPaths: z.array(z.string().regex(/^\//, "Backup path must be absolute")).optional(),
 });
 
 const PluginManifestSchema = z
