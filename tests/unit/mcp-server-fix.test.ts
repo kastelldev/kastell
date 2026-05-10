@@ -552,7 +552,7 @@ describe("MCP server_fix tool", () => {
         "1.2.3.4",
         "fix-2026-03-29-001",
         expect.any(Array),
-        undefined,
+        expect.any(Array),
       );
       expect(mockedFixHistory.saveFixHistory).toHaveBeenCalledWith(
         expect.objectContaining({

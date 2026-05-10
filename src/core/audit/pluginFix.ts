@@ -27,15 +27,17 @@ export function parsePluginFixCommand(fixCommand: string): { pluginName: string;
 
 export function getPluginFixMetadata(failedCheckIds: string[], appliedCheckIds: string[]): { backupPaths: string[]; pluginNames: string[] } {
   const registry = getPluginRegistry();
+  const failedSet = new Set(failedCheckIds);
+  const appliedSet = new Set(appliedCheckIds);
   const backupPaths: string[] = [];
   const pluginNames = new Set<string>();
   for (const [, entry] of registry) {
     if (entry.status !== "loaded" || !entry.manifest.fixes) continue;
     for (const fix of entry.manifest.fixes) {
-      if (failedCheckIds.includes(fix.checkId) && fix.backupPaths) {
+      if (failedSet.has(fix.checkId) && fix.backupPaths) {
         backupPaths.push(...fix.backupPaths);
       }
-      if (appliedCheckIds.includes(fix.checkId)) {
+      if (appliedSet.has(fix.checkId)) {
         pluginNames.add(entry.manifest.name);
       }
     }

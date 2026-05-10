@@ -4,12 +4,11 @@ import { debugLog } from "../../utils/logger.js";
 import type { PluginCheck, PluginFix } from "../../plugin/sdk/types.js";
 import type { AuditCategory, AuditCheck, Severity, FixTier, ComplianceRef } from "./types.js";
 
-function injectFixMetadata(auditChecks: AuditCheck[], fixes: PluginFix[], pluginName: string): void {
-  const last = auditChecks[auditChecks.length - 1];
-  const fixDef = fixes.find((f) => f.checkId === last.id);
+function injectFixMetadata(check: AuditCheck, fixMap: Map<string, PluginFix>, pluginName: string): void {
+  const fixDef = fixMap.get(check.id);
   if (fixDef) {
-    last.safeToAutoFix = fixDef.tier as FixTier;
-    last.fixCommand = `plugin:${pluginName}:${fixDef.handler}`;
+    check.safeToAutoFix = fixDef.tier as FixTier;
+    check.fixCommand = `plugin:${pluginName}:${fixDef.handler}`;
   }
 }
 
@@ -32,13 +31,14 @@ export async function executePluginChecks(
   fixes?: PluginFix[],
 ): Promise<AuditCategory> {
   const auditChecks: AuditCheck[] = [];
+  const fixMap = fixes ? new Map(fixes.map((f) => [f.checkId, f])) : undefined;
 
   for (const check of checks) {
     try {
       const { stdout } = await sshExec(ip, raw(check.checkCommand), { timeoutMs: 15000 });
       const output = stdout.trim();
       const passed = evaluateCheck(output, check);
-      auditChecks.push({
+      const auditCheck: AuditCheck = {
         id: check.id,
         category: check.category,
         name: check.name,
@@ -50,12 +50,13 @@ export async function executePluginChecks(
         safeToAutoFix: check.safeToAutoFix as FixTier | undefined,
         explain: check.explain,
         complianceRefs: mapPluginComplianceRefs(check.complianceRefs),
-      });
-      if (!passed && fixes && pluginName) injectFixMetadata(auditChecks, fixes, pluginName);
+      };
+      if (!passed && fixMap && pluginName) injectFixMetadata(auditCheck, fixMap, pluginName);
+      auditChecks.push(auditCheck);
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : String(error);
       if (debugLog) console.log(`Plugin check ${check.id} failed: ${msg}`);
-      auditChecks.push({
+      const auditCheck: AuditCheck = {
         id: check.id,
         category: check.category,
         name: check.name,
@@ -65,8 +66,9 @@ export async function executePluginChecks(
         expectedValue: check.passPattern ?? "pass",
         fixCommand: check.fixCommand,
         safeToAutoFix: check.safeToAutoFix as FixTier | undefined,
-      });
-      if (fixes && pluginName) injectFixMetadata(auditChecks, fixes, pluginName);
+      };
+      if (fixMap && pluginName) injectFixMetadata(auditCheck, fixMap, pluginName);
+      auditChecks.push(auditCheck);
     }
   }
 

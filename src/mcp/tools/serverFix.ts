@@ -535,12 +535,7 @@ export async function handleServerFix(
     await mcpLog(mcpServer, "Creating remote file backup...");
     const failedCheckIds = auditResult.categories.flatMap((c) => c.checks.filter((ch) => !ch.passed).map((ch) => ch.id));
     const pluginBackupPaths = getPluginBackupPaths(failedCheckIds);
-    const remoteBackupPath = await backupFilesBeforeFix(
-      server.ip,
-      fixId,
-      fixCommands,
-      pluginBackupPaths.length > 0 ? pluginBackupPaths : undefined,
-    );
+    const remoteBackupPath = await backupFilesBeforeFix(server.ip, fixId, fixCommands, pluginBackupPaths);
 
     // ── LIVE FIX — execute ────────────────────────────────────────────────
     await mcpLog(mcpServer, `Applying ${selectedChecks.length} safe fix(es)...`);

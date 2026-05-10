@@ -439,12 +439,7 @@ export async function fixSafeCommand(
   remoteBackupSpinner.start();
   const failedCheckIds = auditResult.categories.flatMap((c) => c.checks.filter((ch) => !ch.passed).map((ch) => ch.id));
   const pluginBackupPaths = getPluginBackupPaths(failedCheckIds);
-  const remoteBackupPath = await backupFilesBeforeFix(
-    ip,
-    fixId,
-    fixCommands,
-    pluginBackupPaths.length > 0 ? pluginBackupPaths : undefined,
-  );
+  const remoteBackupPath = await backupFilesBeforeFix(ip, fixId, fixCommands, pluginBackupPaths);
   remoteBackupSpinner.stop();
 
   // Apply SAFE fixes (prioritized)
