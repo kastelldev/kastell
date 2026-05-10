@@ -3,7 +3,7 @@ import { join } from "path";
 import { ValidationError } from "../utils/errors.js";
 import { secureWriteFileSync, secureMkdirSync } from "../utils/secureWrite.js";
 import { KASTELL_DIR } from "../utils/paths.js";
-import type { PluginManifest, PluginCheck } from "./sdk/types.js";
+import type { PluginManifest, PluginCheck, PluginCommand, PluginMcpTool, PluginFix } from "./sdk/types.js";
 import { debugLog } from "../utils/logger.js";
 
 const PLUGIN_CACHE_PATH = join(KASTELL_DIR, "plugin-manifests.json");
@@ -13,6 +13,9 @@ export interface PluginRegistryEntry {
   checks: PluginCheck[];
   status: "loaded" | "failed";
   reason?: string;
+  commands?: PluginCommand[];
+  mcpTools?: PluginMcpTool[];
+  fixes?: PluginFix[];
 }
 
 const PLUGIN_REGISTRY: Map<string, PluginRegistryEntry> = new Map();
@@ -58,6 +61,9 @@ export function registerPlugin(
     manifest,
     checks,
     status: "loaded",
+    commands: manifest.commands,
+    mcpTools: manifest.mcpTools,
+    fixes: manifest.fixes,
   });
 }
 
