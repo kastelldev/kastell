@@ -565,6 +565,27 @@ describe("MCP server_fix tool", () => {
       );
     });
 
+    it("saves source:'plugin' and pluginName when plugin fix applied", async () => {
+      const pluginFix = jest.requireMock("../../src/core/audit/pluginFix.js");
+      pluginFix.getPluginBackupPaths.mockReturnValue(["/etc/plugin.conf"]);
+      pluginFix.getAppliedPluginNames.mockReturnValue(["kastell-plugin-test"]);
+
+      await handleServerFix({ dryRun: false });
+
+      expect(mockedFixHistory.backupFilesBeforeFix).toHaveBeenCalledWith(
+        "1.2.3.4",
+        "fix-2026-03-29-001",
+        expect.any(Array),
+        ["/etc/plugin.conf"],
+      );
+      expect(mockedFixHistory.saveFixHistory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          source: "plugin",
+          pluginName: "kastell-plugin-test",
+        }),
+      );
+    });
+
     it("calls backupRemoteCleanup after live fix", async () => {
       await handleServerFix({ dryRun: false });
 
