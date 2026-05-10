@@ -5,7 +5,7 @@ import { KASTELL_VERSION } from "../utils/version.js";
 import type { PluginManifest } from "./sdk/types.js";
 import { PLUGIN_NAME_PATTERN } from "./sdk/constants.js";
 
-const HANDLER_PATH_PATTERN = /^\.\/(?!.*\.\.)(?:[a-zA-Z0-9_\-]+\/)*[a-zA-Z0-9_\-]+\.js$/;
+const HANDLER_PATH_PATTERN = /^\.\/(?!.*\.\.)(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]+\.js$/;
 
 const PluginCommandSchema = z.object({
   name: z.string().min(1),
