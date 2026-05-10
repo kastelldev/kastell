@@ -7,6 +7,8 @@ import chalk from "chalk";
 import { CHECK_REGISTRY } from "./checks/index.js";
 import { COMPLIANCE_MAP } from "./compliance/mapper.js";
 import type { Severity, ComplianceRef } from "./types.js";
+import { getPluginRegistry } from "../../plugin/registry.js";
+import type { PluginCheck } from "../../plugin/sdk/types.js";
 
 export interface CheckCatalogEntry {
   id: string;
@@ -61,6 +63,30 @@ export function listAllChecks(filter?: ListChecksFilter): CheckCatalogEntry[] {
 
   if (filter?.severity !== undefined) {
     result = result.filter((e) => e.severity === filter.severity);
+  }
+
+  for (const [, entry] of getPluginRegistry()) {
+    if (entry.status === "loaded") {
+      for (const check of entry.checks) {
+        const pluginEntry: CheckCatalogEntry = {
+          id: check.id,
+          category: check.category,
+          name: check.name,
+          severity: check.severity as Severity,
+          explain: check.explain ?? "",
+          complianceRefs: check.complianceRefs?.map((r) => ({
+            framework: r.framework,
+            controlId: r.ref,
+            version: "1.0",
+            description: r.ref,
+            coverage: "partial" as const,
+          })) ?? [],
+        };
+        if (filter?.category && pluginEntry.category !== filter.category) continue;
+        if (filter?.severity && pluginEntry.severity !== filter.severity) continue;
+        result.push(pluginEntry);
+      }
+    }
   }
 
   return result;
