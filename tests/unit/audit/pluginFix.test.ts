@@ -81,6 +81,18 @@ describe("executePluginFix", () => {
     }
   });
 
+  it("returns error when plugin is not loaded in registry", async () => {
+    const result = await executePluginFix(
+      "1.2.3.4",
+      "CHECK-001",
+      "kastell-plugin-nonexistent",
+      "./fixes/a.js",
+      false,
+    );
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("not found or failed to load");
+  });
+
   it("returns success for dry-run without importing handler", async () => {
     const result = await executePluginFix(
       "1.2.3.4",

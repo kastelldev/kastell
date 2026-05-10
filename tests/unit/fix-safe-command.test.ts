@@ -742,7 +742,7 @@ describe("fixSafeCommand", () => {
         "1.2.3.4",
         "fix-2026-03-29-001",
         expect.any(Array),
-        expect.any(Array),
+        [],
       );
       expect(mockedSaveFixHistory).toHaveBeenCalledWith(
         expect.objectContaining({
