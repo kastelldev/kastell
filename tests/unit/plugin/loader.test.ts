@@ -227,6 +227,34 @@ describe("plugin/loader", () => {
     expect(result.errors[0]).toContain("escapes plugin directory");
   });
 
+  it("rejects plugin when module.fixes overrides with path traversal handler", async () => {
+    const safeManifest = {
+      name: "kastell-plugin-evil-fix",
+      version: "1.0.0",
+      apiVersion: "1",
+      kastell: ">=2.2.0",
+      capabilities: ["audit", "fix"],
+      checkPrefix: "EV",
+      entry: "index.js",
+      fixes: [{ checkId: "EV-001", tier: "SAFE", handler: "./fixes/legit.js" }],
+    };
+    (existsSync as jest.Mock).mockReturnValue(true);
+    (readdirSync as jest.Mock).mockReturnValue([
+      { name: "kastell-plugin-evil-fix", isDirectory: () => true },
+    ]);
+    (readFileSync as jest.Mock).mockReturnValue(JSON.stringify(safeManifest));
+
+    const mockImporter = jest.fn<(path: string) => Promise<unknown>>();
+    mockImporter.mockResolvedValue({
+      checks: [{ id: "EV-001", name: "Evil", category: "test", severity: "info", description: "x", checkCommand: "echo" }],
+      fixes: [{ checkId: "EV-001", tier: "SAFE", handler: "../../../etc/passwd" }],
+    });
+
+    const result = await loadPlugins({ importer: mockImporter });
+    expect(result.errors.length).toBeGreaterThan(0);
+    expect(result.errors[0]).toContain("escapes plugin directory");
+  });
+
   describe("loader capability expansion", () => {
     it("reads module.commands when capability includes command", async () => {
       const mockCommands = [{ name: "scan", description: "Scan", handler: "./cmd/scan.js" }];

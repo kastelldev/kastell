@@ -566,20 +566,20 @@ export async function fixSafeCommand(
   }
 
   // Save to fix history (FIXPRO-02)
-    const appliedPluginNames = getAppliedPluginNames([...applied]);
-    await saveFixHistory({
-      fixId,
-      serverIp: ip,
-      serverName: name,
-      timestamp: new Date().toISOString(),
-      checks: applied,
-      scoreBefore: auditResult.overallScore,
-      scoreAfter: newScore,
-      status: applied.length > 0 ? "applied" : "failed",
-      backupPath: remoteBackupPath,
-      source: appliedPluginNames.length > 0 ? "plugin" : "fix",
-      pluginName: appliedPluginNames.length > 0 ? appliedPluginNames.join(",") : undefined,
-    });
+  const appliedPluginNames = getAppliedPluginNames([...applied]);
+  await saveFixHistory({
+    fixId,
+    serverIp: ip,
+    serverName: name,
+    timestamp: new Date().toISOString(),
+    checks: applied,
+    scoreBefore: auditResult.overallScore,
+    scoreAfter: newScore,
+    status: applied.length > 0 ? "applied" : "failed",
+    backupPath: remoteBackupPath,
+    source: appliedPluginNames.length > 0 ? "plugin" : "fix",
+    pluginName: appliedPluginNames.length > 0 ? appliedPluginNames.join(",") : undefined,
+  });
 
   // Generate fix report (FIXPRO-07, D-10)
   if (options.report) {

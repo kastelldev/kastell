@@ -120,6 +120,15 @@ describe("backupFilesBeforeFix", () => {
     expect(result).toBe(`${REMOTE_BACKUP_BASE}/${fixId}`);
   });
 
+  it("should include extraBackupPaths in SSH backup commands", async () => {
+    const fixId = "fix-2026-03-29-001";
+    await backupFilesBeforeFix("1.2.3.4", fixId, [], ["/etc/extra.conf", "/etc/nginx/custom.conf"]);
+
+    const calls = mockedSshExec.mock.calls.map(([, cmd]) => String(cmd));
+    expect(calls.some(c => c.includes("/etc/extra.conf"))).toBe(true);
+    expect(calls.some(c => c.includes("/etc/nginx/custom.conf"))).toBe(true);
+  });
+
   it("should handle multiple fix commands", async () => {
     const fixCommands = [
       { checkId: "KERN-01", fixCommand: "sysctl -w net.ipv4.tcp_syncookies=1" },
