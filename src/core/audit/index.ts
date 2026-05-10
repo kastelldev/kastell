@@ -15,6 +15,8 @@ import { getErrorMessage } from "../../utils/errorMapper.js";
 import { calculateQuickWins } from "./quickwin.js";
 import { extractVpsType, applyVpsAdjustments } from "./vps.js";
 import { AUDIT_VERSION } from "../../constants.js";
+import { getPluginRegistry } from "../../plugin/registry.js";
+import { executePluginChecks } from "./pluginAudit.js";
 
 /**
  * Detect categories where all checks have "not installed" or "N/A" currentValue.
@@ -75,6 +77,27 @@ export async function runAudit(
     // VPS detection: extract type from batch outputs, adjust severity before scoring
     const vpsType = extractVpsType(batchOutputs);
     const { categories: adjustedCategories, adjustedCount } = applyVpsAdjustments(categories, vpsType);
+
+    // Execute plugin checks from registry
+    const pluginRegistry = getPluginRegistry();
+    for (const [, entry] of pluginRegistry) {
+      if (entry.status === "loaded" && entry.checks.length > 0) {
+        try {
+          const pluginCategory = await executePluginChecks(
+            ip,
+            `Plugin: ${entry.manifest.name.replace("kastell-plugin-", "")}`,
+            entry.manifest.checkPrefix,
+            entry.checks,
+          );
+          if (pluginCategory.checks.length > 0) {
+            adjustedCategories.push(pluginCategory);
+          }
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : String(error);
+          if (process.env.KASTELL_DEBUG) console.log(`Plugin ${entry.manifest.name} audit failed: ${msg}`);
+        }
+      }
+    }
 
     // Mark categories from failed batches as connectionError.
     // Uses check-content heuristic (all checks "Unable to determine" or empty) rather than
