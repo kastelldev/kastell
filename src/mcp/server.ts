@@ -1,6 +1,7 @@
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { KASTELL_VERSION } from "../utils/version.js";
+import { loadPlugins } from "../plugin/loader.js";
 import { serverInfoSchema, handleServerInfo, serverInfoOutputSchema } from "./tools/serverInfo.js";
 import { serverLogsSchema, handleServerLogs, serverLogsOutputSchema } from "./tools/serverLogs.js";
 import { serverManageSchema, handleServerManage, serverManageOutputSchema } from "./tools/serverManage.js";
@@ -23,7 +24,8 @@ import { readCheckCatalog, readCheckDetail } from "./resources/checks.js";
 import { readServerList, readServerAudit } from "./resources/servers.js";
 import { hardenPrompt, diagnosePrompt, setupPrompt } from "./prompts/workflows.js";
 
-export function createMcpServer(): McpServer {
+export async function createMcpServer(): Promise<McpServer> {
+  await loadPlugins();
   setMcpVersion(KASTELL_VERSION);
   const server = new McpServer(
     { name: "kastell", version: KASTELL_VERSION },

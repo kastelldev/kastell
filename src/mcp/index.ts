@@ -24,7 +24,7 @@ async function main(): Promise<void> {
   process.env.KASTELL_CALLER = "mcp";
 
   migrateConfigIfNeeded();
-  const server = createMcpServer();
+  const server = await createMcpServer();
   const transport = new StdioServerTransport();
   await server.connect(transport);
   // Server is now listening on stdin/stdout via JSON-RPC
