@@ -9,12 +9,14 @@ import { getPluginRegistry } from "../../plugin/registry.js";
 import { pathToFileURL } from "url";
 import { join } from "path";
 
+const PLUGIN_FIX_PREFIX = "plugin:";
+
 export function isPluginFixCommand(fixCommand: string | undefined): boolean {
-  return typeof fixCommand === "string" && fixCommand.startsWith("plugin:");
+  return typeof fixCommand === "string" && fixCommand.startsWith(PLUGIN_FIX_PREFIX);
 }
 
 export function parsePluginFixCommand(fixCommand: string): { pluginName: string; handlerPath: string } | null {
-  if (!fixCommand.startsWith("plugin:")) return null;
+  if (!fixCommand.startsWith(PLUGIN_FIX_PREFIX)) return null;
   const parts = fixCommand.split(":");
   if (parts.length < 3) return null;
   const pluginName = parts[1];
@@ -23,32 +25,30 @@ export function parsePluginFixCommand(fixCommand: string): { pluginName: string;
   return { pluginName, handlerPath };
 }
 
-export function getPluginBackupPaths(failedCheckIds: string[]): string[] {
+export function getPluginFixMetadata(failedCheckIds: string[], appliedCheckIds: string[]): { backupPaths: string[]; pluginNames: string[] } {
   const registry = getPluginRegistry();
-  const paths: string[] = [];
+  const backupPaths: string[] = [];
+  const pluginNames = new Set<string>();
   for (const [, entry] of registry) {
     if (entry.status !== "loaded" || !entry.manifest.fixes) continue;
     for (const fix of entry.manifest.fixes) {
-      if (fix.backupPaths && failedCheckIds.includes(fix.checkId)) {
-        paths.push(...fix.backupPaths);
+      if (failedCheckIds.includes(fix.checkId) && fix.backupPaths) {
+        backupPaths.push(...fix.backupPaths);
+      }
+      if (appliedCheckIds.includes(fix.checkId)) {
+        pluginNames.add(entry.manifest.name);
       }
     }
   }
-  return paths;
+  return { backupPaths, pluginNames: [...pluginNames] };
+}
+
+export function getPluginBackupPaths(failedCheckIds: string[]): string[] {
+  return getPluginFixMetadata(failedCheckIds, []).backupPaths;
 }
 
 export function getAppliedPluginNames(appliedCheckIds: string[]): string[] {
-  const registry = getPluginRegistry();
-  const names = new Set<string>();
-  for (const [, entry] of registry) {
-    if (entry.status !== "loaded" || !entry.manifest.fixes) continue;
-    for (const fix of entry.manifest.fixes) {
-      if (appliedCheckIds.includes(fix.checkId)) {
-        names.add(entry.manifest.name);
-      }
-    }
-  }
-  return [...names];
+  return getPluginFixMetadata([], appliedCheckIds).pluginNames;
 }
 
 export async function executePluginFix(

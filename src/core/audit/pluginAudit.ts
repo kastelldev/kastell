@@ -4,6 +4,15 @@ import { debugLog } from "../../utils/logger.js";
 import type { PluginCheck, PluginFix } from "../../plugin/sdk/types.js";
 import type { AuditCategory, AuditCheck, Severity, FixTier, ComplianceRef } from "./types.js";
 
+function injectFixMetadata(auditChecks: AuditCheck[], fixes: PluginFix[], pluginName: string): void {
+  const last = auditChecks[auditChecks.length - 1];
+  const fixDef = fixes.find((f) => f.checkId === last.id);
+  if (fixDef) {
+    last.safeToAutoFix = fixDef.tier as FixTier;
+    last.fixCommand = `plugin:${pluginName}:${fixDef.handler}`;
+  }
+}
+
 export function mapPluginComplianceRefs(refs?: Array<{ framework: string; ref: string }>): ComplianceRef[] {
   if (!refs || refs.length === 0) return [];
   return refs.map((r) => ({
@@ -42,15 +51,7 @@ export async function executePluginChecks(
         explain: check.explain,
         complianceRefs: mapPluginComplianceRefs(check.complianceRefs),
       });
-      // Fix metadata injection — override from manifest fixes
-      if (!passed && fixes && pluginName) {
-        const fixDef = fixes.find((f) => f.checkId === check.id);
-        if (fixDef) {
-          const auditCheck = auditChecks[auditChecks.length - 1];
-          auditCheck.safeToAutoFix = fixDef.tier as FixTier;
-          auditCheck.fixCommand = `plugin:${pluginName}:${fixDef.handler}`;
-        }
-      }
+      if (!passed && fixes && pluginName) injectFixMetadata(auditChecks, fixes, pluginName);
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : String(error);
       if (debugLog) console.log(`Plugin check ${check.id} failed: ${msg}`);
@@ -65,15 +66,7 @@ export async function executePluginChecks(
         fixCommand: check.fixCommand,
         safeToAutoFix: check.safeToAutoFix as FixTier | undefined,
       });
-      // Fix metadata injection — override from manifest fixes
-      if (fixes && pluginName) {
-        const fixDef = fixes.find((f) => f.checkId === check.id);
-        if (fixDef) {
-          const auditCheck = auditChecks[auditChecks.length - 1];
-          auditCheck.safeToAutoFix = fixDef.tier as FixTier;
-          auditCheck.fixCommand = `plugin:${pluginName}:${fixDef.handler}`;
-        }
-      }
+      if (fixes && pluginName) injectFixMetadata(auditChecks, fixes, pluginName);
     }
   }
 
