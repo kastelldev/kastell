@@ -89,6 +89,8 @@ export async function runAudit(
             ip,
             `Plugin: ${entry.manifest.name.replace("kastell-plugin-", "")}`,
             entry.checks,
+            entry.manifest.name,
+            entry.manifest.fixes,
           ).then((pluginCategory) => {
             if (pluginCategory.checks.length > 0) {
               adjustedCategories.push(pluginCategory);

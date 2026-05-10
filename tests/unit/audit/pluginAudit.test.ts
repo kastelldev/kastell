@@ -4,7 +4,7 @@ jest.mock("../../../src/utils/ssh.js", () => ({
 
 import { sshExec } from "../../../src/utils/ssh.js";
 import { executePluginChecks } from "../../../src/core/audit/pluginAudit.js";
-import type { PluginCheck } from "../../../src/plugin/sdk/types.js";
+import type { PluginCheck, PluginFix } from "../../../src/plugin/sdk/types.js";
 
 const mockSshExec = sshExec as jest.MockedFunction<typeof sshExec>;
 
@@ -79,5 +79,56 @@ describe("executePluginChecks", () => {
     ];
     const results = await executePluginChecks("1.2.3.4", "WordPress", mixedChecks);
     expect(results.checks).toHaveLength(2);
+  });
+
+  describe("fix metadata injection", () => {
+    const fixChecks: PluginCheck[] = [
+      {
+        id: "WP-FIXME",
+        name: "Fixme Check",
+        category: "WordPress",
+        severity: "warning",
+        description: "Check with fix",
+        checkCommand: "echo fail",
+        passPattern: "^ok$",
+      },
+    ];
+
+    const fixes: PluginFix[] = [
+      {
+        checkId: "WP-FIXME",
+        handler: "./fixes/a.js",
+        tier: "SAFE",
+      },
+    ];
+
+    it("overrides safeToAutoFix and fixCommand from manifest fixes", async () => {
+      mockSshExec.mockResolvedValue({ stdout: "fail", code: 0, stderr: "" });
+      const result = await executePluginChecks("1.2.3.4", "WordPress", fixChecks, "kastell-plugin-test", fixes);
+      const check = result.checks.find((c) => c.id === "WP-FIXME");
+      expect(check?.passed).toBe(false);
+      expect(check?.safeToAutoFix).toBe("SAFE");
+      expect(check?.fixCommand).toBe("plugin:kastell-plugin-test:./fixes/a.js");
+    });
+
+    it("keeps original fixCommand when no manifest fix matches", async () => {
+      mockSshExec.mockResolvedValue({ stdout: "fail", code: 0, stderr: "" });
+      const mismatchedFixes: PluginFix[] = [{ checkId: "OTHER-CHECK", handler: "./other.js", tier: "GUARDED" }];
+      const result = await executePluginChecks("1.2.3.4", "WordPress", fixChecks, "kastell-plugin-test", mismatchedFixes);
+      const check = result.checks.find((c) => c.id === "WP-FIXME");
+      expect(check?.passed).toBe(false);
+      expect(check?.safeToAutoFix).toBeUndefined();
+      expect(check?.fixCommand).toBeUndefined();
+    });
+
+    it("does not inject fix metadata for passed checks", async () => {
+      mockSshExec.mockResolvedValue({ stdout: "ok", code: 0, stderr: "" });
+      const result = await executePluginChecks("1.2.3.4", "WordPress", fixChecks, "kastell-plugin-test", fixes);
+      const check = result.checks.find((c) => c.id === "WP-FIXME");
+      expect(check?.passed).toBe(true);
+      // fixCommand/safeToAutoFix come from PluginCheck definition, not manifest injection
+      expect(check?.fixCommand).toBeUndefined();
+      expect(check?.safeToAutoFix).toBeUndefined();
+    });
   });
 });

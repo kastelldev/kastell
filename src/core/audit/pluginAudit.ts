@@ -1,7 +1,7 @@
 import { sshExec } from "../../utils/ssh.js";
 import { raw } from "../../utils/sshCommand.js";
 import { debugLog } from "../../utils/logger.js";
-import type { PluginCheck } from "../../plugin/sdk/types.js";
+import type { PluginCheck, PluginFix } from "../../plugin/sdk/types.js";
 import type { AuditCategory, AuditCheck, Severity, FixTier, ComplianceRef } from "./types.js";
 
 export function mapPluginComplianceRefs(refs?: Array<{ framework: string; ref: string }>): ComplianceRef[] {
@@ -19,6 +19,8 @@ export async function executePluginChecks(
   ip: string,
   categoryName: string,
   checks: PluginCheck[],
+  pluginName?: string,
+  fixes?: PluginFix[],
 ): Promise<AuditCategory> {
   const auditChecks: AuditCheck[] = [];
 
@@ -40,6 +42,15 @@ export async function executePluginChecks(
         explain: check.explain,
         complianceRefs: mapPluginComplianceRefs(check.complianceRefs),
       });
+      // Fix metadata injection — override from manifest fixes
+      if (!passed && fixes && pluginName) {
+        const fixDef = fixes.find((f) => f.checkId === check.id);
+        if (fixDef) {
+          const auditCheck = auditChecks[auditChecks.length - 1];
+          auditCheck.safeToAutoFix = fixDef.tier as FixTier;
+          auditCheck.fixCommand = `plugin:${pluginName}:${fixDef.handler}`;
+        }
+      }
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : String(error);
       if (debugLog) console.log(`Plugin check ${check.id} failed: ${msg}`);
@@ -54,6 +65,15 @@ export async function executePluginChecks(
         fixCommand: check.fixCommand,
         safeToAutoFix: check.safeToAutoFix as FixTier | undefined,
       });
+      // Fix metadata injection — override from manifest fixes
+      if (fixes && pluginName) {
+        const fixDef = fixes.find((f) => f.checkId === check.id);
+        if (fixDef) {
+          const auditCheck = auditChecks[auditChecks.length - 1];
+          auditCheck.safeToAutoFix = fixDef.tier as FixTier;
+          auditCheck.fixCommand = `plugin:${pluginName}:${fixDef.handler}`;
+        }
+      }
     }
   }
 
