@@ -78,7 +78,7 @@ export async function runAudit(
     const vpsType = extractVpsType(batchOutputs);
     const { categories: adjustedCategories, adjustedCount } = applyVpsAdjustments(categories, vpsType);
 
-    // Execute plugin checks from registry (parallel across plugins)
+    // Plugin checks run after VPS adjustments — plugins manage their own severity
     const pluginRegistry = getPluginRegistry();
     const pluginPromises: Array<Promise<void>> = [];
     for (const [, entry] of pluginRegistry) {
