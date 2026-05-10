@@ -15,13 +15,6 @@ function mapComplianceRefs(refs?: Array<{ framework: string; ref: string }>): Co
   }));
 }
 
-function calculateCategoryScore(checks: AuditCheck[]): { score: number; maxScore: number } {
-  if (checks.length === 0) return { score: 0, maxScore: 0 };
-  const maxScore = checks.length * 10;
-  const score = checks.filter((c) => c.passed).length * 10;
-  return { score, maxScore };
-}
-
 export async function executePluginChecks(
   ip: string,
   categoryName: string,
@@ -65,12 +58,12 @@ export async function executePluginChecks(
     }
   }
 
-  const { score, maxScore } = calculateCategoryScore(auditChecks);
+  // Score placeholder — runAudit recalculates via scoring.ts (severity-weighted)
   return {
     name: categoryName,
     checks: auditChecks,
-    score,
-    maxScore,
+    score: 0,
+    maxScore: 0,
   };
 }
 

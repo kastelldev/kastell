@@ -40,8 +40,9 @@ describe("executePluginChecks", () => {
     expect(result.checks).toHaveLength(2);
     expect(result.checks[0].passed).toBe(true);
     expect(result.checks[0].currentValue).toBe("[]");
-    expect(result.score).toBeGreaterThanOrEqual(0);
-    expect(result.maxScore).toBe(20);
+    // Score placeholder — runAudit recalculates via scoring.ts (severity-weighted)
+    expect(result.score).toBe(0);
+    expect(result.maxScore).toBe(0);
   });
 
   it("marks check as fail when failPattern matches", async () => {

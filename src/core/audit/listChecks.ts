@@ -8,7 +8,6 @@ import { CHECK_REGISTRY } from "./checks/index.js";
 import { COMPLIANCE_MAP } from "./compliance/mapper.js";
 import type { Severity, ComplianceRef } from "./types.js";
 import { getPluginRegistry } from "../../plugin/registry.js";
-import type { PluginCheck } from "../../plugin/sdk/types.js";
 
 export interface CheckCatalogEntry {
   id: string;
@@ -82,7 +81,10 @@ export function listAllChecks(filter?: ListChecksFilter): CheckCatalogEntry[] {
             coverage: "partial" as const,
           })) ?? [],
         };
-        if (filter?.category && pluginEntry.category !== filter.category) continue;
+        if (filter?.category) {
+          const cats = filter.category.split(",").map((c) => c.trim().toLowerCase());
+          if (!cats.includes(pluginEntry.category.toLowerCase())) continue;
+        }
         if (filter?.severity && pluginEntry.severity !== filter.severity) continue;
         result.push(pluginEntry);
       }
