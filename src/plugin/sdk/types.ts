@@ -18,6 +18,7 @@ export interface PluginFix {
   checkId: string;
   tier: "SAFE" | "GUARDED";
   handler: string;
+  backupPaths?: string[];
 }
 
 export interface PluginManifest {
@@ -47,3 +48,22 @@ export interface PluginCheck {
   explain?: string;
   complianceRefs?: Array<{ framework: string; ref: string }>;
 }
+
+export interface PluginFixContext {
+  ip: string;
+  ssh: (command: string, options?: { timeoutMs?: number }) => Promise<{ stdout: string; stderr: string; code: number }>;
+  logger: { info: (msg: string) => void; warn: (msg: string) => void; error: (msg: string) => void };
+  dryRun: boolean;
+  manifest: PluginManifest;
+}
+
+export interface PluginFixResult {
+  success: boolean;
+  error?: string;
+  modifiedFiles?: string[];
+}
+
+export type PluginFixHandler = (
+  checkId: string,
+  ctx: PluginFixContext,
+) => Promise<PluginFixResult>;

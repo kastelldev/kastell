@@ -117,6 +117,17 @@ export async function loadPlugins(
         fixes: (moduleObj.fixes as PluginFix[] | undefined) ?? manifest.fixes,
       };
 
+      // Path traversal guard for fix handlers
+      if (enrichedManifest.fixes) {
+        for (const fix of enrichedManifest.fixes) {
+          const resolvedHandler = resolve(resolvedDir, fix.handler);
+          if (!resolvedHandler.startsWith(resolvedDir + sep) && resolvedHandler !== resolvedDir) {
+            registerFailedPlugin(manifest, `fix handler escapes plugin directory: ${fix.handler}`);
+            throw new Error(`${dir.name}: fix handler escapes plugin directory: ${fix.handler}`);
+          }
+        }
+      }
+
       registerPlugin(enrichedManifest, checks);
       return manifest.name;
     }),

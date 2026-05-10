@@ -96,7 +96,8 @@ export interface FixHistoryEntry {
   status: "applied" | "rolled-back" | "failed";
   backupPath?: string;    // Optional — doctor fix entries don't create backups
   executionLog?: FixExecutionLogEntry[];  // Per-command execution detail
-  source?: "fix" | "doctor";  // Which engine generated this entry
+  source?: "fix" | "doctor" | "plugin";  // Which engine generated this entry
+  pluginName?: string;     // Plugin that contributed this entry (fix capability)
 }
 
 /** Check parser function signature — each category module exports this */
