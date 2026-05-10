@@ -21,6 +21,16 @@ jest.mock("../../src/utils/fixReport.js");
 jest.mock("fs");
 jest.mock("inquirer");
 jest.mock("../../src/core/audit/regression.js");
+jest.mock("../../src/core/audit/pluginFix.js", () => {
+  return {
+    __esModule: true,
+    isPluginFixCommand: () => false,
+    parsePluginFixCommand: () => null,
+    getPluginBackupPaths: () => [],
+    getAppliedPluginNames: () => [],
+    executePluginFix: async () => ({ success: false }),
+  };
+});
 
 import { fixSafeCommand } from "../../src/commands/fix.js";
 import { resolveServer } from "../../src/utils/serverSelect.js";
@@ -732,6 +742,7 @@ describe("fixSafeCommand", () => {
         "1.2.3.4",
         "fix-2026-03-29-001",
         expect.any(Array),
+        undefined,
       );
       expect(mockedSaveFixHistory).toHaveBeenCalledWith(
         expect.objectContaining({
