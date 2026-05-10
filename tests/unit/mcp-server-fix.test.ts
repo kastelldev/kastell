@@ -28,6 +28,14 @@ jest.mock("../../src/core/audit/handlers/index");
 jest.mock("../../src/core/audit/regression");
 jest.mock("../../src/utils/errorMapper", () => ({
   getErrorMessage: (e: unknown) => (e instanceof Error ? e.message : String(e)),
+  sanitizeStderr: (s: string, _max?: number) => s.slice(0, 200),
+}));
+jest.mock("../../src/core/audit/pluginFix.js", () => ({
+  getPluginBackupPaths: jest.fn().mockReturnValue([]),
+  getAppliedPluginNames: jest.fn().mockReturnValue([]),
+  isPluginFixCommand: jest.fn(() => false),
+  parsePluginFixCommand: jest.fn(() => null),
+  executePluginFix: jest.fn(),
 }));
 
 // ─── Imports ─────────────────────────────────────────────────────────────────
@@ -163,6 +171,11 @@ const defaultSafePlan = {
 beforeEach(() => {
   jest.resetAllMocks();
 
+  // Re-configure pluginFix mock after resetAllMocks
+  const pluginFix = jest.requireMock("../../src/core/audit/pluginFix.js");
+  pluginFix.getPluginBackupPaths.mockReturnValue([]);
+  pluginFix.getAppliedPluginNames.mockReturnValue([]);
+
   mockedConfig.getServers.mockReturnValue([sampleServer] as never);
   // findServer is used by resolveServerForMcp when there is 1 server
   (mockedConfig as jest.Mocked<typeof config> & { findServer?: jest.Mock }).findServer?.mockReturnValue(sampleServer as never);
@@ -192,6 +205,8 @@ beforeEach(() => {
   });
 
   mockedSsh.sshExec.mockResolvedValue({ stdout: "", stderr: "", code: 0 });
+  mockedSsh.sshMasterOpen.mockResolvedValue(true);
+  mockedSsh.sshMasterClose.mockImplementation(() => {});
 
   mockedFix.runPostFixReAudit.mockResolvedValue({ ...defaultAuditResult, overallScore: 72 });
 
@@ -537,6 +552,7 @@ describe("MCP server_fix tool", () => {
         "1.2.3.4",
         "fix-2026-03-29-001",
         expect.any(Array),
+        undefined,
       );
       expect(mockedFixHistory.saveFixHistory).toHaveBeenCalledWith(
         expect.objectContaining({

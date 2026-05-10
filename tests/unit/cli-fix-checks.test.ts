@@ -86,6 +86,14 @@ jest.mock("../../src/core/audit/fix-history.js", () => ({
   rollbackToFix: jest.fn(),
 }));
 
+jest.mock("../../src/core/audit/pluginFix.js", () => ({
+  getPluginBackupPaths: jest.fn((_ids: string[]) => []),
+  getAppliedPluginNames: jest.fn(() => []),
+  isPluginFixCommand: jest.fn(() => false),
+  parsePluginFixCommand: jest.fn(() => null),
+  executePluginFix: jest.fn(),
+}));
+
 describe("CLI fix --checks", () => {
   beforeEach(() => {
     jest.requireMock("../../src/core/audit/fix.js").previewSafeFixes.mockClear();
