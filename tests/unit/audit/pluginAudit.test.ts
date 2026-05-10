@@ -35,7 +35,7 @@ describe("executePluginChecks", () => {
 
   it("returns AuditCategory with passing checks", async () => {
     mockSshExec.mockResolvedValue({ stdout: "[]", code: 0, stderr: "" });
-    const result = await executePluginChecks("1.2.3.4", "WordPress", "WP", checks);
+    const result = await executePluginChecks("1.2.3.4", "WordPress", checks);
     expect(result.name).toBe("WordPress");
     expect(result.checks).toHaveLength(2);
     expect(result.checks[0].passed).toBe(true);
@@ -47,27 +47,27 @@ describe("executePluginChecks", () => {
 
   it("marks check as fail when failPattern matches", async () => {
     mockSshExec.mockResolvedValue({ stdout: "777", code: 0, stderr: "" });
-    const result = await executePluginChecks("1.2.3.4", "WordPress", "WP", checks);
+    const result = await executePluginChecks("1.2.3.4", "WordPress", checks);
     const permCheck = result.checks.find((c) => c.id === "WP-PERMISSIONS");
     expect(permCheck?.passed).toBe(false);
   });
 
   it("marks check as fail when passPattern does not match", async () => {
     mockSshExec.mockResolvedValue({ stdout: "updates available", code: 0, stderr: "" });
-    const result = await executePluginChecks("1.2.3.4", "WordPress", "WP", checks);
+    const result = await executePluginChecks("1.2.3.4", "WordPress", checks);
     const updateCheck = result.checks.find((c) => c.id === "WP-UPDATES");
     expect(updateCheck?.passed).toBe(false);
   });
 
   it("marks check as fail when SSH fails", async () => {
     mockSshExec.mockRejectedValue(new Error("Connection refused"));
-    const result = await executePluginChecks("1.2.3.4", "WordPress", "WP", checks);
+    const result = await executePluginChecks("1.2.3.4", "WordPress", checks);
     expect(result.checks[0].passed).toBe(false);
     expect(result.checks[0].currentValue).toBe("SSH error");
   });
 
   it("returns empty category when no checks provided", async () => {
-    const result = await executePluginChecks("1.2.3.4", "Empty", "EMP", []);
+    const result = await executePluginChecks("1.2.3.4", "Empty", []);
     expect(result.checks).toHaveLength(0);
   });
 
@@ -77,7 +77,7 @@ describe("executePluginChecks", () => {
       { ...checks[0], category: "WordPress" },
       { ...checks[1], id: "WP-SSL", category: "WordPress SSL", checkCommand: "echo ok", passPattern: "ok" },
     ];
-    const results = await executePluginChecks("1.2.3.4", "WordPress", "WP", mixedChecks);
+    const results = await executePluginChecks("1.2.3.4", "WordPress", mixedChecks);
     expect(results.checks).toHaveLength(2);
   });
 });

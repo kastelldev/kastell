@@ -109,15 +109,12 @@ export async function loadPlugins(
       }
 
       const checks = moduleObj.checks as PluginCheck[];
-      const commands = (moduleObj.commands as PluginCommand[] | undefined) ?? manifest.commands;
-      const mcpTools = (moduleObj.mcpTools as PluginMcpTool[] | undefined) ?? manifest.mcpTools;
-      const fixes = (moduleObj.fixes as PluginFix[] | undefined) ?? manifest.fixes;
 
       const enrichedManifest: PluginManifest = {
         ...manifest,
-        commands: manifest.commands ?? commands,
-        mcpTools: manifest.mcpTools ?? mcpTools,
-        fixes: manifest.fixes ?? fixes,
+        commands: (moduleObj.commands as PluginCommand[] | undefined) ?? manifest.commands,
+        mcpTools: (moduleObj.mcpTools as PluginMcpTool[] | undefined) ?? manifest.mcpTools,
+        fixes: (moduleObj.fixes as PluginFix[] | undefined) ?? manifest.fixes,
       };
 
       registerPlugin(enrichedManifest, checks);

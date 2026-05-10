@@ -8,6 +8,7 @@ import { CHECK_REGISTRY } from "./checks/index.js";
 import { COMPLIANCE_MAP } from "./compliance/mapper.js";
 import type { Severity, ComplianceRef } from "./types.js";
 import { getPluginRegistry } from "../../plugin/registry.js";
+import { mapPluginComplianceRefs } from "./pluginAudit.js";
 
 export interface CheckCatalogEntry {
   id: string;
@@ -64,6 +65,10 @@ export function listAllChecks(filter?: ListChecksFilter): CheckCatalogEntry[] {
     result = result.filter((e) => e.severity === filter.severity);
   }
 
+  const filterCats = filter?.category !== undefined
+    ? filter.category.split(",").map((c) => c.trim().toLowerCase())
+    : undefined;
+
   for (const [, entry] of getPluginRegistry()) {
     if (entry.status === "loaded") {
       for (const check of entry.checks) {
@@ -73,18 +78,9 @@ export function listAllChecks(filter?: ListChecksFilter): CheckCatalogEntry[] {
           name: check.name,
           severity: check.severity as Severity,
           explain: check.explain ?? "",
-          complianceRefs: check.complianceRefs?.map((r) => ({
-            framework: r.framework,
-            controlId: r.ref,
-            version: "1.0",
-            description: r.ref,
-            coverage: "partial" as const,
-          })) ?? [],
+          complianceRefs: mapPluginComplianceRefs(check.complianceRefs),
         };
-        if (filter?.category) {
-          const cats = filter.category.split(",").map((c) => c.trim().toLowerCase());
-          if (!cats.includes(pluginEntry.category.toLowerCase())) continue;
-        }
+        if (filterCats && !filterCats.includes(pluginEntry.category.toLowerCase())) continue;
         if (filter?.severity && pluginEntry.severity !== filter.severity) continue;
         result.push(pluginEntry);
       }

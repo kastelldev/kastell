@@ -35,7 +35,7 @@ describe("audit plugin integration", () => {
     registerPlugin(manifest, checks);
     const registry = getPluginRegistry();
     const entry = registry.get("kastell-plugin-wp")!;
-    const result = await executePluginChecks("1.2.3.4", "WordPress", entry.manifest.checkPrefix, entry.checks);
+    const result = await executePluginChecks("1.2.3.4", "WordPress", entry.checks);
     expect(result.name).toBe("WordPress");
     expect(result.checks).toHaveLength(1);
     expect(result.checks[0].id).toBe("WP-UPDATES");
@@ -46,7 +46,7 @@ describe("audit plugin integration", () => {
     registerPlugin(manifest, []);
     const registry = getPluginRegistry();
     const entry = registry.get("kastell-plugin-wp")!;
-    const result = await executePluginChecks("1.2.3.4", "Empty", entry.manifest.checkPrefix, entry.checks);
+    const result = await executePluginChecks("1.2.3.4", "Empty", entry.checks);
     expect(result.checks).toHaveLength(0);
   });
 });

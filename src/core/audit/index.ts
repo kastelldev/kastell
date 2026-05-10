@@ -12,6 +12,7 @@ import { COMPLIANCE_MAP } from "./compliance/mapper.js";
 import { sshExec } from "../../utils/ssh.js";
 import { raw } from "../../utils/sshCommand.js";
 import { getErrorMessage } from "../../utils/errorMapper.js";
+import { debugLog } from "../../utils/logger.js";
 import { calculateQuickWins } from "./quickwin.js";
 import { extractVpsType, applyVpsAdjustments } from "./vps.js";
 import { AUDIT_VERSION } from "../../constants.js";
@@ -87,7 +88,6 @@ export async function runAudit(
           executePluginChecks(
             ip,
             `Plugin: ${entry.manifest.name.replace("kastell-plugin-", "")}`,
-            entry.manifest.checkPrefix,
             entry.checks,
           ).then((pluginCategory) => {
             if (pluginCategory.checks.length > 0) {
@@ -95,7 +95,7 @@ export async function runAudit(
             }
           }).catch((error: unknown) => {
             const msg = error instanceof Error ? error.message : String(error);
-            if (process.env.KASTELL_DEBUG) console.log(`Plugin ${entry.manifest.name} audit failed: ${msg}`);
+            debugLog?.(`Plugin ${entry.manifest.name} audit failed: ${msg}`);
           })
         );
       }

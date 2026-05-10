@@ -4,8 +4,8 @@ import { debugLog } from "../../utils/logger.js";
 import type { PluginCheck } from "../../plugin/sdk/types.js";
 import type { AuditCategory, AuditCheck, Severity, FixTier, ComplianceRef } from "./types.js";
 
-function mapComplianceRefs(refs?: Array<{ framework: string; ref: string }>): ComplianceRef[] | undefined {
-  if (!refs || refs.length === 0) return undefined;
+export function mapPluginComplianceRefs(refs?: Array<{ framework: string; ref: string }>): ComplianceRef[] {
+  if (!refs || refs.length === 0) return [];
   return refs.map((r) => ({
     framework: r.framework,
     controlId: r.ref,
@@ -18,7 +18,6 @@ function mapComplianceRefs(refs?: Array<{ framework: string; ref: string }>): Co
 export async function executePluginChecks(
   ip: string,
   categoryName: string,
-  prefix: string,
   checks: PluginCheck[],
 ): Promise<AuditCategory> {
   const auditChecks: AuditCheck[] = [];
@@ -39,7 +38,7 @@ export async function executePluginChecks(
         fixCommand: check.fixCommand,
         safeToAutoFix: check.safeToAutoFix as FixTier | undefined,
         explain: check.explain,
-        complianceRefs: mapComplianceRefs(check.complianceRefs),
+        complianceRefs: mapPluginComplianceRefs(check.complianceRefs),
       });
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : String(error);
