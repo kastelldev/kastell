@@ -12,9 +12,12 @@ import { COMPLIANCE_MAP } from "./compliance/mapper.js";
 import { sshExec } from "../../utils/ssh.js";
 import { raw } from "../../utils/sshCommand.js";
 import { getErrorMessage } from "../../utils/errorMapper.js";
+import { debugLog } from "../../utils/logger.js";
 import { calculateQuickWins } from "./quickwin.js";
 import { extractVpsType, applyVpsAdjustments } from "./vps.js";
 import { AUDIT_VERSION } from "../../constants.js";
+import { getPluginRegistry } from "../../plugin/registry.js";
+import { executePluginChecks } from "./pluginAudit.js";
 
 /**
  * Detect categories where all checks have "not installed" or "N/A" currentValue.
@@ -75,6 +78,29 @@ export async function runAudit(
     // VPS detection: extract type from batch outputs, adjust severity before scoring
     const vpsType = extractVpsType(batchOutputs);
     const { categories: adjustedCategories, adjustedCount } = applyVpsAdjustments(categories, vpsType);
+
+    // Plugin checks run after VPS adjustments — plugins manage their own severity
+    const pluginRegistry = getPluginRegistry();
+    const pluginPromises: Array<Promise<void>> = [];
+    for (const [, entry] of pluginRegistry) {
+      if (entry.status === "loaded" && entry.checks.length > 0) {
+        pluginPromises.push(
+          executePluginChecks(
+            ip,
+            `Plugin: ${entry.manifest.name.replace("kastell-plugin-", "")}`,
+            entry.checks,
+          ).then((pluginCategory) => {
+            if (pluginCategory.checks.length > 0) {
+              adjustedCategories.push(pluginCategory);
+            }
+          }).catch((error: unknown) => {
+            const msg = error instanceof Error ? error.message : String(error);
+            debugLog?.(`Plugin ${entry.manifest.name} audit failed: ${msg}`);
+          })
+        );
+      }
+    }
+    await Promise.all(pluginPromises);
 
     // Mark categories from failed batches as connectionError.
     // Uses check-content heuristic (all checks "Unable to determine" or empty) rather than

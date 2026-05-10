@@ -226,4 +226,59 @@ describe("plugin/loader", () => {
     expect(result.errors.length).toBeGreaterThan(0);
     expect(result.errors[0]).toContain("escapes plugin directory");
   });
+
+  describe("loader capability expansion", () => {
+    it("reads module.commands when capability includes command", async () => {
+      const mockCommands = [{ name: "scan", description: "Scan", handler: "./cmd/scan.js" }];
+      const manifestWithCommand = {
+        name: "kastell-plugin-wp",
+        version: "1.0.0",
+        apiVersion: "1",
+        kastell: ">=2.0.0",
+        capabilities: ["audit", "command"],
+        checkPrefix: "WP",
+        entry: "index.js",
+      };
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readdirSync as jest.Mock).mockReturnValue([
+        { name: "kastell-plugin-wp", isDirectory: () => true },
+      ]);
+      (readFileSync as jest.Mock).mockReturnValue(JSON.stringify(manifestWithCommand));
+
+      const mockImporter = jest.fn<(path: string) => Promise<unknown>>();
+      mockImporter.mockResolvedValue({ checks: [], commands: mockCommands });
+
+      const result = await loadPlugins({ importer: mockImporter });
+      expect(result.loaded).toContain("kastell-plugin-wp");
+      const entry = getPluginRegistry().get("kastell-plugin-wp");
+      expect(entry?.commands).toHaveLength(1);
+      expect(entry?.commands?.[0].name).toBe("scan");
+    });
+
+    it("reads module.fixes when capability includes fix", async () => {
+      const mockFixes = [{ checkId: "WP-001", tier: "SAFE" as const, handler: "./fixes/001.js" }];
+      const manifestWithFix = {
+        name: "kastell-plugin-wp",
+        version: "1.0.0",
+        apiVersion: "1",
+        kastell: ">=2.0.0",
+        capabilities: ["audit", "fix"],
+        checkPrefix: "WP",
+        entry: "index.js",
+      };
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readdirSync as jest.Mock).mockReturnValue([
+        { name: "kastell-plugin-wp", isDirectory: () => true },
+      ]);
+      (readFileSync as jest.Mock).mockReturnValue(JSON.stringify(manifestWithFix));
+
+      const mockImporter = jest.fn<(path: string) => Promise<unknown>>();
+      mockImporter.mockResolvedValue({ checks: [], fixes: mockFixes });
+
+      const result = await loadPlugins({ importer: mockImporter });
+      expect(result.loaded).toContain("kastell-plugin-wp");
+      const entry = getPluginRegistry().get("kastell-plugin-wp");
+      expect(entry?.fixes).toHaveLength(1);
+    });
+  });
 });

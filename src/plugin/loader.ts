@@ -12,7 +12,7 @@ import {
   mapRegistryPlugins,
   savePluginCache,
 } from "./registry.js";
-import type { PluginCheck, PluginManifest } from "./sdk/types.js";
+import type { PluginCheck, PluginManifest, PluginCommand, PluginMcpTool, PluginFix } from "./sdk/types.js";
 
 
 interface LoadPluginsOptions {
@@ -109,7 +109,15 @@ export async function loadPlugins(
       }
 
       const checks = moduleObj.checks as PluginCheck[];
-      registerPlugin(manifest, checks);
+
+      const enrichedManifest: PluginManifest = {
+        ...manifest,
+        commands: (moduleObj.commands as PluginCommand[] | undefined) ?? manifest.commands,
+        mcpTools: (moduleObj.mcpTools as PluginMcpTool[] | undefined) ?? manifest.mcpTools,
+        fixes: (moduleObj.fixes as PluginFix[] | undefined) ?? manifest.fixes,
+      };
+
+      registerPlugin(enrichedManifest, checks);
       return manifest.name;
     }),
   );

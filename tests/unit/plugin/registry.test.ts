@@ -22,14 +22,14 @@ import {
   deletePlugin,
   mapRegistryPlugins,
 } from "../../../src/plugin/registry.js";
-import type { PluginManifest, PluginCheck } from "../../../src/plugin/sdk/types.js";
+import type { PluginManifest, PluginCheck, PluginCapability } from "../../../src/plugin/sdk/types.js";
 
 const mockManifest: PluginManifest = {
   name: "kastell-plugin-wordpress",
   version: "1.0.0",
   apiVersion: "1",
   kastell: ">=2.1.0",
-  capabilities: ["audit"],
+  capabilities: ["audit"] as PluginCapability[],
   checkPrefix: "WP",
   entry: "index.js",
 };
@@ -162,6 +162,52 @@ describe("plugin/registry", () => {
     it("returns empty array when no plugins registered", () => {
       const result = mapRegistryPlugins((name) => name);
       expect(result).toEqual([]);
+    });
+  });
+
+  describe("registry capability fields", () => {
+    const manifestWithFields: PluginManifest = {
+      name: "kastell-plugin-wp",
+      version: "1.0.0",
+      apiVersion: "1",
+      kastell: ">=2.0.0",
+      capabilities: ["audit", "command", "fix"] as PluginCapability[],
+      checkPrefix: "WP",
+      entry: "./index.js",
+      commands: [{ name: "scan", description: "Scan WP", handler: "./cmd/scan.js" }],
+      fixes: [{ checkId: "WP-001", tier: "SAFE", handler: "./fixes/001.js" }],
+    };
+
+    beforeEach(() => clearPluginRegistry());
+
+    it("stores commands from manifest", () => {
+      registerPlugin(manifestWithFields, []);
+      const entry = getPluginRegistry().get("kastell-plugin-wp");
+      expect(entry?.commands).toHaveLength(1);
+      expect(entry?.commands?.[0].name).toBe("scan");
+    });
+
+    it("stores fixes from manifest", () => {
+      registerPlugin(manifestWithFields, []);
+      const entry = getPluginRegistry().get("kastell-plugin-wp");
+      expect(entry?.fixes).toHaveLength(1);
+      expect(entry?.fixes?.[0].checkId).toBe("WP-001");
+    });
+
+    it("stores mcpTools from manifest", () => {
+      const m: PluginManifest = { ...manifestWithFields, capabilities: ["audit", "mcp-tool"] as PluginCapability[], mcpTools: [{ name: "analyze", description: "Analyze", handler: "./mcp/a.js" }] };
+      registerPlugin(m, []);
+      const entry = getPluginRegistry().get("kastell-plugin-wp");
+      expect(entry?.mcpTools).toHaveLength(1);
+    });
+
+    it("omits optional fields when not in manifest", () => {
+      const m: PluginManifest = { ...mockManifest, capabilities: ["audit"] as PluginCapability[], commands: undefined, fixes: undefined };
+      registerPlugin(m, []);
+      const entry = getPluginRegistry().get("kastell-plugin-wordpress");
+      expect(entry?.commands).toBeUndefined();
+      expect(entry?.fixes).toBeUndefined();
+      expect(entry?.mcpTools).toBeUndefined();
     });
   });
 });

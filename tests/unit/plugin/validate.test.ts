@@ -64,19 +64,12 @@ describe("validateManifest", () => {
   });
 
   describe("capabilities validation", () => {
-    it("rejects non-audit capability", () => {
-      expect(() => validateManifest({ ...VALID_MANIFEST, capabilities: ["command"] }))
-        .toThrow(ValidationError);
+    it("rejects unknown capability", () => {
+      expect(() => validateManifest({ ...VALID_MANIFEST, capabilities: ["unknown"] })).toThrow(ValidationError);
     });
 
     it("rejects empty capabilities", () => {
-      expect(() => validateManifest({ ...VALID_MANIFEST, capabilities: [] }))
-        .toThrow(ValidationError);
-    });
-
-    it("rejects multiple capabilities", () => {
-      expect(() => validateManifest({ ...VALID_MANIFEST, capabilities: ["audit", "audit"] }))
-        .toThrow(ValidationError);
+      expect(() => validateManifest({ ...VALID_MANIFEST, capabilities: [] })).toThrow(ValidationError);
     });
   });
 
@@ -106,6 +99,111 @@ describe("validateManifest", () => {
     it("rejects extra fields", () => {
       expect(() => validateManifest({ ...VALID_MANIFEST, extraField: "hack" }))
         .toThrow(ValidationError);
+    });
+  });
+
+  describe("capability expansion", () => {
+    it("accepts audit-only capability (backward compat)", () => {
+      const result = validateManifest({ ...VALID_MANIFEST, capabilities: ["audit"] });
+      expect(result.capabilities).toEqual(["audit"]);
+    });
+
+    it("accepts multiple capabilities", () => {
+      const result = validateManifest({
+        ...VALID_MANIFEST,
+        capabilities: ["audit", "command", "fix"],
+      });
+      expect(result.capabilities).toEqual(["audit", "command", "fix"]);
+    });
+
+    it("accepts all four capability types", () => {
+      const result = validateManifest({
+        ...VALID_MANIFEST,
+        capabilities: ["audit", "command", "mcp-tool", "fix"],
+      });
+      expect(result.capabilities).toHaveLength(4);
+    });
+
+    it("rejects empty capabilities array", () => {
+      expect(() => validateManifest({ ...VALID_MANIFEST, capabilities: [] })).toThrow(ValidationError);
+    });
+
+    it("rejects unknown capability", () => {
+      expect(() => validateManifest({ ...VALID_MANIFEST, capabilities: ["audit", "unknown"] })).toThrow(ValidationError);
+    });
+
+    it("accepts manifest with optional commands field", () => {
+      const result = validateManifest({
+        ...VALID_MANIFEST,
+        capabilities: ["audit", "command"],
+        commands: [{ name: "scan", description: "Run scan", handler: "./cmd/scan.js" }],
+      });
+      expect(result.commands).toHaveLength(1);
+    });
+
+    it("accepts manifest with optional mcpTools field", () => {
+      const result = validateManifest({
+        ...VALID_MANIFEST,
+        capabilities: ["audit", "mcp-tool"],
+        mcpTools: [{ name: "analyze", description: "Analyze server", handler: "./mcp/analyze.js" }],
+      });
+      expect(result.mcpTools).toHaveLength(1);
+    });
+
+    it("accepts manifest with optional fixes field", () => {
+      const result = validateManifest({
+        ...VALID_MANIFEST,
+        capabilities: ["audit", "fix"],
+        fixes: [{ checkId: "WP-001", tier: "SAFE", handler: "./fixes/fix001.js" }],
+      });
+      expect(result.fixes).toHaveLength(1);
+    });
+
+    it("rejects fix with checkId not matching checkPrefix", () => {
+      expect(() =>
+        validateManifest({
+          ...VALID_MANIFEST,
+          capabilities: ["audit", "fix"],
+          fixes: [{ checkId: "OTHER-001", tier: "SAFE", handler: "./fixes/fix.js" }],
+        }),
+      ).toThrow(ValidationError);
+    });
+
+    it("rejects fix with FORBIDDEN tier", () => {
+      expect(() =>
+        validateManifest({
+          ...VALID_MANIFEST,
+          capabilities: ["audit", "fix"],
+          fixes: [{ checkId: "WP-001", tier: "FORBIDDEN", handler: "./fixes/fix.js" }],
+        }),
+      ).toThrow(ValidationError);
+    });
+
+    it("rejects command handler with path traversal (no ./)", () => {
+      expect(() =>
+        validateManifest({
+          ...VALID_MANIFEST,
+          capabilities: ["command"],
+          commands: [{ name: "evil", description: "Bad", handler: "../../etc/passwd" }],
+        }),
+      ).toThrow(ValidationError);
+    });
+
+    it("rejects command handler with embedded path traversal", () => {
+      expect(() =>
+        validateManifest({
+          ...VALID_MANIFEST,
+          capabilities: ["command"],
+          commands: [{ name: "evil", description: "Bad", handler: "./cmd/../../../etc/passwd.js" }],
+        }),
+      ).toThrow(ValidationError);
+    });
+
+    it("accepts manifest without optional fields (backward compat)", () => {
+      const result = validateManifest({ ...VALID_MANIFEST, capabilities: ["audit"] });
+      expect(result.commands).toBeUndefined();
+      expect(result.mcpTools).toBeUndefined();
+      expect(result.fixes).toBeUndefined();
     });
   });
 
