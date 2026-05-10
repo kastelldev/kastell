@@ -11,6 +11,7 @@ import { raw } from "../../utils/sshCommand.js";
 import { logger } from "../../utils/logger.js";
 import { getErrorMessage } from "../../utils/errorMapper.js";
 import { tryHandlerDispatch } from "./handlers/index.js";
+import { isPluginFixCommand, parsePluginFixCommand, executePluginFix } from "./pluginFix.js";
 import { truncateExecutionLog } from "./fix-history.js";
 import inquirer from "inquirer";
 import { buildAuditBatchCommands, BATCH_TIMEOUTS } from "./commands.js";
@@ -396,6 +397,24 @@ export async function runFix(
             });
             if (preCheck.code !== 0) {
               errors.push(`${check.id}: pre-condition failed — ${check.preCondition}`);
+              continue;
+            }
+          }
+          // Plugin fix dispatch — route plugin: prefix to plugin handler
+          if (isPluginFixCommand(check.fixCommand)) {
+            const parsed = parsePluginFixCommand(check.fixCommand);
+            if (parsed) {
+              try {
+                const pfResult = await executePluginFix(ip, check.id, parsed.pluginName, parsed.handlerPath, false);
+                if (pfResult.success) {
+                  applied.push(check.id);
+                } else {
+                  errors.push(`${check.id}: ${pfResult.error ?? "plugin fix failed"}`);
+                }
+                if (pfResult.executionLog) executionLog.push(pfResult.executionLog);
+              } catch (err: unknown) {
+                errors.push(`${check.id}: ${err instanceof Error ? err.message : String(err)}`);
+              }
               continue;
             }
           }
