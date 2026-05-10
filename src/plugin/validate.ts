@@ -7,17 +7,14 @@ import { PLUGIN_NAME_PATTERN } from "./sdk/constants.js";
 
 const HANDLER_PATH_PATTERN = /^\.\/(?!.*\.\.)(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]+\.js$/;
 
-const PluginCommandSchema = z.object({
+const PluginHandlerSchema = z.object({
   name: z.string().min(1),
   description: z.string().min(1),
   handler: z.string().regex(HANDLER_PATH_PATTERN, "Handler must be relative ./path.js"),
 });
 
-const PluginMcpToolSchema = z.object({
-  name: z.string().min(1),
-  description: z.string().min(1),
-  handler: z.string().regex(HANDLER_PATH_PATTERN, "Handler must be relative ./path.js"),
-});
+const PluginCommandSchema = PluginHandlerSchema;
+const PluginMcpToolSchema = PluginHandlerSchema;
 
 const PluginFixSchema = z.object({
   checkId: z.string().min(1),

@@ -78,26 +78,29 @@ export async function runAudit(
     const vpsType = extractVpsType(batchOutputs);
     const { categories: adjustedCategories, adjustedCount } = applyVpsAdjustments(categories, vpsType);
 
-    // Execute plugin checks from registry
+    // Execute plugin checks from registry (parallel across plugins)
     const pluginRegistry = getPluginRegistry();
+    const pluginPromises: Array<Promise<void>> = [];
     for (const [, entry] of pluginRegistry) {
       if (entry.status === "loaded" && entry.checks.length > 0) {
-        try {
-          const pluginCategory = await executePluginChecks(
+        pluginPromises.push(
+          executePluginChecks(
             ip,
             `Plugin: ${entry.manifest.name.replace("kastell-plugin-", "")}`,
             entry.manifest.checkPrefix,
             entry.checks,
-          );
-          if (pluginCategory.checks.length > 0) {
-            adjustedCategories.push(pluginCategory);
-          }
-        } catch (error: unknown) {
-          const msg = error instanceof Error ? error.message : String(error);
-          if (process.env.KASTELL_DEBUG) console.log(`Plugin ${entry.manifest.name} audit failed: ${msg}`);
-        }
+          ).then((pluginCategory) => {
+            if (pluginCategory.checks.length > 0) {
+              adjustedCategories.push(pluginCategory);
+            }
+          }).catch((error: unknown) => {
+            const msg = error instanceof Error ? error.message : String(error);
+            if (process.env.KASTELL_DEBUG) console.log(`Plugin ${entry.manifest.name} audit failed: ${msg}`);
+          })
+        );
       }
     }
+    await Promise.all(pluginPromises);
 
     // Mark categories from failed batches as connectionError.
     // Uses check-content heuristic (all checks "Unable to determine" or empty) rather than

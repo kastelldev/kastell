@@ -75,13 +75,7 @@ export async function executePluginChecks(
 }
 
 function evaluateCheck(output: string, check: PluginCheck): boolean {
-  if (check.failPattern) {
-    const failRegex = new RegExp(check.failPattern);
-    if (failRegex.test(output)) return false;
-  }
-  if (check.passPattern) {
-    const passRegex = new RegExp(check.passPattern);
-    return passRegex.test(output);
-  }
+  if (check.failPattern && new RegExp(check.failPattern).test(output)) return false;
+  if (check.passPattern) return new RegExp(check.passPattern).test(output);
   return true;
 }
