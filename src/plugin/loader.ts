@@ -117,36 +117,35 @@ export async function loadPlugins(
         fixes: (moduleObj.fixes as PluginFix[] | undefined) ?? manifest.fixes,
       };
 
+      function guardHandlerPath(
+        pluginDir: string,
+        handler: string,
+        type: string,
+      ): void {
+        const resolved = resolve(pluginDir, handler);
+        if (!resolved.startsWith(pluginDir + sep) && resolved !== pluginDir) {
+          throw new Error(`${type} handler escapes plugin directory: ${handler}`);
+        }
+      }
+
       // Path traversal guard for fix handlers
       if (enrichedManifest.fixes) {
         for (const fix of enrichedManifest.fixes) {
-          const resolvedHandler = resolve(resolvedDir, fix.handler);
-          if (!resolvedHandler.startsWith(resolvedDir + sep) && resolvedHandler !== resolvedDir) {
-            registerFailedPlugin(manifest, `fix handler escapes plugin directory: ${fix.handler}`);
-            throw new Error(`${dir.name}: fix handler escapes plugin directory: ${fix.handler}`);
-          }
+          guardHandlerPath(resolvedDir, fix.handler, "fix");
         }
       }
 
       // Path traversal guard for command handlers
       if (enrichedManifest.commands) {
         for (const cmd of enrichedManifest.commands) {
-          const resolvedHandler = resolve(resolvedDir, cmd.handler);
-          if (!resolvedHandler.startsWith(resolvedDir + sep) && resolvedHandler !== resolvedDir) {
-            registerFailedPlugin(manifest, `command handler escapes plugin directory: ${cmd.handler}`);
-            throw new Error(`${dir.name}: command handler escapes plugin directory: ${cmd.handler}`);
-          }
+          guardHandlerPath(resolvedDir, cmd.handler, "command");
         }
       }
 
       // Path traversal guard for mcpTool handlers
       if (enrichedManifest.mcpTools) {
         for (const tool of enrichedManifest.mcpTools) {
-          const resolvedHandler = resolve(resolvedDir, tool.handler);
-          if (!resolvedHandler.startsWith(resolvedDir + sep) && resolvedHandler !== resolvedDir) {
-            registerFailedPlugin(manifest, `mcpTool handler escapes plugin directory: ${tool.handler}`);
-            throw new Error(`${dir.name}: mcpTool handler escapes plugin directory: ${tool.handler}`);
-          }
+          guardHandlerPath(resolvedDir, tool.handler, "mcpTool");
         }
       }
 

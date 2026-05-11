@@ -1,6 +1,8 @@
 import type { Command } from "commander";
 import type { PluginCommandEntry } from "./registry.js";
 import { debugLog } from "../utils/logger.js";
+import { resolve } from "path";
+import { pathToFileURL } from "url";
 
 export function registerPluginCommands(
   program: Command,
@@ -34,15 +36,12 @@ export function registerPluginCommands(
         .command(entry.command.name)
         .description(entry.command.description)
         .action(async (...args: unknown[]) => {
-          const { resolve } = await import("path");
-          const { pathToFileURL } = await import("url");
           const handlerPath = resolve(entry.pluginDir, entry.command.handler);
           const handlerUrl = pathToFileURL(handlerPath).href;
           const mod = await import(handlerUrl);
           const handler = mod.default ?? mod.handler ?? mod.run;
           if (typeof handler !== "function") {
-            console.error(`Plugin command handler not found: ${entry.command.handler}`);
-            process.exit(1);
+            throw new Error(`Plugin command handler not found: ${entry.command.handler}`);
           }
           // Pass Commander args + PluginContext — ssh stub until P135 wires real SSH
           await handler(args[args.length - 1] ?? {}, {
