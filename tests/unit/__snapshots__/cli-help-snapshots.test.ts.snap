@@ -48,7 +48,6 @@ Commands:
   regression                               Manage regression baselines
   auth                                     Manage provider API tokens (OS keychain)
   plugin                                   Manage kastell plugins
-  auditor                                  [plugin] auditor commands
   help [command]                           display help for command"
 `;
 

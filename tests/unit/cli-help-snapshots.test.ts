@@ -9,15 +9,18 @@
 
 import { spawnSync } from "child_process";
 import { join } from "path";
+import { mkdtempSync } from "fs";
+import { tmpdir } from "os";
 import { stripAnsi } from "../helpers/stripAnsi";
 
 const CLI_PATH = join(__dirname, "../../dist/index.js");
+const ISOLATED_KASTELL_DIR = mkdtempSync(join(tmpdir(), "kastell-help-"));
 
 /** Invoke the CLI with the given args and return the help text output */
 function getHelp(args: string[]): string {
   const result = spawnSync("node", [CLI_PATH, ...args], {
     encoding: "utf-8",
-    env: { ...process.env, NO_COLOR: "1", FORCE_COLOR: "0" },
+    env: { ...process.env, NO_COLOR: "1", FORCE_COLOR: "0", KASTELL_DIR: ISOLATED_KASTELL_DIR },
   });
   const raw = (result.stdout || result.stderr || "").trim();
   return stripAnsi(raw);
