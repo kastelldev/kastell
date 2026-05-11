@@ -13,15 +13,8 @@ jest.mock("../../../src/utils/secureWrite.js", () => ({
 // === mevcut import'lar ===
 import { readFileSync, existsSync } from "fs";
 import { secureWriteFileSync, secureMkdirSync } from "../../../src/utils/secureWrite.js";
-import {
-  registerPlugin,
-  clearPluginRegistry,
-  getPluginRegistry,
-  loadPluginCache,
-  savePluginCache,
-  deletePlugin,
-  mapRegistryPlugins,
-} from "../../../src/plugin/registry.js";
+import { registerPlugin, clearPluginRegistry, getPluginRegistry, loadPluginCache, savePluginCache, deletePlugin, mapRegistryPlugins, getPluginCommands, getPluginMcpTools } from "../../../src/plugin/registry.js";
+import { registerFailedPlugin } from "../../../src/plugin/registry.js";
 import type { PluginManifest, PluginCheck, PluginCapability } from "../../../src/plugin/sdk/types.js";
 
 const mockManifest: PluginManifest = {
@@ -209,6 +202,75 @@ describe("plugin/registry", () => {
       expect(entry?.fixes).toBeUndefined();
       expect(entry?.mcpTools).toBeUndefined();
     });
+  });
+});
+
+describe("getPluginCommands", () => {
+  beforeEach(() => clearPluginRegistry());
+
+  it("returns empty array when no plugins have commands", () => {
+    registerPlugin(
+      { ...mockManifest, capabilities: ["audit"] as PluginCapability[] },
+      mockChecks,
+    );
+    expect(getPluginCommands()).toEqual([]);
+  });
+
+  it("returns commands with plugin short name", () => {
+    const manifestWithCmd = {
+      ...mockManifest,
+      name: "kastell-plugin-auditor",
+      capabilities: ["audit", "command"] as PluginCapability[],
+      commands: [{ name: "scan", description: "Run scan", handler: "./scan.js" }],
+    };
+    registerPlugin(manifestWithCmd, mockChecks);
+    const cmds = getPluginCommands();
+    expect(cmds).toHaveLength(1);
+    expect(cmds[0]).toEqual({
+      pluginShortName: "auditor",
+      command: { name: "scan", description: "Run scan", handler: "./scan.js" },
+      pluginDir: expect.any(String),
+    });
+  });
+
+  it("skips failed plugins", () => {
+    registerFailedPlugin(mockManifest, "load error");
+    expect(getPluginCommands()).toEqual([]);
+  });
+});
+
+describe("getPluginMcpTools", () => {
+  beforeEach(() => clearPluginRegistry());
+
+  it("returns empty array when no plugins have mcpTools", () => {
+    registerPlugin(
+      { ...mockManifest, capabilities: ["audit"] as PluginCapability[] },
+      mockChecks,
+    );
+    expect(getPluginMcpTools()).toEqual([]);
+  });
+
+  it("returns mcpTools with plugin short name", () => {
+    const manifestWithTool = {
+      ...mockManifest,
+      name: "kastell-plugin-auditor",
+      capabilities: ["audit", "mcp-tool"] as PluginCapability[],
+      mcpTools: [{ name: "analyze", description: "Run analysis", handler: "./mcp/analyze.js" }],
+    };
+    registerPlugin(manifestWithTool, mockChecks);
+    const tools = getPluginMcpTools();
+    expect(tools).toHaveLength(1);
+    expect(tools[0]).toEqual({
+      pluginShortName: "auditor",
+      toolName: "server_plugin_auditor_analyze",
+      tool: { name: "analyze", description: "Run analysis", handler: "./mcp/analyze.js" },
+      pluginDir: expect.any(String),
+    });
+  });
+
+  it("skips failed plugins", () => {
+    registerFailedPlugin(mockManifest, "load error");
+    expect(getPluginMcpTools()).toEqual([]);
   });
 });
 

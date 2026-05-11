@@ -12,7 +12,25 @@ export interface PluginMcpTool {
   name: string;
   description: string;
   handler: string;
+  inputSchema?: Record<string, unknown>;
 }
+
+export interface PluginContext {
+  server?: string;
+  ip?: string;
+  ssh: (command: string, options?: { timeoutMs?: number }) => Promise<{ stdout: string; stderr: string; code: number }>;
+  logger: { info: (msg: string) => void; warn: (msg: string) => void; error: (msg: string) => void };
+}
+
+export type PluginCommandHandler = (
+  args: Record<string, unknown>,
+  ctx: PluginContext,
+) => Promise<void>;
+
+export type PluginMcpToolHandler = (
+  args: Record<string, unknown>,
+  ctx: PluginContext,
+) => Promise<{ content: Array<{ type: string; text: string }> }>;
 
 export interface PluginFix {
   checkId: string;
@@ -67,3 +85,10 @@ export type PluginFixHandler = (
   checkId: string,
   ctx: PluginFixContext,
 ) => Promise<PluginFixResult>;
+
+export interface PluginModuleExport {
+  default?: Record<string, unknown> | ((...args: unknown[]) => unknown);
+  handler?: (...args: unknown[]) => unknown;
+  run?: (...args: unknown[]) => unknown;
+  fix?: (...args: unknown[]) => unknown;
+}

@@ -47,12 +47,34 @@ describe("example plugin: kastell-plugin-wordpress", () => {
 describe("example plugin: kastell-plugin-auditor", () => {
   const pluginDir = join(EXAMPLES_DIR, "kastell-plugin-auditor");
 
-  it("has a valid manifest", () => {
+  it("has a valid manifest with all 3 capabilities", () => {
     const raw = readFileSync(join(pluginDir, "kastell-plugin.json"), "utf-8");
     const manifest = validateManifest(JSON.parse(raw));
     expect(manifest.name).toBe("kastell-plugin-auditor");
     expect(manifest.checkPrefix).toBe("AUD");
-    expect(manifest.capabilities).toEqual(["audit"]);
+    expect(manifest.capabilities).toEqual(expect.arrayContaining(["audit", "command", "mcp-tool"]));
+  });
+
+  it("has commands array matching manifest", () => {
+    const raw = readFileSync(join(pluginDir, "kastell-plugin.json"), "utf-8");
+    const manifest = JSON.parse(raw);
+    expect(manifest.commands).toHaveLength(1);
+    expect(manifest.commands[0].name).toBe("analyze");
+  });
+
+  it("has mcpTools array matching manifest", () => {
+    const raw = readFileSync(join(pluginDir, "kastell-plugin.json"), "utf-8");
+    const manifest = JSON.parse(raw);
+    expect(manifest.mcpTools).toHaveLength(1);
+    expect(manifest.mcpTools[0].name).toBe("report");
+  });
+
+  it("exports commands and mcpTools", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const mod = require(join(pluginDir, "index.js"));
+    expect(mod.commands).toHaveLength(1);
+    expect(mod.mcpTools).toHaveLength(1);
+    expect(mod.checks).toHaveLength(2);
   });
 
   it("exports checks array with correct IDs and prefix", async () => {

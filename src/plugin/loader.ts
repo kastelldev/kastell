@@ -117,14 +117,32 @@ export async function loadPlugins(
         fixes: (moduleObj.fixes as PluginFix[] | undefined) ?? manifest.fixes,
       };
 
-      // Path traversal guard for fix handlers
+      function guardHandlerPath(
+        pluginDir: string,
+        handler: string,
+        type: string,
+      ): void {
+        const resolved = resolve(pluginDir, handler);
+        if (!resolved.startsWith(pluginDir + sep) && resolved !== pluginDir) {
+          throw new Error(`${type} handler escapes plugin directory: ${handler}`);
+        }
+      }
+
       if (enrichedManifest.fixes) {
         for (const fix of enrichedManifest.fixes) {
-          const resolvedHandler = resolve(resolvedDir, fix.handler);
-          if (!resolvedHandler.startsWith(resolvedDir + sep) && resolvedHandler !== resolvedDir) {
-            registerFailedPlugin(manifest, `fix handler escapes plugin directory: ${fix.handler}`);
-            throw new Error(`${dir.name}: fix handler escapes plugin directory: ${fix.handler}`);
-          }
+          guardHandlerPath(resolvedDir, fix.handler, "fix");
+        }
+      }
+
+      if (enrichedManifest.commands) {
+        for (const cmd of enrichedManifest.commands) {
+          guardHandlerPath(resolvedDir, cmd.handler, "command");
+        }
+      }
+
+      if (enrichedManifest.mcpTools) {
+        for (const tool of enrichedManifest.mcpTools) {
+          guardHandlerPath(resolvedDir, tool.handler, "mcpTool");
         }
       }
 

@@ -57,6 +57,8 @@ describe("listPlugins", () => {
       version: "1.0.0",
       prefix: "TST",
       checks: 2,
+      commands: [],
+      mcpTools: [],
       status: "loaded",
     });
   });
@@ -71,6 +73,8 @@ describe("listPlugins", () => {
       version: "1.0.0",
       prefix: "BRK",
       checks: 0,
+      commands: [],
+      mcpTools: [],
       status: "failed",
       reason: "invalid manifest",
     });

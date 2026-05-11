@@ -52,6 +52,8 @@ import {
   pluginListCommand,
   pluginValidateCommand,
 } from "./commands/plugin.js";
+import { getPluginCommands } from "./plugin/registry.js";
+import { registerPluginCommands } from "./plugin/registerCommands.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -489,6 +491,12 @@ plugin
   .command("validate [name]")
   .description("Validate plugin manifest and entry point")
   .action((name?: string) => pluginValidateCommand(name));
+
+// Register plugin-provided CLI commands
+const pluginCommands = getPluginCommands();
+if (pluginCommands.length > 0) {
+  registerPluginCommands(program, pluginCommands);
+}
 
 // If --version or -V, print version and await update check before exiting
 const args = process.argv.slice(2);
