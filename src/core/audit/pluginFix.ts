@@ -6,7 +6,7 @@ import { PLUGINS_NODE_MODULES } from "../../utils/paths.js";
 import type { PluginFixHandler, PluginFixContext, PluginFixResult } from "../../plugin/sdk/types.js";
 import type { FixExecutionLogEntry } from "./types.js";
 import { getPluginRegistry } from "../../plugin/registry.js";
-import { pathToFileURL } from "url";
+import { resolvePluginHandler } from "../../plugin/handlerResolver.js";
 import { join } from "path";
 
 const PLUGIN_FIX_PREFIX = "plugin:";
@@ -77,16 +77,10 @@ export async function executePluginFix(
   }
 
   const pluginDir = join(PLUGINS_NODE_MODULES, pluginName);
-  const handlerAbsPath = join(pluginDir, handlerPath);
-  const handlerUrl = pathToFileURL(handlerAbsPath).href;
 
   let handlerFn: PluginFixHandler;
   try {
-    const handlerModule = await import(handlerUrl);
-    handlerFn = handlerModule.default ?? handlerModule.fix ?? handlerModule.handler;
-    if (typeof handlerFn !== "function") {
-      return { success: false, error: `Plugin fix handler "${handlerPath}" does not export a function (default/fix/handler)` };
-    }
+    handlerFn = await resolvePluginHandler(pluginDir, handlerPath) as PluginFixHandler;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     return { success: false, error: `Failed to import fix handler: ${msg}` };

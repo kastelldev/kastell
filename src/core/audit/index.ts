@@ -16,7 +16,7 @@ import { debugLog } from "../../utils/logger.js";
 import { calculateQuickWins } from "./quickwin.js";
 import { extractVpsType, applyVpsAdjustments } from "./vps.js";
 import { AUDIT_VERSION } from "../../constants.js";
-import { getPluginRegistry } from "../../plugin/registry.js";
+import { getPluginRegistry, getShortName } from "../../plugin/registry.js";
 import { executePluginChecks } from "./pluginAudit.js";
 
 /**
@@ -87,7 +87,7 @@ export async function runAudit(
         pluginPromises.push(
           executePluginChecks(
             ip,
-            `Plugin: ${entry.manifest.name.replace("kastell-plugin-", "")}`,
+            `Plugin: ${getShortName(entry.manifest.name)}`,
             entry.checks,
             entry.manifest.name,
             entry.manifest.fixes,

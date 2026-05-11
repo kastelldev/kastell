@@ -70,7 +70,6 @@ export function validateManifest(manifest: unknown): PluginManifest {
     }
   }
 
-  // Duplicate name validation
   if (parsed.data.commands) {
     const names = parsed.data.commands.map((c) => c.name);
     if (names.length !== new Set(names).size) {
@@ -92,7 +91,6 @@ export function validateManifest(manifest: unknown): PluginManifest {
     }
   }
 
-  // Capability-field consistency validation
   if (parsed.data.commands && !parsed.data.capabilities.includes("command")) {
     throw new ValidationError("commands field requires 'command' capability");
   }

@@ -5,6 +5,7 @@ import { secureWriteFileSync, secureMkdirSync } from "../utils/secureWrite.js";
 import { KASTELL_DIR, PLUGINS_NODE_MODULES } from "../utils/paths.js";
 import type { PluginManifest, PluginCheck, PluginCommand, PluginMcpTool, PluginFix } from "./sdk/types.js";
 import { debugLog } from "../utils/logger.js";
+import { PLUGIN_NAME_PREFIX, PLUGIN_TOOL_PREFIX } from "./sdk/constants.js";
 
 const PLUGIN_CACHE_PATH = join(KASTELL_DIR, "plugin-manifests.json");
 
@@ -113,8 +114,8 @@ export interface PluginMcpToolEntry {
   pluginDir: string;
 }
 
-function getShortName(pluginName: string): string {
-  return pluginName.replace("kastell-plugin-", "");
+export function getShortName(pluginName: string): string {
+  return pluginName.replace(PLUGIN_NAME_PREFIX, "");
 }
 
 export function getPluginCommands(): PluginCommandEntry[] {
@@ -139,7 +140,7 @@ export function getPluginMcpTools(): PluginMcpToolEntry[] {
     for (const tool of entry.mcpTools) {
       entries.push({
         pluginShortName: shortName,
-        toolName: `server_plugin_${shortName}_${tool.name}`,
+        toolName: `${PLUGIN_TOOL_PREFIX}${shortName}_${tool.name}`,
         tool,
         pluginDir,
       });

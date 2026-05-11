@@ -85,3 +85,10 @@ export type PluginFixHandler = (
   checkId: string,
   ctx: PluginFixContext,
 ) => Promise<PluginFixResult>;
+
+export interface PluginModuleExport {
+  default?: Record<string, unknown> | ((...args: unknown[]) => unknown);
+  handler?: (...args: unknown[]) => unknown;
+  run?: (...args: unknown[]) => unknown;
+  fix?: (...args: unknown[]) => unknown;
+}

@@ -128,21 +128,18 @@ export async function loadPlugins(
         }
       }
 
-      // Path traversal guard for fix handlers
       if (enrichedManifest.fixes) {
         for (const fix of enrichedManifest.fixes) {
           guardHandlerPath(resolvedDir, fix.handler, "fix");
         }
       }
 
-      // Path traversal guard for command handlers
       if (enrichedManifest.commands) {
         for (const cmd of enrichedManifest.commands) {
           guardHandlerPath(resolvedDir, cmd.handler, "command");
         }
       }
 
-      // Path traversal guard for mcpTool handlers
       if (enrichedManifest.mcpTools) {
         for (const tool of enrichedManifest.mcpTools) {
           guardHandlerPath(resolvedDir, tool.handler, "mcpTool");

@@ -1,18 +1,16 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { resolve } from "path";
-import { pathToFileURL } from "url";
 import type { PluginMcpToolEntry } from "../plugin/registry.js";
 import { debugLog } from "../utils/logger.js";
 import { mcpSuccess, mcpError } from "./utils.js";
+import { resolvePluginHandler } from "../plugin/handlerResolver.js";
+import { PLUGIN_TOOL_PREFIX } from "../plugin/sdk/constants.js";
 
-export const CORE_TOOL_PREFIX = "server_plugin_";
+export const CORE_TOOL_PREFIX = PLUGIN_TOOL_PREFIX;
 
-interface PluginModuleExport {
-  default?: Record<string, unknown> | ((...args: unknown[]) => unknown);
-  handler?: (...args: unknown[]) => unknown;
-  run?: (...args: unknown[]) => unknown;
-}
+const defaultSchema = z.object({
+  server: z.string().optional().describe("Server name or IP"),
+});
 
 export function registerPluginMcpTools(
   server: McpServer,
@@ -27,11 +25,6 @@ export function registerPluginMcpTools(
       continue;
     }
 
-    // Default inputSchema — plugin module may override via export
-    const defaultSchema = z.object({
-      server: z.string().optional().describe("Server name or IP"),
-    });
-
     server.registerTool(entry.toolName, {
       description: `[Plugin: ${entry.pluginShortName}] ${entry.tool.description}`,
       inputSchema: defaultSchema,
@@ -44,14 +37,7 @@ export function registerPluginMcpTools(
       },
     }, async (params) => {
       try {
-        const handlerPath = resolve(entry.pluginDir, entry.tool.handler);
-        const handlerUrl = pathToFileURL(handlerPath).href;
-        const mod = (await import(handlerUrl)) as PluginModuleExport;
-        const handler = (typeof mod.default === "function" ? mod.default : mod.default?.handler) ?? mod.handler ?? mod.run;
-        if (typeof handler !== "function") {
-          return mcpError(`Plugin tool handler not found: ${entry.tool.handler}`);
-        }
-        // PluginContext with ssh — spec PLG-CAP-02 requirement
+        const handler = await resolvePluginHandler(entry.pluginDir, entry.tool.handler);
         const result = await handler(params, {
           server: (params as Record<string, unknown>).server as string | undefined,
           logger: {
@@ -63,7 +49,7 @@ export function registerPluginMcpTools(
             return mcpError("SSH not available in MCP context — use server_audit or server_fix for SSH operations");
           },
         });
-        return mcpSuccess(result);
+        return mcpSuccess(result as Record<string, unknown>);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         return mcpError(`Plugin tool error: ${msg}`);
