@@ -17,6 +17,9 @@ export const serverPluginOutputSchema = z.object({
         name: z.string(),
         version: z.string().optional(),
         status: z.string(),
+        checks: z.number().optional(),
+        commandCount: z.number().optional(),
+        mcpToolCount: z.number().optional(),
       })),
       count: z.number(),
     }),
@@ -37,7 +40,14 @@ export async function handleServerPlugin(params: ServerPluginParams) {
     const plugins = listPlugins();
     return mcpSuccess({
       action: "list" as const,
-      plugins,
+      plugins: plugins.map((p) => ({
+        name: p.name,
+        version: p.version,
+        status: p.status,
+        checks: p.checks,
+        commandCount: p.commands?.length ?? 0,
+        mcpToolCount: p.mcpTools?.length ?? 0,
+      })),
       count: plugins.length,
     });
   }

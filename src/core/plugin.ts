@@ -109,6 +109,8 @@ export interface PluginListEntry {
   prefix: string;
   checks: number;
   status: "loaded" | "failed";
+  commands?: { name: string }[];
+  mcpTools?: { name: string }[];
   reason?: string;
 }
 
@@ -119,6 +121,8 @@ export function listPlugins(): PluginListEntry[] {
     prefix: entry.manifest.checkPrefix,
     checks: entry.checks.length,
     status: entry.status,
+    commands: entry.commands ?? [],
+    mcpTools: entry.mcpTools ?? [],
     ...(entry.reason ? { reason: entry.reason } : {}),
   }));
 }

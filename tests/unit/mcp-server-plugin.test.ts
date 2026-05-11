@@ -35,6 +35,24 @@ describe("server_plugin MCP tool", () => {
       expect(data.plugins[0].checks).toBe(2);
       expect(data.count).toBe(1);
     });
+
+    it("includes commandCount and mcpToolCount in list response", async () => {
+      mockedListPlugins.mockReturnValue([
+        {
+          name: "kastell-plugin-auditor",
+          version: "1.0.0",
+          prefix: "AUD",
+          checks: 2,
+          status: "loaded",
+          commands: [{ name: "audit-fix" }],
+          mcpTools: [{ name: "audit-check" }],
+        },
+      ]);
+      const result = await handleServerPlugin({ action: "list" });
+      const data = JSON.parse(result.content[0].text);
+      expect(data.plugins[0]).toHaveProperty("commandCount", 1);
+      expect(data.plugins[0]).toHaveProperty("mcpToolCount", 1);
+    });
   });
 
   describe("validate action", () => {
