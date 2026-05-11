@@ -2,7 +2,7 @@ import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { ValidationError } from "../utils/errors.js";
 import { secureWriteFileSync, secureMkdirSync } from "../utils/secureWrite.js";
-import { KASTELL_DIR } from "../utils/paths.js";
+import { KASTELL_DIR, PLUGINS_NODE_MODULES } from "../utils/paths.js";
 import type { PluginManifest, PluginCheck, PluginCommand, PluginMcpTool, PluginFix } from "./sdk/types.js";
 import { debugLog } from "../utils/logger.js";
 
@@ -98,6 +98,54 @@ export function mapRegistryPlugins<T>(
     results.push(callback(name, entry));
   }
   return results;
+}
+
+export interface PluginCommandEntry {
+  pluginShortName: string;
+  command: PluginCommand;
+  pluginDir: string;
+}
+
+export interface PluginMcpToolEntry {
+  pluginShortName: string;
+  toolName: string;
+  tool: PluginMcpTool;
+  pluginDir: string;
+}
+
+function getShortName(pluginName: string): string {
+  return pluginName.replace("kastell-plugin-", "");
+}
+
+export function getPluginCommands(): PluginCommandEntry[] {
+  const entries: PluginCommandEntry[] = [];
+  for (const [, entry] of PLUGIN_REGISTRY) {
+    if (entry.status !== "loaded" || !entry.commands?.length) continue;
+    const shortName = getShortName(entry.manifest.name);
+    const pluginDir = join(PLUGINS_NODE_MODULES, entry.manifest.name);
+    for (const cmd of entry.commands) {
+      entries.push({ pluginShortName: shortName, command: cmd, pluginDir });
+    }
+  }
+  return entries;
+}
+
+export function getPluginMcpTools(): PluginMcpToolEntry[] {
+  const entries: PluginMcpToolEntry[] = [];
+  for (const [, entry] of PLUGIN_REGISTRY) {
+    if (entry.status !== "loaded" || !entry.mcpTools?.length) continue;
+    const shortName = getShortName(entry.manifest.name);
+    const pluginDir = join(PLUGINS_NODE_MODULES, entry.manifest.name);
+    for (const tool of entry.mcpTools) {
+      entries.push({
+        pluginShortName: shortName,
+        toolName: `server_plugin_${shortName}_${tool.name}`,
+        tool,
+        pluginDir,
+      });
+    }
+  }
+  return entries;
 }
 
 export function clearPluginRegistry(): void {
