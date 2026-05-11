@@ -19,4 +19,12 @@ const checks = [
   },
 ];
 
-module.exports = { checks };
+const commands = [
+  { name: "analyze", description: "Analyze audit results", handler: "./commands/analyze.js" },
+];
+
+const mcpTools = [
+  { name: "report", description: "Generate audit summary report", handler: "./mcp/report.js" },
+];
+
+module.exports = { checks, commands, mcpTools };
