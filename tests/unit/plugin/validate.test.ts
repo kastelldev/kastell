@@ -261,4 +261,177 @@ describe("validateManifest", () => {
         .toThrow(ValidationError);
     });
   });
+
+  describe("command schema (separate from handler)", () => {
+    it("accepts valid command with all fields", () => {
+      const result = validateManifest({
+        ...VALID_MANIFEST,
+        capabilities: ["command"],
+        commands: [{ name: "scan", description: "Run scan", handler: "./cmd/scan.js" }],
+      });
+      expect(result.commands).toHaveLength(1);
+    });
+
+    it("rejects command with missing required field", () => {
+      expect(() =>
+        validateManifest({
+          ...VALID_MANIFEST,
+          capabilities: ["command"],
+          commands: [{ name: "scan", handler: "./cmd/scan.js" } as Record<string, unknown>],
+        }),
+      ).toThrow(ValidationError);
+    });
+
+    it("rejects command with empty name", () => {
+      expect(() =>
+        validateManifest({
+          ...VALID_MANIFEST,
+          capabilities: ["command"],
+          commands: [{ name: "", description: "Bad", handler: "./cmd/scan.js" }],
+        }),
+      ).toThrow(ValidationError);
+    });
+  });
+
+  describe("mcpTool schema (separate from handler)", () => {
+    it("accepts valid mcpTool with all fields", () => {
+      const result = validateManifest({
+        ...VALID_MANIFEST,
+        capabilities: ["mcp-tool"],
+        mcpTools: [{ name: "analyze", description: "Analyze server", handler: "./mcp/analyze.js" }],
+      });
+      expect(result.mcpTools).toHaveLength(1);
+    });
+
+    it("rejects mcpTool with missing required field", () => {
+      expect(() =>
+        validateManifest({
+          ...VALID_MANIFEST,
+          capabilities: ["mcp-tool"],
+          mcpTools: [{ name: "analyze", handler: "./mcp/analyze.js" } as Record<string, unknown>],
+        }),
+      ).toThrow(ValidationError);
+    });
+
+    it("rejects mcpTool with empty description", () => {
+      expect(() =>
+        validateManifest({
+          ...VALID_MANIFEST,
+          capabilities: ["mcp-tool"],
+          mcpTools: [{ name: "analyze", description: "", handler: "./mcp/analyze.js" }],
+        }),
+      ).toThrow(ValidationError);
+    });
+  });
+
+  describe("duplicate name validation", () => {
+    it("rejects duplicate command names", () => {
+      expect(() =>
+        validateManifest({
+          ...VALID_MANIFEST,
+          capabilities: ["command"],
+          commands: [
+            { name: "scan", description: "Run scan", handler: "./cmd/scan.js" },
+            { name: "scan", description: "Run scan again", handler: "./cmd/scan2.js" },
+          ],
+        }),
+      ).toThrow(ValidationError);
+    });
+
+    it("rejects duplicate mcpTool names", () => {
+      expect(() =>
+        validateManifest({
+          ...VALID_MANIFEST,
+          capabilities: ["mcp-tool"],
+          mcpTools: [
+            { name: "analyze", description: "Analyze", handler: "./mcp/analyze.js" },
+            { name: "analyze", description: "Analyze again", handler: "./mcp/analyze2.js" },
+          ],
+        }),
+      ).toThrow(ValidationError);
+    });
+
+    it("rejects duplicate fix checkIds", () => {
+      expect(() =>
+        validateManifest({
+          ...VALID_MANIFEST,
+          capabilities: ["fix"],
+          fixes: [
+            { checkId: "WP-001", tier: "SAFE", handler: "./fixes/fix001.js" },
+            { checkId: "WP-001", tier: "GUARDED", handler: "./fixes/fix001b.js" },
+          ],
+        }),
+      ).toThrow(ValidationError);
+    });
+
+    it("accepts same name in command and mcpTool (different capabilities)", () => {
+      const result = validateManifest({
+        ...VALID_MANIFEST,
+        capabilities: ["command", "mcp-tool"],
+        commands: [{ name: "scan", description: "Run scan", handler: "./cmd/scan.js" }],
+        mcpTools: [{ name: "scan", description: "Scan via MCP", handler: "./mcp/scan.js" }],
+      });
+      expect(result.commands).toHaveLength(1);
+      expect(result.mcpTools).toHaveLength(1);
+    });
+  });
+
+  describe("capability-field consistency", () => {
+    it("rejects commands field without command capability", () => {
+      expect(() =>
+        validateManifest({
+          ...VALID_MANIFEST,
+          capabilities: ["audit"],
+          commands: [{ name: "scan", description: "Run scan", handler: "./cmd/scan.js" }],
+        }),
+      ).toThrow(ValidationError);
+    });
+
+    it("rejects mcpTools field without mcp-tool capability", () => {
+      expect(() =>
+        validateManifest({
+          ...VALID_MANIFEST,
+          capabilities: ["audit"],
+          mcpTools: [{ name: "analyze", description: "Analyze", handler: "./mcp/analyze.js" }],
+        }),
+      ).toThrow(ValidationError);
+    });
+
+    it("rejects fixes field without fix capability", () => {
+      expect(() =>
+        validateManifest({
+          ...VALID_MANIFEST,
+          capabilities: ["audit"],
+          fixes: [{ checkId: "WP-001", tier: "SAFE", handler: "./fixes/fix001.js" }],
+        }),
+      ).toThrow(ValidationError);
+    });
+
+    it("accepts commands field with command capability", () => {
+      const result = validateManifest({
+        ...VALID_MANIFEST,
+        capabilities: ["command"],
+        commands: [{ name: "scan", description: "Run scan", handler: "./cmd/scan.js" }],
+      });
+      expect(result.commands).toHaveLength(1);
+    });
+
+    it("accepts mcpTools field with mcp-tool capability", () => {
+      const result = validateManifest({
+        ...VALID_MANIFEST,
+        capabilities: ["mcp-tool"],
+        mcpTools: [{ name: "analyze", description: "Analyze", handler: "./mcp/analyze.js" }],
+      });
+      expect(result.mcpTools).toHaveLength(1);
+    });
+
+    it("accepts fixes field with fix capability", () => {
+      const result = validateManifest({
+        ...VALID_MANIFEST,
+        capabilities: ["fix"],
+        fixes: [{ checkId: "WP-001", tier: "SAFE", handler: "./fixes/fix001.js" }],
+      });
+      expect(result.fixes).toHaveLength(1);
+    });
+  });
 });

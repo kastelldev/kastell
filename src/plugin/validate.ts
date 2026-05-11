@@ -7,14 +7,17 @@ import { PLUGIN_NAME_PATTERN } from "./sdk/constants.js";
 
 const HANDLER_PATH_PATTERN = /^\.\/(?!.*\.\.)(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]+\.js$/;
 
-const PluginHandlerSchema = z.object({
+const PluginCommandSchema = z.object({
   name: z.string().min(1),
   description: z.string().min(1),
   handler: z.string().regex(HANDLER_PATH_PATTERN, "Handler must be relative ./path.js"),
 });
 
-const PluginCommandSchema = PluginHandlerSchema;
-const PluginMcpToolSchema = PluginHandlerSchema;
+const PluginMcpToolSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().min(1),
+  handler: z.string().regex(HANDLER_PATH_PATTERN, "Handler must be relative ./path.js"),
+});
 
 const PluginFixSchema = z.object({
   checkId: z.string().min(1),
@@ -65,6 +68,39 @@ export function validateManifest(manifest: unknown): PluginManifest {
         );
       }
     }
+  }
+
+  // Duplicate name validation
+  if (parsed.data.commands) {
+    const names = parsed.data.commands.map((c) => c.name);
+    if (names.length !== new Set(names).size) {
+      throw new ValidationError("Duplicate command names are not allowed");
+    }
+  }
+
+  if (parsed.data.mcpTools) {
+    const names = parsed.data.mcpTools.map((m) => m.name);
+    if (names.length !== new Set(names).size) {
+      throw new ValidationError("Duplicate mcpTool names are not allowed");
+    }
+  }
+
+  if (parsed.data.fixes) {
+    const checkIds = parsed.data.fixes.map((f) => f.checkId);
+    if (checkIds.length !== new Set(checkIds).size) {
+      throw new ValidationError("Duplicate fix checkIds are not allowed");
+    }
+  }
+
+  // Capability-field consistency validation
+  if (parsed.data.commands && !parsed.data.capabilities.includes("command")) {
+    throw new ValidationError("commands field requires 'command' capability");
+  }
+  if (parsed.data.mcpTools && !parsed.data.capabilities.includes("mcp-tool")) {
+    throw new ValidationError("mcpTools field requires 'mcp-tool' capability");
+  }
+  if (parsed.data.fixes && !parsed.data.capabilities.includes("fix")) {
+    throw new ValidationError("fixes field requires 'fix' capability");
   }
 
   return parsed.data;
