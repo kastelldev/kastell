@@ -1,8 +1,14 @@
+jest.mock("../../../src/utils/version.js", () => ({ KASTELL_VERSION: "2.2.0" }));
+
 import type {
   PluginManifest,
   PluginCheck,
   PluginSeverity,
   PluginFixTier,
+  PluginContext,
+  PluginCommandHandler,
+  PluginMcpToolHandler,
+  PluginMcpTool,
 } from "../../../src/plugin/sdk/types.js";
 
 describe("Plugin SDK Types", () => {
@@ -65,5 +71,78 @@ describe("Plugin SDK Types", () => {
     expect(check.fixCommand).toBeUndefined();
     expect(check.explain).toBeUndefined();
     expect(check.complianceRefs).toBeUndefined();
+  });
+});
+
+describe("PluginContext type", () => {
+  it("has ssh, logger, and optional server/ip", () => {
+    const ctx: PluginContext = {
+      server: "test-server",
+      ip: "1.2.3.4",
+      ssh: async () => ({ stdout: "", stderr: "", code: 0 }),
+      logger: { info: () => {}, warn: () => {}, error: () => {} },
+    };
+    expect(ctx.ssh).toBeDefined();
+    expect(ctx.logger).toBeDefined();
+    expect(ctx.server).toBe("test-server");
+    expect(ctx.ip).toBe("1.2.3.4");
+  });
+
+  it("server and ip are optional", () => {
+    const ctx: PluginContext = {
+      ssh: async () => ({ stdout: "", stderr: "", code: 0 }),
+      logger: { info: () => {}, warn: () => {}, error: () => {} },
+    };
+    expect(ctx.server).toBeUndefined();
+    expect(ctx.ip).toBeUndefined();
+  });
+});
+
+describe("PluginCommandHandler type", () => {
+  it("handler receives args and context with ssh", () => {
+    const handler: PluginCommandHandler = async (args, ctx) => {
+      ctx.logger.info(`running on ${ctx.server}`);
+      await ctx.ssh("echo test");
+    };
+    expect(typeof handler).toBe("function");
+  });
+});
+
+describe("PluginMcpToolHandler type", () => {
+  it("handler returns content array with text type", () => {
+    const handler: PluginMcpToolHandler = async (args, ctx) => {
+      const result = await ctx.ssh("echo test");
+      return { content: [{ type: "text" as const, text: result.stdout }] };
+    };
+    expect(typeof handler).toBe("function");
+  });
+});
+
+describe("PluginMcpTool type", () => {
+  it("accepts tool without inputSchema", () => {
+    const tool: PluginMcpTool = {
+      name: "my-tool",
+      description: "A tool",
+      handler: "handleMyTool",
+    };
+    expect(tool.inputSchema).toBeUndefined();
+  });
+
+  it("accepts tool with optional inputSchema", () => {
+    const tool: PluginMcpTool = {
+      name: "my-tool",
+      description: "A tool",
+      handler: "handleMyTool",
+      inputSchema: {
+        type: "object",
+        properties: {
+          server: { type: "string" },
+          force: { type: "boolean" },
+        },
+        required: ["server"],
+      },
+    };
+    expect(tool.inputSchema).toBeDefined();
+    expect(tool.inputSchema!.type).toBe("object");
   });
 });
