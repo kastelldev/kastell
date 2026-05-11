@@ -255,7 +255,99 @@ describe("plugin/loader", () => {
     expect(result.errors[0]).toContain("escapes plugin directory");
   });
 
-  describe("loader capability expansion", () => {
+  describe("command handler path traversal guard", () => {
+  it("rejects command handler escaping plugin directory", async () => {
+    const safeManifest = {
+      name: "kastell-plugin-evil",
+      version: "1.0.0",
+      apiVersion: "1",
+      kastell: ">=2.2.0",
+      capabilities: ["audit", "command"],
+      checkPrefix: "EVL",
+      entry: "index.js",
+      commands: [{ name: "hack", description: "evil", handler: "./cmd/hack.js" }],
+    };
+    (existsSync as jest.Mock).mockReturnValue(true);
+    (readdirSync as jest.Mock).mockReturnValue([
+      { name: "kastell-plugin-evil", isDirectory: () => true },
+    ]);
+    (readFileSync as jest.Mock).mockReturnValue(JSON.stringify(safeManifest));
+
+    const mockImporter = jest.fn<(path: string) => Promise<unknown>>();
+    mockImporter.mockResolvedValue({
+      checks: [],
+      commands: [{ name: "hack", description: "evil", handler: "../../../etc/passwd.js" }],
+    });
+
+    const result = await loadPlugins({ importer: mockImporter });
+    expect(result.errors.length).toBe(1);
+    expect(result.errors[0]).toContain("command handler escapes plugin directory");
+  });
+});
+
+describe("mcpTool handler path traversal guard", () => {
+  it("rejects mcpTool handler escaping plugin directory", async () => {
+    const safeManifest = {
+      name: "kastell-plugin-evil2",
+      version: "1.0.0",
+      apiVersion: "1",
+      kastell: ">=2.2.0",
+      capabilities: ["audit", "mcp-tool"],
+      checkPrefix: "EVIL",
+      entry: "index.js",
+      mcpTools: [{ name: "hack", description: "evil", handler: "./tools/hack.js" }],
+    };
+    (existsSync as jest.Mock).mockReturnValue(true);
+    (readdirSync as jest.Mock).mockReturnValue([
+      { name: "kastell-plugin-evil2", isDirectory: () => true },
+    ]);
+    (readFileSync as jest.Mock).mockReturnValue(JSON.stringify(safeManifest));
+
+    const mockImporter = jest.fn<(path: string) => Promise<unknown>>();
+    mockImporter.mockResolvedValue({
+      checks: [],
+      mcpTools: [{ name: "hack", description: "evil", handler: "../../escape.js" }],
+    });
+
+    const result = await loadPlugins({ importer: mockImporter });
+    expect(result.errors.length).toBe(1);
+    expect(result.errors[0]).toContain("mcpTool handler escapes plugin directory");
+  });
+});
+
+describe("loadPlugins re-entry guard", () => {
+  it("warns on re-entry but does not crash", async () => {
+    const validManifestJson = {
+      name: "kastell-plugin-ok",
+      version: "1.0.0",
+      apiVersion: "1",
+      kastell: ">=2.2.0",
+      capabilities: ["audit"],
+      checkPrefix: "OK",
+      entry: "index.js",
+    };
+    (existsSync as jest.Mock).mockReturnValue(true);
+    (readdirSync as jest.Mock).mockReturnValue([
+      { name: "kastell-plugin-ok", isDirectory: () => true },
+    ]);
+    (readFileSync as jest.Mock).mockReturnValue(JSON.stringify(validManifestJson));
+
+    const mockImporter = jest.fn<(path: string) => Promise<unknown>>();
+    mockImporter.mockResolvedValue({ checks: [] });
+
+    const result1 = await loadPlugins({ importer: mockImporter });
+    expect(result1.loaded.length).toBe(1);
+
+    // Re-entry — should work (clearPluginRegistry handles it)
+    const result2 = await loadPlugins({ importer: mockImporter });
+    expect(result2.loaded.length).toBe(1);
+    // Registry should have exactly 1 entry, not duplicated
+    const registry = getPluginRegistry();
+    expect(registry.size).toBe(1);
+  });
+});
+
+describe("loader capability expansion", () => {
     it("reads module.commands when capability includes command", async () => {
       const mockCommands = [{ name: "scan", description: "Scan", handler: "./cmd/scan.js" }];
       const manifestWithCommand = {
