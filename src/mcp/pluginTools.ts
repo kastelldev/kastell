@@ -9,9 +9,9 @@ import { mcpSuccess, mcpError } from "./utils.js";
 export const CORE_TOOL_PREFIX = "server_plugin_";
 
 interface PluginModuleExport {
-  default?: unknown;
-  handler?: unknown;
-  run?: unknown;
+  default?: Record<string, unknown> | ((...args: unknown[]) => unknown);
+  handler?: (...args: unknown[]) => unknown;
+  run?: (...args: unknown[]) => unknown;
 }
 
 export function registerPluginMcpTools(
@@ -47,7 +47,7 @@ export function registerPluginMcpTools(
         const handlerPath = resolve(entry.pluginDir, entry.tool.handler);
         const handlerUrl = pathToFileURL(handlerPath).href;
         const mod = (await import(handlerUrl)) as PluginModuleExport;
-        const handler = mod.default ?? mod.handler ?? mod.run;
+        const handler = (typeof mod.default === "function" ? mod.default : mod.default?.handler) ?? mod.handler ?? mod.run;
         if (typeof handler !== "function") {
           return mcpError(`Plugin tool handler not found: ${entry.tool.handler}`);
         }

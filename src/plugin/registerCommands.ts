@@ -39,7 +39,7 @@ export function registerPluginCommands(
           const handlerPath = resolve(entry.pluginDir, entry.command.handler);
           const handlerUrl = pathToFileURL(handlerPath).href;
           const mod = await import(handlerUrl);
-          const handler = mod.default ?? mod.handler ?? mod.run;
+          const handler = (typeof mod.default === "function" ? mod.default : mod.default?.handler) ?? mod.handler ?? mod.run;
           if (typeof handler !== "function") {
             throw new Error(`Plugin command handler not found: ${entry.command.handler}`);
           }

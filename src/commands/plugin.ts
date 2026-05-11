@@ -72,8 +72,10 @@ export function pluginListCommand(): void {
   const maxVer = Math.max(10, ...plugins.map((p) => p.version.length)) + 2;
   const maxPrefix = Math.max(8, ...plugins.map((p) => p.prefix.length)) + 2;
   const maxChecks = 8;
+  const maxCmds = 6;
+  const maxTools = 6;
 
-  const header = `${"Name".padEnd(maxName)} ${"Version".padEnd(maxVer)} ${"Prefix".padEnd(maxPrefix)} ${"Checks".padEnd(maxChecks)} Status`;
+  const header = `${"Name".padEnd(maxName)} ${"Version".padEnd(maxVer)} ${"Prefix".padEnd(maxPrefix)} ${"Checks".padEnd(maxChecks)} ${"Cmds".padEnd(maxCmds)} ${"Tools".padEnd(maxTools)} Status`;
   logger.info(chalk.bold(header));
   logger.info("─".repeat(header.length));
 
@@ -82,8 +84,10 @@ export function pluginListCommand(): void {
       p.status === "loaded"
         ? chalk.green(p.status)
         : chalk.red(`${p.status} (${p.reason ?? "unknown"})`);
+    const cmds = String(p.commands?.length ?? 0);
+    const tools = String(p.mcpTools?.length ?? 0);
     logger.info(
-      `${p.name.padEnd(maxName)} ${p.version.padEnd(maxVer)} ${p.prefix.padEnd(maxPrefix)} ${String(p.checks).padEnd(maxChecks)} ${status}`,
+      `${p.name.padEnd(maxName)} ${p.version.padEnd(maxVer)} ${p.prefix.padEnd(maxPrefix)} ${String(p.checks).padEnd(maxChecks)} ${cmds.padEnd(maxCmds)} ${tools.padEnd(maxTools)} ${status}`,
     );
   }
 
