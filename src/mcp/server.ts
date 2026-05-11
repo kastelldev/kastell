@@ -19,10 +19,13 @@ import { serverFixSchema, handleServerFix, serverFixOutputSchema } from "./tools
 import { serverExplainSchema, serverExplainHandler, serverExplainOutputSchema } from "./tools/serverExplain.js";
 import { serverCompareSchema, handleServerCompare, serverCompareOutputSchema } from "./tools/serverCompare.js";
 import { serverPluginSchema, handleServerPlugin, serverPluginOutputSchema } from "./tools/serverPlugin.js";
+import { getPluginMcpTools } from "../plugin/registry.js";
+import { registerPluginMcpTools } from "./pluginTools.js";
 import { setMcpVersion } from "./utils.js";
 import { readCheckCatalog, readCheckDetail } from "./resources/checks.js";
 import { readServerList, readServerAudit } from "./resources/servers.js";
 import { hardenPrompt, diagnosePrompt, setupPrompt } from "./prompts/workflows.js";
+import { debugLog } from "../utils/logger.js";
 
 export async function createMcpServer(): Promise<McpServer> {
   await loadPlugins();
@@ -328,6 +331,14 @@ Bare servers: use service 'system' or 'docker' for logs (not 'coolify'). server_
   }, async (params) => {
     return handleServerPlugin(params);
   });
+
+  // ─── Plugin Tools ────────────────────────────────────────────────────────
+
+  const pluginMcpTools = getPluginMcpTools();
+  if (pluginMcpTools.length > 0) {
+    const toolCount = registerPluginMcpTools(server, pluginMcpTools);
+    debugLog?.(`registered ${toolCount} plugin MCP tools`);
+  }
 
   // ─── Resources ────────────────────────────────────────────────────────────
 
