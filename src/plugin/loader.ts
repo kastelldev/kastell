@@ -97,7 +97,9 @@ export async function loadPlugins(
         throw new Error(`${dir.name}: import failed — ${msg}`, { cause: err });
       }
 
-      const moduleObj = mod as Record<string, unknown>;
+      const ns = mod as Record<string, unknown>;
+      // ESM CJS interop: namespace has .default = module.exports, plus .module.exports = module.exports
+      const moduleObj = (ns.default ?? ns["module.exports"] ?? ns) as Record<string, unknown>;
       if (!Array.isArray(moduleObj.checks)) {
         registerFailedPlugin(
           manifest,
