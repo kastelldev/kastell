@@ -51,6 +51,9 @@ function splitSections(stdout: string): ParsedSection[] {
       const header = line.slice(SECTION_PREFIX.length, line.length - 3);
       const colonIdx = header.lastIndexOf(":");
       if (colonIdx === -1) {
+        if (current) {
+          sections.push({ pluginName: current.pluginName, checkId: current.checkId, body: current.bodyLines.join("\n").trim() });
+        }
         current = null;
         continue;
       }
@@ -125,8 +128,12 @@ export function parsePluginBatchOutput(
       injectFixMetadata(auditCheck, fixMap, entry.manifest.name);
     }
 
-    if (!byPlugin.has(section.pluginName)) byPlugin.set(section.pluginName, []);
-    byPlugin.get(section.pluginName)!.push(auditCheck);
+    let pluginChecks = byPlugin.get(section.pluginName);
+    if (!pluginChecks) {
+      pluginChecks = [];
+      byPlugin.set(section.pluginName, pluginChecks);
+    }
+    pluginChecks.push(auditCheck);
   }
 
   // Fill in "Unable to determine" for every loaded plugin's checks that produced no section.

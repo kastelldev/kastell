@@ -79,9 +79,6 @@ export async function runAudit(
     const vpsType = extractVpsType(batchOutputs);
     const { categories: adjustedCategories, adjustedCount } = applyVpsAdjustments(categories, vpsType);
 
-    // Plugin batch is the 4th tier (only built when registry has loaded plugins with checks).
-    // Use batches.length, NOT truthiness of batchOutputs[3] — batch failure pushes "" into batchOutputs[3]
-    // and "" is falsy in JS, which would skip the parser exactly when we need it most (connectionError path).
     const pluginCategories = batches.length === 4
       ? parsePluginBatchOutput(batchOutputs[3] ?? "", pluginRegistry)
       : [];
