@@ -1,18 +1,18 @@
 name: Mutation Testing
 
 on:
-  # Nightly incremental — cache güncel kalır, 7 gün expire olmaz
-  schedule:
-    - cron: '23 2 * * *'  # 02:23 UTC (05:23 TR) her gece
-  # Her push'ta incremental — sadece değişen mutantlar
-  push:
-    branches: [main]
-    paths:
-      - 'src/core/**/*.ts'
-      - 'tests/**/*.test.ts'
-      - 'stryker.config.mjs'
-      - 'jest.stryker.cjs'
-  # Manuel tetikleme
+  # NOTE (2026-05-15): push + schedule tetikleyicileri geçici olarak kapatıldı.
+  # 6 saatlik timeout yetmiyor, her run fail oluyor. Cache stratejisi revize
+  # edilince (incremental seed + concurrency artışı) yeniden açılacak.
+  # schedule:
+  #   - cron: '23 2 * * *'  # 02:23 UTC (05:23 TR) her gece
+  # push:
+  #   branches: [main]
+  #   paths:
+  #     - 'src/core/**/*.ts'
+  #     - 'tests/**/*.test.ts'
+  #     - 'stryker.config.mjs'
+  #     - 'jest.stryker.cjs'
   workflow_dispatch:
     inputs:
       concurrency:
