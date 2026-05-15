@@ -2,7 +2,7 @@ import { z } from "zod";
 import semver from "semver";
 import { ValidationError } from "../utils/errors.js";
 import { KASTELL_VERSION } from "../utils/version.js";
-import type { PluginManifest } from "./sdk/types.js";
+import type { PluginManifest, PluginCheck } from "./sdk/types.js";
 import { PLUGIN_NAME_PATTERN } from "./sdk/constants.js";
 
 const HANDLER_PATH_PATTERN = /^\.\/(?!.*\.\.)(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]+\.js$/;
@@ -133,11 +133,11 @@ export function validateManifest(manifest: unknown): PluginManifest {
   return parsed.data;
 }
 
-export function validateChecks(checks: unknown, checkPrefix: string): import("./sdk/types.js").PluginCheck[] {
+export function validateChecks(checks: unknown, checkPrefix: string): PluginCheck[] {
   if (!Array.isArray(checks)) {
     throw new ValidationError("Plugin checks must be an array");
   }
-  const parsed: import("./sdk/types.js").PluginCheck[] = [];
+  const parsed: PluginCheck[] = [];
   const seen = new Set<string>();
   for (let i = 0; i < checks.length; i++) {
     const result = PluginCheckSchema.safeParse(checks[i]);
@@ -154,7 +154,7 @@ export function validateChecks(checks: unknown, checkPrefix: string): import("./
       throw new ValidationError(`Duplicate check id "${check.id}" within plugin`);
     }
     seen.add(check.id);
-    parsed.push(check as import("./sdk/types.js").PluginCheck);
+    parsed.push(check as PluginCheck);
   }
   return parsed;
 }

@@ -1,3 +1,7 @@
+jest.mock("../../src/utils/version.js", () => ({
+  KASTELL_VERSION: "2.2.0",
+}));
+
 import { validateChecks } from "../../src/plugin/validate.js";
 import { ValidationError } from "../../src/utils/errors.js";
 

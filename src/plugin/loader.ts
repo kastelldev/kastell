@@ -3,7 +3,7 @@ import { existsSync, readdirSync, readFileSync } from "fs";
 import { join, resolve, sep } from "path";
 import { pathToFileURL } from "url";
 import { PLUGINS_NODE_MODULES } from "../utils/paths.js";
-import { validateManifest } from "./validate.js";
+import { validateManifest, validateChecks } from "./validate.js";
 import { extractReason } from "../utils/errors.js";
 import {
   registerPlugin,
@@ -108,7 +108,14 @@ export async function loadPlugins(
         );
       }
 
-      const checks = moduleObj.checks as PluginCheck[];
+      let checks: PluginCheck[];
+      try {
+        checks = validateChecks(moduleObj.checks, manifest.checkPrefix);
+      } catch (err: unknown) {
+        const msg = extractReason(err);
+        registerFailedPlugin(manifest, msg);
+        throw new Error(`${dir.name}: check validation failed — ${msg}`, { cause: err });
+      }
 
       const enrichedManifest: PluginManifest = {
         ...manifest,
