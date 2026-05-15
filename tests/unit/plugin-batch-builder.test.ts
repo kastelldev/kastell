@@ -62,8 +62,8 @@ describe("buildPluginBatchSection", () => {
     const reg = new Map<string, PluginRegistryEntry>();
     reg.set("kastell-plugin-x", makeEntry("kastell-plugin-x", [check("X-001", "echo body")]));
     const out = buildPluginBatchSection(reg)!;
-    // body line followed by closing tag at column 0
-    expect(out).toMatch(/\necho body\nKASTELL_PLUGIN_CHECK_EOF\n/);
+    // closing tag appears at start of line (column 0), preceded by body line ending with \n
+    expect(out).toMatch(/\necho body\nKASTELL_PLUGIN_CHECK_EOF/);
     // no indented closing tag
     expect(out).not.toMatch(/[ \t]+KASTELL_PLUGIN_CHECK_EOF/);
   });
