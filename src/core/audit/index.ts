@@ -12,12 +12,11 @@ import { COMPLIANCE_MAP } from "./compliance/mapper.js";
 import { sshExec } from "../../utils/ssh.js";
 import { raw } from "../../utils/sshCommand.js";
 import { getErrorMessage } from "../../utils/errorMapper.js";
-import { debugLog } from "../../utils/logger.js";
 import { calculateQuickWins } from "./quickwin.js";
 import { extractVpsType, applyVpsAdjustments } from "./vps.js";
 import { AUDIT_VERSION } from "../../constants.js";
-import { getPluginRegistry, getShortName } from "../../plugin/registry.js";
-import { executePluginChecks } from "./pluginAudit.js";
+import { getPluginRegistry } from "../../plugin/registry.js";
+import { parsePluginBatchOutput } from "./pluginAudit.js";
 
 /**
  * Detect categories where all checks have "not installed" or "N/A" currentValue.
@@ -51,7 +50,8 @@ export async function runAudit(
   platform: string,
 ): Promise<KastellResult<AuditResult>> {
   try {
-    const batches = buildAuditBatchCommands(platform);
+    const pluginRegistry = getPluginRegistry();
+    const batches = buildAuditBatchCommands(platform, pluginRegistry);
     const batchOutputs: string[] = [];
     const batchErrors: Array<{ tier: string; error: string }> = [];
 
@@ -71,38 +71,20 @@ export async function runAudit(
       }
     }
 
-    // Parse all batch outputs through the check registry
-    const rawCategories = parseAllChecks(batchOutputs, platform);
+    // First 3 batches are built-in tiers; 4th (if present) is the plugin batch.
+    const rawCategories = parseAllChecks(batchOutputs.slice(0, 3), platform);
     const categories = mergeComplianceRefs(rawCategories, COMPLIANCE_MAP);
 
     // VPS detection: extract type from batch outputs, adjust severity before scoring
     const vpsType = extractVpsType(batchOutputs);
     const { categories: adjustedCategories, adjustedCount } = applyVpsAdjustments(categories, vpsType);
 
-    // Plugin checks run after VPS adjustments — plugins manage their own severity
-    const pluginRegistry = getPluginRegistry();
-    const pluginPromises: Array<Promise<void>> = [];
-    for (const [, entry] of pluginRegistry) {
-      if (entry.status === "loaded" && entry.checks.length > 0) {
-        pluginPromises.push(
-          executePluginChecks(
-            ip,
-            `Plugin: ${getShortName(entry.manifest.name)}`,
-            entry.checks,
-            entry.manifest.name,
-            entry.manifest.fixes,
-          ).then((pluginCategory) => {
-            if (pluginCategory.checks.length > 0) {
-              adjustedCategories.push(pluginCategory);
-            }
-          }).catch((error: unknown) => {
-            const msg = error instanceof Error ? error.message : String(error);
-            debugLog?.(`Plugin ${entry.manifest.name} audit failed: ${msg}`);
-          })
-        );
-      }
+    const pluginCategories = batches.length === 4
+      ? parsePluginBatchOutput(batchOutputs[3] ?? "", pluginRegistry)
+      : [];
+    for (const cat of pluginCategories) {
+      adjustedCategories.push(cat);
     }
-    await Promise.all(pluginPromises);
 
     // Mark categories from failed batches as connectionError.
     // Uses check-content heuristic (all checks "Unable to determine" or empty) rather than

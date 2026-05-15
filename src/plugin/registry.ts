@@ -17,6 +17,8 @@ export interface PluginRegistryEntry {
   commands?: PluginCommand[];
   mcpTools?: PluginMcpTool[];
   fixes?: PluginFix[];
+  checksById: ReadonlyMap<string, PluginCheck>;
+  fixesByCheckId: ReadonlyMap<string, PluginFix>;
 }
 
 const PLUGIN_REGISTRY: Map<string, PluginRegistryEntry> = new Map();
@@ -58,6 +60,14 @@ export function registerPlugin(
     usedCheckIds.add(check.id);
   }
 
+  const checksById = new Map<string, PluginCheck>();
+  for (const check of checks) checksById.set(check.id, check);
+
+  const fixesByCheckId = new Map<string, PluginFix>();
+  if (manifest.fixes) {
+    for (const fix of manifest.fixes) fixesByCheckId.set(fix.checkId, fix);
+  }
+
   PLUGIN_REGISTRY.set(manifest.name, {
     manifest,
     checks,
@@ -65,6 +75,8 @@ export function registerPlugin(
     commands: manifest.commands,
     mcpTools: manifest.mcpTools,
     fixes: manifest.fixes,
+    checksById,
+    fixesByCheckId,
   });
 }
 
@@ -77,6 +89,8 @@ export function registerFailedPlugin(
     checks: [],
     status: "failed",
     reason,
+    checksById: new Map(),
+    fixesByCheckId: new Map(),
   });
 }
 

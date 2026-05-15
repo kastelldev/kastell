@@ -1936,8 +1936,12 @@ describe("[MUTATION-KILLER] BATCH_TIMEOUTS — exact keys and values", () => {
     expect(BATCH_TIMEOUTS["slow"]).toBe(120_000);
   });
 
-  it("[MUTATION-KILLER] has exactly 3 keys", () => {
-    expect(Object.keys(BATCH_TIMEOUTS)).toHaveLength(3);
+  it("[MUTATION-KILLER] has exactly 4 keys", () => {
+    expect(Object.keys(BATCH_TIMEOUTS)).toHaveLength(4);
+  });
+
+  it("[MUTATION-KILLER] plugin key exists with default value 60000", () => {
+    expect(BATCH_TIMEOUTS["plugin"]).toBe(60_000);
   });
 
   it("[MUTATION-KILLER] fast is not equal to medium or slow", () => {
