@@ -4,17 +4,23 @@
  * Parsers locate their output by section name, not integer index.
  */
 
-export type BatchTier = "fast" | "medium" | "slow";
+export type BatchTier = "fast" | "medium" | "slow" | "plugin";
 
 export interface BatchDef {
   tier: BatchTier;
   command: string;
 }
 
+function resolvePluginTimeout(): number {
+  const v = Number(process.env.PLUGIN_AUDIT_TIMEOUT_MS);
+  return Number.isFinite(v) && v > 0 ? v : 60_000;
+}
+
 export const BATCH_TIMEOUTS: Record<BatchTier, number> = {
   fast: 30_000,
   medium: 60_000,
   slow: 120_000,
+  plugin: resolvePluginTimeout(),
 } as const;
 
 const NAMED_SEP = (name: string): string => `echo '---SECTION:${name}---'`;
@@ -680,6 +686,34 @@ function ddosSection(): string {
 }
 
 /**
+ * Build a single batch section containing every loaded plugin's checks,
+ * each wrapped in an isolated heredoc-fed bash subshell.
+ * Returns null when no loaded plugin has any checks.
+ *
+ * Section format: ---SECTION:PLUGIN:<pluginName>:<checkId>---
+ * Each check body runs in a fresh bash interpreter (state isolation)
+ * fed via single-quoted heredoc (no expansion, no quote-balancing).
+ */
+export function buildPluginBatchSection(
+  registry: ReadonlyMap<string, PluginRegistryEntry>,
+): string | null {
+  const lines: string[] = [];
+  for (const [, entry] of registry) {
+    if (entry.status !== "loaded") continue;
+    if (entry.checks.length === 0) continue;
+    for (const check of entry.checks) {
+      lines.push(`echo '---SECTION:PLUGIN:${entry.manifest.name}:${check.id}---'`);
+      lines.push(`bash <<'KASTELL_PLUGIN_CHECK_EOF' 2>/dev/null`);
+      lines.push(check.checkCommand);
+      lines.push(`KASTELL_PLUGIN_CHECK_EOF`);
+    }
+  }
+  return lines.length === 0 ? null : lines.join("\n");
+}
+
+import type { PluginRegistryEntry } from "../../plugin/registry.js";
+
+/**
  * Build 3 tiered SSH batch commands for server auditing.
  *
  * Batch 1 (fast):   SSH, Firewall, Updates, Auth, Accounts, Boot, Scheduling, Banners, TLS Hardening, HTTP Security Headers, WAF & Reverse Proxy — config reads (30s timeout)
@@ -690,7 +724,10 @@ function ddosSection(): string {
  * Each section is preceded by an ---SECTION:NAME--- named separator.
  * Parsers route by section name, not integer index.
  */
-export function buildAuditBatchCommands(platform: string): BatchDef[] {
+export function buildAuditBatchCommands(
+  platform: string,
+  pluginRegistry?: ReadonlyMap<string, PluginRegistryEntry>,
+): BatchDef[] {
   const fast: BatchDef = {
     tier: "fast",
     command: [
@@ -740,5 +777,12 @@ export function buildAuditBatchCommands(platform: string): BatchDef[] {
     ].join("\n"),
   };
 
-  return [fast, medium, slow];
+  const batches: BatchDef[] = [fast, medium, slow];
+  if (pluginRegistry) {
+    const pluginCommand = buildPluginBatchSection(pluginRegistry);
+    if (pluginCommand !== null) {
+      batches.push({ tier: "plugin", command: pluginCommand });
+    }
+  }
+  return batches;
 }

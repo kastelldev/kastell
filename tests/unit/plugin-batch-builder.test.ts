@@ -1,0 +1,92 @@
+import { buildAuditBatchCommands, buildPluginBatchSection } from "../../src/core/audit/commands.js";
+import type { PluginRegistryEntry } from "../../src/plugin/registry.js";
+import type { PluginManifest, PluginCheck } from "../../src/plugin/sdk/types.js";
+
+function makeEntry(name: string, checks: PluginCheck[], status: "loaded" | "failed" = "loaded"): PluginRegistryEntry {
+  const manifest: PluginManifest = {
+    name,
+    version: "1.0.0",
+    apiVersion: "1",
+    kastell: "*",
+    capabilities: ["audit"],
+    checkPrefix: name.split("-").pop()!.toUpperCase().slice(0, 6),
+    entry: "./index.js",
+  };
+  return { manifest, checks, status };
+}
+
+function check(id: string, cmd = "echo ok"): PluginCheck {
+  return { id, category: "X", name: id, severity: "info", description: "", checkCommand: cmd };
+}
+
+describe("buildPluginBatchSection", () => {
+  it("returns null for empty registry", () => {
+    const reg = new Map<string, PluginRegistryEntry>();
+    expect(buildPluginBatchSection(reg)).toBeNull();
+  });
+
+  it("returns null when all plugins have zero checks", () => {
+    const reg = new Map<string, PluginRegistryEntry>();
+    reg.set("kastell-plugin-empty", makeEntry("kastell-plugin-empty", []));
+    expect(buildPluginBatchSection(reg)).toBeNull();
+  });
+
+  it("skips plugins with status !== loaded", () => {
+    const reg = new Map<string, PluginRegistryEntry>();
+    reg.set("kastell-plugin-failed", makeEntry("kastell-plugin-failed", [check("FAIL-001")], "failed"));
+    expect(buildPluginBatchSection(reg)).toBeNull();
+  });
+
+  it("builds heredoc-wrapped section for one plugin with three checks", () => {
+    const reg = new Map<string, PluginRegistryEntry>();
+    reg.set(
+      "kastell-plugin-wp",
+      makeEntry("kastell-plugin-wp", [check("WP-001", "echo a"), check("WP-002", "echo b"), check("WP-003", "echo c")]),
+    );
+    const out = buildPluginBatchSection(reg)!;
+    expect(out).toContain("---SECTION:PLUGIN:kastell-plugin-wp:WP-001---");
+    expect(out).toContain("---SECTION:PLUGIN:kastell-plugin-wp:WP-002---");
+    expect(out).toContain("---SECTION:PLUGIN:kastell-plugin-wp:WP-003---");
+    expect(out).toContain("bash <<'KASTELL_PLUGIN_CHECK_EOF' 2>/dev/null\necho a\nKASTELL_PLUGIN_CHECK_EOF");
+  });
+
+  it("preserves registry iteration order across plugins", () => {
+    const reg = new Map<string, PluginRegistryEntry>();
+    reg.set("kastell-plugin-a", makeEntry("kastell-plugin-a", [check("A-001")]));
+    reg.set("kastell-plugin-b", makeEntry("kastell-plugin-b", [check("B-001")]));
+    const out = buildPluginBatchSection(reg)!;
+    expect(out.indexOf("A-001")).toBeLessThan(out.indexOf("B-001"));
+  });
+
+  it("emits closing tag at column 0 with newline before and after", () => {
+    const reg = new Map<string, PluginRegistryEntry>();
+    reg.set("kastell-plugin-x", makeEntry("kastell-plugin-x", [check("X-001", "echo body")]));
+    const out = buildPluginBatchSection(reg)!;
+    // body line followed by closing tag at column 0
+    expect(out).toMatch(/\necho body\nKASTELL_PLUGIN_CHECK_EOF\n/);
+    // no indented closing tag
+    expect(out).not.toMatch(/[ \t]+KASTELL_PLUGIN_CHECK_EOF/);
+  });
+});
+
+describe("buildAuditBatchCommands with registry", () => {
+  it("returns 3 batches when registry is undefined", () => {
+    const batches = buildAuditBatchCommands("coolify");
+    expect(batches).toHaveLength(3);
+    expect(batches.map((b) => b.tier)).toEqual(["fast", "medium", "slow"]);
+  });
+
+  it("returns 3 batches when registry is empty", () => {
+    const batches = buildAuditBatchCommands("coolify", new Map());
+    expect(batches).toHaveLength(3);
+  });
+
+  it("returns 4 batches when registry has loaded plugin with checks", () => {
+    const reg = new Map<string, PluginRegistryEntry>();
+    reg.set("kastell-plugin-wp", makeEntry("kastell-plugin-wp", [check("WP-001")]));
+    const batches = buildAuditBatchCommands("coolify", reg);
+    expect(batches).toHaveLength(4);
+    expect(batches[3].tier).toBe("plugin");
+    expect(batches[3].command).toContain("PLUGIN:kastell-plugin-wp:WP-001");
+  });
+});

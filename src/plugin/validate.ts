@@ -26,6 +26,35 @@ const PluginFixSchema = z.object({
   backupPaths: z.array(z.string().regex(/^\//, "Backup path must be absolute")).optional(),
 });
 
+const PluginCheckSchema = z.object({
+  id: z
+    .string()
+    .regex(/^[A-Z][A-Z0-9_-]{1,63}$/, "Check id must be uppercase alphanumeric/underscore/dash, 2-64 chars"),
+  category: z.string().min(1),
+  name: z.string().min(1),
+  severity: z.enum(["critical", "warning", "info"]),
+  description: z.string().optional(),
+  checkCommand: z
+    .string()
+    .min(1)
+    .refine((s) => !s.includes("---SECTION:"), "checkCommand must not contain '---SECTION:' substring")
+    .refine((s) => !s.includes("KASTELL_PLUGIN_CHECK_EOF"), "checkCommand must not contain heredoc tag 'KASTELL_PLUGIN_CHECK_EOF'")
+    .refine((s) => !/\r/.test(s), "checkCommand must not contain CR characters"),
+  passPattern: z.string().optional(),
+  failPattern: z.string().optional(),
+  fixCommand: z.string().optional(),
+  safeToAutoFix: z.enum(["SAFE", "GUARDED", "FORBIDDEN"]).optional(),
+  explain: z
+    .union([
+      z.string(),
+      z.object({ why: z.string(), fix: z.string() }),
+    ])
+    .optional(),
+  complianceRefs: z
+    .array(z.object({ framework: z.string(), ref: z.string() }))
+    .optional(),
+});
+
 const PluginManifestSchema = z
   .object({
     name: z.string().regex(PLUGIN_NAME_PATTERN, "Name must match kastell-plugin-<lowercase>"),
@@ -102,4 +131,30 @@ export function validateManifest(manifest: unknown): PluginManifest {
   }
 
   return parsed.data;
+}
+
+export function validateChecks(checks: unknown, checkPrefix: string): import("./sdk/types.js").PluginCheck[] {
+  if (!Array.isArray(checks)) {
+    throw new ValidationError("Plugin checks must be an array");
+  }
+  const parsed: import("./sdk/types.js").PluginCheck[] = [];
+  const seen = new Set<string>();
+  for (let i = 0; i < checks.length; i++) {
+    const result = PluginCheckSchema.safeParse(checks[i]);
+    if (!result.success) {
+      throw new ValidationError(`Invalid plugin check at index ${i}: ${result.error.message}`);
+    }
+    const check = result.data;
+    if (!check.id.startsWith(checkPrefix + "-")) {
+      throw new ValidationError(
+        `Check id "${check.id}" must start with plugin prefix "${checkPrefix}-"`,
+      );
+    }
+    if (seen.has(check.id)) {
+      throw new ValidationError(`Duplicate check id "${check.id}" within plugin`);
+    }
+    seen.add(check.id);
+    parsed.push(check as import("./sdk/types.js").PluginCheck);
+  }
+  return parsed;
 }
