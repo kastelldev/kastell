@@ -17,7 +17,9 @@ function entry(
     entry: "./index.js",
     ...(fixes ? { fixes } : {}),
   };
-  return { manifest, checks, status: "loaded", fixes };
+  const checksById = new Map(checks.map((c) => [c.id, c]));
+  const fixesByCheckId = new Map((fixes ?? []).map((f) => [f.checkId, f]));
+  return { manifest, checks, status: "loaded", fixes, checksById, fixesByCheckId };
 }
 
 function check(id: string, opts: Partial<PluginCheck> = {}): PluginCheck {

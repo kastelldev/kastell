@@ -12,7 +12,8 @@ function makeEntry(name: string, checks: PluginCheck[], status: "loaded" | "fail
     checkPrefix: name.split("-").pop()!.toUpperCase().slice(0, 6),
     entry: "./index.js",
   };
-  return { manifest, checks, status };
+  const checksById = new Map(checks.map((c) => [c.id, c]));
+  return { manifest, checks, status, checksById, fixesByCheckId: new Map() };
 }
 
 function check(id: string, cmd = "echo ok"): PluginCheck {

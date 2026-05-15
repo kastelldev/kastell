@@ -4,6 +4,8 @@
  * Parsers locate their output by section name, not integer index.
  */
 
+import type { PluginRegistryEntry } from "../../plugin/registry.js";
+
 export type BatchTier = "fast" | "medium" | "slow" | "plugin";
 
 export interface BatchDef {
@@ -702,7 +704,7 @@ export function buildPluginBatchSection(
     if (entry.status !== "loaded") continue;
     if (entry.checks.length === 0) continue;
     for (const check of entry.checks) {
-      lines.push(`echo '---SECTION:PLUGIN:${entry.manifest.name}:${check.id}---'`);
+      lines.push(NAMED_SEP(`PLUGIN:${entry.manifest.name}:${check.id}`));
       lines.push(`bash <<'KASTELL_PLUGIN_CHECK_EOF' 2>/dev/null`);
       lines.push(check.checkCommand);
       lines.push(`KASTELL_PLUGIN_CHECK_EOF`);
@@ -710,8 +712,6 @@ export function buildPluginBatchSection(
   }
   return lines.length === 0 ? null : lines.join("\n");
 }
-
-import type { PluginRegistryEntry } from "../../plugin/registry.js";
 
 /**
  * Build 3 tiered SSH batch commands for server auditing.
