@@ -383,6 +383,7 @@ program
   .option("--list-checks", "List all audit checks without running audit")
   .option("--severity <level>", "Filter by severity (critical, warning, info)")
   .option("--profile <name>", "Compliance profile filter (cis-level1, cis-level2, pci-dss, hipaa)")
+  .option("--framework <name>", "Compliance framework filter: cis-level1, cis-level2, pci-dss, hipaa")
   .option("--compliance <frameworks>", "Compliance report by framework (cis, pci-dss, hipaa — comma-separated)")
   .option("--explain", "Show why each failing check matters and how to fix it")
   .action((serverName?: string, options?: Record<string, unknown>) =>

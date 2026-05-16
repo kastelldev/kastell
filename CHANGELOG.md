@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file.
 - `server_guard status` returns `success: boolean` and `logTail: string[]` (line array). (F-022)
 - `server_logs monitor` returns structured `metrics.{cpu,mem,disk}` objects (bytes for total/used, IEC binary) instead of validation-failing strings. CLI output unchanged. (F-019)
 - `server_backup backup-list` returns `backupCount` field (F-021)
+- `kastell audit` accepts `--framework <cis-level1|cis-level2|pci-dss|hipaa>` (parity with MCP) (F-016)
 
 ## [2.2.7] - 2026-05-16
 

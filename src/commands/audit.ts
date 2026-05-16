@@ -51,6 +51,7 @@ export interface AuditCommandOptions extends AuditCliOptions {
   days?: string;
   listChecks?: boolean;
   profile?: string;
+  framework?: string;
   compliance?: string;
   fresh?: boolean;
   detail?: boolean;
@@ -292,6 +293,32 @@ export async function auditCommand(
       console.log(JSON.stringify({ overallScore: auditResult.overallScore, compliance: filtered }, null, 2));
     } else {
       console.log(formatComplianceReport(auditResult, frameworks));
+    }
+    return;
+  }
+
+  // --framework: filtered audit view by single compliance framework
+  if (options.framework) {
+    const validFrameworks = ["cis-level1", "cis-level2", "pci-dss", "hipaa"] as const;
+    if (!validFrameworks.includes(options.framework as typeof validFrameworks[number])) {
+      logger.error(`Invalid framework: ${options.framework}. Valid: ${validFrameworks.join(", ")}`);
+      return;
+    }
+    const fw = FRAMEWORK_KEY_MAP[options.framework];
+    const filteredResult = filterByProfile(auditResult, options.framework as ProfileName);
+    const detail = calculateComplianceDetail(auditResult.categories);
+    const fwScore = detail.find((d) => d.framework === fw);
+    if (options.json) {
+      const fwDetail = detail.filter((d) => d.framework === fw);
+      console.log(JSON.stringify({ overallScore: auditResult.overallScore, compliance: fwDetail }, null, 2));
+    } else {
+      const formatter = await selectFormatter(options);
+      console.log(formatter(filteredResult));
+      if (fwScore) {
+        logger.info(
+          `Framework ${options.framework}: ${fwScore.passedControls}/${fwScore.totalControls} controls (${fwScore.passRate}%)`,
+        );
+      }
     }
     return;
   }
