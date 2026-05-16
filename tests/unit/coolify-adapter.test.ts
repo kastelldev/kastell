@@ -26,6 +26,7 @@ jest.mock("../../src/utils/errorMapper", () => ({
 jest.mock("fs", () => ({
   mkdirSync: jest.fn(),
   writeFileSync: jest.fn(),
+  chmodSync: jest.fn(),
 }));
 
 import { assertValidIp, sshExec } from "../../src/utils/ssh";

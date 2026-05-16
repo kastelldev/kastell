@@ -13,7 +13,7 @@ jest.mock("../../../src/plugin/loader.js", () => ({
 
 jest.mock("fs", () => {
   const actual = jest.requireActual("fs") as typeof import("fs");
-  return { ...actual, existsSync: jest.fn().mockReturnValue(true), mkdirSync: jest.fn(), writeFileSync: jest.fn() };
+  return { ...actual, existsSync: jest.fn().mockReturnValue(true), mkdirSync: jest.fn(), writeFileSync: jest.fn(), chmodSync: jest.fn() };
 });
 
 const makeManifest = (overrides?: Partial<PluginManifest>): PluginManifest => ({

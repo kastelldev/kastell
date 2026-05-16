@@ -21,6 +21,7 @@ jest.mock("fs", () => ({
   writeFileSync: jest.fn(),
   existsSync: jest.fn(() => false),
   mkdirSync: jest.fn(),
+  chmodSync: jest.fn(),
 }));
 
 jest.mock("../../src/core/notifyStore.js", () => ({

@@ -38,6 +38,7 @@ jest.mock("../../src/utils/errorMapper", () => ({
 jest.mock("fs", () => ({
   mkdirSync: jest.fn(),
   writeFileSync: jest.fn(),
+  chmodSync: jest.fn(),
 }));
 
 // --- Import mocked functions after jest.mock declarations ---

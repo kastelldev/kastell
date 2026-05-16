@@ -23,6 +23,7 @@ jest.mock("fs", () => ({
   writeFileSync: jest.fn(),
   readFileSync: jest.fn(),
   readdirSync: jest.fn(),
+  chmodSync: jest.fn(),
 }));
 jest.mock("child_process", () => ({
   spawn: jest.fn(),

@@ -71,6 +71,7 @@ describe("loadPlugins — check validation", () => {
     const mockMkdirSync = jest.fn();
     const mockWriteFileSync = jest.fn();
     const mockRmSync = jest.fn();
+    const mockChmodSync = jest.fn();
 
     jest.doMock("fs", () => ({
       existsSync: mockExistsSync,
@@ -79,6 +80,7 @@ describe("loadPlugins — check validation", () => {
       mkdirSync: mockMkdirSync,
       writeFileSync: mockWriteFileSync,
       rmSync: mockRmSync,
+      chmodSync: mockChmodSync,
       default: {
         existsSync: mockExistsSync,
         readdirSync: mockReaddirSync,
@@ -86,6 +88,7 @@ describe("loadPlugins — check validation", () => {
         mkdirSync: mockMkdirSync,
         writeFileSync: mockWriteFileSync,
         rmSync: mockRmSync,
+        chmodSync: mockChmodSync,
       },
     }));
 

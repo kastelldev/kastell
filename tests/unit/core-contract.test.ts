@@ -47,6 +47,7 @@ jest.mock("fs", () => ({
   renameSync: jest.fn(),
   rmSync: jest.fn(),
   readFileSync: jest.fn().mockReturnValue("[]"),
+  chmodSync: jest.fn(),
 }));
 
 // ─── Imports ─────────────────────────────────────────────────────────────────
