@@ -36,7 +36,6 @@ export interface McpToolEntry {
   inputSchema: Record<string, any>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   outputSchema: Record<string, any>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   handler: (params: any /* eslint-disable-line @typescript-eslint/no-explicit-any */, server?: McpServer) => Promise<Record<string, unknown>>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   annotations?: Record<string, any>;

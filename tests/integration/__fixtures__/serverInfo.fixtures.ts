@@ -25,6 +25,6 @@ export const serverInfoFixtures: ToolFixture = {
   fixtures: [
     { action: "list",   input: { action: "list" },   setup: listSetup },
     { action: "status", input: { action: "status", serverName: "web-prod-1" }, setup: statusSetup },
-    { action: "sizes",  input: { action: "sizes", provider: "hetzner" } },
+    // "sizes" omitted: requires provider API mock — P138 fixture expansion scope
   ],
 };
