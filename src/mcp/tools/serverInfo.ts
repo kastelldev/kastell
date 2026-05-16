@@ -191,7 +191,7 @@ function formatStatusResults(results: StatusResult[]): Record<string, unknown> {
     results: results.map(formatStatusResult),
     summary: {
       total: results.length,
-      running: results.filter((r) => r.platformStatus === "running").length,
+      running: results.filter((r) => r.platformStatus === "running" || r.serverStatus === "running").length,
       notReachable: notReachable.length,
       errors: errors.length,
     },

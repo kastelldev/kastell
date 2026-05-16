@@ -84,6 +84,8 @@ Options:
   --severity <level>           Filter by severity (critical, warning, info)
   --profile <name>             Compliance profile filter (cis-level1,
                                cis-level2, pci-dss, hipaa)
+  --framework <name>           Compliance framework filter: cis-level1,
+                               cis-level2, pci-dss, hipaa
   --compliance <frameworks>    Compliance report by framework (cis, pci-dss,
                                hipaa — comma-separated)
   --explain                    Show why each failing check matters and how to

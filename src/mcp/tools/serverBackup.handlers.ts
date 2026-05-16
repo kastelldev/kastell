@@ -65,6 +65,7 @@ export async function handleBackupList(server: ServerRecord): Promise<McpRespons
     return mcpSuccess({
       action: "backup-list" as const,
       server: server.name,
+      backupCount: 0,
       backups: [],
       message: "No backups found for this server",
       suggested_actions: [

@@ -55,10 +55,12 @@ const serverMaintainMaintainOutputSchema = z.object({
   ip: z.string(),
   provider: z.string(),
   steps: z.array(z.object({
-    step: z.string(),
+    step: z.number(),
+    name: z.string(),
     status: z.string(),
-    message: z.string().optional(),
+    detail: z.string().optional(),
     error: z.string().optional(),
+    hint: z.string().optional(),
   })),
   summary: z.object({
     total: z.number(),

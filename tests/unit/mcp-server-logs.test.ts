@@ -392,10 +392,10 @@ describe("handleServerLogs — monitor", () => {
 
     expect(result.isError).toBeUndefined();
     expect(data.server).toBe("coolify-test");
-    expect(data.metrics.cpu).toBe("15.0%");
-    expect(data.metrics.ramUsed).toBe("8.0Gi");
-    expect(data.metrics.ramTotal).toBe("16Gi");
-    expect(data.metrics.diskPercent).toBe("50%");
+    expect(data.metrics.cpu.percent).toBe(15); // 100 - 85.0 id = 15% active CPU
+    expect(data.metrics.mem.used).toBeCloseTo(8 * 1024**3, -1);
+    expect(data.metrics.mem.total).toBeCloseTo(16 * 1024**3, -1);
+    expect(data.metrics.disk.percent).toBeCloseTo(50, 1);
   });
 
   it("should suggest adding containers when not included", async () => {

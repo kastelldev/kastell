@@ -102,10 +102,13 @@ export async function handleServerGuard(params: {
         }
         return mcpSuccess({
           action: "status" as const,
+          success: true,
           isActive: result.isActive,
           lastRunAt: result.lastRunAt,
           breaches: result.breaches,
-          logTail: result.logTail,
+          logTail: typeof result.logTail === "string"
+            ? result.logTail.trimEnd().split("\n").filter((l) => l.length > 0)
+            : result.logTail ?? [],
           installedAt: result.installedAt,
         });
       }

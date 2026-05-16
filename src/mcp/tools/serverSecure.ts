@@ -28,7 +28,7 @@ import {
 
 export const serverSecureSchema = {
   action: z.enum([
-    "secure-setup", "secure-audit",
+    "audit", "secure-setup", "secure-audit",
     "firewall-setup", "firewall-add", "firewall-remove", "firewall-status",
     "domain-set", "domain-remove", "domain-check", "domain-info",
   ]).describe(
@@ -106,11 +106,18 @@ const firewallRemoveOutputSchema = z.object({
   suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
 });
 
+const firewallRuleSchema = z.object({
+  port: z.string(),
+  proto: z.string(),
+  action: z.string(),
+  from: z.string(),
+});
+
 const firewallStatusOutputSchema = z.object({
   server: z.string(),
   ip: z.string(),
   active: z.boolean(),
-  rules: z.array(z.string()),
+  rules: z.array(firewallRuleSchema),
   ruleCount: z.number(),
   suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
 });
@@ -154,6 +161,7 @@ const domainInfoOutputSchema = z.object({
 export const serverSecureOutputSchema = z.object({
   result: z.discriminatedUnion("action", [
     z.object({ action: z.literal("secure-setup") }).merge(secureSetupOutputSchema),
+    z.object({ action: z.literal("audit") }).merge(secureAuditOutputSchema),
     z.object({ action: z.literal("secure-audit") }).merge(secureAuditOutputSchema),
     z.object({ action: z.literal("firewall-setup") }).merge(firewallSetupOutputSchema),
     z.object({ action: z.literal("firewall-add") }).merge(firewallAddOutputSchema),
@@ -169,7 +177,7 @@ export const serverSecureOutputSchema = z.object({
 export type ServerSecureOutput = z.infer<typeof serverSecureOutputSchema>;
 
 /** Actions that only read state — never blocked by SAFE_MODE */
-const READ_ONLY_ACTIONS: readonly Action[] = ["secure-audit", "firewall-status", "domain-check", "domain-info"];
+const READ_ONLY_ACTIONS: readonly Action[] = ["audit", "secure-audit", "firewall-status", "domain-check", "domain-info"];
 
 export async function handleServerSecure(params: {
   action: Action;
@@ -235,7 +243,7 @@ export async function handleServerSecure(params: {
       logSafeModeBlock("secure-modify", { category: "destructive" });
       return mcpError(
         `${params.action} is disabled in SAFE_MODE`,
-        "Set KASTELL_SAFE_MODE=false to enable server modifications. Read-only actions (secure-audit, firewall-status, domain-check, domain-info) remain available.",
+        "Set KASTELL_SAFE_MODE=false to enable server modifications. Read-only actions (audit, secure-audit, firewall-status, domain-check, domain-info) remain available.",
       );
     }
 
@@ -251,7 +259,10 @@ export async function handleServerSecure(params: {
 
     switch (params.action) {
       case "secure-setup":   return handleSecureSetup(server, params.port);
-      case "secure-audit":   return handleSecureAudit(server);
+      case "secure-audit":
+        console.warn("[kastell] MCP action 'secure-audit' is deprecated; use 'audit'. Removal scheduled for v2.4.");
+        // fallthrough to "audit"
+      case "audit":          return handleSecureAudit(server);
       case "firewall-setup": return handleFirewallSetup(server);
       case "firewall-add":   return handleFirewallAdd(server, params.port, params.protocol || "tcp");
       case "firewall-remove": return handleFirewallRemove(server, params.port, params.protocol || "tcp");

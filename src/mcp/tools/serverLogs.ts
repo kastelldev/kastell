@@ -10,6 +10,7 @@ import {
   type McpResponse,
 } from "../utils.js";
 import { getErrorMessage, sanitizeStderr } from "../../utils/errorMapper.js";
+import { buildMetrics } from "../utils/parseMetrics.js";
 import type { LogService } from "../../core/logs.js";
 
 export const serverLogsSchema = {
@@ -201,7 +202,7 @@ export async function handleServerLogs(params: {
           action: "monitor" as const,
           server: server.name,
           ip: server.ip,
-          metrics: result.metrics,
+          metrics: buildMetrics(result.metrics),
           ...(result.containers ? { containers: result.containers } : {}),
           suggested_actions: suggestedActions,
         });
