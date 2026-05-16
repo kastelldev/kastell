@@ -46,7 +46,7 @@ Running `kastell` without any arguments launches an **interactive search menu** 
  ██║  ██╗  ██║  ██║ ███████║   ██║   ███████╗███████╗███████╗
  ╚═╝  ╚═╝  ╚═╝  ╚═╝ ╚══════╝   ╚═╝   ╚══════╝╚══════╝╚══════╝
 
-  KASTELL  v2.2.6  ·  Your infrastructure, fortified.
+  KASTELL  v2.2.7  ·  Your infrastructure, fortified.
 
   $ kastell init --template production  → deploy a new server
   $ kastell status --all                → check all servers

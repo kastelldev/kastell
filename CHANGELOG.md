@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.7] - 2026-05-16
+
+### Fixed
+- **npm tarball plugin.json version sync** — v2.2.6 npm tarball shipped with `package.json` 2.2.6 but `.claude-plugin/plugin.json` stuck at 2.2.5; CC marketplace `/plugin update` showed correct version on disk but plugin manifest reported stale. Release flow now syncs `plugin.json` **before** `npm version` and validates tarball contents **before** push (FATAL gate). Users now see correct version after `/plugin update`.
+
+### Added
+- **Plugin tarball smoke test (`scripts/smoke-plugin-install.sh`)** — simulates CC plugin install (no `npm install`): runs `npm pack`, extracts tarball, verifies all manifest paths shipped, and boots MCP bundle without module errors
+- **CI `plugin-manifest` job** — schema validation + version drift detection + smoke test on Ubuntu/Node 20 (catches plugin shipping issues before publish)
+
+### Changed
+- **Test mock race fix** — `process.nextTick` replaces `setTimeout(_, 5)` for stderr emit in `mockProcess.ts`, `mcp-server-backup.test.ts`, `restore.test.ts`; eliminates flaky `scpDownload` timing race on macOS-Node20 CI runners (5ms stderr vs 10ms close ordering)
+
 ## [2.2.6] - 2026-05-16
 
 ### Added
