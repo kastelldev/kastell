@@ -1,9 +1,17 @@
-import { withFileLock } from "../../src/utils/fileLock.js";
-import fs from "fs";
+import { withFileLock, probeProcess } from "../../src/utils/fileLock.js";
+import { mkdirSync, existsSync, rmSync } from "fs";
+import { join } from "path";
+import { tmpdir } from "os";
 
+// Existing mocked tests — rmdirSync → rmSync in assertions to match new implementation
 jest.mock("fs");
 
-const mockedFs = jest.mocked(fs);
+const mockedFs = jest.mocked(
+  require("fs") as typeof import("fs") & {
+    __esModule: boolean;
+    default: unknown;
+  },
+);
 
 describe("withFileLock", () => {
   beforeEach(() => {
@@ -18,7 +26,7 @@ describe("withFileLock", () => {
   describe("acquireAndRelease", () => {
     it("should create lock dir, execute fn, then remove lock dir", async () => {
       mockedFs.mkdirSync.mockReturnValue(undefined);
-      mockedFs.rmdirSync.mockReturnValue(undefined);
+      mockedFs.rmSync.mockReturnValue(undefined);
 
       const fn = jest.fn().mockReturnValue("result");
       const result = await withFileLock("/path/to/file.json", fn);
@@ -29,12 +37,15 @@ describe("withFileLock", () => {
       // Second call: create lock directory
       expect(mockedFs.mkdirSync).toHaveBeenCalledWith("/path/to/file.json.lock");
       expect(fn).toHaveBeenCalledTimes(1);
-      expect(mockedFs.rmdirSync).toHaveBeenCalledWith("/path/to/file.json.lock");
+      expect(mockedFs.rmSync).toHaveBeenCalledWith("/path/to/file.json.lock", {
+        recursive: true,
+        force: true,
+      });
     });
 
     it("should work with async fn", async () => {
       mockedFs.mkdirSync.mockReturnValue(undefined);
-      mockedFs.rmdirSync.mockReturnValue(undefined);
+      mockedFs.rmSync.mockReturnValue(undefined);
 
       const fn = jest.fn().mockResolvedValue("async-result");
       const result = await withFileLock("/path/to/file.json", fn);
@@ -52,15 +63,16 @@ describe("withFileLock", () => {
         .mockReturnValueOnce(undefined); // lock attempt 2 (after stale removal)
       mockedFs.statSync.mockReturnValue({
         mtimeMs: Date.now() - 35_000, // 35s ago = stale
-      } as unknown as fs.Stats);
-      mockedFs.rmdirSync.mockReturnValue(undefined);
+      } as unknown as import("fs").Stats);
+      mockedFs.rmSync.mockReturnValue(undefined);
+      mockedFs.readFileSync.mockReturnValue("");
 
       const fn = jest.fn().mockReturnValue("ok");
       const result = await withFileLock("/path/to/file.json", fn);
 
       expect(result).toBe("ok");
-      // rmdirSync called once for stale lock removal, once for release
-      expect(mockedFs.rmdirSync).toHaveBeenCalledTimes(2);
+      // rmSync called once for stale lock removal, once for release
+      expect(mockedFs.rmSync).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -78,8 +90,8 @@ describe("withFileLock", () => {
       // Return current fake time so lock is never stale
       mockedFs.statSync.mockImplementation(() => ({
         mtimeMs: Date.now(),
-      } as unknown as fs.Stats));
-      mockedFs.rmdirSync.mockReturnValue(undefined);
+      } as unknown as import("fs").Stats));
+      mockedFs.rmSync.mockReturnValue(undefined);
 
       const fn = jest.fn().mockReturnValue("got-it");
 
@@ -108,7 +120,8 @@ describe("withFileLock", () => {
       // Return current fake time so lock is never stale
       mockedFs.statSync.mockImplementation(() => ({
         mtimeMs: Date.now(),
-      } as unknown as fs.Stats));
+      } as unknown as import("fs").Stats));
+      mockedFs.readFileSync.mockReturnValue("");
 
       const fn = jest.fn();
 
@@ -132,14 +145,17 @@ describe("withFileLock", () => {
   describe("releasesOnError", () => {
     it("should remove lock dir even when fn throws", async () => {
       mockedFs.mkdirSync.mockReturnValue(undefined);
-      mockedFs.rmdirSync.mockReturnValue(undefined);
+      mockedFs.rmSync.mockImplementation(() => { throw new Error("ENOENT"); });
 
       const fn = jest.fn().mockImplementation(() => {
         throw new Error("fn-error");
       });
 
       await expect(withFileLock("/path/to/file.json", fn)).rejects.toThrow("fn-error");
-      expect(mockedFs.rmdirSync).toHaveBeenCalledWith("/path/to/file.json.lock");
+      expect(mockedFs.rmSync).toHaveBeenCalledWith("/path/to/file.json.lock", {
+        recursive: true,
+        force: true,
+      });
     });
   });
 
@@ -161,9 +177,9 @@ describe("withFileLock", () => {
   });
 
   describe("edge cases", () => {
-    it("handles rmdirSync failure on lock release (best effort)", async () => {
+    it("handles rmSync failure on lock release (best effort)", async () => {
       mockedFs.mkdirSync.mockReturnValue(undefined);
-      mockedFs.rmdirSync.mockImplementation(() => { throw new Error("ENOENT"); });
+      mockedFs.rmSync.mockImplementation(() => { throw new Error("ENOENT"); });
 
       const fn = jest.fn().mockReturnValue("ok");
       const result = await withFileLock("/path/to/file.json", fn);
@@ -178,7 +194,7 @@ describe("withFileLock", () => {
         .mockImplementationOnce(() => { throw eexistError; }) // lock attempt
         .mockReturnValueOnce(undefined); // retry succeeds
       mockedFs.statSync.mockImplementation(() => { throw new Error("ENOENT"); });
-      mockedFs.rmdirSync.mockReturnValue(undefined);
+      mockedFs.rmSync.mockReturnValue(undefined);
 
       const fn = jest.fn().mockReturnValue("recovered");
       const promise = withFileLock("/path/to/file.json", fn);
@@ -187,5 +203,39 @@ describe("withFileLock", () => {
 
       expect(result).toBe("recovered");
     });
+  });
+});
+
+describe("probeProcess", () => {
+  it("returns 'alive' for current process PID", () => {
+    expect(probeProcess(process.pid)).toBe("alive");
+  });
+
+  it("returns 'dead' for ESRCH (non-existent PID)", () => {
+    const spy = jest.spyOn(process, "kill").mockImplementation(() => {
+      const err = new Error("not found") as NodeJS.ErrnoException;
+      err.code = "ESRCH";
+      throw err;
+    });
+    expect(probeProcess(99999)).toBe("dead");
+    spy.mockRestore();
+  });
+
+  it("returns 'unknown' for EPERM (different user)", () => {
+    const spy = jest.spyOn(process, "kill").mockImplementation(() => {
+      const err = new Error("permission") as NodeJS.ErrnoException;
+      err.code = "EPERM";
+      throw err;
+    });
+    expect(probeProcess(1)).toBe("unknown");
+    spy.mockRestore();
+  });
+
+  it("returns 'unknown' for any other error", () => {
+    const spy = jest.spyOn(process, "kill").mockImplementation(() => {
+      throw new Error("weird") as NodeJS.ErrnoException;
+    });
+    expect(probeProcess(42)).toBe("unknown");
+    spy.mockRestore();
   });
 });

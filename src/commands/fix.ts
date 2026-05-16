@@ -17,6 +17,7 @@ import {
   extractAffectedCategories,
   runForbiddenFixes,
   type ScoredFixCheck,
+  type FixPreview,
 } from "../core/audit/fix.js";
 import { tryHandlerDispatch, type CollectedDiff } from "../core/audit/handlers/index.js";
 import { buildImpactContext } from "../core/audit/scoring.js";
@@ -38,6 +39,24 @@ import {
 } from "../core/audit/fix-history.js";
 import { saveBaselineSafe, loadBaseline, checkRegression, formatRegressionSummary, extractPassedCheckIds, shouldUpdateBaseline, hasRegression } from "../core/audit/regression.js";
 import { getPluginBackupPaths, getAppliedPluginNames } from "../core/audit/pluginFix.js";
+
+const FORBIDDEN_BLOCK_HEADER = "=== FORBIDDEN fixes (skipped, manual review required) ===";
+const COMMAND_TRUNCATE_LEN = 80;
+
+export function renderForbiddenBlock(
+  forbiddenFixes: FixPreview[],
+  includeForbidden: boolean,
+): string {
+  if (!includeForbidden || forbiddenFixes.length === 0) return "";
+  const lines = [FORBIDDEN_BLOCK_HEADER];
+  forbiddenFixes.forEach((fix, idx) => {
+    const cmd = fix.command.length > COMMAND_TRUNCATE_LEN
+      ? fix.command.slice(0, COMMAND_TRUNCATE_LEN - 1) + "…"
+      : fix.command;
+    lines.push(`[F${idx + 1}] ${fix.checkId} — ${cmd}`);
+  });
+  return lines.join("\n");
+}
 
 /**
  * `kastell fix --safe` command.
@@ -398,6 +417,11 @@ export async function fixSafeCommand(
 
   // Dry-run exit (FIX-05): show preview only, no backup or fixes
   if (options.dryRun) {
+    const forbiddenOutput = renderForbiddenBlock(forbiddenFixes ?? [], options.includeForbidden === true);
+    if (forbiddenOutput) {
+      logger.info("");
+      logger.info(forbiddenOutput);
+    }
     return;
   }
 

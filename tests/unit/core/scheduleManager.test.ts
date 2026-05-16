@@ -21,6 +21,7 @@ jest.mock("fs", () => ({
   statSync: jest.fn(),
   unlinkSync: jest.fn(),
   writeFileSync: jest.fn(),
+  chmodSync: jest.fn(),
 }));
 jest.mock("../../../src/core/backupSchedule.js", () => ({
   validateCronExpr: jest.fn(() => ({ valid: true })),
