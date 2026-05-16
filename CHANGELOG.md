@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - `server_secure firewall-status` MCP output: `rules` is now `z.array(z.object({port, proto, action, from}))` (object array) instead of `z.array(z.string())` (string array). SDK probe confirms: MCP SDK strips `structuredContent` on outputSchema mismatch. Hard-cut BREAKING. (F-020)
 
 ### Fixed
+- `server_secure` action `audit` added as canonical name. `secure-audit` still accepted (deprecated, removal scheduled for v2.4) (F-011)
 - `server_plugin list` returns registered plugins instead of an empty array (regression introduced in v2.2.0 P134c/d, F-018)
 - `server_info status` `summary.running` correctly counts running servers when either `serverStatus` (cloud provider) or `platformStatus` (Coolify/Dokploy) is "running". Previously only checked `platformStatus`, missing servers where the cloud reports running but the platform probe fails. (F-024)
 - `server_guard status` returns `success: boolean` and `logTail: string[]` (line array). (F-022)
