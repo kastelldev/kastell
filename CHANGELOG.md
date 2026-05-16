@@ -6,16 +6,19 @@ All notable changes to this project will be documented in this file.
 
 ### BREAKING
 - `server_fix` MCP input shape changed: `dryRun: boolean` removed, replaced by `mode: 'dry-run' | 'live'` on the `apply` action branch. CLI users unaffected (`--dry-run` flag unchanged). MCP consumers must update calls.
+- `server_fix` MCP output shape changed: non-apply actions (`history`, `rollback`, `rollback-all`, `rollback-to`) no longer carry a `dryRun` field. Previously the field held the action name as a string proxy to satisfy a misnamed discriminator; now responses are discriminated by `action` and `dryRun: boolean` appears only on `apply` responses where it semantically belongs.
 - `server_secure firewall-status` MCP output: `rules` is now `z.array(z.object({port, proto, action, from}))` (object array) instead of `z.array(z.string())` (string array). SDK probe confirms: MCP SDK strips `structuredContent` on outputSchema mismatch. Hard-cut BREAKING. (F-020)
 
 ### Fixed
 - `server_secure` action `audit` added as canonical name. `secure-audit` still accepted (deprecated, removal scheduled for v2.4) (F-011)
-- `server_plugin list` returns registered plugins instead of an empty array (regression introduced in v2.2.0 P134c/d, F-018)
 - `server_info status` `summary.running` correctly counts running servers when either `serverStatus` (cloud provider) or `platformStatus` (Coolify/Dokploy) is "running". Previously only checked `platformStatus`, missing servers where the cloud reports running but the platform probe fails. (F-024)
 - `server_guard status` returns `success: boolean` and `logTail: string[]` (line array). (F-022)
 - `server_logs monitor` returns structured `metrics.{cpu,mem,disk}` objects (bytes for total/used, IEC binary) instead of validation-failing strings. CLI output unchanged. (F-019)
 - `server_backup backup-list` returns `backupCount` field (F-021)
 - `kastell audit` accepts `--framework <cis-level1|cis-level2|pci-dss|hipaa>` (parity with MCP) (F-016)
+
+### Added
+- Regression test for `server_plugin list` reading from the loaded plugin registry (fix landed in v2.2.0 P134c/d; test prevents future drift, F-018)
 
 ## [2.2.7] - 2026-05-16
 

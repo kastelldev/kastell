@@ -169,14 +169,18 @@ const serverFixRollbackToOutputSchema = z.object({
   scoreAfter: z.number().nullable(),
 });
 
+const serverFixApplyOutputSchema = z.discriminatedUnion("dryRun", [
+  z.object({ action: z.literal("apply"), dryRun: z.literal(true) }).merge(serverFixApplyDryRunOutputSchema),
+  z.object({ action: z.literal("apply"), dryRun: z.literal(false) }).merge(serverFixApplyLiveOutputSchema),
+]);
+
 export const serverFixOutputSchema = z.object({
-  result: z.discriminatedUnion("dryRun", [
-    z.object({ action: z.literal("apply"), dryRun: z.literal(true) }).merge(serverFixApplyDryRunOutputSchema),
-    z.object({ action: z.literal("apply"), dryRun: z.literal(false) }).merge(serverFixApplyLiveOutputSchema),
-    z.object({ action: z.literal("history"), dryRun: z.literal("history") }).merge(serverFixHistoryOutputSchema),
-    z.object({ action: z.literal("rollback"), dryRun: z.literal("rollback") }).merge(serverFixRollbackOutputSchema),
-    z.object({ action: z.literal("rollback-all"), dryRun: z.literal("rollback-all") }).merge(serverFixRollbackAllOutputSchema),
-    z.object({ action: z.literal("rollback-to"), dryRun: z.literal("rollback-to") }).merge(serverFixRollbackToOutputSchema),
+  result: z.union([
+    serverFixApplyOutputSchema,
+    z.object({ action: z.literal("history") }).merge(serverFixHistoryOutputSchema),
+    z.object({ action: z.literal("rollback") }).merge(serverFixRollbackOutputSchema),
+    z.object({ action: z.literal("rollback-all") }).merge(serverFixRollbackAllOutputSchema),
+    z.object({ action: z.literal("rollback-to") }).merge(serverFixRollbackToOutputSchema),
   ]),
 });
 
@@ -236,7 +240,6 @@ export async function handleServerFix(
       const entries = loadFixHistory(server.ip);
       return mcpSuccess({
         action: "history" as const,
-        dryRun: "history" as const,
         server: { name: server.name, ip: server.ip },
         entries: entries.slice(-20),
         totalEntries: entries.length,
@@ -294,7 +297,6 @@ export async function handleServerFix(
 
       return mcpSuccess({
         action: "rollback" as const,
-        dryRun: "rollback" as const,
         fixId,
         restored,
         errors: rollbackErrors,
@@ -314,7 +316,6 @@ export async function handleServerFix(
 
       return mcpSuccess({
         action: "rollback-all" as const,
-        dryRun: "rollback-all" as const,
         rolledBack,
         errors: rbErrors,
         scoreAfter,
@@ -336,7 +337,6 @@ export async function handleServerFix(
 
       return mcpSuccess({
         action: "rollback-to" as const,
-        dryRun: "rollback-to" as const,
         targetFixId: params.rollbackId,
         rolledBack,
         errors: rbErrors,
