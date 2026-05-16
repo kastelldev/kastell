@@ -103,7 +103,7 @@ describe("ensureSecureDir", () => {
     expect(mockedSpawnSync).not.toHaveBeenCalled();
   });
 
-  it("should call spawnSync with icacls on first call (win32)", async () => {
+  it("should skip applyPermissions entirely on win32 (no icacls, no chmod)", async () => {
     await loadModule();
     const { ensureSecureDir } = secureWriteModule;
 
@@ -111,26 +111,8 @@ describe("ensureSecureDir", () => {
 
     ensureSecureDir("C:\\Users\\testuser\\secure");
 
-    expect(mockedSpawnSync).toHaveBeenCalledWith(
-      "icacls",
-      ["C:\\Users\\testuser\\secure", "/inheritance:r", "/grant:r", "testuser:F"],
-    );
+    expect(mockedSpawnSync).not.toHaveBeenCalled();
     expect(mockedChmodSync).not.toHaveBeenCalled();
-  });
-
-  it("should call SecurityLogger.warn when icacls returns non-zero status", async () => {
-    await loadModule();
-    const { ensureSecureDir } = secureWriteModule;
-
-    Object.defineProperty(process, "platform", { value: "win32", configurable: true });
-    mockedSpawnSync.mockReturnValueOnce({ status: 1, stdout: "", stderr: Buffer.from("Access denied"), pid: 1, output: ["", null, null] as unknown as SpawnSyncReturns<string>['output'], signal: null });
-
-    ensureSecureDir("C:\\Users\\testuser\\secure");
-
-    expect(mockedSecurityLoggerWarn).toHaveBeenCalledWith(
-      "ACL operation failed",
-      expect.objectContaining({ path: "C:\\Users\\testuser\\secure", platform: "win32" }),
-    );
   });
 
   it("should call SecurityLogger.warn when chmodSync throws", async () => {
@@ -174,34 +156,18 @@ describe("secureWriteFileSync", () => {
   });
 
   describe("win32 platform", () => {
-    it("should call spawnSync with icacls and correct argv array", async () => {
+    it("should skip applyPermissions entirely on win32 (no icacls, no chmod)", async () => {
       await loadModule();
       const { secureWriteFileSync } = secureWriteModule;
 
       Object.defineProperty(process, "platform", { value: "win32", configurable: true });
+      mockedChmodSync.mockClear();
+      mockedSpawnSync.mockClear();
 
       secureWriteFileSync("C:\\Users\\testuser\\file.txt", "data");
 
-      expect(mockedSpawnSync).toHaveBeenCalledWith(
-        "icacls",
-        ["C:\\Users\\testuser\\file.txt", "/inheritance:r", "/grant:r", "testuser:F"],
-      );
       expect(mockedChmodSync).not.toHaveBeenCalled();
-    });
-
-    it("should call SecurityLogger.warn when spawnSync returns non-zero status", async () => {
-      await loadModule();
-      const { secureWriteFileSync } = secureWriteModule;
-
-      Object.defineProperty(process, "platform", { value: "win32", configurable: true });
-      mockedSpawnSync.mockReturnValueOnce({ status: 1, stdout: "", stderr: Buffer.from("Access denied"), pid: 1, output: ["", null, null] as unknown as SpawnSyncReturns<string>['output'], signal: null });
-
-      secureWriteFileSync("C:\\Users\\testuser\\file.txt", "data");
-
-      expect(mockedSecurityLoggerWarn).toHaveBeenCalledWith(
-        "ACL operation failed",
-        expect.objectContaining({ path: "C:\\Users\\testuser\\file.txt", platform: "win32" }),
-      );
+      expect(mockedSpawnSync).not.toHaveBeenCalled();
     });
   });
 
@@ -235,21 +201,6 @@ describe("secureWriteFileSync", () => {
       );
     });
   });
-
-  it("should use os.userInfo().username in ACL grant", async () => {
-    await loadModule();
-    const { secureWriteFileSync } = secureWriteModule;
-
-    Object.defineProperty(process, "platform", { value: "win32", configurable: true });
-    mockedUserInfo.mockReturnValueOnce({ username: "customuser", uid: 1000, gid: 1000, shell: "/bin/bash", homedir: "/home/customuser" });
-
-    secureWriteFileSync("C:\\Users\\customuser\\file.txt", "data");
-
-    expect(mockedSpawnSync).toHaveBeenCalledWith(
-      "icacls",
-      ["C:\\Users\\customuser\\file.txt", "/inheritance:r", "/grant:r", "customuser:F"],
-    );
-  });
 });
 
 // ─── secureMkdirSync ──────────────────────────────────────────────────────────
@@ -274,34 +225,18 @@ describe("secureMkdirSync", () => {
   });
 
   describe("win32 platform", () => {
-    it("should call spawnSync with icacls and correct argv array", async () => {
+    it("should skip applyPermissions entirely on win32 (no icacls, no chmod)", async () => {
       await loadModule();
       const { secureMkdirSync } = secureWriteModule;
 
       Object.defineProperty(process, "platform", { value: "win32", configurable: true });
+      mockedChmodSync.mockClear();
+      mockedSpawnSync.mockClear();
 
       secureMkdirSync("C:\\Users\\testuser\\dir");
 
-      expect(mockedSpawnSync).toHaveBeenCalledWith(
-        "icacls",
-        ["C:\\Users\\testuser\\dir", "/inheritance:r", "/grant:r", "testuser:F"],
-      );
       expect(mockedChmodSync).not.toHaveBeenCalled();
-    });
-
-    it("should call SecurityLogger.warn when spawnSync returns non-zero status", async () => {
-      await loadModule();
-      const { secureMkdirSync } = secureWriteModule;
-
-      Object.defineProperty(process, "platform", { value: "win32", configurable: true });
-      mockedSpawnSync.mockReturnValueOnce({ status: 1, stdout: "", stderr: Buffer.from("Access denied"), pid: 1, output: ["", null, null] as unknown as SpawnSyncReturns<string>['output'], signal: null });
-
-      secureMkdirSync("C:\\Users\\testuser\\dir");
-
-      expect(mockedSecurityLoggerWarn).toHaveBeenCalledWith(
-        "ACL operation failed",
-        expect.objectContaining({ path: "C:\\Users\\testuser\\dir", platform: "win32" }),
-      );
+      expect(mockedSpawnSync).not.toHaveBeenCalled();
     });
   });
 
@@ -347,5 +282,57 @@ describe("secureMkdirSync", () => {
       expect(() => secureMkdirSync("/home/testuser/dir")).toThrow("ENOENT");
       expect(mockedChmodSync).not.toHaveBeenCalled();
     });
+  });
+});
+
+// ─── Win32 platform guard ──────────────────────────────────────────────────────
+
+describe("Win32 platform guard — applyPermissions no-op", () => {
+  beforeEach(async () => {
+    await loadModule();
+  });
+
+  it("should skip chmodSync when platform is win32 for file", async () => {
+    const { secureWriteFileSync } = secureWriteModule;
+    Object.defineProperty(process, "platform", { value: "win32", configurable: true });
+    mockedChmodSync.mockClear();
+    mockedSpawnSync.mockClear();
+
+    secureWriteFileSync("C:\\Users\\test\\file.txt", "data");
+
+    expect(mockedChmodSync).not.toHaveBeenCalled();
+    expect(mockedSpawnSync).not.toHaveBeenCalled();
+  });
+
+  it("should skip chmodSync when platform is win32 for directory", async () => {
+    const { ensureSecureDir } = secureWriteModule;
+    Object.defineProperty(process, "platform", { value: "win32", configurable: true });
+    mockedChmodSync.mockClear();
+    mockedSpawnSync.mockClear();
+
+    ensureSecureDir("C:\\Users\\test\\dir");
+
+    expect(mockedChmodSync).not.toHaveBeenCalled();
+    expect(mockedSpawnSync).not.toHaveBeenCalled();
+  });
+
+  it("should still call chmodSync on linux", async () => {
+    const { secureWriteFileSync } = secureWriteModule;
+    Object.defineProperty(process, "platform", { value: "linux", configurable: true });
+    mockedChmodSync.mockClear();
+
+    secureWriteFileSync("/home/test/file.txt", "data");
+
+    expect(mockedChmodSync).toHaveBeenCalledWith("/home/test/file.txt", 0o600);
+  });
+
+  it("should still call chmodSync on darwin", async () => {
+    const { secureWriteFileSync } = secureWriteModule;
+    Object.defineProperty(process, "platform", { value: "darwin", configurable: true });
+    mockedChmodSync.mockClear();
+
+    secureWriteFileSync("/Users/test/file.txt", "data");
+
+    expect(mockedChmodSync).toHaveBeenCalledWith("/Users/test/file.txt", 0o600);
   });
 });

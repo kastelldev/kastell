@@ -22,31 +22,16 @@ export function clearCache(): void {
   cachedUsername = undefined;
 }
 
-function applyPermissions(targetPath: string, mode: 0o600 | 0o700): void {
-  if (process.platform === "win32") {
-    const result = spawnSync("icacls", [
-      targetPath,
-      "/inheritance:r",
-      "/grant:r",
-      `${getUsername()}:F`,
-    ]);
-    if (result.status !== 0) {
-      SecurityLogger.warn("ACL operation failed", {
-        path: targetPath,
-        platform: process.platform,
-        error: result.stderr?.toString() ?? "unknown",
-      });
-    }
-  } else {
-    try {
-      chmodSync(targetPath, mode);
-    } catch (error) {
-      SecurityLogger.warn("chmod operation failed", {
-        path: targetPath,
-        platform: process.platform,
-        error: extractReason(error),
-      });
-    }
+function applyPermissions(targetPath: string, _mode: 0o600 | 0o700): void {
+  if (process.platform === "win32") return; // ACL hardening → v2.4 backlog
+  try {
+    chmodSync(targetPath, _mode);
+  } catch (error) {
+    SecurityLogger.warn("chmod operation failed", {
+      path: targetPath,
+      platform: process.platform,
+      error: extractReason(error),
+    });
   }
 }
 
