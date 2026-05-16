@@ -51,6 +51,61 @@ jobs:
           directory: ./coverage
           fail_ci_if_error: false
 
+  plugin-manifest:
+    name: Plugin Manifest Validation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Check plugin.json exists
+        id: check
+        run: |
+          if [ -f .claude-plugin/plugin.json ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No .claude-plugin/plugin.json — skipping validation"
+          fi
+
+      - name: Validate plugin.json (schema + version sync + CC path prefix)
+        if: steps.check.outputs.exists == 'true'
+        run: |
+          node -e "
+            const pkg = require('./package.json');
+            const plugin = require('./.claude-plugin/plugin.json');
+            const errors = [];
+            if (plugin.version !== pkg.version) errors.push('Version drift: plugin.json=' + plugin.version + ' vs package.json=' + pkg.version + ' (run plugin.json sync in /release ADIM 5)');
+            ['name', 'version', 'description'].forEach(f => { if (!plugin[f]) errors.push('Missing required field: ' + f); });
+            ['skills', 'hooks', 'commands', 'agents'].forEach(f => {
+              const v = plugin[f];
+              if (typeof v === 'string' && !v.startsWith('./')) errors.push('Field ' + f + ' must start with \"./\" — got: ' + v);
+              if (f === 'agents' && v) errors.push('Field \"agents\" not supported by CC plugin manifest — remove (use skills/ instead)');
+            });
+            if (errors.length) { console.error('Plugin manifest validation FAILED:'); errors.forEach(e => console.error('  - ' + e)); process.exit(1); }
+            console.log('Plugin manifest valid (v' + plugin.version + ', name=' + plugin.name + ')');
+          "
+
+      - name: Setup Node.js (for plugin tarball smoke test)
+        if: steps.check.outputs.exists == 'true' && hashFiles('scripts/smoke-plugin-install.sh') != ''
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies (for build before smoke test)
+        if: steps.check.outputs.exists == 'true' && hashFiles('scripts/smoke-plugin-install.sh') != ''
+        run: npm ci
+
+      - name: Build dist/ before smoke test
+        if: steps.check.outputs.exists == 'true' && hashFiles('scripts/smoke-plugin-install.sh') != ''
+        run: npm run build
+
+      - name: Plugin tarball smoke test (npm pack + manifest paths + MCP boot)
+        if: steps.check.outputs.exists == 'true' && hashFiles('scripts/smoke-plugin-install.sh') != ''
+        run: bash scripts/smoke-plugin-install.sh
+
   notify-profile:
     name: Sync org profile stats
     needs: test
