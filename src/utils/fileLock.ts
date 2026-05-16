@@ -3,8 +3,7 @@ import { dirname, join } from "path";
 import { hostname } from "os";
 
 const STALE_THRESHOLD_MS = 30_000;
-// Reclaim even when probeProcess reports "alive" — host clock drift,
-// zombie processes, or PID reuse can otherwise leave the lock wedged forever.
+// Reclaim even when probeProcess reports "alive" (guards against clock drift, zombies, PID reuse).
 const HARD_CEILING_MS = 60_000;
 
 /** Module-local wrapper for testability — DO NOT inline `process.kill`. */
