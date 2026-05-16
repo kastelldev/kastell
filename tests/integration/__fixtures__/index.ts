@@ -1,8 +1,20 @@
 import { ALL_MCP_TOOLS } from "../../../src/mcp/server.js";
-import type { ToolFixture, ActionFixture } from "./index.js";
+
+// ToolFixture and ActionFixture must be defined here (not just imported/exported)
+// because fixture files import them from this index.
+export interface ActionFixture {
+  action: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  input: Record<string, any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  setup?: () => any;
+}
+
+export interface ToolFixture {
+  fixtures: ActionFixture[];
+}
 
 export { ALL_MCP_TOOLS };
-export type { ToolFixture, ActionFixture };
 
 // Placeholder imports — each will be replaced by the actual fixture files (Task A.4)
 import { serverInfoFixtures } from "./serverInfo.fixtures.js";
@@ -44,7 +56,7 @@ export const FIXTURES: Record<string, ToolFixture> = {
 };
 
 export function assertCoverage(): void {
-  const registered = Object.keys(ALL_MCP_TOOLS).sort();
+  const registered = ALL_MCP_TOOLS.map((t) => t.name).sort();
   const fixtured = Object.keys(FIXTURES).sort();
   const missing = registered.filter((n) => !fixtured.includes(n));
   const extra = fixtured.filter((n) => !registered.includes(n));
