@@ -43,80 +43,57 @@ import { saveBaselineSafe, loadBaseline, checkRegression, extractPassedCheckIds,
 import { getPluginBackupPaths, getAppliedPluginNames } from "../../core/audit/pluginFix.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-export const serverFixSchema = {
-  server: z
-    .string()
-    .optional()
-    .describe(
-      "Server name or IP. Auto-selected if only one server exists.",
-    ),
-  action: z
-    .enum(["apply", "rollback", "history", "rollback-all", "rollback-to"])
-    .default("apply")
-    .describe(
-      "apply: run fixes (default), rollback: restore single fix, rollback-all: revert all applied fixes, rollback-to: revert down to specific fix-id, history: list fix operations",
-    ),
-  dryRun: z
-    .boolean()
-    .default(true)
-    .describe(
-      "Preview fixes without applying. Defaults to true. Forced to true when KASTELL_SAFE_MODE=true.",
-    ),
-  rollbackId: z
-    .string()
-    .optional()
-    .describe(
-      "Fix ID to rollback (e.g. fix-2026-03-29-001) or 'last'",
-    ),
-  checks: z
-    .array(z.string())
-    .optional()
-    .describe(
-      "Specific check IDs to fix (e.g. ['KERN-SYNCOOKIES']). AND-filtered with category if both provided.",
-    ),
-  category: z
-    .string()
-    .optional()
-    .describe(
-      "Category name to filter fixes (e.g. 'Kernel'). AND-filtered with checks if both provided.",
-    ),
-  top: z
-    .number()
-    .int()
-    .positive()
-    .optional()
-    .describe(
-      "Apply top N highest-impact SAFE fixes. Requires action:'apply'. Mutually exclusive with target.",
-    ),
-  target: z
-    .number()
-    .int()
-    .min(1)
-    .max(100)
-    .optional()
-    .describe(
-      "Apply SAFE fixes until score reaches this value (1-100). Requires action:'apply'. Mutually exclusive with top.",
-    ),
-  profile: z
-    .string()
-    .optional()
-    .describe("Server profile to filter applicable checks (built-in: web-server, database, mail-server; or custom profile name)"),
-  diff: z
-    .boolean()
-    .optional()
-    .default(false)
-    .describe("Include per-fix diff preview in results"),
-  report: z
-    .boolean()
-    .optional()
-    .default(false)
-    .describe("Generate markdown fix report file in current directory"),
-  force: z
-    .boolean()
-    .optional()
-    .default(false)
-    .describe("Bypass regression gate and force baseline update"),
+const baseFixFields = {
+  server: z.string().optional().describe("Server name or IP. Auto-selected if only one server exists."),
 };
+
+const applyBranch = z.object({
+  action: z.literal("apply"),
+  mode: z.enum(["dry-run", "live"]).default("dry-run").describe("dry-run: preview only; live: apply changes. Forced to dry-run when KASTELL_SAFE_MODE=true."),
+  rollbackId: z.string().optional(),
+  checks: z.array(z.string()).optional().describe("Specific check IDs (e.g. ['KERN-SYNCOOKIES']). AND-filtered with category."),
+  category: z.string().optional(),
+  profile: z.string().optional(),
+  top: z.number().int().positive().optional(),
+  target: z.number().int().min(1).max(100).optional(),
+  diff: z.boolean().optional().default(false),
+  report: z.boolean().optional().default(false),
+  force: z.boolean().optional().default(false),
+  ...baseFixFields,
+});
+
+const rollbackBranch = z.object({
+  action: z.literal("rollback"),
+  rollbackId: z.string().describe("Fix ID to rollback (e.g. fix-2026-05-16-001) or 'last'"),
+  ...baseFixFields,
+});
+
+const rollbackAllBranch = z.object({
+  action: z.literal("rollback-all"),
+  ...baseFixFields,
+});
+
+const rollbackToBranch = z.object({
+  action: z.literal("rollback-to"),
+  rollbackId: z.string(),
+  ...baseFixFields,
+});
+
+const historyBranch = z.object({
+  action: z.literal("history"),
+  ...baseFixFields,
+});
+
+export const serverFixInputSchema = z.discriminatedUnion("action", [
+  applyBranch,
+  rollbackBranch,
+  rollbackAllBranch,
+  rollbackToBranch,
+  historyBranch,
+]);
+
+// Legacy export name preserved for server.ts wiring
+export const serverFixSchema = serverFixInputSchema;
 
 // ─── Output Schema ────────────────────────────────────────────────────────────
 
@@ -219,7 +196,7 @@ export async function handleServerFix(
   params: {
     server?: string;
     action?: "apply" | "rollback" | "history" | "rollback-all" | "rollback-to";
-    dryRun?: boolean;
+    mode?: "dry-run" | "live";
     rollbackId?: string;
     checks?: string[];
     category?: string;
@@ -371,10 +348,13 @@ export async function handleServerFix(
       return mcpError("top and target are mutually exclusive. Use one or the other.");
     }
 
-    // ── SAFE_MODE + dryRun resolution ─────────────────────────────────────
-    const effectiveDryRun = (params.dryRun ?? true) || isSafeMode();
+    // ── SAFE_MODE + mode resolution ──────────────────────────────────────
+    // action defaults to "apply", mode defaults to "dry-run" (backward compat)
+    const action = params.action ?? "apply";
+    const effectiveMode = (action === "apply" && !params.mode) ? "dry-run" : (params.mode ?? "dry-run");
+    const effectiveDryRun = isSafeMode() ? true : (action === "apply" ? effectiveMode === "dry-run" : false);
     const safeModeForcedDryRun =
-      params.dryRun === false && isSafeMode() ? true : undefined;
+      action === "apply" && effectiveMode === "live" && isSafeMode() ? true : undefined;
 
     // ── Run audit ─────────────────────────────────────────────────────────
     await mcpLog(mcpServer, `Running audit on ${server.name}...`);

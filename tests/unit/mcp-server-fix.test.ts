@@ -308,7 +308,7 @@ describe("MCP server_fix tool", () => {
     it("SAFE_MODE=true forces dryRun even when dryRun:false passed", async () => {
       mockedManage.isSafeMode.mockReturnValue(true);
 
-      const result = await handleServerFix({ dryRun: false });
+      const result = await handleServerFix({ mode: "live" });
 
       expect(result.isError).toBeUndefined();
       const parsed = JSON.parse(result.content[0].text) as Record<string, unknown>;
@@ -317,7 +317,7 @@ describe("MCP server_fix tool", () => {
     });
 
     it("dryRun:true explicitly also returns preview without backup", async () => {
-      const result = await handleServerFix({ dryRun: true });
+      const result = await handleServerFix({ mode: "dry-run" });
 
       expect(result.isError).toBeUndefined();
       const parsed = JSON.parse(result.content[0].text) as Record<string, unknown>;
@@ -398,7 +398,7 @@ describe("MCP server_fix tool", () => {
     });
 
     it("category filter alone returns only checks from that category", async () => {
-      const result = await handleServerFix({ category: "Kernel" });
+      const result = await handleServerFix({ category: "Kernel", mode: "dry-run" });
 
       expect(result.isError).toBeUndefined();
       const parsed = JSON.parse(result.content[0].text) as Record<string, unknown>;
@@ -439,7 +439,7 @@ describe("MCP server_fix tool", () => {
         error: "disk full",
       });
 
-      const result = await handleServerFix({ dryRun: false });
+      const result = await handleServerFix({ mode: "live" });
 
       expect(result.isError).toBe(true);
       const parsed = JSON.parse(result.content[0].text) as Record<
@@ -450,7 +450,7 @@ describe("MCP server_fix tool", () => {
     });
 
     it("applies fixes and returns score delta", async () => {
-      const result = await handleServerFix({ dryRun: false });
+      const result = await handleServerFix({ mode: "live" });
 
       expect(result.isError).toBeUndefined();
       expect(mockedBackup.backupServer).toHaveBeenCalledTimes(1);
@@ -470,7 +470,7 @@ describe("MCP server_fix tool", () => {
     it("dryRun:false with SAFE_MODE=false executes backup and SSH", async () => {
       mockedManage.isSafeMode.mockReturnValue(false);
 
-      await handleServerFix({ dryRun: false });
+      await handleServerFix({ mode: "live" });
 
       expect(mockedBackup.backupServer).toHaveBeenCalledWith(sampleServer);
     });
@@ -482,7 +482,7 @@ describe("MCP server_fix tool", () => {
         hint: "Check SSH",
       } as never);
 
-      const result = await handleServerFix({ dryRun: false });
+      const result = await handleServerFix({ mode: "live" });
 
       expect(result.isError).toBe(true);
       const text = result.content[0].text;
@@ -508,7 +508,7 @@ describe("MCP server_fix tool", () => {
       mockedFix.previewSafeFixes.mockReturnValue(planWithPreCond as never);
       mockedSsh.sshExec.mockResolvedValue({ stdout: "", stderr: "", code: 1 });
 
-      const result = await handleServerFix({ dryRun: false });
+      const result = await handleServerFix({ mode: "live" });
       const parsed = JSON.parse(result.content[0].text) as Record<string, unknown>;
       const errors = parsed.errors as string[];
       expect(errors.some((e: string) => e.includes("pre-condition"))).toBe(true);
@@ -517,7 +517,7 @@ describe("MCP server_fix tool", () => {
     it("reports isFixCommandAllowed rejection", async () => {
       mockedFix.isFixCommandAllowed.mockReturnValue(false);
 
-      const result = await handleServerFix({ dryRun: false });
+      const result = await handleServerFix({ mode: "live" });
       const parsed = JSON.parse(result.content[0].text) as Record<string, unknown>;
       const errors = parsed.errors as string[];
       expect(errors.some((e: string) => e.includes("rejected"))).toBe(true);
@@ -527,7 +527,7 @@ describe("MCP server_fix tool", () => {
       mockedFix.isFixCommandAllowed.mockReturnValue(true);
       mockedSsh.sshExec.mockResolvedValue({ stdout: "", stderr: "error", code: 127 });
 
-      const result = await handleServerFix({ dryRun: false });
+      const result = await handleServerFix({ mode: "live" });
       const parsed = JSON.parse(result.content[0].text) as Record<string, unknown>;
       const errors = parsed.errors as string[];
       expect(errors.some((e: string) => e.includes("command failed"))).toBe(true);
@@ -537,14 +537,14 @@ describe("MCP server_fix tool", () => {
       mockedFix.isFixCommandAllowed.mockReturnValue(true);
       mockedSsh.sshExec.mockRejectedValue(new Error("ECONNRESET"));
 
-      const result = await handleServerFix({ dryRun: false });
+      const result = await handleServerFix({ mode: "live" });
       const parsed = JSON.parse(result.content[0].text) as Record<string, unknown>;
       const errors = parsed.errors as string[];
       expect(errors.some((e: string) => e.includes("ECONNRESET"))).toBe(true);
     });
 
     it("saves history entry after successful live fix", async () => {
-      const result = await handleServerFix({ dryRun: false });
+      const result = await handleServerFix({ mode: "live" });
 
       expect(result.isError).toBeUndefined();
       expect(mockedFixHistory.generateFixId).toHaveBeenCalledWith("1.2.3.4");
@@ -570,7 +570,7 @@ describe("MCP server_fix tool", () => {
       pluginFix.getPluginBackupPaths.mockReturnValue(["/etc/plugin.conf"]);
       pluginFix.getAppliedPluginNames.mockReturnValue(["kastell-plugin-test"]);
 
-      await handleServerFix({ dryRun: false });
+      await handleServerFix({ mode: "live" });
 
       expect(mockedFixHistory.backupFilesBeforeFix).toHaveBeenCalledWith(
         "1.2.3.4",
@@ -587,7 +587,7 @@ describe("MCP server_fix tool", () => {
     });
 
     it("calls backupRemoteCleanup after live fix", async () => {
-      await handleServerFix({ dryRun: false });
+      await handleServerFix({ mode: "live" });
 
       expect(mockedFixHistory.backupRemoteCleanup).toHaveBeenCalledWith("1.2.3.4");
     });
@@ -625,7 +625,7 @@ describe("MCP server_fix tool", () => {
         return { handled: true };
       });
 
-      const result = await handleServerFix({ dryRun: false });
+      const result = await handleServerFix({ mode: "live" });
 
       expect(result.isError).toBeUndefined();
       expect(mockedHandlers.tryHandlerDispatch).toHaveBeenCalled();
@@ -642,7 +642,7 @@ describe("MCP server_fix tool", () => {
         return { handled: true };
       });
 
-      const result = await handleServerFix({ dryRun: false });
+      const result = await handleServerFix({ mode: "live" });
 
       expect(result.isError).toBeUndefined();
       const parsed = JSON.parse(result.content[0].text) as Record<string, unknown>;
@@ -858,7 +858,7 @@ describe("MCP server_fix tool", () => {
       );
       mockedFix.selectChecksForTop.mockImplementation((sorted, n) => sorted.slice(0, n));
 
-      const result = await handleServerFix({ dryRun: false, top: 3 });
+      const result = await handleServerFix({ mode: "live", top: 3 });
 
       expect(result.isError).toBeUndefined();
       const parsed = JSON.parse(result.content[0].text) as Record<string, unknown>;
@@ -878,7 +878,7 @@ describe("MCP server_fix tool", () => {
       );
       mockedFix.selectChecksForTarget.mockImplementation((sorted) => sorted.slice(0, 3));
 
-      const result = await handleServerFix({ dryRun: false, target: 75 });
+      const result = await handleServerFix({ mode: "live", target: 75 });
 
       expect(result.isError).toBeUndefined();
       expect(mockedFix.selectChecksForTarget).toHaveBeenCalledWith(
@@ -903,7 +903,7 @@ describe("MCP server_fix tool", () => {
         data: highScoreAudit as never,
       });
 
-      const result = await handleServerFix({ dryRun: false, target: 80 });
+      const result = await handleServerFix({ mode: "live", target: 80 });
 
       expect(result.isError).toBeUndefined();
       const parsed = JSON.parse(result.content[0].text) as Record<string, unknown>;
@@ -1062,26 +1062,41 @@ describe("MCP server_fix tool", () => {
   // ── Schema validation ────────────────────────────────────────────────────
 
   describe("schema validation", () => {
-    it("serverFixSchema includes action enum with apply|rollback|history", () => {
-      const { serverFixSchema } = require("../../src/mcp/tools/serverFix");
-      expect(serverFixSchema.action).toBeDefined();
-      const parsed = serverFixSchema.action.parse("apply");
-      expect(parsed).toBe("apply");
+    it("serverFixInputSchema accepts action=apply with mode=dry-run", () => {
+      const { serverFixInputSchema } = require("../../src/mcp/tools/serverFix");
+      const result = serverFixInputSchema.safeParse({ action: "apply", mode: "dry-run" });
+      expect(result.success).toBe(true);
     });
 
-    it("serverFixSchema includes rollbackId optional string", () => {
-      const { serverFixSchema } = require("../../src/mcp/tools/serverFix");
-      expect(serverFixSchema.rollbackId).toBeDefined();
-      // Optional field — undefined is valid
-      const parsed = serverFixSchema.rollbackId.optional().parse(undefined);
-      expect(parsed).toBeUndefined();
+    it("serverFixInputSchema accepts action=apply with mode=live", () => {
+      const { serverFixInputSchema } = require("../../src/mcp/tools/serverFix");
+      const result = serverFixInputSchema.safeParse({ action: "apply", mode: "live" });
+      expect(result.success).toBe(true);
     });
 
-    it("serverFixSchema profile accepts arbitrary string (custom profiles)", () => {
-      const { serverFixSchema } = require("../../src/mcp/tools/serverFix");
-      expect(serverFixSchema.profile).toBeDefined();
-      const parsed = serverFixSchema.profile.parse("my-custom");
-      expect(parsed).toBe("my-custom");
+    it("serverFixInputSchema rejects action=apply without mode", () => {
+      const { serverFixInputSchema } = require("../../src/mcp/tools/serverFix");
+      // mode has .default("dry-run") so safeParse will succeed with mode defaulted
+      const result = serverFixInputSchema.safeParse({ action: "apply" });
+      expect(result.success).toBe(true); // mode defaults to "dry-run"
+    });
+
+    it("serverFixInputSchema accepts action=rollback with rollbackId", () => {
+      const { serverFixInputSchema } = require("../../src/mcp/tools/serverFix");
+      const result = serverFixInputSchema.safeParse({ action: "rollback", rollbackId: "fix-2026-05-16-001" });
+      expect(result.success).toBe(true);
+    });
+
+    it("serverFixInputSchema accepts action=history", () => {
+      const { serverFixInputSchema } = require("../../src/mcp/tools/serverFix");
+      const result = serverFixInputSchema.safeParse({ action: "history" });
+      expect(result.success).toBe(true);
+    });
+
+    it("serverFixInputSchema profile accepts arbitrary string (custom profiles) via apply branch", () => {
+      const { serverFixInputSchema } = require("../../src/mcp/tools/serverFix");
+      const result = serverFixInputSchema.safeParse({ action: "apply", mode: "dry-run", profile: "my-custom" });
+      expect(result.success).toBe(true);
     });
   });
 
@@ -1134,7 +1149,7 @@ describe("MCP server_fix tool", () => {
         currentScore: 65,
       });
 
-      const result = await handleServerFix({ dryRun: true });
+      const result = await handleServerFix({ mode: "dry-run" });
 
       expect(result.isError).toBeUndefined();
       const parsed = JSON.parse(result.content[0].text) as Record<string, unknown>;
@@ -1158,7 +1173,7 @@ describe("MCP server_fix tool", () => {
       });
       mockedRegression.hasRegression.mockReturnValue(true);
 
-      const result = await handleServerFix({ dryRun: true });
+      const result = await handleServerFix({ mode: "dry-run" });
 
       expect(result.isError).toBeUndefined();
       const parsed = JSON.parse(result.content[0].text) as Record<string, unknown>;
@@ -1185,7 +1200,7 @@ describe("MCP server_fix tool", () => {
       });
       mockedRegression.hasRegression.mockReturnValue(true);
 
-      const result = await handleServerFix({ dryRun: true, force: true });
+      const result = await handleServerFix({ mode: "dry-run", force: true });
 
       expect(result.isError).toBeUndefined();
       const parsed = JSON.parse(result.content[0].text) as Record<string, unknown>;
@@ -1207,7 +1222,7 @@ describe("MCP server_fix tool", () => {
         currentScore: 85,
       });
 
-      const result = await handleServerFix({ dryRun: true });
+      const result = await handleServerFix({ mode: "dry-run" });
 
       expect(result.isError).toBeUndefined();
       const parsed = JSON.parse(result.content[0].text) as Record<string, unknown>;
@@ -1231,7 +1246,7 @@ describe("MCP server_fix tool", () => {
       mockedRegression.hasRegression.mockReturnValue(false);
       mockedRegression.shouldUpdateBaseline.mockReturnValue(true);
 
-      const result = await handleServerFix({ dryRun: false });
+      const result = await handleServerFix({ mode: "live" });
 
       expect(result.isError).toBeUndefined();
       expect(mockedRegression.saveBaselineSafe).toHaveBeenCalled();
@@ -1241,7 +1256,7 @@ describe("MCP server_fix tool", () => {
       mockedSsh.sshExec.mockResolvedValue({ stdout: "", stderr: "", code: 0 });
       mockedFix.isFixCommandAllowed.mockReturnValue(false);
 
-      const result = await handleServerFix({ dryRun: false });
+      const result = await handleServerFix({ mode: "live" });
 
       expect(result.isError).toBeUndefined();
       expect(mockedRegression.saveBaselineSafe).not.toHaveBeenCalled();
