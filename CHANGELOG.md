@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.6] - 2026-05-16
+
+### Added
+- **Plugin SSH batch tier (P135)** — third-party plugin audit checks now execute via dedicated 4th batch tier with configurable timeout (`KASTELL_PLUGIN_BATCH_TIMEOUT_MS`)
+- **`PluginCheckSchema` runtime validation** — plugin checks validated at load time with Zod (rejects malformed manifests early)
+- **`probeProcess` helper** — testable PID liveness wrapper around `process.kill(pid, 0)` for fileLock crash recovery
+
+### Fixed
+- **Windows fileLock crash recovery (F-001, F-006)** — lock dir now writes `owner.pid` file; subsequent acquires use ESRCH probing to recover dead-PID locks in <100ms instead of waiting for the 30s mtime stale threshold
+- **`fileLock` hard ceiling (F-001)** — 60s ceiling reclaims locks even when `probeProcess` reports alive (guards against clock drift, zombies, PID reuse)
+- **Windows `secureWrite.applyPermissions` (F-007, F-017)** — Win32 platform guard; chmod no-op on Windows. `~/.kastell/snapshots/`, `~/.kastell/evidence/` and audit history files now create cleanly without EPERM crashes. ACL hardening (icacls) deferred to v2.4
+- **`fix --include-forbidden` rendering (F-013)** — FORBIDDEN-tier fixes now rendered in dedicated block in `--dry-run` output (was silently skipped)
+- **Plugin batch parser (P135)** — replaced `executePluginChecks` with `parsePluginBatchOutput`; checks now share batch SSH session with main audit (no duplicate connections)
+
+### Changed
+- **Mutation Testing workflow** — auto-triggers paused (6h timeout insufficient); manual `workflow_dispatch` only until cache strategy refined
+- **Test infrastructure** — 8 `jest.mock("fs")` blocks now include `chmodSync: jest.fn()` (previously masked by silent-fail chmod behavior on Unix)
+- **Tests:** 10422 → 10642 (+220)
+
 ## [2.2.5] - 2026-05-08
 
 ### Fixed
