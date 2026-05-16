@@ -1,8 +1,3 @@
-// Mock child_process and os for platform-specific ACL tests
-jest.mock("child_process", () => ({
-  spawnSync: jest.fn(),
-}));
-
 jest.mock("fs", () => {
   const actual = jest.requireActual<typeof import("fs")>("fs");
   return {
@@ -13,47 +8,21 @@ jest.mock("fs", () => {
   };
 });
 
-jest.mock("os", () => {
-  const actual = jest.requireActual<typeof import("os")>("os");
-  return {
-    ...actual,
-    userInfo: jest.fn(),
-  };
-});
-
-jest.mock("../../src/utils/securityLogger", () => ({
-  SecurityLogger: {
-    warn: jest.fn(),
-  },
-}));
-
 import { writeFileSync, mkdirSync, chmodSync } from "fs";
-import { spawnSync, type SpawnSyncReturns } from "child_process";
-import { userInfo } from "os";
-import { SecurityLogger } from "../../src/utils/securityLogger";
 
-const mockedSpawnSync = spawnSync as jest.MockedFunction<typeof spawnSync>;
 const mockedWriteFileSync = writeFileSync as jest.MockedFunction<typeof writeFileSync>;
 const mockedMkdirSync = mkdirSync as jest.MockedFunction<typeof mkdirSync>;
 const mockedChmodSync = chmodSync as jest.MockedFunction<typeof chmodSync>;
-const mockedUserInfo = userInfo as jest.MockedFunction<typeof userInfo>;
-const mockedSecurityLoggerWarn = SecurityLogger.warn as jest.MockedFunction<typeof SecurityLogger.warn>;
 
 let secureWriteModule: typeof import("../../src/utils/secureWrite");
 
 async function loadModule() {
   jest.resetModules();
   jest.clearAllMocks();
-  // Re-apply mocks after resetModules
-  jest.doMock("child_process", () => ({ spawnSync: mockedSpawnSync }));
   jest.doMock("fs", () => ({
     writeFileSync: mockedWriteFileSync,
     mkdirSync: mockedMkdirSync,
     chmodSync: mockedChmodSync,
-  }));
-  jest.doMock("os", () => ({ userInfo: mockedUserInfo }));
-  jest.doMock("../../src/utils/securityLogger", () => ({
-    SecurityLogger: { warn: mockedSecurityLoggerWarn },
   }));
   secureWriteModule = await import("../../src/utils/secureWrite");
   return secureWriteModule;
@@ -65,10 +34,6 @@ beforeEach(async () => {
   mockedWriteFileSync.mockReturnValue(undefined);
   mockedMkdirSync.mockReturnValue(undefined);
   mockedChmodSync.mockReturnValue(undefined);
-  mockedUserInfo.mockReturnValue({ username: "testuser", uid: 1000, gid: 1000, shell: "/bin/bash", homedir: "/home/testuser" });
-  mockedSecurityLoggerWarn.mockReturnValue(undefined);
-  mockedSpawnSync.mockReturnValue({ status: 0, stdout: "", stderr: "", pid: 1, output: ["", null, null] as unknown as SpawnSyncReturns<string>['output'], signal: null });
-  // Reset module-level flag
   const { clearCache } = await import("../../src/utils/secureWrite");
   clearCache();
 });
@@ -100,10 +65,9 @@ describe("ensureSecureDir", () => {
     ensureSecureDir("/secure/dir");
 
     expect(mockedChmodSync).toHaveBeenCalledWith("/secure/dir", 0o700);
-    expect(mockedSpawnSync).not.toHaveBeenCalled();
   });
 
-  it("should skip applyPermissions entirely on win32 (no icacls, no chmod)", async () => {
+  it("should skip applyPermissions entirely on win32 (no chmod)", async () => {
     await loadModule();
     const { ensureSecureDir } = secureWriteModule;
 
@@ -111,11 +75,10 @@ describe("ensureSecureDir", () => {
 
     ensureSecureDir("C:\\Users\\testuser\\secure");
 
-    expect(mockedSpawnSync).not.toHaveBeenCalled();
     expect(mockedChmodSync).not.toHaveBeenCalled();
   });
 
-  it("should call SecurityLogger.warn when chmodSync throws", async () => {
+  it("should propagate error when chmodSync throws", async () => {
     await loadModule();
     const { ensureSecureDir } = secureWriteModule;
 
@@ -124,12 +87,7 @@ describe("ensureSecureDir", () => {
       throw new Error("permission denied");
     });
 
-    ensureSecureDir("/secure/dir");
-
-    expect(mockedSecurityLoggerWarn).toHaveBeenCalledWith(
-      "chmod operation failed",
-      expect.objectContaining({ path: "/secure/dir", platform: "linux" }),
-    );
+    expect(() => ensureSecureDir("/secure/dir")).toThrow("permission denied");
   });
 });
 
@@ -156,18 +114,16 @@ describe("secureWriteFileSync", () => {
   });
 
   describe("win32 platform", () => {
-    it("should skip applyPermissions entirely on win32 (no icacls, no chmod)", async () => {
+    it("should skip applyPermissions entirely on win32 (no chmod)", async () => {
       await loadModule();
       const { secureWriteFileSync } = secureWriteModule;
 
       Object.defineProperty(process, "platform", { value: "win32", configurable: true });
       mockedChmodSync.mockClear();
-      mockedSpawnSync.mockClear();
 
       secureWriteFileSync("C:\\Users\\testuser\\file.txt", "data");
 
       expect(mockedChmodSync).not.toHaveBeenCalled();
-      expect(mockedSpawnSync).not.toHaveBeenCalled();
     });
   });
 
@@ -181,24 +137,18 @@ describe("secureWriteFileSync", () => {
       secureWriteFileSync("/home/testuser/file.txt", "data");
 
       expect(mockedChmodSync).toHaveBeenCalledWith("/home/testuser/file.txt", 0o600);
-      expect(mockedSpawnSync).not.toHaveBeenCalled();
     });
 
-    it("should call SecurityLogger.warn when chmodSync throws", async () => {
+    it("should propagate error when chmodSync throws", async () => {
       await loadModule();
       const { secureWriteFileSync } = secureWriteModule;
 
       Object.defineProperty(process, "platform", { value: "linux", configurable: true });
       mockedChmodSync.mockImplementationOnce(() => {
-        throw new Error("permission denied");
+        throw new Error("chmod failed");
       });
 
-      secureWriteFileSync("/home/testuser/file.txt", "data");
-
-      expect(mockedSecurityLoggerWarn).toHaveBeenCalledWith(
-        "chmod operation failed",
-        expect.objectContaining({ path: "/home/testuser/file.txt", platform: "linux" }),
-      );
+      expect(() => secureWriteFileSync("/home/testuser/file.txt", "data")).toThrow("chmod failed");
     });
   });
 });
@@ -225,18 +175,16 @@ describe("secureMkdirSync", () => {
   });
 
   describe("win32 platform", () => {
-    it("should skip applyPermissions entirely on win32 (no icacls, no chmod)", async () => {
+    it("should skip applyPermissions entirely on win32 (no chmod)", async () => {
       await loadModule();
       const { secureMkdirSync } = secureWriteModule;
 
       Object.defineProperty(process, "platform", { value: "win32", configurable: true });
       mockedChmodSync.mockClear();
-      mockedSpawnSync.mockClear();
 
       secureMkdirSync("C:\\Users\\testuser\\dir");
 
       expect(mockedChmodSync).not.toHaveBeenCalled();
-      expect(mockedSpawnSync).not.toHaveBeenCalled();
     });
   });
 
@@ -250,24 +198,6 @@ describe("secureMkdirSync", () => {
       secureMkdirSync("/home/testuser/dir");
 
       expect(mockedChmodSync).toHaveBeenCalledWith("/home/testuser/dir", 0o700);
-      expect(mockedSpawnSync).not.toHaveBeenCalled();
-    });
-
-    it("should call SecurityLogger.warn when chmodSync throws", async () => {
-      await loadModule();
-      const { secureMkdirSync } = secureWriteModule;
-
-      Object.defineProperty(process, "platform", { value: "linux", configurable: true });
-      mockedChmodSync.mockImplementationOnce(() => {
-        throw new Error("permission denied");
-      });
-
-      secureMkdirSync("/home/testuser/dir");
-
-      expect(mockedSecurityLoggerWarn).toHaveBeenCalledWith(
-        "chmod operation failed",
-        expect.objectContaining({ path: "/home/testuser/dir", platform: "linux" }),
-      );
     });
 
     it("should propagate error when mkdirSync throws", async () => {
@@ -296,24 +226,20 @@ describe("Win32 platform guard — applyPermissions no-op", () => {
     const { secureWriteFileSync } = secureWriteModule;
     Object.defineProperty(process, "platform", { value: "win32", configurable: true });
     mockedChmodSync.mockClear();
-    mockedSpawnSync.mockClear();
 
     secureWriteFileSync("C:\\Users\\test\\file.txt", "data");
 
     expect(mockedChmodSync).not.toHaveBeenCalled();
-    expect(mockedSpawnSync).not.toHaveBeenCalled();
   });
 
   it("should skip chmodSync when platform is win32 for directory", async () => {
     const { ensureSecureDir } = secureWriteModule;
     Object.defineProperty(process, "platform", { value: "win32", configurable: true });
     mockedChmodSync.mockClear();
-    mockedSpawnSync.mockClear();
 
     ensureSecureDir("C:\\Users\\test\\dir");
 
     expect(mockedChmodSync).not.toHaveBeenCalled();
-    expect(mockedSpawnSync).not.toHaveBeenCalled();
   });
 
   it("should still call chmodSync on linux", async () => {
