@@ -17,8 +17,10 @@ export function createMockProcess(
   const stderrData = options?.stderrData;
 
   if (delayMs !== undefined && delayMs > 0) {
+    // stderr must emit BEFORE close — nextTick (microtask) is guaranteed
+    // to run before any setTimeout regardless of host timer drift (macOS CI flake).
     if (stderrData) {
-      setTimeout(() => (cp as any).stderr.emit("data", Buffer.from(stderrData)), Math.max(1, delayMs - 5));
+      process.nextTick(() => (cp as any).stderr.emit("data", Buffer.from(stderrData)));
     }
     setTimeout(() => cp.emit("close", exitCode), delayMs);
   } else {

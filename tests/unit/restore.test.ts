@@ -74,9 +74,11 @@ const sampleManifest = {
 };
 
 function createMockProcess(code: number = 0, stderrData: string = "") {
-  const proc = new MockChildProcess(code, 10);
+  // stderr must emit BEFORE close — nextTick (microtask) is guaranteed
+  // to run before any setTimeout regardless of host timer drift (macOS CI flake).
+  const proc = new MockChildProcess(code, 50);
   if (stderrData) {
-    setTimeout(() => proc.stderr.emit("data", Buffer.from(stderrData)), 5);
+    process.nextTick(() => proc.stderr.emit("data", Buffer.from(stderrData)));
   }
   return proc as unknown as ReturnType<typeof spawn>;
 }

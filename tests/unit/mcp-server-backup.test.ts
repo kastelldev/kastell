@@ -119,9 +119,11 @@ const mockProvider: CloudProvider = {
 };
 
 function createMockProcess(code: number = 0, stderrData: string = "") {
-  const proc = new MockChildProcess(code, 10);
+  // stderr must emit BEFORE close — use nextTick (microtask) so it's guaranteed
+  // to run before the 50ms close timer regardless of host timer drift (macOS CI flake).
+  const proc = new MockChildProcess(code, 50);
   if (stderrData) {
-    setTimeout(() => proc.stderr.emit("data", Buffer.from(stderrData)), 5);
+    process.nextTick(() => proc.stderr.emit("data", Buffer.from(stderrData)));
   }
   return proc as unknown as ReturnType<typeof spawn>;
 }
