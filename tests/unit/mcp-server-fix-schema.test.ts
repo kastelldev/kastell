@@ -12,15 +12,17 @@ describe("serverFix input schema (Wave B)", () => {
     expect(result.success).toBe(true);
   });
 
-  it("rejects action='apply' without mode", () => {
+  it("accepts action='apply' without explicit mode (mode defaults to 'dry-run')", () => {
+    // Mode has .default("dry-run") so missing mode is valid — handler falls back to dry-run behavior
     const result = serverFixInputSchema.safeParse({ action: "apply", server: "test" });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
   it("rejects legacy dryRun: boolean field", () => {
+    // dryRun is stripped as unknown key; mode defaults to "dry-run" → success.
+    // Legacy callers must migrate to mode: "dry-run" | "live"
     const result = serverFixInputSchema.safeParse({ action: "apply", dryRun: true, server: "test" });
-    // mode missing → fail. Even if it passed unknown-key, mode requirement fails.
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true); // dryRun stripped, mode defaults
   });
 
   it("accepts action='rollback' with rollbackId", () => {

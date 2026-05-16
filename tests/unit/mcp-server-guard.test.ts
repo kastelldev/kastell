@@ -107,7 +107,7 @@ describe("MCP server_guard tool", () => {
       const parsed = JSON.parse(result.content[0].text);
       expect(parsed.isActive).toBe(true);
       expect(parsed.breaches).toHaveLength(1);
-      expect(parsed.logTail).toContain("[kastell-guard]");
+      expect(parsed.logTail[0]).toContain("[kastell-guard]");
     });
 
     it("returns mcpError when guardStatus fails", async () => {

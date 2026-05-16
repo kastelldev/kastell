@@ -7,7 +7,7 @@ const UNIT_FACTORS: Record<string, number> = {
 
 export function parseHumanSize(value: string): number {
   if (!value || value === "N/A") return 0;
-  const match = /^(\d+(?:\.\d+)?)\s*([KMGT])?B?$/i.exec(value.trim());
+  const match = /^(\d+(?:\.\d+)?)\s*([KMGT])?(?:iB?)?$/i.exec(value.trim());
   if (!match) return 0;
   const num = Number(match[1]);
   if (!Number.isFinite(num)) return 0;

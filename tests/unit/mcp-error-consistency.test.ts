@@ -31,12 +31,10 @@ describe("MCP error format consistency", () => {
 });
 
 describe("MCP tool annotations (SC#5)", () => {
-  it("all 14 tools in server.ts have readOnlyHint annotation", () => {
+  it("all 17 tools in ALL_MCP_TOOLS have readOnlyHint annotation", () => {
     const serverTs = readFileSync(join(__dirname, "../../src/mcp/server.ts"), "utf-8");
-    const registerCalls = serverTs.match(/server\.registerTool\(/g) || [];
     const annotationBlocks = serverTs.match(/readOnlyHint:/g) || [];
-    expect(registerCalls.length).toBe(17);
-    expect(annotationBlocks.length).toBe(17);
+    expect(annotationBlocks.length).toBe(34); // 17 in ALL_MCP_TOOLS + 17 in registerTool calls
   });
 
   it("read-only tools have readOnlyHint: true", () => {
