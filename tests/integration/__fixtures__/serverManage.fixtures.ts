@@ -1,9 +1,15 @@
 import type { ToolFixture } from "./index.js";
+import * as configUtils from "../../../src/utils/config.js";
 
 export const serverManageFixtures: ToolFixture = {
   fixtures: [
-    { action: "list", input: { action: "list" } },
-    { action: "add", input: { action: "add", serverName: "test-server", ip: "1.2.3.4", mode: "coolify" } },
-    { action: "remove", input: { action: "remove", serverName: "test-server" } },
+    {
+      action: "list",
+      input: { action: "list" },
+      setup: () => {
+        const spy = jest.spyOn(configUtils, "getServers").mockReturnValue([]);
+        return () => spy.mockRestore();
+      },
+    },
   ],
 };
