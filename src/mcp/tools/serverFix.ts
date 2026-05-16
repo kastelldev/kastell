@@ -98,7 +98,6 @@ export const serverFixSchema = serverFixInputSchema;
 // ─── Output Schema ────────────────────────────────────────────────────────────
 
 const serverFixApplyDryRunOutputSchema = z.object({
-  dryRun: z.boolean(),
   safeModeForcedDryRun: z.boolean().optional(),
   preview: z.object({
     groups: z.array(z.object({
@@ -110,7 +109,9 @@ const serverFixApplyDryRunOutputSchema = z.object({
         severity: z.string(),
       })),
     })),
-  }),
+  }).optional(),
+  applied: z.array(z.string()).optional(),
+  message: z.string().optional(),
   rejectedChecks: z.array(z.object({ id: z.string(), reason: z.string() })),
   guardedCount: z.number(),
   forbiddenCount: z.number(),
@@ -124,7 +125,6 @@ const serverFixApplyDryRunOutputSchema = z.object({
 });
 
 const serverFixApplyLiveOutputSchema = z.object({
-  dryRun: z.boolean(),
   applied: z.array(z.string()),
   errors: z.array(z.string()),
   rejectedChecks: z.array(z.object({ id: z.string(), reason: z.string() })),
@@ -149,7 +149,6 @@ const serverFixHistoryOutputSchema = z.object({
 });
 
 const serverFixRollbackOutputSchema = z.object({
-  action: z.literal("rollback"),
   fixId: z.string(),
   restored: z.array(z.string()),
   errors: z.array(z.string()),
@@ -158,14 +157,12 @@ const serverFixRollbackOutputSchema = z.object({
 });
 
 const serverFixRollbackAllOutputSchema = z.object({
-  action: z.literal("rollback-all"),
   rolledBack: z.array(z.string()),
   errors: z.array(z.string()),
   scoreAfter: z.number().nullable(),
 });
 
 const serverFixRollbackToOutputSchema = z.object({
-  action: z.literal("rollback-to"),
   targetFixId: z.string(),
   rolledBack: z.array(z.string()),
   errors: z.array(z.string()),
@@ -173,13 +170,13 @@ const serverFixRollbackToOutputSchema = z.object({
 });
 
 export const serverFixOutputSchema = z.object({
-  result: z.discriminatedUnion("action", [
+  result: z.discriminatedUnion("dryRun", [
     z.object({ action: z.literal("apply"), dryRun: z.literal(true) }).merge(serverFixApplyDryRunOutputSchema),
     z.object({ action: z.literal("apply"), dryRun: z.literal(false) }).merge(serverFixApplyLiveOutputSchema),
-    serverFixHistoryOutputSchema,
-    serverFixRollbackOutputSchema,
-    serverFixRollbackAllOutputSchema,
-    serverFixRollbackToOutputSchema,
+    z.object({ action: z.literal("history"), dryRun: z.literal("history") }).merge(serverFixHistoryOutputSchema),
+    z.object({ action: z.literal("rollback"), dryRun: z.literal("rollback") }).merge(serverFixRollbackOutputSchema),
+    z.object({ action: z.literal("rollback-all"), dryRun: z.literal("rollback-all") }).merge(serverFixRollbackAllOutputSchema),
+    z.object({ action: z.literal("rollback-to"), dryRun: z.literal("rollback-to") }).merge(serverFixRollbackToOutputSchema),
   ]),
 });
 
@@ -239,6 +236,7 @@ export async function handleServerFix(
       const entries = loadFixHistory(server.ip);
       return mcpSuccess({
         action: "history" as const,
+        dryRun: "history" as const,
         server: { name: server.name, ip: server.ip },
         entries: entries.slice(-20),
         totalEntries: entries.length,
@@ -296,6 +294,7 @@ export async function handleServerFix(
 
       return mcpSuccess({
         action: "rollback" as const,
+        dryRun: "rollback" as const,
         fixId,
         restored,
         errors: rollbackErrors,
@@ -315,6 +314,7 @@ export async function handleServerFix(
 
       return mcpSuccess({
         action: "rollback-all" as const,
+        dryRun: "rollback-all" as const,
         rolledBack,
         errors: rbErrors,
         scoreAfter,
@@ -336,6 +336,7 @@ export async function handleServerFix(
 
       return mcpSuccess({
         action: "rollback-to" as const,
+        dryRun: "rollback-to" as const,
         targetFixId: params.rollbackId,
         rolledBack,
         errors: rbErrors,
