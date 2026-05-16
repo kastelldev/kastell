@@ -2,8 +2,10 @@ import { mkdirSync, rmSync, statSync, writeFileSync, readFileSync } from "fs";
 import { dirname, join } from "path";
 import { hostname } from "os";
 
-const STALE_THRESHOLD_MS = 30_000; // mevcut, korunur
-const HARD_CEILING_MS = 60_000;    // yeni — PID alive görünse bile
+const STALE_THRESHOLD_MS = 30_000;
+// Reclaim even when probeProcess reports "alive" — host clock drift,
+// zombie processes, or PID reuse can otherwise leave the lock wedged forever.
+const HARD_CEILING_MS = 60_000;
 
 /** Module-local wrapper for testability — DO NOT inline `process.kill`. */
 export function probeProcess(pid: number): "alive" | "dead" | "unknown" {
