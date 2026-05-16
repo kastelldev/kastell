@@ -6,9 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### BREAKING
 - `server_fix` MCP input shape changed: `dryRun: boolean` removed, replaced by `mode: 'dry-run' | 'live'` on the `apply` action branch. CLI users unaffected (`--dry-run` flag unchanged). MCP consumers must update calls.
-
-### TBD (Wave C.2 SDK probe pending — will move to BREAKING or Deprecated)
-- `server_secure firewall-status` MCP output shape change: `rules` as an object array vs. string array. Wave C.2 probe determines whether SDK strips/rejects invalid output today (→ hard-cut BREAKING) or pass-through (→ soft-BREAKING with `rulesText` alias under Deprecated). This entry MUST be relocated by Wave C.2 commit; no v2.3.0 release proceeds while the TBD heading is present.
+- `server_secure firewall-status` MCP output: `rules` is now `z.array(z.object({port, proto, action, from}))` (object array) instead of `z.array(z.string())` (string array). SDK probe confirms: MCP SDK strips `structuredContent` on outputSchema mismatch. Hard-cut BREAKING. (F-020)
 
 ### Fixed
 - (entries appended by Wave C/D commits)

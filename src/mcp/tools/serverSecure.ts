@@ -106,11 +106,18 @@ const firewallRemoveOutputSchema = z.object({
   suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
 });
 
+const firewallRuleSchema = z.object({
+  port: z.string(),
+  proto: z.string(),
+  action: z.string(),
+  from: z.string(),
+});
+
 const firewallStatusOutputSchema = z.object({
   server: z.string(),
   ip: z.string(),
   active: z.boolean(),
-  rules: z.array(z.string()),
+  rules: z.array(firewallRuleSchema),
   ruleCount: z.number(),
   suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
 });

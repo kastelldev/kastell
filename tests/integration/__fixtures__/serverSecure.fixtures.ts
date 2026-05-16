@@ -13,7 +13,11 @@ const mockFirewallStatus = {
   error: null,
   status: {
     active: true,
-    rules: ["22/tcp ALLOW", "80/tcp ALLOW", "443/tcp ALLOW"],
+    rules: [
+      { port: "22", proto: "tcp", action: "ALLOW", from: "Anywhere" },
+      { port: "80", proto: "tcp", action: "ALLOW", from: "Anywhere" },
+      { port: "443", proto: "tcp", action: "ALLOW", from: "Anywhere" },
+    ],
   },
 };
 
