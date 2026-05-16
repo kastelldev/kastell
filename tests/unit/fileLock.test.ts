@@ -189,3 +189,39 @@ describe("withFileLock", () => {
     });
   });
 });
+
+import { probeProcess } from "../../src/utils/fileLock.js";
+
+describe("probeProcess", () => {
+  it("returns 'alive' for current process PID", () => {
+    expect(probeProcess(process.pid)).toBe("alive");
+  });
+
+  it("returns 'dead' for ESRCH (non-existent PID)", () => {
+    const spy = jest.spyOn(process, "kill").mockImplementation(() => {
+      const err = new Error("not found") as NodeJS.ErrnoException;
+      err.code = "ESRCH";
+      throw err;
+    });
+    expect(probeProcess(99999)).toBe("dead");
+    spy.mockRestore();
+  });
+
+  it("returns 'unknown' for EPERM (different user)", () => {
+    const spy = jest.spyOn(process, "kill").mockImplementation(() => {
+      const err = new Error("permission") as NodeJS.ErrnoException;
+      err.code = "EPERM";
+      throw err;
+    });
+    expect(probeProcess(1)).toBe("unknown");
+    spy.mockRestore();
+  });
+
+  it("returns 'unknown' for any other error", () => {
+    const spy = jest.spyOn(process, "kill").mockImplementation(() => {
+      throw new Error("weird") as NodeJS.ErrnoException;
+    });
+    expect(probeProcess(42)).toBe("unknown");
+    spy.mockRestore();
+  });
+});

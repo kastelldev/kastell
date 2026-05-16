@@ -1,3 +1,17 @@
+/** Module-local wrapper for testability — DO NOT inline `process.kill`. */
+export function probeProcess(pid: number): "alive" | "dead" | "unknown" {
+  try {
+    process.kill(pid, 0);
+    return "alive";
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code === "ESRCH") return "dead";
+    // EPERM = different user's process. For single-user CLI bu pathological;
+    // unknown döndür, çağıran mtime fallback'e geçsin.
+    return "unknown";
+  }
+}
+
 import { mkdirSync, rmdirSync, statSync } from "fs";
 import { dirname } from "path";
 
