@@ -1,6 +1,3 @@
-export class AuditError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "AuditError";
-  }
-}
+import { KastellError } from "../../utils/errors.js";
+
+export class AuditError extends KastellError {}

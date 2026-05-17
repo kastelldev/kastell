@@ -1,5 +1,5 @@
 import { chunkConcurrent } from "../../utils/concurrency.js";
-import { sshExec } from "../../utils/ssh.js";
+import { sshExec, sshMasterOpen, sshMasterClose } from "../../utils/ssh.js";
 import type { PluginCheck } from "../../plugin/sdk/types.js";
 
 export interface CheckResult {
@@ -16,6 +16,7 @@ export async function executePluginChecks(checks: PluginCheck[], host: string): 
   const aggregateMs = Number(process.env.PLUGIN_AUDIT_TIMEOUT_MS) || DEFAULT_AGGREGATE_TIMEOUT_MS;
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), aggregateMs);
+  const masterOpened = await sshMasterOpen(host).catch(() => false);
 
   try {
     const results = await chunkConcurrent(checks, MAX_CONCURRENT_PER_HOST, async (check) => {
@@ -38,5 +39,8 @@ export async function executePluginChecks(checks: PluginCheck[], host: string): 
     return results;
   } finally {
     clearTimeout(timer);
+    if (masterOpened) {
+      try { sshMasterClose(host); } catch { /* best effort */ }
+    }
   }
 }

@@ -13,6 +13,7 @@ import { saveAuditHistory, loadAuditHistory, detectTrend, computeTrend } from ".
 import { formatTrendTerminal, formatTrendJson } from "../core/audit/formatters/trend.js";
 import { saveSnapshot, listSnapshots } from "../core/audit/snapshot.js";
 import { runFix, runPostFixReAudit, extractAffectedCategories } from "../core/audit/fix.js";
+import type { Severity } from "../types/severity.js";
 import { watchAudit } from "../core/audit/watch.js";
 import { diffAudits, resolveSnapshotRef, formatDiffTerminal, formatDiffJson, buildCategorySummary, formatCompareSummaryTerminal, formatCompareSummaryJson, resolveAuditPair } from "../core/audit/diff.js";
 import { getServers } from "../utils/config.js";
@@ -89,7 +90,7 @@ async function auditCommandImpl(
 ): Promise<void> {
   // --list-checks: static catalog display — no SSH connection needed
   if (options.listChecks) {
-    const filter: { category?: string; severity?: "critical" | "warning" | "info" } = {};
+    const filter: { category?: string; severity?: Severity } = {};
     if (options.category) filter.category = options.category;
     if (options.severity) {
       const parsed = parseSeverity(options.severity);

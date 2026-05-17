@@ -5,6 +5,7 @@ import { filterAuditResult } from "../../core/audit/filter.js";
 import { resolveSnapshotRef, diffAudits, formatDiffJson } from "../../core/audit/diff.js";
 import { saveSnapshot } from "../../core/audit/snapshot.js";
 import type { AuditFilter } from "../../core/audit/filter.js";
+import type { Severity } from "../../types/severity.js";
 import {
   resolveServerForMcp,
   mcpSuccess,
@@ -92,7 +93,7 @@ export async function handleServerAudit(params: {
   framework?: "cis-level1" | "cis-level2" | "pci-dss" | "hipaa";
   explain?: boolean;
   category?: string;
-  severity?: "critical" | "warning" | "info";
+  severity?: Severity;
   snapshot?: boolean | string;
   compare?: string;
   threshold?: number;

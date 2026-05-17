@@ -68,13 +68,18 @@ export function buildFixHistorySource(names: string[]): { source: "fix" | "plugi
   return { source: "plugin", pluginName: names[0] };
 }
 
+export interface PluginFixOptions {
+  ip: string;
+  checkId: string;
+  pluginName: string;
+  handlerPath: string;
+  dryRun: boolean;
+}
+
 export async function executePluginFix(
-  ip: string,
-  checkId: string,
-  pluginName: string,
-  handlerPath: string,
-  dryRun: boolean,
+  opts: PluginFixOptions,
 ): Promise<{ success: boolean; error?: string; modifiedFiles?: string[]; executionLog?: FixExecutionLogEntry }> {
+  const { ip, checkId, pluginName, handlerPath, dryRun } = opts;
   const startMs = Date.now();
 
   if (isSafeMode()) {

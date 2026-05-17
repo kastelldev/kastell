@@ -16,10 +16,11 @@ import { loadAuditHistory } from "./audit/history.js";
 import { extractReason } from "../utils/errors.js";
 import type { MetricSnapshot, KastellResult } from "../types/index.js";
 import type { AuditHistoryEntry } from "./audit/types.js";
+import type { Severity } from "../types/severity.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type DoctorSeverity = "critical" | "warning" | "info";
+export type DoctorSeverity = Severity;
 
 export const DOCTOR_SEVERITY_WEIGHTS: Record<DoctorSeverity, number> = {
   critical: 10,

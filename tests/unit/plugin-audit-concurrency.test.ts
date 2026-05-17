@@ -2,6 +2,12 @@ import { describe, test, expect, afterEach, beforeEach } from "@jest/globals";
 import { executePluginChecks } from "../../src/core/plugin/audit.js";
 
 describe("executePluginChecks concurrency", () => {
+  beforeEach(() => {
+    const ssh = require("../../src/utils/ssh");
+    jest.spyOn(ssh, "sshMasterOpen").mockResolvedValue(true);
+    jest.spyOn(ssh, "sshMasterClose").mockImplementation(() => undefined);
+  });
+
   afterEach(() => {
     delete process.env.PLUGIN_AUDIT_TIMEOUT_MS;
     jest.restoreAllMocks();

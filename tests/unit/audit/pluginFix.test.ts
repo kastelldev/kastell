@@ -63,13 +63,13 @@ describe("executePluginFix", () => {
     const original = process.env.KASTELL_SAFE_MODE;
     process.env.KASTELL_SAFE_MODE = "true";
     try {
-      const result = await executePluginFix(
-        "1.2.3.4",
-        "CHECK-001",
-        "kastell-plugin",
-        "./fixes/a.js",
-        false,
-      );
+      const result = await executePluginFix({
+        ip: "1.2.3.4",
+        checkId: "CHECK-001",
+        pluginName: "kastell-plugin",
+        handlerPath: "./fixes/a.js",
+        dryRun: false,
+      });
       expect(result.success).toBe(false);
       expect(result.error).toContain("SAFE_MODE active");
     } finally {
@@ -82,25 +82,25 @@ describe("executePluginFix", () => {
   });
 
   it("returns error when plugin is not loaded in registry", async () => {
-    const result = await executePluginFix(
-      "1.2.3.4",
-      "CHECK-001",
-      "kastell-plugin-nonexistent",
-      "./fixes/a.js",
-      false,
-    );
+    const result = await executePluginFix({
+      ip: "1.2.3.4",
+      checkId: "CHECK-001",
+      pluginName: "kastell-plugin-nonexistent",
+      handlerPath: "./fixes/a.js",
+      dryRun: false,
+    });
     expect(result.success).toBe(false);
     expect(result.error).toContain("not found or failed to load");
   });
 
   it("returns success for dry-run without importing handler", async () => {
-    const result = await executePluginFix(
-      "1.2.3.4",
-      "CHECK-001",
-      "kastell-plugin",
-      "./fixes/a.js",
-      true,
-    );
+    const result = await executePluginFix({
+      ip: "1.2.3.4",
+      checkId: "CHECK-001",
+      pluginName: "kastell-plugin",
+      handlerPath: "./fixes/a.js",
+      dryRun: true,
+    });
     expect(result.success).toBe(true);
     expect(result.error).toBeUndefined();
     // SSH should not be called in dry-run

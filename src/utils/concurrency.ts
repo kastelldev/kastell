@@ -1,3 +1,10 @@
+/**
+ * Bounded parallel fan-out. Spawns up to `chunkSize` workers that pull from a shared cursor.
+ * Contract: `worker` MUST NOT throw — wrap exceptions inside the callback and return a result
+ * variant (e.g. `{ ok: false, err }`). An unhandled rejection aborts the whole batch and leaves
+ * remaining slots `undefined`. For cancellation, the caller is responsible for short-circuiting
+ * inside `worker` (e.g. check `AbortSignal.aborted`).
+ */
 export async function chunkConcurrent<T, R>(
   items: T[],
   chunkSize: number,

@@ -135,7 +135,7 @@ export function installLocalCron(
 export function removeLocalCron(serverName: string, type: ScheduleType): LocalCronResult {
   const marker = SCHEDULE_MARKERS[type];
 
-  if (process.platform !== "win32") {
+  if (!isWindows()) {
     try {
       const result = updateCrontab(marker);
       if (!result.success) return result;

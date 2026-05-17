@@ -11,6 +11,7 @@ import {
   selectChecksForTarget,
   fixCommandsFromChecks,
 } from "../../core/audit/fix.js";
+import type { Severity } from "../../types/severity.js";
 import { tryHandlerDispatch, type CollectedDiff } from "../../core/audit/handlers/index.js";
 import { buildImpactContext } from "../../core/audit/scoring.js";
 import { filterChecksByProfile, isValidProfile, listAllProfileNames } from "../../core/audit/profiles.js";
@@ -187,7 +188,7 @@ export const serverFixOutputSchema = z.object({
 export type ServerFixOutput = z.infer<typeof serverFixOutputSchema>;
 
 /** Severity ordering for display (critical first) */
-const SEVERITY_ORDER: Array<"critical" | "warning" | "info"> = [
+const SEVERITY_ORDER: Array<Severity> = [
   "critical",
   "warning",
   "info",

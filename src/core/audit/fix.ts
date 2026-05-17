@@ -404,7 +404,7 @@ export async function runFix(
           const parsed = tryParsePluginFixCommand(check.fixCommand);
           if (parsed) {
             try {
-              const pfResult = await executePluginFix(ip, check.id, parsed.pluginName, parsed.handlerPath, false);
+              const pfResult = await executePluginFix({ ip, checkId: check.id, pluginName: parsed.pluginName, handlerPath: parsed.handlerPath, dryRun: false });
               if (pfResult.success) {
                 applied.push(check.id);
               } else {
