@@ -2,21 +2,9 @@ import type { ToolFixture } from "./index.js";
 import * as configUtils from "../../../src/utils/config.js";
 import * as safeModeUtils from "../../../src/utils/safeMode.js";
 import * as manageCore from "../../../src/core/manage.js";
+import { makeServerRecord } from "./_helpers.js";
 
-const serverRecord = {
-  id: "web-prod-1",
-  name: "web-prod-1",
-  provider: "hetzner" as const,
-  ip: "185.234.1.1",
-  region: "fsn1",
-  size: "cx22",
-  createdAt: "2024-01-01T00:00:00Z",
-  mode: "bare" as const,
-  sshPort: 22,
-  sshUser: "root",
-  lastAuditAt: null,
-  platformStatus: "running",
-};
+const serverRecord = makeServerRecord({ id: "web-prod-1", name: "web-prod-1", ip: "185.234.1.1" });
 
 export const serverManageFixtures: ToolFixture = {
   fixtures: [

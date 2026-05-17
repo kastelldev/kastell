@@ -3,21 +3,9 @@ import * as configUtils from "../../../src/utils/config.js";
 import * as auditDiff from "../../../src/core/audit/diff.js";
 import * as auditIndex from "../../../src/core/audit/index.js";
 import * as snapshot from "../../../src/core/audit/snapshot.js";
+import { twoServerList } from "./_helpers.js";
 
-const servers = [
-  {
-    id: "hcloud-1", name: "web-1", ip: "10.0.0.1",
-    provider: "hetzner" as const, region: "fsn1" as const, size: "cx22" as const,
-    mode: "bare" as const, sshPort: 22, sshUser: "root",
-    createdAt: "2026-05-01T00:00:00Z", lastAuditAt: null, platformStatus: "running",
-  },
-  {
-    id: "hcloud-2", name: "db-1", ip: "10.0.0.2",
-    provider: "hetzner" as const, region: "fsn1" as const, size: "cx22" as const,
-    mode: "bare" as const, sshPort: 22, sshUser: "root",
-    createdAt: "2026-05-01T00:00:00Z", lastAuditAt: null, platformStatus: "running",
-  },
-];
+const servers = twoServerList;
 
 const mockAuditA = {
   success: true,

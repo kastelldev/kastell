@@ -3,13 +3,9 @@ import * as ssh from "../../../src/utils/ssh.js";
 import * as configUtils from "../../../src/utils/config.js";
 import * as manageUtils from "../../../src/core/manage.js";
 import * as provisionCore from "../../../src/core/provision.js";
+import { makeServerRecord } from "./_helpers.js";
 
-const server = {
-  id: "hcloud-1", name: "web-1", ip: "10.0.0.1", platform: "coolify" as const,
-  provider: "hetzner" as const, region: "fsn1" as const, size: "cx22" as const,
-  mode: "bare" as const, sshPort: 22, sshUser: "root",
-  createdAt: "2026-05-01T00:00:00Z", lastAuditAt: null, platformStatus: "running",
-};
+const server = makeServerRecord({ id: "hcloud-1", name: "web-1", ip: "10.0.0.1" });
 
 export const serverProvisionFixtures: ToolFixture = {
   fixtures: [

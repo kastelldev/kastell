@@ -3,13 +3,9 @@ import * as configUtils from "../../../src/utils/config.js";
 import * as auditIndex from "../../../src/core/audit/index.js";
 import * as fix from "../../../src/core/audit/fix.js";
 import * as fixHistory from "../../../src/core/audit/fix-history.js";
+import { makeServerRecord } from "./_helpers.js";
 
-const server = {
-  id: "hcloud-1", name: "web-1", ip: "10.0.0.1",
-  provider: "hetzner" as const, region: "fsn1" as const, size: "cx22" as const,
-  mode: "bare" as const, sshPort: 22, sshUser: "root",
-  createdAt: "2026-05-01T00:00:00Z", lastAuditAt: null, platformStatus: "running",
-};
+const server = makeServerRecord({ id: "hcloud-1", name: "web-1", ip: "10.0.0.1" });
 
 const mockAuditResult = {
   success: true,
