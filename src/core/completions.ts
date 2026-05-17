@@ -13,7 +13,7 @@ _kastell() {
   COMPREPLY=()
   cur="\${COMP_WORDS[COMP_CWORD]}"
   prev="\${COMP_WORDS[COMP_CWORD-1]}"
-  commands="add auth audit backup bot changelog completions config destroy doctor domain evidence explain export firewall fix guard health import init install list lock logs maintain monitor plugin regression remove reset restart restore secure snapshot ssh start status stop update validate"
+  commands="add auth audit backup bot changelog completions config destroy doctor domain evidence explain export firewall fix fleet guard health import init install list lock logs maintain monitor notify plugin regression remove reset restart restore schedule secure snapshot ssh start status stop update validate"
 
   # Subcommand completions
   case "\${prev}" in
@@ -189,6 +189,7 @@ _kastell() {
     'evidence:Collect forensic evidence package from a server'
     'explain:Explain a security check by ID'
     'export:Export server list to JSON'
+    'fleet:Show health and security posture of all registered servers'
     'firewall:Manage server firewall'
     'fix:Apply safe auto-fixes to a server'
     'guard:Manage autonomous security monitoring daemon'
@@ -201,12 +202,14 @@ _kastell() {
     'logs:View server logs'
     'maintain:Run full maintenance cycle'
     'monitor:Show server resource usage'
+    'notify:Manage notification channels'
     'plugin:Manage kastell plugins'
     'regression:Manage regression baselines'
     'remove:Remove a server from local config'
     'reset:Reset regression baseline for a server'
     'restart:Restart a registered server'
     'restore:Restore Coolify from a backup'
+    'schedule:Schedule automatic fix and audit runs'
     'secure:Manage server security'
     'snapshot:Manage server snapshots'
     'ssh:SSH into a registered server'
@@ -472,6 +475,7 @@ complete -c kastell -n '__kastell_no_subcommand' -a 'domain' -d 'Manage server d
 complete -c kastell -n '__kastell_no_subcommand' -a 'evidence' -d 'Collect forensic evidence'
 complete -c kastell -n '__kastell_no_subcommand' -a 'explain' -d 'Explain a security check by ID'
 complete -c kastell -n '__kastell_no_subcommand' -a 'export' -d 'Export server list to JSON'
+complete -c kastell -n '__kastell_no_subcommand' -a 'fleet' -d 'Show fleet health and security'
 complete -c kastell -n '__kastell_no_subcommand' -a 'firewall' -d 'Manage server firewall'
 complete -c kastell -n '__kastell_no_subcommand' -a 'fix' -d 'Apply safe auto-fixes to a server'
 complete -c kastell -n '__kastell_no_subcommand' -a 'guard' -d 'Manage guard daemon'
@@ -484,12 +488,14 @@ complete -c kastell -n '__kastell_no_subcommand' -a 'lock' -d 'Harden server to 
 complete -c kastell -n '__kastell_no_subcommand' -a 'logs' -d 'View server logs'
 complete -c kastell -n '__kastell_no_subcommand' -a 'maintain' -d 'Run full maintenance cycle'
 complete -c kastell -n '__kastell_no_subcommand' -a 'monitor' -d 'Show server resource usage'
+complete -c kastell -n '__kastell_no_subcommand' -a 'notify' -d 'Manage notification channels'
 complete -c kastell -n '__kastell_no_subcommand' -a 'plugin' -d 'Manage kastell plugins'
 complete -c kastell -n '__kastell_no_subcommand' -a 'regression' -d 'Manage regression baselines'
 complete -c kastell -n '__kastell_no_subcommand' -a 'remove' -d 'Remove a server from config'
 complete -c kastell -n '__kastell_no_subcommand' -a 'reset' -d 'Reset regression baseline for a server'
 complete -c kastell -n '__kastell_no_subcommand' -a 'restart' -d 'Restart a registered server'
 complete -c kastell -n '__kastell_no_subcommand' -a 'restore' -d 'Restore from a backup'
+complete -c kastell -n '__kastell_no_subcommand' -a 'schedule' -d 'Schedule automatic fix and audit runs'
 complete -c kastell -n '__kastell_no_subcommand' -a 'secure' -d 'Manage server security'
 complete -c kastell -n '__kastell_no_subcommand' -a 'snapshot' -d 'Manage server snapshots'
 complete -c kastell -n '__kastell_no_subcommand' -a 'ssh' -d 'SSH into a registered server'
