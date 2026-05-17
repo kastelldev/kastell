@@ -16,11 +16,6 @@ All notable changes to this project will be documented in this file.
 - `server_logs monitor` returns structured `metrics.{cpu,mem,disk}` objects (bytes for total/used, IEC binary) instead of validation-failing strings. CLI output unchanged. (F-019)
 - `server_backup backup-list` returns `backupCount` field (F-021)
 - `kastell audit` accepts `--framework <cis-level1|cis-level2|pci-dss|hipaa>` (parity with MCP) (F-016)
-
-### Added
-- Regression test for `server_plugin list` reading from the loaded plugin registry (fix landed in v2.2.0 P134c/d; test prevents future drift, F-018)
-
-### Fixed
 - Keychain decrypt warnings now deduplicate into single line with provider list (CQS-07)
 - Audit `--threshold` and all early-return paths now correctly set `process.exitCode = 1` via AuditError policy (F-015)
 - `kastell add --skip-verify` now respects `--mode coolify|bare` flag (F-002)
@@ -36,6 +31,7 @@ All notable changes to this project will be documented in this file.
 - `isWindows()` helper extracts 6 inline platform checks
 
 ### Added
+- Regression test for `server_plugin list` reading from the loaded plugin registry (fix landed in v2.2.0 P134c/d; test prevents future drift, F-018)
 - `AuditError` class for centralized audit error handling
 - `chunkConcurrent` helper for bounded parallel work
 - `PluginSeverity` / `FixTier` shared types
