@@ -24,6 +24,9 @@ export async function executePluginChecks(checks: PluginCheck[], host: string): 
       }
       try {
         const ssh = await sshExec(host, check.checkCommand, { signal: ac.signal });
+        if (ssh.code !== 0) {
+          return { checkId: check.id, status: "error" as const, reason: ssh.stderr || `Exit code ${ssh.code}` };
+        }
         return { checkId: check.id, status: "pass" as const, output: ssh.stdout };
       } catch (err) {
         if (ac.signal.aborted) {

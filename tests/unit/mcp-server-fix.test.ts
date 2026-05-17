@@ -33,6 +33,7 @@ jest.mock("../../src/utils/errorMapper", () => ({
 jest.mock("../../src/core/audit/pluginFix.js", () => ({
   getPluginBackupPaths: jest.fn().mockReturnValue([]),
   getAppliedPluginNames: jest.fn().mockReturnValue([]),
+  buildFixHistorySource: jest.fn().mockReturnValue({ source: "fix" }),
   isPluginFixCommand: jest.fn(() => false),
   parsePluginFixCommand: jest.fn(() => null),
   executePluginFix: jest.fn(),

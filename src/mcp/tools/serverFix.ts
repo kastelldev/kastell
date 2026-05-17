@@ -585,6 +585,7 @@ export async function handleServerFix(
 
     // ── LIVE FIX — save history entry (FIXPRO-02) ────────────────────────
     const appliedPluginNames = getAppliedPluginNames([...applied]);
+    const fixHistorySource = buildFixHistorySource(appliedPluginNames);
     await saveFixHistory({
       fixId,
       serverIp: server.ip,
@@ -595,8 +596,7 @@ export async function handleServerFix(
       scoreAfter,
       status: applied.length > 0 ? "applied" : "failed",
       backupPath: remoteBackupPath,
-      source: appliedPluginNames.length > 0 ? "plugin" : "fix",
-      pluginName: appliedPluginNames.length > 0 ? appliedPluginNames.join(",") : undefined,
+      ...fixHistorySource,
     });
 
     // Only save when fixes were applied — a no-op fix run should not overwrite the baseline

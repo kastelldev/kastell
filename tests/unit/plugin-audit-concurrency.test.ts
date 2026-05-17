@@ -1,5 +1,5 @@
 import { describe, test, expect, afterEach, beforeEach } from "@jest/globals";
-import { executePluginChecks } from "../../../src/core/plugin/audit.js";
+import { executePluginChecks } from "../../src/core/plugin/audit.js";
 
 describe("executePluginChecks concurrency", () => {
   afterEach(() => {
@@ -17,7 +17,7 @@ describe("executePluginChecks concurrency", () => {
       description: "test",
       checkCommand: "echo",
     }));
-    jest.spyOn(require("../../../src/utils/ssh"), "sshExec").mockImplementation(async () => {
+    jest.spyOn(require("../../src/utils/ssh"), "sshExec").mockImplementation(async () => {
       active++; peak = Math.max(peak, active);
       await new Promise(r => setTimeout(r, 20));
       active--;
@@ -38,7 +38,7 @@ describe("executePluginChecks concurrency", () => {
       description: "test",
       checkCommand: "sleep",
     }));
-    jest.spyOn(require("../../../src/utils/ssh"), "sshExec").mockImplementation(async () => {
+    jest.spyOn(require("../../src/utils/ssh"), "sshExec").mockImplementation(async () => {
       await new Promise(r => setTimeout(r, 100));
       return { stdout: "", stderr: "", code: 0 };
     });
@@ -66,8 +66,8 @@ describe("executePluginChecks concurrency", () => {
         checkCommand: "false",
       },
     ];
-    jest.spyOn(require("../../../src/utils/ssh"), "sshExec").mockImplementation(async (_host: string, cmd: string) => {
-      if (cmd.includes("false")) return { stdout: "", stderr: "command failed", code: 1 };
+    jest.spyOn(require("../../src/utils/ssh"), "sshExec").mockImplementation(async (_h: unknown, _c: unknown) => {
+      if ((_c as string).includes("false")) return { stdout: "", stderr: "command failed", code: 1 };
       return { stdout: "ok", stderr: "", code: 0 };
     });
     const result = await executePluginChecks(checks, "192.168.1.100");

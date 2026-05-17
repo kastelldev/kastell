@@ -11,7 +11,7 @@ import { raw } from "../../utils/sshCommand.js";
 import { logger } from "../../utils/logger.js";
 import { getErrorMessage } from "../../utils/errorMapper.js";
 import { tryHandlerDispatch } from "./handlers/index.js";
-import { tryParsePluginFixCommand, executePluginFix } from "./pluginFix.js";
+import { tryParsePluginFixCommand, executePluginFix, buildFixHistorySource } from "./pluginFix.js";
 import { truncateExecutionLog } from "./fix-history.js";
 import inquirer from "inquirer";
 import { buildAuditBatchCommands, BATCH_TIMEOUTS } from "./commands.js";
