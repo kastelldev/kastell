@@ -28,6 +28,7 @@ jest.mock("../../src/core/audit/pluginFix.js", () => {
     parsePluginFixCommand: () => null,
     getPluginBackupPaths: () => [],
     getAppliedPluginNames: () => [],
+    buildFixHistorySource: () => ({ source: "fix" }),
     executePluginFix: async () => ({ success: false }),
   };
 });
