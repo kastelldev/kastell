@@ -1,6 +1,7 @@
 import { spawnSync } from "child_process";
 import { appendFileSync, mkdirSync, readdirSync, statSync, unlinkSync } from "fs";
 import { join } from "path";
+import { isWindows } from "../utils/platform.js";
 import { secureWriteFileSync } from "../utils/secureWrite.js";
 import {
   validateCronExpr,
@@ -112,7 +113,7 @@ export function installLocalCron(
   const doctorFixCmd = `${kastellBin} doctor --auto-fix --server "${sanitized}" --force`;
   const command = type === "fix" ? fixCmd : type === "audit" ? auditCmd : doctorFixCmd;
 
-  if (process.platform === "win32") {
+  if (isWindows()) {
     saveSchedule(scheduleKey(sanitized, type), cronExpr);
     return { success: true, windowsFallback: true, command };
   }

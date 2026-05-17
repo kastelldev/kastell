@@ -11,18 +11,28 @@ import { join } from "path";
 
 const PLUGIN_FIX_PREFIX = "plugin:";
 
-export function isPluginFixCommand(fixCommand: string | undefined): boolean {
-  return typeof fixCommand === "string" && fixCommand.startsWith(PLUGIN_FIX_PREFIX);
-}
-
-export function parsePluginFixCommand(fixCommand: string): { pluginName: string; handlerPath: string } | null {
-  if (!fixCommand.startsWith(PLUGIN_FIX_PREFIX)) return null;
-  const parts = fixCommand.split(":");
+export function tryParsePluginFixCommand(cmd: string | undefined): { pluginName: string; handlerPath: string } | null {
+  if (typeof cmd !== "string" || !cmd.startsWith(PLUGIN_FIX_PREFIX)) return null;
+  const parts = cmd.split(":");
   if (parts.length < 3) return null;
   const pluginName = parts[1];
   const handlerPath = parts.slice(2).join(":");
   if (!pluginName || !handlerPath) return null;
   return { pluginName, handlerPath };
+}
+
+/**
+ * @deprecated Use tryParsePluginFixCommand instead. This function is kept for backwards compatibility.
+ */
+export function isPluginFixCommand(fixCommand: string | undefined): boolean {
+  return typeof fixCommand === "string" && fixCommand.startsWith(PLUGIN_FIX_PREFIX);
+}
+
+/**
+ * @deprecated Use tryParsePluginFixCommand instead. This function is kept for backwards compatibility.
+ */
+export function parsePluginFixCommand(fixCommand: string): { pluginName: string; handlerPath: string } | null {
+  return tryParsePluginFixCommand(fixCommand);
 }
 
 export function getPluginFixMetadata(failedCheckIds: string[], appliedCheckIds: string[]): { backupPaths: string[]; pluginNames: string[] } {

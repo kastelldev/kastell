@@ -84,6 +84,7 @@ program
 
 program
   .command("init")
+  .alias("provision")
   .description("Deploy a new Coolify instance on a cloud provider")
   .option("--provider <provider>", "Cloud provider (hetzner, digitalocean, vultr, linode)")
   .option(

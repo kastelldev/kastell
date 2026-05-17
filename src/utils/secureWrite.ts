@@ -1,4 +1,5 @@
 import { writeFileSync, mkdirSync, chmodSync } from "fs";
+import { isWindows } from "./platform.js";
 
 export interface WriteFileOptions {
   encoding?: BufferEncoding;
@@ -12,7 +13,7 @@ export function clearCache(): void {
 }
 
 function applyPermissions(targetPath: string, mode: 0o600 | 0o700): void {
-  if (process.platform === "win32") return; // ACL hardening → v2.4 backlog
+  if (isWindows()) return; // ACL hardening → v2.4 backlog
   chmodSync(targetPath, mode);
 }
 

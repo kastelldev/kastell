@@ -1,5 +1,6 @@
 import { spawn, spawnSync, type ChildProcess } from "child_process";
 import { existsSync } from "fs";
+import { isWindows } from "./platform.js";
 import { secureMkdirSync } from "./secureWrite.js";
 import { dirname, join } from "path";
 import { tmpdir } from "os";

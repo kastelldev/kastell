@@ -1,4 +1,5 @@
 import { execFile } from "child_process";
+import { isWindows } from "./platform.js";
 import { sanitizedEnv } from "./ssh.js";
 
 const SAFE_URL_PATTERN = /^https?:\/\/[\d.]+(?::\d+)?\/?$/;
@@ -55,11 +56,10 @@ export function openBrowser(url: string): void {
   if (!command) return;
 
   // Use execFile to avoid shell interpretation (no injection risk)
-  const args =
-    process.platform === "win32"
+  const args = isWindows()
       ? ["/c", "start", "", url]
       : [url];
-  const bin = process.platform === "win32" ? "cmd" : command;
+  const bin = isWindows() ? "cmd" : command;
 
   execFile(bin, args, { env: sanitizedEnv() }, () => {
     // Silent failure by design — browser open is best-effort

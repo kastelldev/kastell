@@ -291,6 +291,16 @@ kastell <command>
 
 Requires Node.js 20 or later.
 
+## Safety Modes
+
+`KASTELL_SAFE_MODE` environment variable controls destructive operations:
+
+- **MCP default:** `true` — `provision`, `destroy`, `restore` are blocked
+- **CLI default:** `false` — all operations are enabled
+- **Override:** `KASTELL_SAFE_MODE=true kastell destroy <server>` → rejected
+
+Affected commands: `init`, `destroy`, `backup-restore`, `snapshot-restore`.
+
 ## Troubleshooting
 
 **Server creation fails?**

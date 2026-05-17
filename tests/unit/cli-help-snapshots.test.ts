@@ -50,6 +50,10 @@ describe("CLI help text snapshots", () => {
     expect(getHelp(["init", "--help"])).toMatchSnapshot();
   });
 
+  it("kastell provision --help matches snapshot (alias for init)", () => {
+    expect(getHelp(["provision", "--help"])).toMatchSnapshot();
+  });
+
   it("kastell secure --help matches snapshot", () => {
     expect(getHelp(["secure", "--help"])).toMatchSnapshot();
   });
