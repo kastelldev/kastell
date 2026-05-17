@@ -570,6 +570,7 @@ describe("MCP server_fix tool", () => {
       const pluginFix = jest.requireMock("../../src/core/audit/pluginFix.js");
       pluginFix.getPluginBackupPaths.mockReturnValue(["/etc/plugin.conf"]);
       pluginFix.getAppliedPluginNames.mockReturnValue(["kastell-plugin-test"]);
+      pluginFix.buildFixHistorySource.mockReturnValue({ source: "plugin", pluginName: "kastell-plugin-test" });
 
       await handleServerFix({ mode: "live" });
 
