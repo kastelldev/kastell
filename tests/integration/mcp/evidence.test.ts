@@ -7,15 +7,37 @@
  * covered by tests/unit/evidence-core.test.ts.
  */
 
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+// Mock I/O boundaries before imports
+jest.mock("fs", () => ({
+  existsSync: jest.fn().mockReturnValue(false),
+  mkdirSync: jest.fn(),
+  writeFileSync: jest.fn(),
+  renameSync: jest.fn(),
+  rmSync: jest.fn(),
+}));
+jest.mock("fs/promises", () => ({
+  mkdir: jest.fn().mockResolvedValue(undefined),
+  writeFile: jest.fn().mockResolvedValue(undefined),
+}));
+jest.mock("../../../src/utils/version.js", () => ({
+  KASTELL_VERSION: "0.0.0-test",
+}));
+jest.mock("../../../src/utils/config.js");
+jest.mock("../../../src/utils/ssh.js");
+jest.mock("../../../src/utils/fileLock.js", () => ({
+  withFileLock: jest.fn((_path: string, fn: () => unknown) => fn()),
+}));
+
+import * as fs from "fs";
 import * as configUtils from "../../../src/utils/config.js";
 import * as sshUtils from "../../../src/utils/ssh.js";
-import { withMcpClient } from "../../helpers/mcpRpcClient.js";
+import { handleServerEvidence } from "../../../src/mcp/tools/serverEvidence.js";
 
 const mockedConfig = configUtils as jest.Mocked<typeof configUtils>;
 const mockedSshExec = sshUtils.sshExec as jest.Mock;
+const mockedFs = fs as jest.Mocked<typeof fs>;
 
-// ─── Shared fixtures ────────────────────────────────────────────────────────────
+// ─── Shared fixtures ───────────────────────────────────────────────────────────
 
 const SAMPLE_SERVER = {
   id: "htz-001",
@@ -59,73 +81,73 @@ describe("MCP server_evidence", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockedConfig.getServers.mockReturnValue([SAMPLE_SERVER]);
+    mockedConfig.findServer.mockImplementation((nameOrIp: string) => {
+      if (nameOrIp === "test-server" || nameOrIp === "5.6.7.8") return SAMPLE_SERVER;
+      return undefined;
+    });
     mockedSshExec.mockResolvedValue({
       code: 0,
       stdout: makeSshOutput(COOLIFY_SECTIONS),
       stderr: "",
     });
+    mockedFs.existsSync.mockReturnValue(false);
+    mockedFs.mkdirSync.mockReturnValue(undefined);
+    mockedFs.writeFileSync.mockReturnValue(undefined);
+    mockedFs.renameSync.mockReturnValue(undefined);
+    mockedFs.rmSync.mockReturnValue(undefined);
   });
 
   // ── Test 1: Happy path — manifest with SHA256 entries returned ─────────────
   it("should return evidenceDir and totalFiles on success", async () => {
-    const response = await withMcpClient(async (client: Client) => {
-      return client.callTool("server-evidence", { server: "test-server" });
-    });
+    const response = await handleServerEvidence({ server: "test-server" });
 
-    expect(response.content).toHaveLength(1);
-    const data = JSON.parse(response.content[0]!.text);
-    expect(data.result.evidenceDir).toBeDefined();
-    expect(data.result.serverName).toBe("test-server");
-    expect(data.result.serverIp).toBe("5.6.7.8");
-    expect(data.result.platform).toBe("coolify");
-    expect(data.result.totalFiles).toBeGreaterThan(0);
-    expect(data.result.skippedFiles).toBeDefined();
-    expect(data.result.manifestPath).toBeDefined();
+    expect(response.isError).toBeFalsy();
+    // mcpSuccess serializes data directly into content[0].text (not wrapped in result)
+    const body = JSON.parse(response.content[0]!.text);
+    expect(body.evidenceDir).toBeDefined();
+    expect(body.serverName).toBe("test-server");
+    expect(body.serverIp).toBe("5.6.7.8");
+    expect(body.platform).toBe("coolify");
+    expect(body.totalFiles).toBeGreaterThan(0);
+    expect(body.skippedFiles).toBeDefined();
+    expect(body.manifestPath).toBeDefined();
   });
 
   // ── Test 2: force: true — overwrite existing dir behavior ──────────────────
   it("should accept force:true and not return 'already exists' error", async () => {
-    // Mock fs.existsSync to return true (existing directory)
-    const fs = await import("fs");
-    (fs.existsSync as jest.Mock).mockReturnValue(true);
-    (fs.rmSync as jest.Mock).mockReturnValue(undefined);
+    mockedFs.existsSync.mockReturnValue(true);
+    mockedFs.rmSync.mockReturnValue(undefined);
 
-    const response = await withMcpClient(async (client: Client) => {
-      return client.callTool("server-evidence", {
-        server: "test-server",
-        force: true,
-      });
+    const response = await handleServerEvidence({
+      server: "test-server",
+      force: true,
     });
 
     expect(response.isError).not.toBe(true);
-    const data = JSON.parse(response.content[0]!.text);
-    expect(data.error).toBeUndefined();
+    const body = JSON.parse(response.content[0]!.text);
+    expect(body.error).toBeUndefined();
   });
 
   // ── Test 3: no_docker: true — Docker section skipped ───────────────────────
   it("should skip docker sections when no_docker=true", async () => {
-    // Coolify without docker = 5 sections (bare-like)
     mockedSshExec.mockResolvedValue({
       code: 0,
       stdout: makeSshOutput(BARE_SECTIONS),
       stderr: "",
     });
 
-    const response = await withMcpClient(async (client: Client) => {
-      return client.callTool("server-evidence", {
-        server: "test-server",
-        no_docker: true,
-      });
+    const response = await handleServerEvidence({
+      server: "test-server",
+      no_docker: true,
     });
 
     expect(response.isError).not.toBe(true);
-    const data = JSON.parse(response.content[0]!.text);
-    expect(data.result.totalFiles).toBeGreaterThanOrEqual(0);
+    const body = JSON.parse(response.content[0]!.text);
+    expect(body.totalFiles).toBeGreaterThanOrEqual(0);
   });
 
   // ── Test 4: no_sysinfo: true — sysinfo section skipped ─────────────────────
   it("should skip system-info section when no_sysinfo=true", async () => {
-    // coolify + noSysinfo = 6 sections (firewall, auth-log, ports, syslog, docker-ps, docker-logs)
     const sectionsWithoutSysinfo = COOLIFY_SECTIONS.slice(0, 4).concat(COOLIFY_SECTIONS.slice(5));
     mockedSshExec.mockResolvedValue({
       code: 0,
@@ -133,16 +155,14 @@ describe("MCP server_evidence", () => {
       stderr: "",
     });
 
-    const response = await withMcpClient(async (client: Client) => {
-      return client.callTool("server-evidence", {
-        server: "test-server",
-        no_sysinfo: true,
-      });
+    const response = await handleServerEvidence({
+      server: "test-server",
+      no_sysinfo: true,
     });
 
     expect(response.isError).not.toBe(true);
-    const data = JSON.parse(response.content[0]!.text);
-    expect(data.result.totalFiles).toBeGreaterThanOrEqual(0);
+    const body = JSON.parse(response.content[0]!.text);
+    expect(body.totalFiles).toBeGreaterThanOrEqual(0);
   });
 
   // ── Test 5: lines: 200 — log line cap applied ──────────────────────────────
@@ -153,44 +173,37 @@ describe("MCP server_evidence", () => {
       stderr: "",
     });
 
-    await withMcpClient(async (client: Client) => {
-      return client.callTool("server-evidence", {
-        server: "test-server",
-        lines: 200,
-      });
+    await handleServerEvidence({
+      server: "test-server",
+      lines: 200,
     });
 
     expect(mockedSshExec).toHaveBeenCalledTimes(1);
     const [, batchCommand] = mockedSshExec.mock.calls[0]!;
-    // The batch command contains "tail -n 200" for auth-log and syslog sections
     expect(batchCommand).toContain("200");
   });
 
   // ── Test 6: Disk write error → mcpError "filesystem error" ────────────────
   it("should return mcpError on filesystem error", async () => {
-    // Make sshExec succeed so collectEvidence gets to the file-write stage
     mockedSshExec.mockResolvedValue({
       code: 0,
       stdout: makeSshOutput(COOLIFY_SECTIONS),
       stderr: "",
     });
 
-    // Mock writeFile to throw ENOSPC
-    const fsPromises = await import("fs/promises");
-    (fsPromises.writeFile as jest.Mock).mockRejectedValue(
-      Object.assign(new Error("No space left on device"), { code: "ENOSPC" }),
-    );
-
-    const response = await withMcpClient(async (client: Client) => {
-      return client.callTool("server-evidence", { server: "test-server" });
+    mockedFs.writeFileSync.mockImplementation(() => {
+      const err = new Error("No space left on device") as NodeJS.ErrnoException;
+      err.code = "ENOSPC";
+      throw err;
     });
 
+    const response = await handleServerEvidence({ server: "test-server" });
+
     expect(response.isError).toBe(true);
-    const data = JSON.parse(response.content[0]!.text);
-    // Error message from collectEvidence or caught in handleServerEvidence
+    const body = JSON.parse(response.content[0]!.text);
     expect(
-      data.error?.toLowerCase().includes("filesystem") ||
-      data.error?.toLowerCase().includes("no space left on device"),
+      body.error?.toLowerCase().includes("filesystem") ||
+      body.error?.toLowerCase().includes("no space left on device"),
     ).toBe(true);
   });
 
@@ -205,17 +218,13 @@ describe("MCP server_evidence", () => {
       stderr: "",
     });
 
-    // Should not throw even on win32
-    let response: Awaited<ReturnType<Client["callTool"]>> | undefined;
+    let response: Awaited<ReturnType<typeof handleServerEvidence>> | undefined;
     try {
-      response = await withMcpClient(async (client: Client) => {
-        return client.callTool("server-evidence", { server: "test-server" });
-      });
+      response = await handleServerEvidence({ server: "test-server" });
     } finally {
       Object.defineProperty(process, "platform", { value: originalPlatform });
     }
 
-    // Handler does not crash on win32 — platform field comes from server config
     expect(response).toBeDefined();
   });
 });

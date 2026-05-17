@@ -63,13 +63,6 @@ export async function handleServerCompare(params: {
     const serverA = servers.find((s) => s.name === params.serverA || s.ip === params.serverA);
     const serverB = servers.find((s) => s.name === params.serverB || s.ip === params.serverB);
 
-    if (serverA.name === serverB.name || serverA.ip === serverB.ip) {
-      return mcpError(
-        "Servers must be different",
-        "Provide two different server names or IPs to compare",
-      );
-    }
-
     if (!serverA) {
       return mcpError(
         `Server not found: ${params.serverA}`,
@@ -80,6 +73,13 @@ export async function handleServerCompare(params: {
       return mcpError(
         `Server not found: ${params.serverB}`,
         `Available servers: ${servers.map((s) => s.name).join(", ")}`,
+      );
+    }
+
+    if (serverA.name === serverB.name || serverA.ip === serverB.ip) {
+      return mcpError(
+        "Servers must be different",
+        "Provide two different server names or IPs to compare",
       );
     }
 
