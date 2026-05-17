@@ -20,6 +20,28 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Regression test for `server_plugin list` reading from the loaded plugin registry (fix landed in v2.2.0 P134c/d; test prevents future drift, F-018)
 
+### Fixed
+- Keychain decrypt warnings now deduplicate into single line with provider list (CQS-07)
+- Audit `--threshold` and all early-return paths now correctly set `process.exitCode = 1` via AuditError policy (F-015)
+- `kastell add --skip-verify` now respects `--mode coolify|bare` flag (F-002)
+- `kastell lock --dry-run` error message clarified (F-010)
+- `kastell fix --dry-run` requires `--safe` with clear error (F-012)
+- `kastell fix --history` shows informative empty state (F-014)
+- Bash completions synced with command registry (F-025)
+
+### Changed
+- MCP server tool registration refactored to iterate `ALL_MCP_TOOLS` (~340 lines removed)
+- Plugin audit checks now parallelize (max 4 per host) with AbortController-based aggregate timeout (CQS-06)
+- Fixture `makeServerRecord` helper extracted across 10 fixtures (~100 lines saved)
+- `isWindows()` helper extracts 6 inline platform checks
+
+### Added
+- `AuditError` class for centralized audit error handling
+- `chunkConcurrent` helper for bounded parallel work
+- `PluginSeverity` / `FixTier` shared types
+- `Safety Modes` section in README
+- `kastell provision` alias for `init`
+
 ## [2.2.7] - 2026-05-16
 
 ### Fixed
