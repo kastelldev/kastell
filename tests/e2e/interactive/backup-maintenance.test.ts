@@ -28,245 +28,174 @@ describe("interactive backup-maintenance prompts", () => {
 
   describe("promptSnapshot", () => {
     it("should return argv for create action", async () => {
-      const { reset } = runInteractiveFlow([
-        { name: "Snapshot action:", value: "create" },
-      ]);
+      mockedInquirer.prompt.mockResolvedValueOnce({ answer: "create" });
       const result = await promptSnapshot();
       expect(result).toEqual(["snapshot", "create"]);
-      reset();
     });
 
     it("should return argv for list action", async () => {
-      const { reset } = runInteractiveFlow([
-        { name: "Snapshot action:", value: "list" },
-      ]);
+      mockedInquirer.prompt.mockResolvedValueOnce({ answer: "list" });
       const result = await promptSnapshot();
       expect(result).toEqual(["snapshot", "list"]);
-      reset();
     });
 
     it("should return argv for list-all action", async () => {
-      const { reset } = runInteractiveFlow([
-        { name: "Snapshot action:", value: "list-all" },
-      ]);
+      mockedInquirer.prompt.mockResolvedValueOnce({ answer: "list-all" });
       const result = await promptSnapshot();
       expect(result).toEqual(["snapshot", "list", "--all"]);
-      reset();
     });
 
     it("should return argv for restore action", async () => {
-      const { reset } = runInteractiveFlow([
-        { name: "Snapshot action:", value: "restore" },
-      ]);
+      mockedInquirer.prompt.mockResolvedValueOnce({ answer: "restore" });
       const result = await promptSnapshot();
       expect(result).toEqual(["snapshot", "restore"]);
-      reset();
     });
 
     it("should return argv for delete action", async () => {
-      const { reset } = runInteractiveFlow([
-        { name: "Snapshot action:", value: "delete" },
-      ]);
+      mockedInquirer.prompt.mockResolvedValueOnce({ answer: "delete" });
       const result = await promptSnapshot();
       expect(result).toEqual(["snapshot", "delete"]);
-      reset();
     });
   });
 
   describe("promptMaintain", () => {
     it("should return argv for full mode", async () => {
-      const { reset } = runInteractiveFlow([
-        { name: "Maintenance mode:", value: "full" },
-      ]);
+      mockedInquirer.prompt.mockResolvedValueOnce({ answer: "full" });
       const result = await promptMaintain();
       expect(result).toEqual(["maintain"]);
-      reset();
     });
 
     it("should return argv for skip-reboot mode", async () => {
-      const { reset } = runInteractiveFlow([
-        { name: "Maintenance mode:", value: "skip-reboot" },
-      ]);
+      mockedInquirer.prompt.mockResolvedValueOnce({ answer: "skip-reboot" });
       const result = await promptMaintain();
       expect(result).toEqual(["maintain", "--skip-reboot"]);
-      reset();
     });
 
     it("should return argv for all servers mode", async () => {
-      const { reset } = runInteractiveFlow([
-        { name: "Maintenance mode:", value: "all" },
-      ]);
+      mockedInquirer.prompt.mockResolvedValueOnce({ answer: "all" });
       const result = await promptMaintain();
       expect(result).toEqual(["maintain", "--all"]);
-      reset();
     });
 
     it("should return argv for dry-run mode", async () => {
-      const { reset } = runInteractiveFlow([
-        { name: "Maintenance mode:", value: "dry-run" },
-      ]);
+      mockedInquirer.prompt.mockResolvedValueOnce({ answer: "dry-run" });
       const result = await promptMaintain();
       expect(result).toEqual(["maintain", "--dry-run"]);
-      reset();
     });
   });
 
   describe("promptUpdate", () => {
     it("should return argv for single server", async () => {
-      const { reset } = runInteractiveFlow([
-        { name: "Update scope:", value: "single" },
-      ]);
+      mockedInquirer.prompt.mockResolvedValueOnce({ answer: "single" });
       const result = await promptUpdate();
       expect(result).toEqual(["update"]);
-      reset();
     });
 
     it("should return argv for all servers", async () => {
-      const { reset } = runInteractiveFlow([
-        { name: "Update scope:", value: "all" },
-      ]);
+      mockedInquirer.prompt.mockResolvedValueOnce({ answer: "all" });
       const result = await promptUpdate();
       expect(result).toEqual(["update", "--all"]);
-      reset();
     });
   });
 
   describe("promptBackup", () => {
     it("should return argv for create action", async () => {
-      const { reset } = runInteractiveFlow([
-        { name: "Backup action:", value: "create" },
-      ]);
+      mockedInquirer.prompt.mockResolvedValueOnce({ answer: "create" });
       const result = await promptBackup();
-      expect(result).toEqual(["backup", "create"]);
-      reset();
+      expect(result).toEqual(["backup"]);
     });
 
     it("should return argv for backup all servers", async () => {
-      const { reset } = runInteractiveFlow([
-        { name: "Backup action:", value: "all" },
-      ]);
+      mockedInquirer.prompt.mockResolvedValueOnce({ answer: "all" });
       const result = await promptBackup();
       expect(result).toEqual(["backup", "--all"]);
-      reset();
     });
 
     it("should return argv for dry-run", async () => {
-      const { reset } = runInteractiveFlow([
-        { name: "Backup action:", value: "dry-run" },
-      ]);
+      mockedInquirer.prompt.mockResolvedValueOnce({ answer: "dry-run" });
       const result = await promptBackup();
       expect(result).toEqual(["backup", "--dry-run"]);
-      reset();
     });
 
     it("should return argv for schedule list", async () => {
-      const { reset } = runInteractiveFlow([
-        { name: "Backup action:", value: "schedule" },
-        { name: "Backup schedule:", value: "list" },
-      ]);
+      mockedInquirer.prompt
+        .mockResolvedValueOnce({ answer: "schedule" })
+        .mockResolvedValueOnce({ answer: "list" });
       const result = await promptBackup();
       expect(result).toEqual(["backup", "--schedule", "list"]);
-      reset();
     });
 
     it("should return argv for schedule remove", async () => {
-      const { reset } = runInteractiveFlow([
-        { name: "Backup action:", value: "schedule" },
-        { name: "Backup schedule:", value: "remove" },
-      ]);
+      mockedInquirer.prompt
+        .mockResolvedValueOnce({ answer: "schedule" })
+        .mockResolvedValueOnce({ answer: "remove" });
       const result = await promptBackup();
       expect(result).toEqual(["backup", "--schedule", "remove"]);
-      reset();
     });
 
     it("should return argv for schedule set with cron", async () => {
-      const { reset } = runInteractiveFlow([
-        { name: "Backup action:", value: "schedule" },
-        { name: "Backup schedule:", value: "set" },
-        { cron: "0 2 * * *" },
-      ]);
+      mockedInquirer.prompt
+        .mockResolvedValueOnce({ answer: "schedule" })
+        .mockResolvedValueOnce({ answer: "set" })
+        .mockResolvedValueOnce({ cron: "0 2 * * *" });
       const result = await promptBackup();
       expect(result).toEqual(["backup", "--schedule", "0 2 * * *"]);
-      reset();
     });
   });
 
   describe("promptImport", () => {
     it("should return argv with file path", async () => {
-      const { reset } = runInteractiveFlow([
-        { name: "Import server list:", value: "file" },
-        { path: "/path/to/servers.json" },
-      ]);
+      mockedInquirer.prompt
+        .mockResolvedValueOnce({ answer: "file" })
+        .mockResolvedValueOnce({ path: "/path/to/servers.json" });
       const result = await promptImport();
       expect(result).toEqual(["import", "/path/to/servers.json"]);
-      reset();
     });
   });
 
   describe("promptNotify", () => {
     it("should return argv for list action", async () => {
-      const { reset } = runInteractiveFlow([
-        { name: "Notification action:", value: "list" },
-      ]);
+      mockedInquirer.prompt.mockResolvedValueOnce({ answer: "list" });
       const result = await promptNotify();
       expect(result).toEqual(["notify", "list"]);
-      reset();
     });
 
     it("should return argv for add action", async () => {
-      const { reset } = runInteractiveFlow([
-        { name: "Notification action:", value: "add" },
-      ]);
+      mockedInquirer.prompt.mockResolvedValueOnce({ answer: "add" });
       const result = await promptNotify();
       expect(result).toEqual(["notify", "add"]);
-      reset();
     });
 
     it("should return argv for remove action", async () => {
-      const { reset } = runInteractiveFlow([
-        { name: "Notification action:", value: "remove" },
-      ]);
+      mockedInquirer.prompt.mockResolvedValueOnce({ answer: "remove" });
       const result = await promptNotify();
       expect(result).toEqual(["notify", "remove"]);
-      reset();
     });
 
     it("should return argv for test action", async () => {
-      const { reset } = runInteractiveFlow([
-        { name: "Notification action:", value: "test" },
-      ]);
+      mockedInquirer.prompt.mockResolvedValueOnce({ answer: "test" });
       const result = await promptNotify();
       expect(result).toEqual(["notify", "test"]);
-      reset();
     });
   });
 
   describe("promptCompletions", () => {
     it("should return argv for bash shell", async () => {
-      const { reset } = runInteractiveFlow([
-        { name: "Shell:", value: "bash" },
-      ]);
+      mockedInquirer.prompt.mockResolvedValueOnce({ answer: "bash" });
       const result = await promptCompletions();
       expect(result).toEqual(["completions", "bash"]);
-      reset();
     });
 
     it("should return argv for zsh shell", async () => {
-      const { reset } = runInteractiveFlow([
-        { name: "Shell:", value: "zsh" },
-      ]);
+      mockedInquirer.prompt.mockResolvedValueOnce({ answer: "zsh" });
       const result = await promptCompletions();
       expect(result).toEqual(["completions", "zsh"]);
-      reset();
     });
 
     it("should return argv for fish shell", async () => {
-      const { reset } = runInteractiveFlow([
-        { name: "Shell:", value: "fish" },
-      ]);
+      mockedInquirer.prompt.mockResolvedValueOnce({ answer: "fish" });
       const result = await promptCompletions();
       expect(result).toEqual(["completions", "fish"]);
-      reset();
     });
   });
 });
