@@ -275,7 +275,7 @@ function killChild(child: ChildProcess): void {
 
 function sshExecInner(
   ip: string,
-  command: SshCommand,
+  command: SshCommand | string,
   retried: boolean,
   timeoutMs: number = SSH_EXEC_TIMEOUT_MS,
   useStdin: boolean = false,
@@ -381,7 +381,7 @@ function sshExecInner(
 
 export function sshExec(
   ip: string,
-  command: SshCommand,
+  command: SshCommand | string,
   opts?: { timeoutMs?: number; useStdin?: boolean; signal?: AbortSignal },
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   assertValidIp(ip);
