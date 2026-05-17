@@ -4,7 +4,7 @@
  */
 
 import type { ComplianceDetailScore } from "./compliance/types.js";
-
+import type { Severity, FixTier } from "../../types/severity.js";
 export type { Severity, FixTier } from "../../types/severity.js";
 
 export type ComplianceCoverage = "full" | "partial";
