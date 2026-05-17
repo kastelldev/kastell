@@ -36,6 +36,10 @@ export function extractPassedCheckIds(audit: AuditResult): string[] {
   return ids.sort();
 }
 
+export function extractFailedCheckIds(result: AuditResult): string[] {
+  return result.categories.flatMap((c) => c.checks.filter((ch) => !ch.passed).map((ch) => ch.id));
+}
+
 export async function saveBaseline(
   audit: AuditResult,
   existing?: RegressionBaseline | null,

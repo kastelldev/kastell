@@ -38,7 +38,7 @@ import {
   rollbackToFix,
 } from "../core/audit/fix-history.js";
 import { saveBaselineSafe, loadBaseline, checkRegression, formatRegressionSummary, extractPassedCheckIds, shouldUpdateBaseline, hasRegression } from "../core/audit/regression.js";
-import { getPluginBackupPaths, getAppliedPluginNames } from "../core/audit/pluginFix.js";
+import { getPluginBackupPaths, getAppliedPluginNames, buildFixHistorySource } from "../core/audit/pluginFix.js";
 
 const FORBIDDEN_BLOCK_HEADER = "=== FORBIDDEN fixes (skipped, manual review required) ===";
 const COMMAND_TRUNCATE_LEN = 80;
@@ -592,6 +592,7 @@ export async function fixSafeCommand(
 
   // Save to fix history (FIXPRO-02)
   const appliedPluginNames = getAppliedPluginNames([...applied]);
+  const { source, pluginName } = buildFixHistorySource(appliedPluginNames);
   await saveFixHistory({
     fixId,
     serverIp: ip,
@@ -602,8 +603,8 @@ export async function fixSafeCommand(
     scoreAfter: newScore,
     status: applied.length > 0 ? "applied" : "failed",
     backupPath: remoteBackupPath,
-    source: appliedPluginNames.length > 0 ? "plugin" : "fix",
-    pluginName: appliedPluginNames.length > 0 ? appliedPluginNames.join(",") : undefined,
+    source,
+    pluginName,
   });
 
   // Generate fix report (FIXPRO-07, D-10)

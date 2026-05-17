@@ -36,7 +36,7 @@ export function resolveSshPath(): string {
   }
 
   // Windows common SSH locations
-  if (process.platform === "win32") {
+  if (isWindows()) {
     const candidates = [
       join(process.env.SystemRoot || "C:\\Windows", "System32", "OpenSSH", "ssh.exe"),
       join(process.env.ProgramFiles || "C:\\Program Files", "OpenSSH", "ssh.exe"),
@@ -279,6 +279,7 @@ function sshExecInner(
   retried: boolean,
   timeoutMs: number = SSH_EXEC_TIMEOUT_MS,
   useStdin: boolean = false,
+  signal?: AbortSignal,
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   const effectiveTimeout = timeoutMs > 0 ? timeoutMs : SSH_EXEC_TIMEOUT_MS;
   const sshBin = resolveSshPath();
@@ -290,6 +291,16 @@ function sshExecInner(
       clearTimeout(timer);
       resolve(result);
     };
+
+    // Abort signal: kill SSH immediately if aggregate timeout fires
+    if (signal?.aborted) {
+      finish({ code: 1, stdout: "", stderr: "Aggregate timeout" });
+      return;
+    }
+    signal?.addEventListener("abort", () => {
+      killChild(child);
+      finish({ code: 1, stdout: "", stderr: "Aggregate timeout" });
+    });
 
     // When useStdin is true, pipe the command via stdin to avoid Windows
     // argument escaping that corrupts long multi-line commands with special chars.
@@ -371,10 +382,10 @@ function sshExecInner(
 export function sshExec(
   ip: string,
   command: SshCommand,
-  opts?: { timeoutMs?: number; useStdin?: boolean },
+  opts?: { timeoutMs?: number; useStdin?: boolean; signal?: AbortSignal },
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   assertValidIp(ip);
-  return sshExecInner(ip, command, false, opts?.timeoutMs ?? SSH_EXEC_TIMEOUT_MS, opts?.useStdin ?? false);
+  return sshExecInner(ip, command, false, opts?.timeoutMs ?? SSH_EXEC_TIMEOUT_MS, opts?.useStdin ?? false, opts?.signal);
 }
 
 // ─── SSH ControlMaster (connection multiplexing) ─────────────────────────────
@@ -386,7 +397,7 @@ function controlSocketPath(ip: string): string {
   // Use /tmp on Unix and Git Bash (Windows). SSH ControlPath requires
   // Unix-style paths — Node's os.tmpdir() returns Windows backslash paths
   // which SSH cannot use as socket paths.
-  const dir = process.platform === "win32" ? "/tmp/kastell-ssh" : join(tmpdir(), "kastell-ssh");
+  const dir = isWindows() ? "/tmp/kastell-ssh" : join(tmpdir(), "kastell-ssh");
   secureMkdirSync(dir, { recursive: true });
   return `${dir}/master-${ip}`;
 }

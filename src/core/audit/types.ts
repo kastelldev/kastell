@@ -5,9 +5,7 @@
 
 import type { ComplianceDetailScore } from "./compliance/types.js";
 
-export type Severity = "critical" | "warning" | "info";
-
-export type FixTier = "SAFE" | "GUARDED" | "FORBIDDEN";
+export type { Severity, FixTier } from "../../types/severity.js";
 
 export type ComplianceCoverage = "full" | "partial";
 

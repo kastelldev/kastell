@@ -1,6 +1,9 @@
+import type { Severity, FixTier } from "../../types/severity.js";
+
 export type PluginCapability = "audit" | "command" | "mcp-tool" | "fix";
-export type PluginSeverity = "critical" | "warning" | "info";
-export type PluginFixTier = "SAFE" | "GUARDED" | "FORBIDDEN";
+
+export type PluginSeverity = Severity;
+export type PluginFixTier = FixTier;
 
 export interface PluginCommand {
   name: string;

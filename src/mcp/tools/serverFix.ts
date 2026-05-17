@@ -39,8 +39,8 @@ import {
   type McpResponse,
 } from "../utils.js";
 import { getErrorMessage, sanitizeStderr } from "../../utils/errorMapper.js";
-import { saveBaselineSafe, loadBaseline, checkRegression, extractPassedCheckIds, shouldUpdateBaseline, hasRegression } from "../../core/audit/regression.js";
-import { getPluginBackupPaths, getAppliedPluginNames } from "../../core/audit/pluginFix.js";
+import { saveBaselineSafe, loadBaseline, checkRegression, extractPassedCheckIds, extractFailedCheckIds, shouldUpdateBaseline, hasRegression } from "../../core/audit/regression.js";
+import { getPluginBackupPaths, getAppliedPluginNames, buildFixHistorySource } from "../../core/audit/pluginFix.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 const baseFixFields = {
@@ -514,7 +514,7 @@ export async function handleServerFix(
     const fixId = generateFixId(server.ip);
     const fixCommands = fixCommandsFromChecks(selectedChecks);
     await mcpLog(mcpServer, "Creating remote file backup...");
-    const failedCheckIds = auditResult.categories.flatMap((c) => c.checks.filter((ch) => !ch.passed).map((ch) => ch.id));
+    const failedCheckIds = extractFailedCheckIds(auditResult);
     const pluginBackupPaths = getPluginBackupPaths(failedCheckIds);
     const remoteBackupPath = await backupFilesBeforeFix(server.ip, fixId, fixCommands, pluginBackupPaths);
 

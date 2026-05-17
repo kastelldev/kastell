@@ -1,4 +1,4 @@
-import { formatRegressionSummary, extractPassedCheckIds } from "../../src/core/audit/regression";
+import { formatRegressionSummary, extractPassedCheckIds, extractFailedCheckIds } from "../../src/core/audit/regression";
 import type { RegressionResult } from "../../src/core/audit/types";
 
 describe("formatRegressionSummary", () => {
@@ -86,5 +86,21 @@ describe("extractPassedCheckIds", () => {
       categories: [{ checks: [{ id: "X", passed: false }] }],
     } as any;
     expect(extractPassedCheckIds(audit)).toEqual([]);
+  });
+});
+
+describe("extractFailedCheckIds", () => {
+  it("should extract failed check IDs", () => {
+    const result = {
+      categories: [{ checks: [{ id: "ok", passed: true }, { id: "bad", passed: false }] }],
+    } as any;
+    expect(extractFailedCheckIds(result)).toEqual(["bad"]);
+  });
+
+  it("should return empty array when no checks failed", () => {
+    const result = {
+      categories: [{ checks: [{ id: "A", passed: true }, { id: "B", passed: true }] }],
+    } as any;
+    expect(extractFailedCheckIds(result)).toEqual([]);
   });
 });

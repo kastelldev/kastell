@@ -63,6 +63,11 @@ export function getAppliedPluginNames(appliedCheckIds: string[]): string[] {
   return getPluginFixMetadata([], appliedCheckIds).pluginNames;
 }
 
+export function buildFixHistorySource(names: string[]): { source: "fix" | "plugin"; pluginName?: string } {
+  if (names.length === 0) return { source: "fix" };
+  return { source: "plugin", pluginName: names[0] };
+}
+
 export async function executePluginFix(
   ip: string,
   checkId: string,
