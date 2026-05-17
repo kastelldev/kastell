@@ -1,0 +1,16 @@
+{
+  "name": "kastell-plugin-smoke",
+  "version": "1.0.0",
+  "apiVersion": "1",
+  "kastell": ">=2.2.0 <3.0.0",
+  "capabilities": ["fix"],
+  "checkPrefix": "SMOKE",
+  "entry": "index.js",
+  "fixes": [
+    {
+      "checkId": "SMOKE-1",
+      "tier": "SAFE",
+      "handler": "./index.js"
+    }
+  ]
+}
