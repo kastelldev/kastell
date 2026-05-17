@@ -27,6 +27,7 @@ import { filterAuditResult, buildFilterAnnotation, parseSeverity } from "../core
 import type { AuditFilter } from "../core/audit/filter.js";
 import { saveBaselineSafe, loadBaseline, checkRegression, formatRegressionSummary, extractPassedCheckIds, shouldUpdateBaseline } from "../core/audit/regression.js";
 import { loadDefaults } from "../core/defaults.js";
+import { AuditError } from "../core/audit/errors.js";
 
 function printDiff(diff: AuditDiffResult, json?: boolean): void {
   console.log(json ? formatDiffJson(diff) : formatDiffTerminal(diff));
@@ -59,10 +60,30 @@ export interface AuditCommandOptions extends AuditCliOptions {
 }
 
 /**
+ * Wrapper: catches AuditError and sets exitCode = 1.
+ * All early-return paths in auditCommandImpl throw AuditError instead.
+ */
+export async function auditCommand(
+  serverName?: string,
+  options: AuditCommandOptions = {},
+): Promise<void> {
+  try {
+    await auditCommandImpl(serverName, options);
+  } catch (err) {
+    if (err instanceof AuditError) {
+      logger.error(err.message);
+      process.exitCode = 1;
+      return;
+    }
+    throw err;
+  }
+}
+
+/**
  * Execute the audit command.
  * Flow: resolveServer (or parse --host) -> runAudit -> select formatter -> output -> threshold check
  */
-export async function auditCommand(
+async function auditCommandImpl(
   serverName?: string,
   options: AuditCommandOptions = {},
 ): Promise<void> {
@@ -96,8 +117,7 @@ export async function auditCommand(
   // --ci mode: validate threshold requirement early (before server resolution)
   if (options.ci) {
     if (options.threshold === undefined) {
-      logger.error("--ci requires --threshold (e.g. --ci --threshold 70)");
-      return;
+      throw new AuditError("--ci requires --threshold (e.g. --ci --threshold 70)");
     }
     options.json = true;
   }
@@ -166,14 +186,13 @@ export async function auditCommand(
   if (options.diff) {
     const parts = options.diff.split(":");
     if (parts.length !== 2) {
-      logger.error("--diff requires format: before:after (e.g. pre-upgrade:latest)");
-      return;
+      throw new AuditError("--diff requires format: before:after (e.g. pre-upgrade:latest)");
     }
     const [beforeRef, afterRef] = parts;
     const beforeSnap = await resolveSnapshotRef(ip, beforeRef);
     const afterSnap = await resolveSnapshotRef(ip, afterRef);
-    if (!beforeSnap) { logger.error(`Snapshot not found: ${beforeRef}`); return; }
-    if (!afterSnap) { logger.error(`Snapshot not found: ${afterRef}`); return; }
+    if (!beforeSnap) { throw new AuditError(`Snapshot not found: ${beforeRef}`); }
+    if (!afterSnap) { throw new AuditError(`Snapshot not found: ${afterRef}`); }
     const diff = diffAudits(beforeSnap.audit, afterSnap.audit, {
       before: beforeSnap.name ?? beforeRef,
       after: afterSnap.name ?? afterRef,
@@ -186,21 +205,20 @@ export async function auditCommand(
   if (options.compare) {
     const parts = options.compare.split(":");
     if (parts.length !== 2) {
-      logger.error("--compare requires format: server1:server2");
-      return;
+      throw new AuditError("--compare requires format: server1:server2");
     }
     const [serverARef, serverBRef] = parts;
     const servers = getServers();
     const serverA = servers.find((s) => s.name === serverARef || s.ip === serverARef);
     const serverB = servers.find((s) => s.name === serverBRef || s.ip === serverBRef);
-    if (!serverA) { logger.error(`Server not found: ${serverARef}`); return; }
-    if (!serverB) { logger.error(`Server not found: ${serverBRef}`); return; }
+    if (!serverA) { throw new AuditError(`Server not found: ${serverARef}`); }
+    if (!serverB) { throw new AuditError(`Server not found: ${serverBRef}`); }
 
     const spinner = createSpinner("Comparing servers...");
     spinner.start();
     const pairResult = await resolveAuditPair(serverA, serverB, !!options.fresh);
     spinner.stop();
-    if (!pairResult.success) { logger.error(pairResult.error ?? "Compare failed"); return; }
+    if (!pairResult.success) { throw new AuditError(pairResult.error ?? "Compare failed"); }
     const { auditA, auditB } = pairResult.data!;
 
     if (options.detail) {
@@ -217,8 +235,7 @@ export async function auditCommand(
   if (options.watch !== undefined) {
     const interval = options.watch ? parseInt(options.watch, 10) : undefined;
     if (interval !== undefined && (isNaN(interval) || interval < 1)) {
-      logger.error("Watch interval must be a positive number (seconds)");
-      return;
+      throw new AuditError("Watch interval must be a positive number (seconds)");
     }
     const formatter = await selectFormatter(options);
     logger.info(`Starting watch mode for ${name} (interval: ${interval ?? 300}s)`);
@@ -284,8 +301,7 @@ export async function auditCommand(
       .map((f) => FRAMEWORK_KEY_MAP[f.trim().toLowerCase()])
       .filter((f): f is FrameworkKey => !!f);
     if (frameworks.length === 0) {
-      logger.error("Invalid framework. Use: cis, pci-dss, hipaa");
-      return;
+      throw new AuditError("Invalid framework. Use: cis, pci-dss, hipaa");
     }
     if (options.json) {
       const detail = calculateComplianceDetail(auditResult.categories);
@@ -301,8 +317,7 @@ export async function auditCommand(
   if (options.framework) {
     const validFrameworks = ["cis-level1", "cis-level2", "pci-dss", "hipaa"] as const;
     if (!validFrameworks.includes(options.framework as typeof validFrameworks[number])) {
-      logger.error(`Invalid framework: ${options.framework}. Valid: ${validFrameworks.join(", ")}`);
-      return;
+      throw new AuditError(`Invalid framework: ${options.framework}. Valid: ${validFrameworks.join(", ")}`);
     }
     const fw = FRAMEWORK_KEY_MAP[options.framework];
     const filteredResult = filterByProfile(auditResult, options.framework as ProfileName);
@@ -327,8 +342,7 @@ export async function auditCommand(
   if (options.profile) {
     const validProfiles: readonly string[] = ["cis-level1", "cis-level2", "pci-dss", "hipaa"] satisfies ProfileName[];
     if (!validProfiles.includes(options.profile)) {
-      logger.error(`Invalid profile. Use: ${validProfiles.join(", ")}`);
-      return;
+      throw new AuditError(`Invalid profile. Use: ${validProfiles.join(", ")}`);
     }
     const profileName = options.profile as ProfileName;
     const filteredResult = filterByProfile(auditResult, profileName);
@@ -418,8 +432,7 @@ export async function auditCommand(
     if (options.threshold) {
       const threshold = parseInt(options.threshold, 10);
       if (isNaN(threshold)) {
-        logger.error("--threshold must be a number");
-        return;
+        throw new AuditError("--threshold must be a number");
       }
       if (auditResult.overallScore < threshold) {
         process.exitCode = 1;
@@ -451,8 +464,7 @@ export async function auditCommand(
   if (options.threshold) {
     const threshold = parseInt(options.threshold, 10);
     if (isNaN(threshold)) {
-      logger.error("--threshold must be a number");
-      return;
+      throw new AuditError("--threshold must be a number");
     }
     if (auditResult.overallScore < threshold) {
       logger.error(`Score ${auditResult.overallScore} is below threshold ${threshold}`);
