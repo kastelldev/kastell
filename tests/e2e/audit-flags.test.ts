@@ -78,23 +78,22 @@ function mockAuditSuccess(result: AuditResult, formatterFn?: (r: AuditResult) =>
 
 describe("audit --watch flag", () => {
   let consoleSpy: jest.SpyInstance;
-  let exitCode: number;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
-    exitCode = 0;
+    process.exitCode = 0;
     jest.clearAllMocks();
     mockedConfig.findServers.mockReturnValue([]);
     mockServerResolve();
-    // Default: watchAudit does nothing (async no-op)
-    mockedWatch.watchAudit.mockImplementation(async () => {});
+    // Default: watchAudit returns undefined (real watch logic not needed for handler arg verification)
+    mockedWatch.watchAudit.mockResolvedValue(undefined);
     // Mock formatter for non-watch paths
     mockedFormatters.selectFormatter.mockResolvedValue(() => JSON.stringify({}));
   });
 
   afterEach(() => {
     consoleSpy.mockRestore();
-    process.exitCode = exitCode;
+    process.exitCode = 0;
     jest.useRealTimers();
   });
 
@@ -130,11 +129,10 @@ describe("audit --watch flag", () => {
 
 describe("audit --ci flag", () => {
   let consoleSpy: jest.SpyInstance;
-  let exitCode: number;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
-    exitCode = 0;
+    process.exitCode = 0;
     jest.clearAllMocks();
     mockedConfig.findServers.mockReturnValue([]);
     mockedFormatters.selectFormatter.mockResolvedValue(() => JSON.stringify({}));
@@ -142,7 +140,7 @@ describe("audit --ci flag", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
-    process.exitCode = exitCode;
+    process.exitCode = 0;
   });
 
   it("should set exitCode=1 and log error when --ci is used without --threshold", async () => {
@@ -168,11 +166,10 @@ describe("audit --ci flag", () => {
 
 describe("audit --badge flag", () => {
   let consoleSpy: jest.SpyInstance;
-  let exitCode: number;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
-    exitCode = 0;
+    process.exitCode = 0;
     jest.clearAllMocks();
     mockedConfig.findServers.mockReturnValue([]);
     // Set up formatBadge mock before selectFormatter uses it
@@ -187,7 +184,7 @@ describe("audit --badge flag", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
-    process.exitCode = exitCode;
+    process.exitCode = 0;
   });
 
   it("should call formatBadge when --badge is used", async () => {
@@ -222,11 +219,10 @@ describe("audit --badge flag", () => {
 
 describe("audit --ci --threshold --json combination", () => {
   let consoleSpy: jest.SpyInstance;
-  let exitCode: number;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
-    exitCode = 0;
+    process.exitCode = 0;
     jest.clearAllMocks();
     mockedConfig.findServers.mockReturnValue([]);
     mockedFormatters.selectFormatter.mockResolvedValue((r: AuditResult) => JSON.stringify(r));
@@ -234,7 +230,7 @@ describe("audit --ci --threshold --json combination", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
-    process.exitCode = exitCode;
+    process.exitCode = 0;
   });
 
   it("should output JSON to stdout when --ci --threshold 70 --json", async () => {
