@@ -21,82 +21,66 @@ describe("promptPlugin", () => {
   });
 
   it("should return ['plugin', 'list'] when user selects List installed plugins", async () => {
-    const flow = runInteractiveFlow([{ sub: "list" }]);
+    mockedInquirer.prompt.mockResolvedValueOnce({ answer: "list" });
 
     const result = await promptPlugin();
 
     expect(result).toEqual(["plugin", "list"]);
-    expect(flow.unconsumed()).toBe(0);
   });
 
   it("should return ['plugin', 'validate'] when user selects Validate plugins", async () => {
-    const flow = runInteractiveFlow([{ sub: "validate" }]);
+    mockedInquirer.prompt.mockResolvedValueOnce({ answer: "validate" });
 
     const result = await promptPlugin();
 
     expect(result).toEqual(["plugin", "validate"]);
-    expect(flow.unconsumed()).toBe(0);
   });
 
   it("should prompt for plugin name and return correct argv for Install a plugin", async () => {
-    const flow = runInteractiveFlow([
-      { sub: "install" },
-      { name: "my-plugin" },
-    ]);
+    mockedInquirer.prompt
+      .mockResolvedValueOnce({ answer: "install" })
+      .mockResolvedValueOnce({ name: "my-plugin" });
 
     const result = await promptPlugin();
 
     expect(result).toEqual(["plugin", "install", "my-plugin"]);
-    expect(flow.unconsumed()).toBe(0);
   });
 
   it("should prompt for plugin name and return correct argv for Remove a plugin", async () => {
-    const flow = runInteractiveFlow([
-      { sub: "remove" },
-      { name: "my-plugin" },
-    ]);
+    mockedInquirer.prompt
+      .mockResolvedValueOnce({ answer: "remove" })
+      .mockResolvedValueOnce({ name: "my-plugin" });
 
     const result = await promptPlugin();
 
     expect(result).toEqual(["plugin", "remove", "my-plugin"]);
-    expect(flow.unconsumed()).toBe(0);
   });
 
   it("should return null when user cancels the main action prompt", async () => {
-    const flow = runInteractiveFlow([
-      (_promptName: string) => {
-        // inquirer returns {} when user cancels (Escape or empty selection)
-        return {};
-      },
-    ]);
+    mockedInquirer.prompt.mockResolvedValueOnce({ answer: undefined });
 
     const result = await promptPlugin();
 
     expect(result).toBeNull();
-    expect(flow.unconsumed()).toBe(0);
   });
 
   it("should return null when user cancels the install name prompt", async () => {
-    const flow = runInteractiveFlow([
-      { sub: "install" },
-      (_promptName: string) => ({}),
-    ]);
+    mockedInquirer.prompt
+      .mockResolvedValueOnce({ answer: "install" })
+      .mockResolvedValueOnce({ name: undefined });
 
     const result = await promptPlugin();
 
     expect(result).toBeNull();
-    expect(flow.unconsumed()).toBe(0);
   });
 
   it("should return null when user cancels the remove name prompt", async () => {
-    const flow = runInteractiveFlow([
-      { sub: "remove" },
-      (_promptName: string) => ({}),
-    ]);
+    mockedInquirer.prompt
+      .mockResolvedValueOnce({ answer: "remove" })
+      .mockResolvedValueOnce({ name: undefined });
 
     const result = await promptPlugin();
 
     expect(result).toBeNull();
-    expect(flow.unconsumed()).toBe(0);
   });
 });

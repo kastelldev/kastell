@@ -1,4 +1,4 @@
-import { runInteractiveFlow } from "../../helpers/interactiveFlow.js";
+import inquirer from "inquirer";
 
 jest.mock("inquirer");
 
@@ -17,6 +17,7 @@ import {
   promptCompletions,
 } from "../../../src/commands/interactive/backup-maintenance.js";
 
+const mockedInquirer = inquirer as jest.Mocked<typeof inquirer>;
 const mockedGetServers = getServers as jest.MockedFunction<typeof getServers>;
 
 describe("interactive backup-maintenance prompts", () => {
