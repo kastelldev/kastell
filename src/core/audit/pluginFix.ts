@@ -109,7 +109,7 @@ export async function executePluginFix(
     logger: {
       info: (msg: string) => { if (debugLog) console.log(`[plugin-fix:${pluginName}] ${msg}`); },
       warn: (msg: string) => { if (debugLog) console.log(`[plugin-fix:${pluginName}] WARN: ${msg}`); },
-      error: (msg: string) => console.error(`[plugin-fix:${pluginName}] ERROR: ${msg}`),
+      error: (msg: string) => { if (debugLog) console.error(`[plugin-fix:${pluginName}] ERROR: ${msg}`); },
     },
     dryRun,
     manifest: entry.manifest,
