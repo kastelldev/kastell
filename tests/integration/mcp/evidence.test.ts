@@ -7,21 +7,6 @@
  * covered by tests/unit/evidence-core.test.ts.
  */
 
-jest.mock("../../src/utils/version.js", () => ({
-  KASTELL_VERSION: "0.0.0-test",
-}));
-
-// Mock I/O boundaries before imports
-jest.mock("../../src/utils/config.js");
-jest.mock("../../src/utils/ssh.js");
-jest.mock("../../src/utils/fileLock.js", () => ({
-  withFileLock: jest.fn((_path: string, fn: () => unknown) => fn()),
-}));
-jest.mock("fs/promises", () => ({
-  mkdir: jest.fn().mockResolvedValue(undefined),
-  writeFile: jest.fn().mockResolvedValue(undefined),
-}));
-
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import * as configUtils from "../../../src/utils/config.js";
 import * as sshUtils from "../../../src/utils/ssh.js";
@@ -48,7 +33,7 @@ function makeSshOutput(sections: string[]): string {
   return sections.join("\n---SEPARATOR---\n");
 }
 
-// Five forensic sections for coolify platform (7 total with docker)
+// Seven forensic sections for coolify platform (includes docker-ps + docker-logs)
 const COOLIFY_SECTIONS = [
   "Status: active\nufw allow 22",                              // firewall-rules.txt
   "Mar 10 10:00:00 sshd[123]: Accepted",                        // auth-log.txt
@@ -59,7 +44,7 @@ const COOLIFY_SECTIONS = [
   "=== coolify === 2026-03-10 startup log",                    // docker-logs.txt
 ];
 
-// Three sections for bare platform (no docker)
+// Five sections for bare platform (no docker)
 const BARE_SECTIONS = [
   "Status: active\nufw allow 22",
   "Mar 10 10:00:00 sshd[123]: Accepted",
@@ -83,7 +68,7 @@ describe("MCP server_evidence", () => {
 
   // ── Test 1: Happy path — manifest with SHA256 entries returned ─────────────
   it("should return evidenceDir and totalFiles on success", async () => {
-    const response = await withMcpClient(async (client) => {
+    const response = await withMcpClient(async (client: Client) => {
       return client.callTool("server-evidence", { server: "test-server" });
     });
 
@@ -100,14 +85,12 @@ describe("MCP server_evidence", () => {
 
   // ── Test 2: force: true — overwrite existing dir behavior ──────────────────
   it("should accept force:true and not return 'already exists' error", async () => {
-    const { existsSync } = await import("fs");
-    (existsSync as jest.Mock).mockReturnValue(true);
+    // Mock fs.existsSync to return true (existing directory)
+    const fs = await import("fs");
+    (fs.existsSync as jest.Mock).mockReturnValue(true);
+    (fs.rmSync as jest.Mock).mockReturnValue(undefined);
 
-    // Mock the fs rmSync that collectEvidence calls when force=true and dir exists
-    const { rmSync } = await import("fs");
-    (rmSync as jest.Mock).mockReturnValue(undefined);
-
-    const response = await withMcpClient(async (client) => {
+    const response = await withMcpClient(async (client: Client) => {
       return client.callTool("server-evidence", {
         server: "test-server",
         force: true,
@@ -120,15 +103,15 @@ describe("MCP server_evidence", () => {
   });
 
   // ── Test 3: no_docker: true — Docker section skipped ───────────────────────
-  it("should skip docker-containers and docker-logs sections when no_docker=true", async () => {
-    // Coolify without docker = 5 sections
+  it("should skip docker sections when no_docker=true", async () => {
+    // Coolify without docker = 5 sections (bare-like)
     mockedSshExec.mockResolvedValue({
       code: 0,
       stdout: makeSshOutput(BARE_SECTIONS),
       stderr: "",
     });
 
-    const response = await withMcpClient(async (client) => {
+    const response = await withMcpClient(async (client: Client) => {
       return client.callTool("server-evidence", {
         server: "test-server",
         no_docker: true,
@@ -137,14 +120,12 @@ describe("MCP server_evidence", () => {
 
     expect(response.isError).not.toBe(true);
     const data = JSON.parse(response.content[0]!.text);
-    // bare platform with no_docker has no docker sections
-    // totalFiles reflects collected (non-skipped, non-N/A) sections
     expect(data.result.totalFiles).toBeGreaterThanOrEqual(0);
   });
 
   // ── Test 4: no_sysinfo: true — sysinfo section skipped ─────────────────────
   it("should skip system-info section when no_sysinfo=true", async () => {
-    // 4 sections without sysinfo for coolify (firewall, auth-log, ports, syslog)
+    // coolify + noSysinfo = 6 sections (firewall, auth-log, ports, syslog, docker-ps, docker-logs)
     const sectionsWithoutSysinfo = COOLIFY_SECTIONS.slice(0, 4).concat(COOLIFY_SECTIONS.slice(5));
     mockedSshExec.mockResolvedValue({
       code: 0,
@@ -152,7 +133,7 @@ describe("MCP server_evidence", () => {
       stderr: "",
     });
 
-    const response = await withMcpClient(async (client) => {
+    const response = await withMcpClient(async (client: Client) => {
       return client.callTool("server-evidence", {
         server: "test-server",
         no_sysinfo: true,
@@ -172,7 +153,7 @@ describe("MCP server_evidence", () => {
       stderr: "",
     });
 
-    await withMcpClient(async (client) => {
+    await withMcpClient(async (client: Client) => {
       return client.callTool("server-evidence", {
         server: "test-server",
         lines: 200,
@@ -200,19 +181,23 @@ describe("MCP server_evidence", () => {
       Object.assign(new Error("No space left on device"), { code: "ENOSPC" }),
     );
 
-    const response = await withMcpClient(async (client) => {
+    const response = await withMcpClient(async (client: Client) => {
       return client.callTool("server-evidence", { server: "test-server" });
     });
 
     expect(response.isError).toBe(true);
     const data = JSON.parse(response.content[0]!.text);
-    expect(data.error).toContain("filesystem") || expect(data.error).toContain("No space left on device");
+    // Error message from collectEvidence or caught in handleServerEvidence
+    expect(
+      data.error?.toLowerCase().includes("filesystem") ||
+      data.error?.toLowerCase().includes("no space left on device"),
+    ).toBe(true);
   });
 
   // ── Test 7: F-017 partial regression — Win32 platform path no-op ───────────
   it("should handle Win32 platform without crashing", async () => {
-    const { platform } = await import("process");
-    Object.defineProperty(platform, "value", { value: "win32" });
+    const originalPlatform = process.platform;
+    Object.defineProperty(process, "platform", { value: "win32" });
 
     mockedSshExec.mockResolvedValue({
       code: 0,
@@ -221,14 +206,16 @@ describe("MCP server_evidence", () => {
     });
 
     // Should not throw even on win32
-    const response = await withMcpClient(async (client) => {
-      return client.callTool("server-evidence", { server: "test-server" });
-    });
+    let response: Awaited<ReturnType<Client["callTool"]>> | undefined;
+    try {
+      response = await withMcpClient(async (client: Client) => {
+        return client.callTool("server-evidence", { server: "test-server" });
+      });
+    } finally {
+      Object.defineProperty(process, "platform", { value: originalPlatform });
+    }
 
-    // Platform does not affect handler logic (platform field in result reflects server config)
-    // The key is it does not crash
+    // Handler does not crash on win32 — platform field comes from server config
     expect(response).toBeDefined();
-
-    Object.defineProperty(platform, "value", { value: process.platform });
   });
 });

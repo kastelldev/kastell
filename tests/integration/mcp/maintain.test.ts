@@ -10,29 +10,28 @@
  */
 
 // Mock I/O boundaries before imports
-jest.mock("axios");
-jest.mock("../../src/utils/config.js");
-jest.mock("../../src/core/manage.js");
-jest.mock("../../src/core/tokens.js");
-jest.mock("../../src/core/maintain.js");
-jest.mock("../../src/core/update.js");
-jest.mock("../../src/adapters/factory.js");
-jest.mock("../../src/utils/modeGuard.js");
-jest.mock("../../src/mcp/utils.js", () => ({
-  ...jest.requireActual("../../src/mcp/utils.js"),
+jest.mock("../../../src/utils/config.js");
+jest.mock("../../../src/core/manage.js");
+jest.mock("../../../src/core/tokens.js");
+jest.mock("../../../src/core/maintain.js");
+jest.mock("../../../src/core/update.js");
+jest.mock("../../../src/adapters/factory.js");
+jest.mock("../../../src/utils/modeGuard.js");
+jest.mock("../../../src/mcp/utils.js", () => ({
+  ...jest.requireActual("../../../src/mcp/utils.js"),
   mcpLog: jest.fn().mockResolvedValue(undefined),
 }));
 
 import axios from "axios";
-import * as configUtils from "../../src/utils/config.js";
-import * as coreManage from "../../src/core/manage.js";
-import * as coreTokens from "../../src/core/tokens.js";
-import * as coreMaintain from "../../src/core/maintain.js";
-import * as coreUpdate from "../../src/core/update.js";
-import * as adapterFactory from "../../src/adapters/factory.js";
-import * as modeGuard from "../../src/utils/modeGuard.js";
+import * as configUtils from "../../../src/utils/config.js";
+import * as coreManage from "../../../src/core/manage.js";
+import * as coreTokens from "../../../src/core/tokens.js";
+import * as coreMaintain from "../../../src/core/maintain.js";
+import * as coreUpdate from "../../../src/core/update.js";
+import * as adapterFactory from "../../../src/adapters/factory.js";
+import * as modeGuard from "../../../src/utils/modeGuard.js";
 
-import { handleServerMaintain } from "../../src/mcp/tools/serverMaintain.js";
+import { handleServerMaintain } from "../../../src/mcp/tools/serverMaintain.js";
 
 const mockedConfig = configUtils as jest.Mocked<typeof configUtils>;
 const mockedCoreManage = coreManage as jest.Mocked<typeof coreManage>;
