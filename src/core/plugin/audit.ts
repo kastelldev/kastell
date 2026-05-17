@@ -16,6 +16,9 @@ export async function executePluginChecks(checks: PluginCheck[], host: string): 
   const aggregateMs = Number(process.env.PLUGIN_AUDIT_TIMEOUT_MS) || DEFAULT_AGGREGATE_TIMEOUT_MS;
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), aggregateMs);
+  // NOTE: sshMasterOpen returns true if master was already open from another caller.
+  // Closing it in finally would tear down that caller's session. When a production caller
+  // is added, track ownership via isSshMasterOpen(ip) probe or hand the close back to caller.
   const masterOpened = await sshMasterOpen(host).catch(() => false);
 
   try {
