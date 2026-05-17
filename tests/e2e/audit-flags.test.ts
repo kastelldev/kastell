@@ -3,7 +3,8 @@
  * Covers: flag dispatch, threshold exit code, badge color mapping.
  */
 
-import { auditCommand, AuditError } from "../../src/commands/audit";
+import { auditCommand } from "../../src/commands/audit";
+import { AuditError } from "../../src/core/audit/errors";
 import * as config from "../../src/utils/config";
 import * as serverSelect from "../../src/utils/serverSelect";
 import * as auditIndex from "../../src/core/audit/index";
@@ -25,26 +26,26 @@ const mockedAuditIndex = auditIndex as jest.Mocked<typeof auditIndex>;
 const mockedWatch = watchModule as jest.Mocked<typeof watchModule>;
 const mockedBadge = badgeModule as jest.Mocked<typeof badgeModule>;
 
-const sampleResult: AuditResult = {
-  serverIp: "1.2.3.4",
-  serverName: "test-server",
-  overallScore: 75,
-  auditVersion: "1.0.0",
-  timestamp: new Date().toISOString(),
-  categories: [],
-  checks: [],
-  quickWins: [],
-  passedChecks: [],
-  failedChecks: [],
-  errors: [],
-  metadata: { duration: 100, checksRun: 10 },
-};
+function makeSampleResult(overrides: Partial<AuditResult> = {}): AuditResult {
+  return {
+    serverName: "test-server",
+    serverIp: "1.2.3.4",
+    platform: "bare",
+    timestamp: new Date().toISOString(),
+    auditVersion: "1.0.0",
+    categories: [],
+    overallScore: 75,
+    quickWins: [],
+    ...overrides,
+  };
+}
 
-function mockServerResolve() {
+function mockServerResolve(overrides: Partial<{ ip: string; name: string; platform: string }> = {}) {
   mockedServerSelect.resolveServer.mockResolvedValueOnce({
     ip: "1.2.3.4",
     name: "test-server",
     platform: "bare",
+    ...overrides,
   });
 }
 
@@ -114,9 +115,11 @@ describe("audit --ci flag", () => {
   });
 
   it("should exit with code 0 when --ci --threshold 70 and score is 80", async () => {
-    const highScoreResult: AuditResult = { ...sampleResult, overallScore: 80 };
     mockServerResolve();
-    mockedAuditIndex.runAudit.mockResolvedValueOnce({ success: true, data: highScoreResult });
+    mockedAuditIndex.runAudit.mockResolvedValueOnce({
+      success: true,
+      data: makeSampleResult({ overallScore: 80 }),
+    });
 
     process.exitCode = 0;
     await auditCommand("test-server", { ci: true, threshold: "70" });
@@ -124,9 +127,11 @@ describe("audit --ci flag", () => {
   });
 
   it("should exit with code 1 when --ci --threshold 90 and score is 70", async () => {
-    const lowScoreResult: AuditResult = { ...sampleResult, overallScore: 70 };
     mockServerResolve();
-    mockedAuditIndex.runAudit.mockResolvedValueOnce({ success: true, data: lowScoreResult });
+    mockedAuditIndex.runAudit.mockResolvedValueOnce({
+      success: true,
+      data: makeSampleResult({ overallScore: 70 }),
+    });
 
     process.exitCode = 0;
     await auditCommand("test-server", { ci: true, threshold: "90" });
@@ -151,7 +156,10 @@ describe("audit --badge flag", () => {
   it("should output badge SVG when --badge is used", async () => {
     const svgOutput = '<svg xmlns="http://www.w3.org/2000/svg">mocked</svg>';
     mockedBadge.formatBadge.mockReturnValue(svgOutput);
-    mockedAuditIndex.runAudit.mockResolvedValueOnce({ success: true, data: sampleResult });
+    mockedAuditIndex.runAudit.mockResolvedValueOnce({
+      success: true,
+      data: makeSampleResult(),
+    });
 
     await auditCommand("test-server", { badge: true });
     expect(mockedBadge.formatBadge).toHaveBeenCalledTimes(1);
@@ -160,22 +168,19 @@ describe("audit --badge flag", () => {
 
   it("should use green color for score >= 80", () => {
     const { formatBadge } = jest.requireActual("../../src/core/audit/formatters/badge");
-    const result: AuditResult = { ...sampleResult, overallScore: 85 };
-    const svg = formatBadge(result);
+    const svg = formatBadge(makeSampleResult({ overallScore: 85 }));
     expect(svg).toContain("#4c1"); // green
   });
 
   it("should use yellow color for score 60-79", () => {
     const { formatBadge } = jest.requireActual("../../src/core/audit/formatters/badge");
-    const result: AuditResult = { ...sampleResult, overallScore: 70 };
-    const svg = formatBadge(result);
+    const svg = formatBadge(makeSampleResult({ overallScore: 70 }));
     expect(svg).toContain("#dfb317"); // yellow
   });
 
   it("should use red color for score < 60", () => {
     const { formatBadge } = jest.requireActual("../../src/core/audit/formatters/badge");
-    const result: AuditResult = { ...sampleResult, overallScore: 45 };
-    const svg = formatBadge(result);
+    const svg = formatBadge(makeSampleResult({ overallScore: 45 }));
     expect(svg).toContain("#e05d44"); // red
   });
 });
@@ -195,7 +200,10 @@ describe("audit --ci --threshold --json combination", () => {
 
   it("should output JSON to stdout when --ci --threshold 70 --json", async () => {
     mockServerResolve();
-    mockedAuditIndex.runAudit.mockResolvedValueOnce({ success: true, data: sampleResult });
+    mockedAuditIndex.runAudit.mockResolvedValueOnce({
+      success: true,
+      data: makeSampleResult(),
+    });
 
     await auditCommand("test-server", { ci: true, threshold: "70", json: true });
     // --ci forces options.json = true; output should be valid JSON

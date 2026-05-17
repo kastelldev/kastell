@@ -16,16 +16,19 @@ const mockedInquirer = inquirer as jest.Mocked<typeof inquirer>;
 
 describe("bot command (notify add telegram) E2E", () => {
   let consoleSpy: jest.SpyInstance;
+  let consoleErrorSpy: jest.SpyInstance;
   let processExitSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    consoleErrorSpy = jest.spyOn(console, "error").mockImplementation();
     processExitSpy = jest.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit);
     jest.clearAllMocks();
   });
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
     processExitSpy.mockRestore();
   });
 
@@ -124,7 +127,7 @@ describe("bot command (notify add telegram) E2E", () => {
       const { saveNotifyChannel } = require("../../src/core/notifyStore.js");
       expect(saveNotifyChannel).not.toHaveBeenCalled();
 
-      const allOutput = consoleSpy.mock.calls.map((c: unknown[]) => (c as string[]).join(" ")).join("\n");
+      const allOutput = consoleErrorSpy.mock.calls.map((c: unknown[]) => (c as string[]).join(" ")).join("\n");
       expect(allOutput).toContain("Telegram requires --bot-token and --chat-id");
     });
   });
