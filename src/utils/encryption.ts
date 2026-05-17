@@ -76,9 +76,14 @@ function getOrCreatePersistedValue(filePath: string, generate: () => string): st
     if (existsSync(filePath)) {
       return readFileSync(filePath, "utf8").trim();
     }
-  } catch (error) { /* regenerate */
-    debugLog?.("encryption primary method failed, using fallback", { cause: error });
+  } catch (error) {
+    // File exists but unreadable (e.g. EPERM on Windows) — do NOT fall back to
+    // random UUID here. That would produce a DIFFERENT encryption key each call,
+    // breaking decryption of tokens.json. Use in-memory fallback instead.
+    debugLog?.("encryption primary method failed, using in-memory fallback", { cause: error });
+    return generate();
   }
+  // File does not exist — create it
   ensureKastellDir();
   const value = generate();
   secureWriteFileSync(filePath, value);
