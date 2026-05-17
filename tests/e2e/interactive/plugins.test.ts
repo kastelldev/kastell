@@ -2,7 +2,7 @@ import inquirer from "inquirer";
 import { promptPlugin } from "../../../src/commands/interactive/plugins.js";
 import { runInteractiveFlow } from "../../helpers/interactiveFlow.js";
 
-jest.mock("../../../src/core/plugin/loader", () => ({
+jest.mock("../../../src/plugin/loader", () => ({
   loadPlugins: jest.fn().mockResolvedValue(undefined),
 }));
 

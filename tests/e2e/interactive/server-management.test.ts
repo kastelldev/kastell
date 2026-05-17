@@ -1,4 +1,4 @@
-import { runInteractiveFlow } from "../helpers/interactiveFlow.js";
+import { runInteractiveFlow } from "../../helpers/interactiveFlow.js";
 
 jest.mock("inquirer");
 
