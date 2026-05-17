@@ -33,15 +33,17 @@ describe("MCP error format consistency", () => {
 describe("MCP tool annotations (SC#5)", () => {
   it("all 17 tools in ALL_MCP_TOOLS have readOnlyHint annotation", () => {
     const serverTs = readFileSync(join(__dirname, "../../src/mcp/server.ts"), "utf-8");
+    // 17 tools in ALL_MCP_TOOLS array, each with readOnlyHint in annotations
     const annotationBlocks = serverTs.match(/readOnlyHint:/g) || [];
-    expect(annotationBlocks.length).toBe(34); // 17 in ALL_MCP_TOOLS + 17 in registerTool calls
+    expect(annotationBlocks.length).toBe(17);
   });
 
   it("read-only tools have readOnlyHint: true", () => {
     const serverTs = readFileSync(join(__dirname, "../../src/mcp/server.ts"), "utf-8");
     const readOnlyTools = ["server_info", "server_logs", "server_audit", "server_doctor", "server_fleet", "server_explain"];
     for (const tool of readOnlyTools) {
-      const toolMatch = serverTs.match(new RegExp(`registerTool\\("${tool}"[\\s\\S]*?readOnlyHint:\\s*(true|false)`));
+      // Match tool entry in ALL_MCP_TOOLS array and its annotations block
+      const toolMatch = serverTs.match(new RegExp(`name:\\s+"${tool}"[\\s\\S]*?annotations:\\s*\\{[\\s\\S]*?readOnlyHint:\\s*(true|false)`));
       expect(toolMatch).not.toBeNull();
       expect(toolMatch![1]).toBe("true");
     }
@@ -51,7 +53,8 @@ describe("MCP tool annotations (SC#5)", () => {
     const serverTs = readFileSync(join(__dirname, "../../src/mcp/server.ts"), "utf-8");
     const destructiveTools = ["server_manage", "server_backup", "server_provision", "server_fix", "server_lock"];
     for (const tool of destructiveTools) {
-      const toolMatch = serverTs.match(new RegExp(`registerTool\\("${tool}"[\\s\\S]*?destructiveHint:\\s*(true|false)`));
+      // Match tool entry in ALL_MCP_TOOLS array and its annotations block
+      const toolMatch = serverTs.match(new RegExp(`name:\\s+"${tool}"[\\s\\S]*?annotations:\\s*\\{[\\s\\S]*?destructiveHint:\\s*(true|false)`));
       expect(toolMatch).not.toBeNull();
       expect(toolMatch![1]).toBe("true");
     }
