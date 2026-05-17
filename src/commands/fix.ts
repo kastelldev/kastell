@@ -124,7 +124,7 @@ export async function fixSafeCommand(
 
     const entries = loadFixHistory(server.ip);
     if (entries.length === 0) {
-      logger.info("No fix history found for this server.");
+      console.log("No fix history yet. Run 'kastell fix --safe' first.");
       return;
     }
 

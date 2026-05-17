@@ -550,16 +550,16 @@ describe("fixSafeCommand", () => {
       );
     });
 
-    it("Test H2: shows 'No fix history found' when no entries", async () => {
+    it("Test H2: shows 'No fix history yet' when no entries", async () => {
       mockedResolveServer.mockResolvedValue(testServer);
       mockedLoadFixHistory.mockReturnValue([]);
 
+      const logSpy = jest.spyOn(console, "log").mockImplementation();
       await fixSafeCommand(undefined, { history: true });
-
-      expect(mockedLogger.info).toHaveBeenCalledWith(
-        "No fix history found for this server.",
+      expect(logSpy).toHaveBeenCalledWith(
+        "No fix history yet. Run 'kastell fix --safe' first.",
       );
-      expect(mockedLogger.title).not.toHaveBeenCalled();
+      logSpy.mockRestore();
     });
 
     it("Test H3: returns early if resolveServer returns undefined for --history", async () => {
