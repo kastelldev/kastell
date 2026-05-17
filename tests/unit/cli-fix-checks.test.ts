@@ -89,6 +89,7 @@ jest.mock("../../src/core/audit/fix-history.js", () => ({
 jest.mock("../../src/core/audit/pluginFix.js", () => ({
   getPluginBackupPaths: jest.fn((_ids: string[]) => []),
   getAppliedPluginNames: jest.fn(() => []),
+  buildFixHistorySource: jest.fn().mockReturnValue({ source: "fix" }),
   isPluginFixCommand: jest.fn(() => false),
   parsePluginFixCommand: jest.fn(() => null),
   executePluginFix: jest.fn(),
