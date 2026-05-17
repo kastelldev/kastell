@@ -587,6 +587,15 @@ describe("fixSafeCommand", () => {
       expect(infoCalls.some((c) => c.includes("fix-2026-03-29-002"))).toBe(true);
       expect(infoCalls.some((c) => c.includes("fix-2026-03-29-003"))).toBe(true);
     });
+  it("Test H5: shows informative message when history is empty", async () => {
+      mockedResolveServer.mockResolvedValue(testServer);
+      mockedLoadFixHistory.mockReturnValue([]);
+
+      const logSpy = jest.spyOn(console, "log").mockImplementation();
+      await fixSafeCommand(undefined, { history: true });
+      expect(logSpy.mock.calls.flat().join("\n")).toMatch(/No fix history yet/);
+      logSpy.mockRestore();
+    });
   });
 
   // ── --rollback flag ──────────────────────────────────────────────────────

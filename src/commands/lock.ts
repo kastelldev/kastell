@@ -55,8 +55,12 @@ export async function lockCommand(
 ): Promise<void> {
   // Production flag is required — it signals intentional destructive hardening
   if (!options.production) {
-    logger.error("Use --production flag to apply all hardening measures.");
-    logger.info("Example: kastell lock <server> --production");
+    if (options.dryRun) {
+      logger.error("Use 'kastell lock --dry-run --production' to preview hardening actions without applying");
+    } else {
+      logger.error("Use --production flag to apply all hardening measures.");
+      logger.info("Example: kastell lock <server> --production");
+    }
     return;
   }
 

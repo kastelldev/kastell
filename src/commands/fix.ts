@@ -105,6 +105,12 @@ export async function fixSafeCommand(
     logger.error("--report requires --safe. Run: kastell fix --safe --report --server <server>");
     return;
   }
+  // --dry-run requires --safe (F-012)
+  if (options.dryRun && !options.safe) {
+    logger.error("--dry-run requires --safe flag (e.g., 'kastell fix --safe --dry-run')");
+    process.exitCode = 1;
+    return;
+  }
   // ── Rollback mutual exclusion (FIX-01, FIX-02) ───────────────────────────
   const rollbackFlags = [options.rollback, options.rollbackAll, options.rollbackTo].filter(Boolean).length;
   if (rollbackFlags > 1) {
