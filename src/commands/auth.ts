@@ -69,7 +69,21 @@ export async function authRemoveAction(provider: string): Promise<void> {
 }
 
 export async function authListAction(): Promise<void> {
-  const providers = listStoredProviders();
+  let providers: string[] = [];
+  let decryptFailed = false;
+
+  try {
+    providers = listStoredProviders();
+  } catch {
+    decryptFailed = true;
+  }
+
+  if (decryptFailed) {
+    logger.warning(
+      "Token decryption failed — re-enter tokens with 'kastell provider add'",
+    );
+    return;
+  }
 
   if (providers.length === 0) {
     logger.info("No tokens stored in OS keychain.");
