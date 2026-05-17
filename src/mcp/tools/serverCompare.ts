@@ -16,15 +16,18 @@ export const serverCompareSchema = {
 };
 
 export const serverCompareOutputSchema = z.object({
-  result: z.union([
+  result: z.object({
+    format: z.enum(["category", "check"]),
+    serverA: z.string(),
+    serverB: z.string(),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  }).and(z.union([ // eslint-disable-line @typescript-eslint/no-explicit-any -- union at result level; existing schema pattern
     z.object({
       format: z.literal("category"),
-      serverA: z.string(),
-      serverB: z.string(),
       categories: z.array(z.object({
-        name: z.string(),
-        scoreA: z.number(),
-        scoreB: z.number(),
+        category: z.string(),
+        scoreBefore: z.number(),
+        scoreAfter: z.number(),
         delta: z.number(),
       })),
       overallA: z.number(),
@@ -33,17 +36,15 @@ export const serverCompareOutputSchema = z.object({
     }),
     z.object({
       format: z.literal("check"),
-      serverA: z.string(),
-      serverB: z.string(),
       checks: z.array(z.object({
         id: z.string(),
         name: z.string(),
         status: z.enum(["same", "A_better", "B_better", "both_fail", "both_pass"]),
-        scoreA: z.number(),
-        scoreB: z.number(),
+        before: z.boolean().nullable(),
+        after: z.boolean().nullable(),
       })),
     }),
-  ]),
+  ])),
 });
 
 export async function handleServerCompare(params: {
@@ -102,7 +103,7 @@ export async function handleServerCompare(params: {
       format: "category" as const,
       serverA: serverA.name,
       serverB: serverB.name,
-      categories: summary as unknown as Array<{name: string; scoreA: number; scoreB: number; delta: number}>,
+      categories: summary.categories as unknown as Array<{name: string; scoreA: number; scoreB: number; delta: number}>,
       overallA: auditA.overallScore,
       overallB: auditB.overallScore,
       overallDelta: auditB.overallScore - auditA.overallScore,
