@@ -36,8 +36,7 @@ export interface McpToolEntry {
   inputSchema: Record<string, any>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   outputSchema: Record<string, any>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any — handler params are tool-specific typed objects (e.g. { action: "list"|"status", server?: string }); any avoids a union of 17 incompatible param types
-  handler: (params: any /* eslint-disable-line @typescript-eslint/no-explicit-any */, server?: McpServer) => Promise<Record<string, unknown>>;
+  handler: (params: any /* eslint-disable-line @typescript-eslint/no-explicit-any -- handler params are tool-specific typed objects; any avoids a union of 17 incompatible param types */, server?: McpServer) => Promise<Record<string, unknown>>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   annotations?: Record<string, any>;
   requiresServer?: boolean;
@@ -350,11 +349,9 @@ Bare servers: use service 'system' or 'docker' for logs (not 'coolify'). server_
       inputSchema: tool.inputSchema,
       outputSchema: tool.outputSchema,
       annotations: tool.annotations,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any — McpServer callback requires CallToolResult but existing handlers return Record<string,unknown>; cast is unavoidable
-  }, async (params) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any — McpServer ToolCallback expects CallToolResult but tool handlers return Record<string,unknown>; final `as any` cast bridges this incompatibility
-      return (tool.handler as // eslint-disable-line @typescript-eslint/no-explicit-any — McpServer ToolCallback expects CallToolResult but tool handlers return Record<string,unknown>
-        (params: any, server?: McpServer) => Promise<Record<string, unknown>>)(params, tool.requiresServer ? server : undefined) as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    }, async (params) => {
+      return (tool.handler as
+        (params: any, server?: McpServer) => Promise<Record<string, unknown>>)(params, tool.requiresServer ? server : undefined) as any; // eslint-disable-line @typescript-eslint/no-explicit-any -- McpServer ToolCallback type bridge
     });
   }
 
