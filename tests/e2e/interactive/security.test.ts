@@ -23,9 +23,9 @@ describe("interactive/security E2E — prompt functions", () => {
       mockedFirewall.isValidPort.mockReturnValue(true);
 
       const flow = runInteractiveFlow([
-        { name: "Firewall action:" }, // "add" selected
-        { name: "Port number:", port: "8080" },
-        { name: "Protocol:" }, // "TCP" selected
+        { answer: "add" },
+        { port: "8080" },
+        { answer: "tcp" },
       ]);
 
       const result = await promptFirewall();
@@ -35,22 +35,18 @@ describe("interactive/security E2E — prompt functions", () => {
 
     it("should re-prompt when user enters invalid port", async () => {
       const { promptFirewall } = await import("../../../src/commands/interactive/security");
-      // First call returns false (invalid), second call returns true (valid after re-entry)
       mockedFirewall.isValidPort
         .mockReturnValueOnce(false)
         .mockReturnValueOnce(true);
 
       const flow = runInteractiveFlow([
-        { name: "Firewall action:" }, // "add" selected
-        // Validation fails for "99999", user re-enters "8080"
+        { answer: "add" },
+        // Validation fails for first "99999" entry → re-prompt with same question
         (promptName: string) => {
-          // Called during validate — the prompt re-appears with the same name
-          if (promptName === "Port number:") {
-            return { port: "8080" };
-          }
-          return {};
+          void promptName;
+          return { port: "8080" };
         },
-        { name: "Protocol:" }, // "TCP" selected
+        { answer: "tcp" },
       ]);
 
       const result = await promptFirewall();
@@ -63,7 +59,7 @@ describe("interactive/security E2E — prompt functions", () => {
       const { promptSecure } = await import("../../../src/commands/interactive/security");
 
       const flow = runInteractiveFlow([
-        { name: "Security action:" }, // "setup" selected
+        { answer: "setup" },
       ]);
 
       const result = await promptSecure();
@@ -77,9 +73,9 @@ describe("interactive/security E2E — prompt functions", () => {
       const { promptDomain } = await import("../../../src/commands/interactive/security");
 
       const flow = runInteractiveFlow([
-        { name: "Domain action:" }, // "add" selected
-        { name: "Domain name (e.g. panel.example.com):", domain: "example.com" },
-        { name: "Enable SSL (HTTPS)?", ssl: true }, // confirm — SSL default true
+        { answer: "add" },
+        { domain: "example.com" },
+        { ssl: true },
       ]);
 
       const result = await promptDomain();
@@ -94,8 +90,8 @@ describe("interactive/security E2E — prompt functions", () => {
       const { promptAuth } = await import("../../../src/commands/interactive/security");
 
       const flow = runInteractiveFlow([
-        { name: "Auth action:" }, // "set" selected
-        { name: "Provider:" }, // "Hetzner Cloud" → "hetzner"
+        { answer: "set" },
+        { answer: "hetzner" },
       ]);
 
       const result = await promptAuth();
@@ -110,15 +106,9 @@ describe("interactive/security E2E — prompt functions", () => {
       mockedProfiles.listAllProfileNames.mockReturnValue(["cis-level1", "cis-level2", "pci-dss", "hipaa"]);
 
       const flow = runInteractiveFlow([
-        { name: "Audit mode:" }, // "profile" selected
-        // Compliance profile selection
-        (promptName: string) => {
-          if (promptName === "Compliance profile:") {
-            return {}; // "cis-level1" is first in list, auto-selected
-          }
-          return {};
-        },
-        { name: "Output format:" }, // "Dashboard summary" → "summary"
+        { answer: "profile" },
+        { answer: "cis-level1" },
+        { answer: "summary" },
       ]);
 
       const result = await promptAudit();
@@ -132,7 +122,7 @@ describe("interactive/security E2E — prompt functions", () => {
       const { promptLock } = await import("../../../src/commands/interactive/security");
 
       const flow = runInteractiveFlow([
-        { name: "Lock mode:" }, // "production" selected
+        { answer: "production" },
       ]);
 
       const result = await promptLock();
@@ -147,8 +137,8 @@ describe("interactive/security E2E — prompt functions", () => {
       mockedProfiles.listAllProfileNames.mockReturnValue(["cis-level1", "cis-level2", "pci-dss", "hipaa"]);
 
       const flow = runInteractiveFlow([
-        { name: "Fix options:" }, // "apply" selected
-        { name: "Apply mode:" }, // "Apply safe fixes (backup + fix + verify)" selected
+        { answer: "apply" },
+        { answer: "apply" },
       ]);
 
       const result = await promptFix();
@@ -162,10 +152,10 @@ describe("interactive/security E2E — prompt functions", () => {
       const { promptEvidence } = await import("../../../src/commands/interactive/security");
 
       const flow = runInteractiveFlow([
-        { name: "Evidence collection:" }, // "custom" selected
-        { label: "Evidence label (e.g. pre-incident, weekly-check):", name: "weekly-check" },
-        { name: "Collection options:" }, // "Skip Docker data" → "no-docker"
-        { name: "Log lines to collect:" }, // "500 lines (default)" → "500"
+        { answer: "custom" },
+        { name: "weekly-check" },
+        { answer: "no-docker" },
+        { answer: "500" },
       ]);
 
       const result = await promptEvidence();
