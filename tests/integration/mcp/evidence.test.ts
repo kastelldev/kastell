@@ -10,6 +10,7 @@ jest.mock("fs", () => ({
   writeFileSync: jest.fn(),
   renameSync: jest.fn(),
   rmSync: jest.fn(),
+  chmodSync: jest.fn(),
 }));
 jest.mock("fs/promises", () => ({
   mkdir: jest.fn().mockResolvedValue(undefined),
