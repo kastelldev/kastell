@@ -239,9 +239,13 @@ describe("audit --ci --threshold --json combination", () => {
     const jsonCall = consoleSpy.mock.calls.find((call) => {
       const arg = call[0];
       if (typeof arg !== "string") return false;
-      try { JSON.parse(arg); return true; } catch { return false; }
+      return safeParse(arg) !== null;
     });
     expect(jsonCall).toBeDefined();
     expect(() => JSON.parse(jsonCall![0] as string)).not.toThrow();
   });
 });
+
+function safeParse(payload: string): Record<string, unknown> | null {
+  try { return JSON.parse(payload); } catch { return null; }
+}

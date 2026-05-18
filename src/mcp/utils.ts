@@ -3,6 +3,10 @@ import { findServer } from "../utils/config.js";
 import { getProviderToken } from "../core/tokens.js";
 import type { ServerRecord } from "../types/index.js";
 
+interface McpServerInternal {
+  getClientCapabilities?: () => { elicitation?: unknown } | undefined;
+}
+
 // Version injected at startup by setMcpVersion()
 let _version = "unknown";
 
