@@ -9,6 +9,7 @@ import {
   readFileSync,
   existsSync,
   renameSync,
+  statSync,
 } from "fs";
 import { join } from "path";
 import { z } from "zod";
@@ -26,9 +27,17 @@ import type {
 
 const HISTORY_FILENAME = "audit-history.json";
 
+/** mtime-based cache for loadLatestAudit */
+const latestAuditCache = new Map<string, { mtime: number; audit: AuditHistoryEntry | null }>();
+
 /** Get history file path lazily to support testing */
 function getHistoryPath(): string {
   return join(KASTELL_DIR, HISTORY_FILENAME);
+}
+
+/** Clear the latest-audit cache (exported for test isolation) */
+export function clearAuditCache(): void {
+  latestAuditCache.clear();
 }
 
 /** Max history entries per server to prevent unbounded growth */
@@ -68,6 +77,34 @@ export function loadAuditHistory(serverIp: string): AuditHistoryEntry[] {
     return result.data.filter((e) => e.serverIp === serverIp);
   } catch {
     return [];
+  }
+}
+
+/**
+ * Load the most recent audit entry for a given server IP.
+ * Uses mtime-based cache to avoid repeated file reads when the history file hasn't changed.
+ * Returns null if no history exists.
+ */
+export function loadLatestAudit(serverIp: string): AuditHistoryEntry | null {
+  const historyFile = getHistoryPath();
+  if (!existsSync(historyFile)) {
+    return null;
+  }
+
+  try {
+    const stat = statSync(historyFile);
+    const cached = latestAuditCache.get(serverIp);
+
+    if (cached && cached.mtime === stat.mtimeMs) {
+      return cached.audit;
+    }
+
+    const history = loadAuditHistory(serverIp);
+    const latest = history[history.length - 1] ?? null;
+    latestAuditCache.set(serverIp, { mtime: stat.mtimeMs, audit: latest });
+    return latest;
+  } catch {
+    return null;
   }
 }
 
