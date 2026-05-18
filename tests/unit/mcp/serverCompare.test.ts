@@ -109,6 +109,41 @@ describe("handleServerCompare", () => {
     expect(mockedDiff.buildCategorySummary).not.toHaveBeenCalled();
   });
 
+  it("detail mode returns flat checks array (not object)", async () => {
+    mockedConfig.getServers.mockReturnValue([sampleServer, sampleServerB]);
+    mockedDiff.resolveAuditPair.mockResolvedValue({
+      success: true, data: { auditA: makeAudit("server-a"), auditB: makeAudit("server-b") },
+    });
+    mockedDiff.diffAudits.mockReturnValue({
+      beforeLabel: "server-a", afterLabel: "server-b", scoreBefore: 80, scoreAfter: 80,
+      scoreDelta: 0,
+      improvements: [{ id: "A-1", name: "Check A", category: "cat", severity: "warning" as const, status: "improved" as const, before: null, after: true }],
+      regressions: [{ id: "B-1", name: "Check B", category: "cat", severity: "critical" as const, status: "regressed" as const, before: true, after: false }],
+      unchanged: [
+        { id: "C-1", name: "Check C", category: "cat", severity: "warning" as const, status: "unchanged" as const, before: false, after: false },
+        { id: "D-1", name: "Check D", category: "cat", severity: "warning" as const, status: "unchanged" as const, before: true, after: true },
+      ],
+      added: [],
+      removed: [],
+    });
+
+    const result = await handleServerCompare({ serverA: "server-a", serverB: "server-b", detail: true });
+    expect(result.isError).toBeUndefined();
+    const body = result.structuredContent!.result as { format: string; checks: Array<{ id: string; name: string; status: string }> };
+    expect(body.format).toBe("check");
+    expect(Array.isArray(body.checks)).toBe(true);
+    expect(body.checks).toHaveLength(4);
+    body.checks.forEach((c) => {
+      expect(typeof c.id).toBe("string");
+      expect(["same", "A_better", "B_better", "both_fail", "both_pass"]).toContain(c.status);
+    });
+    const statuses = body.checks.map((c) => c.status);
+    expect(statuses).toContain("A_better");
+    expect(statuses).toContain("B_better");
+    expect(statuses).toContain("both_fail");
+    expect(statuses).toContain("both_pass");
+  });
+
   it("returns error when resolveAuditPair fails", async () => {
     mockedConfig.getServers.mockReturnValue([sampleServer, sampleServerB]);
     mockedDiff.resolveAuditPair.mockResolvedValue({
