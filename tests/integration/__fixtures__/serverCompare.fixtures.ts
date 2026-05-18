@@ -33,9 +33,12 @@ const mockAuditB = {
   },
 };
 
-const mockCategorySummary = [
-  { name: "Kernel", scoreA: 10, scoreB: 10, delta: 0 },
-];
+const mockCategorySummary = {
+  beforeLabel: "web-1", afterLabel: "db-1",
+  scoreBefore: 75, scoreAfter: 80, scoreDelta: 5,
+  categories: [{ category: "Kernel", scoreBefore: 10, scoreAfter: 10, delta: 0, passedBefore: 1, passedAfter: 1, totalBefore: 1, totalAfter: 1 }],
+  weakestCategory: null,
+};
 
 export const serverCompareFixtures: ToolFixture = {
   fixtures: [
