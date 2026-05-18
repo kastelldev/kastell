@@ -1,4 +1,4 @@
-import { readFileSync, renameSync } from "fs";
+import { readFileSync, statSync, renameSync } from "fs";
 import { join } from "path";
 import type { ServerRecord } from "../types/index.js";
 import { withFileLock } from "./fileLock.js";
@@ -30,12 +30,38 @@ export function atomicWriteServers(servers: ServerRecord[]): void {
   renameSync(tmpFile, SERVERS_FILE);
 }
 
+let cachedServers: ServerRecord[] | null = null;
+let cachedMtime: number | null = null;
+let cachedDev: number | null = null;
+
+export function clearServersCache(): void {
+  cachedServers = null;
+  cachedMtime = null;
+  cachedDev = null;
+}
+
 export function getServers(): ServerRecord[] {
+  if (cachedServers !== null && cachedMtime !== null && cachedDev !== null) {
+    try {
+      const stat = statSync(SERVERS_FILE);
+      if (cachedMtime === stat.mtimeMs && cachedDev === stat.dev) {
+        return cachedServers;
+      }
+      // mtime or dev changed — invalidate
+      clearServersCache();
+    } catch {
+      clearServersCache();
+    }
+  }
+
   let data: string;
   try {
     data = readFileSync(SERVERS_FILE, "utf-8");
   } catch (err: unknown) {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      cachedServers = [];
+      cachedMtime = null;
+      cachedDev = null;
       return [];
     }
     throw err;
@@ -58,6 +84,17 @@ export function getServers(): ServerRecord[] {
     return true;
   });
   const servers = validRecords.map((s: ServerRecord) => ({ ...s, mode: s.mode ?? "coolify" }) as ServerRecord);
+
+  // populate cache
+  try {
+    const stat = statSync(SERVERS_FILE);
+    cachedServers = servers;
+    cachedMtime = stat.mtimeMs;
+    cachedDev = stat.dev;
+  } catch {
+    // file vanished between readFileSync and statSync — skip caching
+  }
+
   return servers;
 }
 
