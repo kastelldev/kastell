@@ -14,6 +14,30 @@ import {
 } from "./registry.js";
 import type { PluginCheck, PluginManifest, PluginCommand, PluginMcpTool, PluginFix } from "./sdk/types.js";
 
+const PARALLEL_BLACKLIST: Array<RegExp | string> = [
+  /\brm\b/, /\bmv\b/, /\bcp\s+-f\b/,
+  /\bdd\b/, /\btruncate\b/, /\bmkfs\b/, /\bmount\b/, /\bumount\b/,
+  />/,      // output redirection (single > or >>)
+  /\btee\b/,
+  /\bchmod\b/, /\bchown\b/,
+  /\bsed\s+-i\b/,
+  /\bsystemctl\s+(restart|stop|start|enable|disable)\b/,
+  /\bservice\s+\S+\s+restart\b/,
+  /\bapt(-get)?\s+(install|remove|upgrade|update)\b/,
+  /\bdnf\s+(install|remove)\b/,
+  /\byum\s+(install|remove)\b/,
+  /\bpkg\s+(install|remove)\b/,
+];
+
+function isCommandReadOnly(command: string): { safe: boolean; matched?: string } {
+  for (const pattern of PARALLEL_BLACKLIST) {
+    const re = typeof pattern === "string" ? new RegExp(pattern) : pattern;
+    if (re.test(command)) {
+      return { safe: false, matched: re.source };
+    }
+  }
+  return { safe: true };
+}
 
 interface LoadPluginsOptions {
   importer?: (path: string) => Promise<unknown>;
@@ -117,6 +141,21 @@ export async function loadPlugins(
         const msg = extractReason(err);
         registerFailedPlugin(manifest, msg);
         throw new Error(`${dir.name}: check validation failed — ${msg}`, { cause: err });
+      }
+
+      // Blacklist check — reject mutating checkCommand unless safeToParallel: false
+      if (manifest.safeToParallel !== false) {
+        for (const check of checks) {
+          const result = isCommandReadOnly(check.checkCommand);
+          if (!result.safe) {
+            const errMsg =
+              `Plugin "${manifest.name}" check "${check.id}" has forbidden token in checkCommand ` +
+              `(matched: ${result.matched}). checkCommand MUST be read-only. ` +
+              `Set "safeToParallel: false" in manifest if mutation is intentional.`;
+            registerFailedPlugin(manifest, errMsg);
+            throw new Error(errMsg);
+          }
+        }
       }
 
       const enrichedManifest: PluginManifest = {

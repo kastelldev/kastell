@@ -50,6 +50,8 @@ export interface PluginManifest {
   capabilities: PluginCapability[];
   checkPrefix: string;
   entry: string;
+  /** Set to false to allow mutating checkCommand (e.g. rm, systemctl restart, > redirection). */
+  safeToParallel?: boolean;
   commands?: PluginCommand[];
   mcpTools?: PluginMcpTool[];
   fixes?: PluginFix[];
