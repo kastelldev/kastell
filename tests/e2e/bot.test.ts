@@ -87,7 +87,7 @@ describe("bot command (notify add telegram) E2E", () => {
       });
     });
 
-    it("should abort when user cancels mid-flow (empty inputs, chatId also empty)", async () => {
+    it("should still save channel when prompt returns empty inputs (no Zod validation in addChannel)", async () => {
       mockedInquirer.prompt.mockResolvedValueOnce({
         botToken: "",
         chatId: "",
@@ -95,11 +95,8 @@ describe("bot command (notify add telegram) E2E", () => {
 
       await addChannel("telegram", {});
 
-      // With empty chatId the channel metadata save is skipped (validateChannel returns false for empty channel name... wait,
-      // no — validateChannel checks channel name, not credentials. Empty chatId still saves.)
-      // Actually chatId min(1) fails Zod — but addChannel doesn't call Zod.parse. Let's verify the actual call count:
+      // addChannel does not run Zod validation — empty chatId still triggers save.
       const { saveNotifyChannel } = require("../../src/core/notifyStore.js");
-      // When chatId is empty string, saveNotifyChannel is still called (addChannel does not validate)
       expect(saveNotifyChannel).toHaveBeenCalled();
     });
 

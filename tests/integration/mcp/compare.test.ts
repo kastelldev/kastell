@@ -19,33 +19,18 @@ import * as auditIndex from "../../../src/core/audit/index.js";
 import * as sshUtils from "../../../src/utils/ssh.js";
 import { handleServerCompare } from "../../../src/mcp/tools/serverCompare.js";
 import { serverCompareOutputSchema } from "../../../src/mcp/tools/serverCompare.js";
+import { makeAuditResult, makeServerRecord } from "../../helpers/auditFixtures.js";
 
 const mockedConfig = configUtils as jest.Mocked<typeof configUtils>;
 const mockedDiff = auditDiff as jest.Mocked<typeof auditDiff>;
 const mockedAuditIndex = auditIndex as jest.Mocked<typeof auditIndex>;
 const mockedSsh = sshUtils as jest.Mocked<typeof sshUtils>;
 
-const serverA = {
-  id: "htz-001", name: "web-1", provider: "hetzner" as const,
-  ip: "10.0.0.1", region: "nbg1", size: "cax11",
-  createdAt: "2026-03-01T00:00:00Z", mode: "coolify" as const,
-};
-const serverB = {
-  id: "htz-002", name: "db-1", provider: "hetzner" as const,
-  ip: "10.0.0.2", region: "nbg1", size: "cax21",
-  createdAt: "2026-03-02T00:00:00Z", mode: "coolify" as const,
-};
+const serverA = makeServerRecord("web-1", "10.0.0.1", { id: "htz-001" });
+const serverB = makeServerRecord("db-1", "10.0.0.2", { id: "htz-002", size: "cax21", createdAt: "2026-03-02T00:00:00Z" });
 
 function makeAudit(name: string, score: number) {
-  return {
-    serverName: name, serverIp: "10.0.0.0", platform: "coolify" as const,
-    timestamp: new Date().toISOString(), auditVersion: "2.0.0",
-    categories: [{
-      name: "SSH", score: 8, maxScore: 10, weight: 1,
-      checks: [{ id: "SSH-001", name: "SSH check", passed: true, severity: "medium" as const }],
-    }],
-    overallScore: score, quickWins: [], skippedCategories: [],
-  };
+  return makeAuditResult({ serverName: name, overallScore: score });
 }
 
 beforeEach(() => {

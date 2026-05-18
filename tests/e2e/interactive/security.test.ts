@@ -42,10 +42,7 @@ describe("interactive/security E2E — prompt functions", () => {
       const flow = runInteractiveFlow([
         { answer: "add" },
         // Validation fails for first "99999" entry → re-prompt with same question
-        (promptName: string) => {
-          void promptName;
-          return { port: "8080" };
-        },
+        (_promptName: string) => ({ port: "8080" }),
         { answer: "tcp" },
       ]);
 

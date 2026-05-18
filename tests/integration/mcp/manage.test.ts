@@ -53,15 +53,19 @@ const manualServer = {
 };
 
 describe("handleServerManage", () => {
+  let originalSafeMode: string | undefined;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    originalSafeMode = process.env.KASTELL_SAFE_MODE;
     process.env.KASTELL_SAFE_MODE = "false";
     mockedCoreManage.isSafeMode.mockReturnValue(false);
     mockedSsh.checkSshAvailable.mockReturnValue(false);
   });
 
   afterEach(() => {
-    delete process.env.KASTELL_SAFE_MODE;
+    if (originalSafeMode === undefined) delete process.env.KASTELL_SAFE_MODE;
+    else process.env.KASTELL_SAFE_MODE = originalSafeMode;
   });
 
   // ─── action=add ────────────────────────────────────────────────────────────

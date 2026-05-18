@@ -20,18 +20,18 @@ export async function withMcpClient<T>(
     }
   }
 
-  const [serverTransport, clientTransport] = InMemoryTransport.createLinkedPair();
-  const server = await createMcpServer();
-  const client = new Client({ name: "kastell-test", version: "0.0.0" }, { capabilities: {} });
-
-  await server.connect(serverTransport);
-  await client.connect(clientTransport);
-
+  let server: Awaited<ReturnType<typeof createMcpServer>> | null = null;
+  let client: Client | null = null;
   try {
+    const [serverTransport, clientTransport] = InMemoryTransport.createLinkedPair();
+    server = await createMcpServer();
+    client = new Client({ name: "kastell-test", version: "0.0.0" }, { capabilities: {} });
+    await server.connect(serverTransport);
+    await client.connect(clientTransport);
     return await fn(client);
   } finally {
-    await client.close();
-    await server.close();
+    await client?.close();
+    await server?.close();
     for (const [k, v] of Object.entries(originalEnv)) {
       if (v === undefined) delete process.env[k];
       else process.env[k] = v;

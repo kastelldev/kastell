@@ -22,13 +22,15 @@ export function makeAuditResult(overrides: Partial<AuditResult> = {}): AuditResu
         name: "SSH",
         score: 8,
         maxScore: 10,
-        weight: 1,
         checks: [
           {
             id: "SSH-001",
+            category: "SSH",
             name: "SSH check",
+            severity: "warning",
             passed: true,
-            severity: "medium",
+            currentValue: "yes",
+            expectedValue: "yes",
           },
         ],
       },

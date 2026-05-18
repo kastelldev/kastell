@@ -1,10 +1,6 @@
 /**
- * Integration tests for MCP server_evidence tool.
- * Tests: boot, manifest, flags, error paths, Win32 no-op.
- *
- * Scope (Task 3.2): handler + flags + error + platform behavior only.
- * Unit-level behavior (collectEvidence SSH parsing, section mapping) is
- * covered by tests/unit/evidence-core.test.ts.
+ * Integration tests for MCP server_evidence tool — handler, flags, error paths,
+ * platform behavior. Unit-level SSH parsing is in tests/unit/evidence-core.test.ts.
  */
 
 // Mock I/O boundaries before imports
@@ -32,28 +28,16 @@ import * as fs from "fs";
 import * as configUtils from "../../../src/utils/config.js";
 import * as sshUtils from "../../../src/utils/ssh.js";
 import { handleServerEvidence } from "../../../src/mcp/tools/serverEvidence.js";
+import { makeServerRecord, makeSshOutput } from "../../helpers/auditFixtures.js";
 
 const mockedConfig = configUtils as jest.Mocked<typeof configUtils>;
 const mockedSshExec = sshUtils.sshExec as jest.Mock;
 const mockedFs = fs as jest.Mocked<typeof fs>;
 
-// ─── Shared fixtures ───────────────────────────────────────────────────────────
-
-const SAMPLE_SERVER = {
+const SAMPLE_SERVER = makeServerRecord("test-server", "5.6.7.8", {
   id: "htz-001",
-  name: "test-server",
-  provider: "hetzner" as const,
-  ip: "5.6.7.8",
-  region: "nbg1",
-  size: "cax11",
-  createdAt: "2026-03-01T00:00:00Z",
-  mode: "coolify" as const,
-  platform: "coolify" as const,
-};
-
-function makeSshOutput(sections: string[]): string {
-  return sections.join("\n---SEPARATOR---\n");
-}
+  platform: "coolify",
+});
 
 // Seven forensic sections for coolify platform (includes docker-ps + docker-logs)
 const COOLIFY_SECTIONS = [
