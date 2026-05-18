@@ -140,7 +140,7 @@ export type ElicitResult =
 export function supportsElicitation(server: McpServer | undefined): boolean {
   if (!server) return false;
   try {
-    const caps = (server.server as { getClientCapabilities?: () => Record<string, unknown> })
+    const caps = (server.server as unknown as McpServerInternal)
       .getClientCapabilities?.();
     return caps?.elicitation !== undefined;
   } catch {
