@@ -108,7 +108,7 @@ export interface PluginListEntry {
   version: string;
   prefix: string;
   checks: number;
-  status: "loaded" | "failed";
+  status: "loaded" | "failed" | "disabled";
   commands?: { name: string }[];
   mcpTools?: { name: string }[];
   reason?: string;
@@ -119,11 +119,11 @@ export function listPlugins(): PluginListEntry[] {
     name: entry.manifest.name,
     version: entry.manifest.version,
     prefix: entry.manifest.checkPrefix,
-    checks: entry.checks.length,
+    checks: entry.status === "loaded" ? entry.checks.length : 0,
     status: entry.status,
-    commands: entry.commands ?? [],
-    mcpTools: entry.mcpTools ?? [],
-    ...(entry.reason ? { reason: entry.reason } : {}),
+    commands: entry.status === "loaded" ? (entry.commands ?? []) : [],
+    mcpTools: entry.status === "loaded" ? (entry.mcpTools ?? []) : [],
+    ...(entry.status === "failed" ? { reason: entry.reason } : {}),
   }));
 }
 
@@ -144,13 +144,13 @@ export function validatePlugins(name?: string): PluginValidationResult[] {
     return [{
       name: entry.manifest.name,
       valid: entry.status === "loaded",
-      ...(entry.reason ? { reason: entry.reason } : {}),
+      ...(entry.status === "failed" ? { reason: entry.reason } : {}),
     }];
   }
 
   return mapRegistryPlugins((_, entry) => ({
     name: entry.manifest.name,
     valid: entry.status === "loaded",
-    ...(entry.reason ? { reason: entry.reason } : {}),
+    ...(entry.status === "failed" ? { reason: entry.reason } : {}),
   }));
 }

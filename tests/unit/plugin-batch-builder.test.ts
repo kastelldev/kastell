@@ -2,7 +2,7 @@ import { buildAuditBatchCommands, buildPluginBatchSection } from "../../src/core
 import type { PluginRegistryEntry } from "../../src/plugin/registry.js";
 import type { PluginManifest, PluginCheck } from "../../src/plugin/sdk/types.js";
 
-function makeEntry(name: string, checks: PluginCheck[], status: "loaded" | "failed" = "loaded"): PluginRegistryEntry {
+function makeEntry(name: string, checks: PluginCheck[], s: "loaded" | "failed" = "loaded"): PluginRegistryEntry {
   const manifest: PluginManifest = {
     name,
     version: "1.0.0",
@@ -12,8 +12,18 @@ function makeEntry(name: string, checks: PluginCheck[], status: "loaded" | "fail
     checkPrefix: name.split("-").pop()!.toUpperCase().slice(0, 6),
     entry: "./index.js",
   };
+  if (s === "failed") {
+    return {
+      manifest,
+      status: "failed",
+      reason: "test reason",
+      checks: [],
+      checksById: new Map(),
+      fixesByCheckId: new Map(),
+    } as unknown as PluginRegistryEntry;
+  }
   const checksById = new Map(checks.map((c) => [c.id, c]));
-  return { manifest, checks, status, checksById, fixesByCheckId: new Map() };
+  return { manifest, checks, status: "loaded", checksById, fixesByCheckId: new Map() } as unknown as PluginRegistryEntry;
 }
 
 function check(id: string, cmd = "echo ok"): PluginCheck {

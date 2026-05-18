@@ -9,17 +9,35 @@ import { PLUGIN_NAME_PREFIX, PLUGIN_TOOL_PREFIX } from "./sdk/constants.js";
 
 const PLUGIN_CACHE_PATH = join(KASTELL_DIR, "plugin-manifests.json");
 
-export interface PluginRegistryEntry {
-  manifest: PluginManifest;
-  checks: PluginCheck[];
-  status: "loaded" | "failed";
-  reason?: string;
-  commands?: PluginCommand[];
-  mcpTools?: PluginMcpTool[];
-  fixes?: PluginFix[];
-  checksById: ReadonlyMap<string, PluginCheck>;
-  fixesByCheckId: ReadonlyMap<string, PluginFix>;
-}
+// ─── PluginRegistryEntry discriminated union ───────────────────────────────────
+// Each variant shares `manifest`; status narrows what else is accessible.
+
+export type PluginRegistryEntry =
+  | ({
+      status: "loaded";
+      manifest: PluginManifest;
+      checks: PluginCheck[];
+      fixes?: PluginFix[];
+      commands?: PluginCommand[];
+      mcpTools?: PluginMcpTool[];
+      checksById: ReadonlyMap<string, PluginCheck>;
+      fixesByCheckId: ReadonlyMap<string, PluginFix>;
+    })
+  | ({
+      status: "failed";
+      manifest: PluginManifest;
+      reason: string;
+      checks: [];
+      checksById: ReadonlyMap<string, never>;
+      fixesByCheckId: ReadonlyMap<string, never>;
+    })
+  | ({
+      status: "disabled";
+      manifest: PluginManifest;
+      checks: [];
+      checksById: ReadonlyMap<string, never>;
+      fixesByCheckId: ReadonlyMap<string, never>;
+    });
 
 const PLUGIN_REGISTRY: Map<string, PluginRegistryEntry> = new Map();
 const usedPrefixes: Map<string, string> = new Map();
@@ -86,12 +104,24 @@ export function registerFailedPlugin(
 ): void {
   PLUGIN_REGISTRY.set(manifest.name, {
     manifest,
-    checks: [],
     status: "failed",
     reason,
+    checks: [],
     checksById: new Map(),
     fixesByCheckId: new Map(),
-  });
+  } as unknown as PluginRegistryEntry);
+}
+
+export function registerDisabledPlugin(
+  manifest: PluginManifest,
+): void {
+  PLUGIN_REGISTRY.set(manifest.name, {
+    manifest,
+    status: "disabled",
+    checks: [],
+    checksById: new Map(),
+    fixesByCheckId: new Map(),
+  } as unknown as PluginRegistryEntry);
 }
 
 export function deletePlugin(name: string): void {

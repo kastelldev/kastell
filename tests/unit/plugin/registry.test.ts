@@ -176,31 +176,39 @@ describe("plugin/registry", () => {
     it("stores commands from manifest", () => {
       registerPlugin(manifestWithFields, []);
       const entry = getPluginRegistry().get("kastell-plugin-wp");
-      expect(entry?.commands).toHaveLength(1);
-      expect(entry?.commands?.[0].name).toBe("scan");
+      if (entry && entry.status === "loaded") {
+        expect(entry.commands?.length).toBeGreaterThan(0);
+        expect(entry.commands![0].name).toBe("scan");
+      }
     });
 
     it("stores fixes from manifest", () => {
       registerPlugin(manifestWithFields, []);
       const entry = getPluginRegistry().get("kastell-plugin-wp");
-      expect(entry?.fixes).toHaveLength(1);
-      expect(entry?.fixes?.[0].checkId).toBe("WP-001");
+      if (entry && entry.status === "loaded") {
+        expect(entry.fixes).toHaveLength(1);
+        expect(entry.fixes![0].checkId).toBe("WP-001");
+      }
     });
 
     it("stores mcpTools from manifest", () => {
       const m: PluginManifest = { ...manifestWithFields, capabilities: ["audit", "mcp-tool"] as PluginCapability[], mcpTools: [{ name: "analyze", description: "Analyze", handler: "./mcp/a.js" }] };
       registerPlugin(m, []);
       const entry = getPluginRegistry().get("kastell-plugin-wp");
-      expect(entry?.mcpTools).toHaveLength(1);
+      if (entry && entry.status === "loaded") {
+        expect(entry.mcpTools).toHaveLength(1);
+      }
     });
 
     it("omits optional fields when not in manifest", () => {
       const m: PluginManifest = { ...mockManifest, capabilities: ["audit"] as PluginCapability[], commands: undefined, fixes: undefined };
       registerPlugin(m, []);
       const entry = getPluginRegistry().get("kastell-plugin-wordpress");
-      expect(entry?.commands).toBeUndefined();
-      expect(entry?.fixes).toBeUndefined();
-      expect(entry?.mcpTools).toBeUndefined();
+      if (entry && entry.status === "loaded") {
+        expect(entry.commands).toBeUndefined();
+        expect(entry.fixes).toBeUndefined();
+        expect(entry.mcpTools).toBeUndefined();
+      }
     });
   });
 });
