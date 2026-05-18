@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **Plugin checks now run in parallel** (cap=3, configurable via `PLUGIN_AUDIT_PARALLELISM`)
+- Aggregate timeout for plugin audit (`PLUGIN_AUDIT_TOTAL_TIMEOUT_MS`, default 120s)
+- `safeToParallel: false` opt-out in plugin manifest for plugins with intentional mutating checkCommands
+- File-mtime cache for `getServers()` and `loadLatestAudit(ip)` with network FS guard
+- MCP SDK round-trip test for serverCompare schema
+- Plugin tarball smoke test: MCP boot time measurement + empty dir detection
+
+### Changed
+- **`chunkConcurrent`** replaces `p-limit` in fleet.ts (p-limit dependency dropped)
+- `serverCompare` outputSchema uses `discriminatedUnion` (dış shape aynı kalır)
+- `PluginRegistryEntry` is now a discriminated union (loaded/error/disabled)
+- CI workflow: build artifact shared between jobs (~30s saving per run)
+
+### Fixed
+- `serverCompare` detail mode returns flat checks array (was object — CQS-11 #1)
+- `ssh-factories.ts` setTimeout leak — worker force-exit (CQS-10 #1)
+- `tests/helpers/fsMock.ts` factory prevents Linux CI chmodSync mock omission
+
+### Internal
+- 175 `console.log` triage + sweep (5 categories — 0 actionable)
+- 13 slow tests audit (P140 input)
+- `createFsMock` factory adopted across 32 test files
+- `McpServerInternal` named type (CQS-05)
+- `serverCompare` eslint-disable orphan cleanup (CQS-10 #2)
+
 ### BREAKING
 - `server_fix` MCP input shape changed: `dryRun: boolean` removed, replaced by `mode: 'dry-run' | 'live'` on the `apply` action branch. CLI users unaffected (`--dry-run` flag unchanged). MCP consumers must update calls.
 - `server_fix` MCP output shape changed: non-apply actions (`history`, `rollback`, `rollback-all`, `rollback-to`) no longer carry a `dryRun` field. Previously the field held the action name as a string proxy to satisfy a misnamed discriminator; now responses are discriminated by `action` and `dryRun: boolean` appears only on `apply` responses where it semantically belongs.
