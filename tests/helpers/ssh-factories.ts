@@ -23,7 +23,8 @@ export class MockChildProcess extends EventEmitter {
     super();
     const emit = () => this.emit("close", exitCode);
     if (delayMs > 0) {
-      setTimeout(emit, delayMs);
+      const handle = setTimeout(emit, delayMs);
+      handle.unref();
     } else {
       process.nextTick(emit);
     }
