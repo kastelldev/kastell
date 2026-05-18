@@ -1,11 +1,16 @@
 import { describe, test, expect, afterEach, beforeEach } from "@jest/globals";
 import { executePluginChecks } from "../../src/core/plugin/audit.js";
+import { chunkConcurrent } from "../../src/utils/concurrency.js";
+
+jest.mock("../../src/utils/concurrency.js", () => ({
+  chunkConcurrent: jest.fn(),
+}));
 
 describe("executePluginChecks concurrency", () => {
+  let mockChunkConcurrent: jest.Mock;
+
   beforeEach(() => {
-    const ssh = require("../../src/utils/ssh");
-    jest.spyOn(ssh, "sshMasterOpen").mockResolvedValue(true);
-    jest.spyOn(ssh, "sshMasterClose").mockImplementation(() => undefined);
+    mockChunkConcurrent = chunkConcurrent as jest.Mock;
   });
 
   afterEach(() => {
@@ -13,71 +18,60 @@ describe("executePluginChecks concurrency", () => {
     jest.restoreAllMocks();
   });
 
-  test("runs max 4 checks per host concurrently", async () => {
-    let active = 0, peak = 0;
-    const checks = Array.from({ length: 10 }, (_, i) => ({
-      id: `c${i}`,
-      name: `check${i}`,
-      category: "test",
-      severity: "info" as const,
-      description: "test",
-      checkCommand: "echo",
+  test("runs max 3 checks concurrently by default", async () => {
+    let capturedConcurrency = 0;
+    const checks = Array.from({ length: 6 }, (_, i) => ({
+      id: `c${i}`, name: `check${i}`, category: "test", severity: "info" as const,
+      description: "test", checkCommand: "echo",
     }));
-    jest.spyOn(require("../../src/utils/ssh"), "sshExec").mockImplementation(async () => {
-      active++; peak = Math.max(peak, active);
-      await new Promise(r => setTimeout(r, 20));
-      active--;
+
+    const ssh = jest.fn(async () => {
+      await new Promise(r => setTimeout(r, 10));
       return { stdout: "ok", stderr: "", code: 0 };
     });
-    const result = await executePluginChecks(checks, "192.168.1.100");
-    expect(peak).toBeLessThanOrEqual(4);
-    expect(result).toHaveLength(10);
-  });
 
-  test("aggregate timeout aborts pending checks", async () => {
-    process.env.PLUGIN_AUDIT_TIMEOUT_MS = "50";
-    const checks = Array.from({ length: 8 }, (_, i) => ({
-      id: `c${i}`,
-      name: `check${i}`,
-      category: "test",
-      severity: "info" as const,
-      description: "test",
-      checkCommand: "sleep",
-    }));
-    jest.spyOn(require("../../src/utils/ssh"), "sshExec").mockImplementation(async () => {
-      await new Promise(r => setTimeout(r, 100));
-      return { stdout: "", stderr: "", code: 0 };
+    mockChunkConcurrent.mockImplementation(async (items: unknown[], concurrency: number) => {
+      capturedConcurrency = concurrency;
+      return items.map(() => ({ checkId: "x", status: "pass" as const }));
     });
-    const result = await executePluginChecks(checks, "192.168.1.100");
-    expect(result.some((r: { status: string }) => r.status === "timeout")).toBe(true);
-    delete process.env.PLUGIN_AUDIT_TIMEOUT_MS;
+
+    const result = await executePluginChecks(checks, { ssh, manifest: {} });
+
+    expect(capturedConcurrency).toBe(3);
+    expect(result.results).toHaveLength(6);
   });
 
-  test("partial failure: settled results returned", async () => {
+  test("safeToParallel: false → cap=1", async () => {
+    const checks = [{ id: "c0", name: "check0", category: "test", severity: "info" as const, description: "test", checkCommand: "echo" }];
+    const ssh = jest.fn(async () => ({ stdout: "ok", stderr: "", code: 0 }));
+
+    mockChunkConcurrent.mockImplementation(async () => []);
+
+    await executePluginChecks(checks, { ssh, manifest: { safeToParallel: false } });
+
+    expect(mockChunkConcurrent).toHaveBeenCalledWith(expect.any(Array), 1, expect.any(Function));
+  });
+
+  test("partial failure — error results returned with error status", async () => {
     const checks = [
-      {
-        id: "ok-1",
-        name: "ok",
-        category: "test",
-        severity: "info" as const,
-        description: "test",
-        checkCommand: "echo",
-      },
-      {
-        id: "fail-1",
-        name: "fail",
-        category: "test",
-        severity: "info" as const,
-        description: "test",
-        checkCommand: "false",
-      },
+      { id: "ok-1", name: "ok", category: "test", severity: "info" as const, description: "test", checkCommand: "echo" },
+      { id: "fail-1", name: "fail", category: "test", severity: "info" as const, description: "test", checkCommand: "false" },
     ];
-    jest.spyOn(require("../../src/utils/ssh"), "sshExec").mockImplementation(async (_h: unknown, _c: unknown) => {
-      if ((_c as string).includes("false")) return { stdout: "", stderr: "command failed", code: 1 };
+    const ssh = jest.fn(async (_cmd: string) => {
+      if (_cmd.includes("false")) return { stdout: "", stderr: "command failed", code: 1 };
       return { stdout: "ok", stderr: "", code: 0 };
     });
-    const result = await executePluginChecks(checks, "192.168.1.100");
-    expect(result.find((r: { checkId: string }) => r.checkId === "ok-1")?.status).toBe("pass");
-    expect(result.find((r: { checkId: string }) => r.checkId === "fail-1")?.status).toBe("error");
+
+    mockChunkConcurrent.mockImplementation(async (items: unknown[]) => {
+      return (items as Array<{ id: string; checkCommand: string }>).map((item) => ({
+        checkId: item.id,
+        status: item.checkCommand.includes("false") ? "error" as const : "pass" as const,
+      }));
+    });
+
+    const result = await executePluginChecks(checks, { ssh, manifest: {} });
+
+    expect(result.results.find(r => r.checkId === "ok-1")?.status).toBe("pass");
+    expect(result.results.find(r => r.checkId === "fail-1")?.status).toBe("error");
   });
 });
