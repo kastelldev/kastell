@@ -16,13 +16,11 @@ export const serverCompareSchema = {
 };
 
 export const serverCompareOutputSchema = z.object({
-  result: z.object({
-    format: z.enum(["category", "check"]),
-    serverA: z.string(),
-    serverB: z.string(),
-  }).and(z.union([
+  result: z.discriminatedUnion("format", [
     z.object({
       format: z.literal("category"),
+      serverA: z.string(),
+      serverB: z.string(),
       categories: z.array(z.object({
         category: z.string(),
         scoreBefore: z.number(),
@@ -35,6 +33,8 @@ export const serverCompareOutputSchema = z.object({
     }),
     z.object({
       format: z.literal("check"),
+      serverA: z.string(),
+      serverB: z.string(),
       checks: z.array(z.object({
         id: z.string(),
         name: z.string(),
@@ -43,7 +43,7 @@ export const serverCompareOutputSchema = z.object({
         after: z.boolean().nullable(),
       })),
     }),
-  ])),
+  ]),
 });
 
 export async function handleServerCompare(params: {
