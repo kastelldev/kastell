@@ -1,13 +1,10 @@
 import { readFileSync } from "fs";
 import * as config from "../../src/utils/config";
 import { exportCommand, importCommand } from "../../src/commands/transfer";
-
-jest.mock("fs", () => ({
-  readFileSync: jest.fn(),
-  writeFileSync: jest.fn(),
-  mkdirSync: jest.fn(),
-  existsSync: jest.fn(),
-}));
+jest.mock("fs", () => {
+  const { createFsMock } = require("../helpers/fsMock.js");
+  return createFsMock();
+});
 jest.mock("../../src/utils/secureWrite", () => ({
   secureWriteFileSync: jest.fn(),
   secureMkdirSync: jest.fn(),

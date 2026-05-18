@@ -24,6 +24,7 @@ export function createFsMock(overrides: FsMockOptions = {}) {
     existsSync: jest.fn().mockReturnValue(false),
     statSync: jest.fn(),
     unlinkSync: jest.fn(),
+    renameSync: jest.fn(),
     ...overrides,
   };
 }
