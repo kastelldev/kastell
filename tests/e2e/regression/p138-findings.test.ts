@@ -1,5 +1,6 @@
 import { isWindows } from "../../../src/utils/platform";
 import type { QuickWin } from "../../../src/core/audit/types";
+import { SECURE_ACTIONS } from "../../../src/mcp/tools/serverSecure.actions.js";
 
 describe("P138 regression — open findings", () => {
 
@@ -28,13 +29,7 @@ describe("P138 regression — open findings", () => {
 
   // F-011 forward-protection — secure subcommand name consistency
   it("F-011: secure-audit is valid MCP action; CLI uses 'audit' subcommand", () => {
-    const validMcpActions = [
-      "secure-setup", "secure-audit", "firewall-setup", "firewall-add",
-      "firewall-remove", "firewall-status", "domain-set", "domain-remove",
-      "domain-check", "domain-info",
-    ] as const;
-    expect(validMcpActions).toContain("secure-audit");
-    // CLI subcommand is 'audit' not 'secure-audit'
+    expect(SECURE_ACTIONS).toContain("secure-audit");
     const cliCommands = ["audit", "secure-setup", "firewall-add", "firewall-remove", "domain-set"];
     expect(cliCommands).toContain("audit");
   });
