@@ -43,7 +43,6 @@ describe("getServers cache", () => {
       mockedFs.existsSync.mockReturnValue(true);
       mockedFs.statSync
         .mockReturnValueOnce(asStats({ mtimeMs: 1000, dev: 1, isFile: () => true }))
-        .mockReturnValueOnce(asStats({ mtimeMs: 1000, dev: 1, isFile: () => true }))
         .mockReturnValueOnce(asStats({ mtimeMs: 2000, dev: 1, isFile: () => true }))
         .mockReturnValueOnce(asStats({ mtimeMs: 2000, dev: 1, isFile: () => true }));
       mockedFs.readFileSync
@@ -64,10 +63,11 @@ describe("getServers cache", () => {
       mockedFs.existsSync.mockReturnValue(true);
       mockedFs.statSync
         .mockReturnValueOnce(asStats({ mtimeMs: 1000, dev: 1, isFile: () => true }))
-        .mockReturnValueOnce(asStats({ mtimeMs: 1000, dev: 1, isFile: () => true }))
         .mockReturnValueOnce(asStats({ mtimeMs: 1000, dev: 2, isFile: () => true }))
         .mockReturnValueOnce(asStats({ mtimeMs: 1000, dev: 2, isFile: () => true }));
-      mockedFs.readFileSync.mockReturnValueOnce(jsonString([]));
+      mockedFs.readFileSync
+        .mockReturnValueOnce(jsonString([]))
+        .mockReturnValueOnce(jsonString([]));
 
       const { getServers, clearServersCache } = await import("../../../src/utils/config.js");
       clearServersCache();
@@ -82,7 +82,6 @@ describe("getServers cache", () => {
     await jest.isolateModules(async () => {
       mockedFs.existsSync.mockReturnValue(true);
       mockedFs.statSync
-        .mockReturnValueOnce(asStats({ mtimeMs: 1000, dev: 1, isFile: () => true }))
         .mockReturnValueOnce(asStats({ mtimeMs: 1000, dev: 1, isFile: () => true }))
         .mockReturnValueOnce(asStats({ mtimeMs: 2000, dev: 1, isFile: () => true }))
         .mockReturnValueOnce(asStats({ mtimeMs: 2000, dev: 1, isFile: () => true }));
