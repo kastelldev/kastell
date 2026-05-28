@@ -17,12 +17,12 @@ export const logger = {
   },
 
   error: (message: string) => {
-    console.log(chalk.red("✖"), message);
+    console.error(chalk.red("✖"), message);
   },
 
   warning: (message: string) => {
      
-    console.log(chalk.yellow("⚠"), message);
+    console.error(chalk.yellow("⚠"), message);
   },
 
   title: (message: string) => {

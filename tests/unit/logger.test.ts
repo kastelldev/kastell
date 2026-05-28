@@ -1,49 +1,54 @@
 import { logger, createSpinner } from "../../src/utils/logger";
 
 describe("logger", () => {
-  let consoleSpy: jest.SpyInstance;
+  let stdoutSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stdoutSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
   });
 
   afterEach(() => {
-    consoleSpy.mockRestore();
+    stdoutSpy.mockRestore();
+    stderrSpy.mockRestore();
   });
 
   it("should log info messages", () => {
     logger.info("test info");
-    expect(consoleSpy).toHaveBeenCalledTimes(1);
-    expect(consoleSpy).toHaveBeenCalledWith(expect.any(String), "test info");
+    expect(stdoutSpy).toHaveBeenCalledTimes(1);
+    expect(stdoutSpy).toHaveBeenCalledWith(expect.any(String), "test info");
   });
 
   it("should log success messages", () => {
     logger.success("task done");
-    expect(consoleSpy).toHaveBeenCalledTimes(1);
-    expect(consoleSpy).toHaveBeenCalledWith(expect.any(String), "task done");
+    expect(stdoutSpy).toHaveBeenCalledTimes(1);
+    expect(stdoutSpy).toHaveBeenCalledWith(expect.any(String), "task done");
   });
 
-  it("should log error messages", () => {
+  it("should log error messages to stderr", () => {
     logger.error("something failed");
-    expect(consoleSpy).toHaveBeenCalledTimes(1);
-    expect(consoleSpy).toHaveBeenCalledWith(expect.any(String), "something failed");
+    expect(stderrSpy).toHaveBeenCalledTimes(1);
+    expect(stderrSpy).toHaveBeenCalledWith(expect.any(String), "something failed");
+    expect(stdoutSpy).not.toHaveBeenCalled();
   });
 
-  it("should log warning messages", () => {
+  it("should log warning messages to stderr", () => {
     logger.warning("be careful");
-    expect(consoleSpy).toHaveBeenCalledTimes(1);
-    expect(consoleSpy).toHaveBeenCalledWith(expect.any(String), "be careful");
+    expect(stderrSpy).toHaveBeenCalledTimes(1);
+    expect(stderrSpy).toHaveBeenCalledWith(expect.any(String), "be careful");
+    expect(stdoutSpy).not.toHaveBeenCalled();
   });
 
   it("should log title with empty lines before and after", () => {
     logger.title("My Title");
-    expect(consoleSpy).toHaveBeenCalledTimes(3);
+    expect(stdoutSpy).toHaveBeenCalledTimes(3);
   });
 
   it("should log step messages", () => {
     logger.step("doing something");
-    expect(consoleSpy).toHaveBeenCalledTimes(1);
-    expect(consoleSpy).toHaveBeenCalledWith(expect.any(String), "doing something");
+    expect(stdoutSpy).toHaveBeenCalledTimes(1);
+    expect(stdoutSpy).toHaveBeenCalledWith(expect.any(String), "doing something");
   });
 });
 
