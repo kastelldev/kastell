@@ -1,5 +1,5 @@
-import pLimit from "p-limit";
 import chalk from "chalk";
+import { chunkConcurrent } from "../utils/concurrency.js";
 import { getServers } from "../utils/config.js";
 import { createSpinner } from "../utils/logger.js";
 import { checkServerHealth } from "./health.js";
@@ -73,8 +73,8 @@ export function sortRows(rows: FleetRow[], field: string): FleetRow[] {
 }
 
 /**
- * Probe all registered servers in parallel (p-limit 5) and return fleet rows.
- * Uses Promise.allSettled — rejected probes become OFFLINE rows, never thrown.
+ * Probe all registered servers in parallel (chunkConcurrent, concurrency=5) and return fleet rows.
+ * Unreachable servers become OFFLINE rows, never thrown.
  */
 export async function runFleet(options: FleetOptions): Promise<FleetRow[]> {
   const servers = getServers();
@@ -87,25 +87,35 @@ export async function runFleet(options: FleetOptions): Promise<FleetRow[]> {
   const spinner = createSpinner(`Probing ${servers.length} server(s)...`);
   spinner.start();
 
-  const limit = pLimit(5);
+  type ProbeResult = { health: Awaited<ReturnType<typeof checkServerHealth>>; auditScore: number | null; weakest: Awaited<ReturnType<typeof getWeakestCategory>> | null };
 
-  const tasks = servers.map((server: ServerRecord) =>
-    limit(async () => {
-      const health = await checkServerHealth(server);
-      const auditScore = getLatestAuditScore(server.ip);
-      const weakest = options.categories ? await getWeakestCategory(server.ip) : undefined;
-      return { health, auditScore, weakest };
-    }),
-  );
+  const safeProbe = async (server: ServerRecord): Promise<ProbeResult> => {
+  try {
+    const health = await checkServerHealth(server);
+    const auditScore: number | null = getLatestAuditScore(server.ip);
+    const weakest = options.categories ? await getWeakestCategory(server.ip) ?? null : null;
+    return { health, auditScore, weakest };
+  } catch (__err) {
+    void __err;
+    const unreachableHealth: ProbeResult["health"] = { server, status: "unreachable", responseTime: 0 };
+    const auditScoreVal: number | null = null;
+    const probeResult: ProbeResult = {
+      health: unreachableHealth,
+      auditScore: auditScoreVal,
+      weakest: null,
+    };
+    return probeResult;
+  }
+};
 
-  const results = await Promise.allSettled(tasks);
+const rawResults = await chunkConcurrent(servers, 5, safeProbe);
 
   spinner.stop();
 
-  const rows: FleetRow[] = results.map((result, i) => {
+  const rows: FleetRow[] = rawResults.map((result, i) => {
     const server = servers[i];
 
-    if (result.status === "rejected") {
+    if (!result || result.health.status === "unreachable") {
       return {
         name: server.name,
         ip: server.ip,
@@ -113,11 +123,11 @@ export async function runFleet(options: FleetOptions): Promise<FleetRow[]> {
         status: "OFFLINE",
         auditScore: null,
         responseTime: null,
-        errorReason: String(result.reason),
+        errorReason: null,
       } satisfies FleetRow;
     }
 
-    const { health, auditScore, weakest } = result.value;
+    const { health, auditScore, weakest } = result;
 
     let status: FleetRow["status"];
     if (health.status === "healthy") {

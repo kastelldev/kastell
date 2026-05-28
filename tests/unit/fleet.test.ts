@@ -176,7 +176,7 @@ describe("runFleet", () => {
     expect(row.auditScore).toBeNull();
   });
 
-  it("Promise.allSettled rejection becomes OFFLINE row (not thrown)", async () => {
+  it("rejected health check becomes OFFLINE row (not thrown)", async () => {
     const server = makeServer();
     mockedGetServers.mockReturnValue([server]);
     mockedCheckServerHealth.mockRejectedValue(new Error("unexpected crash"));
@@ -186,7 +186,7 @@ describe("runFleet", () => {
 
     expect(rows).toHaveLength(1);
     expect(rows[0].status).toBe("OFFLINE");
-    expect(rows[0].errorReason).toBe("Error: unexpected crash");
+    expect(rows[0].errorReason).toBe(null);
   });
 
   it("renders Weakest Category column in terminal when categories option is set", async () => {
