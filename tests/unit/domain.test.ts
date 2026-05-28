@@ -32,14 +32,17 @@ const sampleServer = {
 
 describe("domain", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
   });
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
   });
 
   // Pure function tests
@@ -237,14 +240,14 @@ describe("domain", () => {
     it("should show error when SSH not available", async () => {
       mockedSsh.checkSshAvailable.mockReturnValue(false);
       await domainCommand();
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("SSH client not found");
     });
 
     it("should show error for invalid subcommand", async () => {
       mockedSsh.checkSshAvailable.mockReturnValue(true);
       await domainCommand("invalid");
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Invalid subcommand");
     });
 
@@ -252,7 +255,7 @@ describe("domain", () => {
       mockedSsh.checkSshAvailable.mockReturnValue(true);
       mockedConfig.findServers.mockReturnValue([]);
       await domainCommand("list", "nonexistent");
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Server not found");
     });
 
@@ -263,7 +266,7 @@ describe("domain", () => {
 
       await domainCommand("add", "1.2.3.4", {});
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Missing --domain");
     });
 
@@ -273,7 +276,7 @@ describe("domain", () => {
 
       await domainCommand("add", "1.2.3.4", { domain: "-invalid" });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Invalid domain");
     });
 
@@ -286,7 +289,7 @@ describe("domain", () => {
 
       await domainCommand("add", "1.2.3.4", { domain: "example.com" });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("https://example.com");
     });
 
@@ -307,7 +310,7 @@ describe("domain", () => {
 
       await domainCommand("add", "1.2.3.4", { domain: "example.com", dryRun: true });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Dry Run");
       expect(output).toContain("No changes applied");
     });
@@ -343,7 +346,7 @@ describe("domain", () => {
 
       await domainCommand("add", "1.2.3.4", { domain: "example.com" });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("SSH connection timed out");
     });
 
@@ -356,7 +359,7 @@ describe("domain", () => {
 
       await domainCommand("add", "1.2.3.4", { domain: "https://example.com/" });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("https://example.com");
     });
 
@@ -369,7 +372,7 @@ describe("domain", () => {
 
       await domainCommand("add", "1.2.3.4", { domain: "example.com", ssl: false });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("http://example.com");
     });
 
@@ -384,7 +387,7 @@ describe("domain", () => {
 
       await domainCommand("remove", "1.2.3.4");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("http://1.2.3.4:8000");
     });
 
@@ -394,7 +397,7 @@ describe("domain", () => {
 
       await domainCommand("remove", "1.2.3.4", { dryRun: true });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Dry Run");
     });
 
@@ -429,7 +432,7 @@ describe("domain", () => {
 
       await domainCommand("check", "1.2.3.4", {});
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Missing --domain");
     });
 
@@ -439,7 +442,7 @@ describe("domain", () => {
 
       await domainCommand("check", "1.2.3.4", { domain: "not valid" });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Invalid domain");
     });
 
@@ -492,7 +495,7 @@ describe("domain", () => {
 
       await domainCommand("list", "1.2.3.4");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("https://example.com");
     });
 
@@ -505,7 +508,7 @@ describe("domain", () => {
 
       await domainCommand("list", "1.2.3.4");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("http://1.2.3.4:8000");
     });
 
@@ -556,7 +559,7 @@ describe("domain", () => {
 
       await domainCommand("info", "1.2.3.4");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("coolify-test");
       expect(output).toContain("https://example.com");
       expect(output).toContain("SSL: enabled");
@@ -571,7 +574,7 @@ describe("domain", () => {
 
       await domainCommand("info", "1.2.3.4");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("not set");
       expect(output).toContain("http://1.2.3.4:8000");
     });
@@ -585,7 +588,7 @@ describe("domain", () => {
 
       await domainCommand("info", "1.2.3.4");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("SSL: disabled");
     });
 
@@ -609,7 +612,7 @@ describe("domain", () => {
 
       await domainCommand("info", "1.2.3.4");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Connection refused");
     });
 
@@ -624,7 +627,7 @@ describe("domain", () => {
 
       // domain command should NOT proceed to SSH — bare guard fires before switch
       expect(mockedSsh.sshExec).not.toHaveBeenCalled();
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("domain");
     });
   });

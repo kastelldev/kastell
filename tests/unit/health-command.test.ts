@@ -2,6 +2,7 @@ import axios from "axios";
 import * as config from "../../src/utils/config";
 import * as serverSelect from "../../src/utils/serverSelect";
 import { checkServerHealth, healthCommand } from "../../src/commands/health";
+import { createConsoleSpy } from "../helpers/consoleSpy.js";
 
 jest.mock("../../src/utils/config");
 jest.mock("../../src/utils/serverSelect");
@@ -48,21 +49,24 @@ const sampleServer2 = {
 };
 
 describe("healthCommand", () => {
-  let consoleSpy: jest.SpyInstance;
+  const spy = createConsoleSpy();
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    spy.setup();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
   });
 
   afterEach(() => {
-    consoleSpy.mockRestore();
+    spy.restore();
+    stderrSpy?.mockRestore();
   });
 
   it("should show message when no servers found", async () => {
     mockedConfig.getServers.mockReturnValue([]);
     await healthCommand();
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("No servers found");
   });
 
@@ -95,7 +99,7 @@ describe("healthCommand", () => {
 
     await healthCommand();
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("coolify-test");
     expect(output).toContain("coolify-prod");
     expect(output).toContain("healthy");
@@ -108,7 +112,7 @@ describe("healthCommand", () => {
 
     await healthCommand();
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("All 1 server(s) are healthy");
   });
 
@@ -120,7 +124,7 @@ describe("healthCommand", () => {
 
     await healthCommand();
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("1 healthy");
     expect(output).toContain("1 unreachable");
   });
@@ -145,7 +149,7 @@ describe("healthCommand", () => {
       // SSH check performed (not axios.get)
       expect(mockedSsh.sshExec).toHaveBeenCalledWith(bareServer.ip, "echo ok");
       expect(mockedAxios.get).not.toHaveBeenCalled();
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("bare-test");
       expect(output).toContain("healthy");
     });
@@ -160,7 +164,7 @@ describe("healthCommand", () => {
       // One HTTP check (coolify), one SSH check (bare)
       expect(mockedAxios.get).toHaveBeenCalledTimes(1);
       expect(mockedSsh.sshExec).toHaveBeenCalledTimes(1);
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("coolify-test");
       expect(output).toContain("bare-test");
       expect(output).toContain("healthy");
@@ -173,7 +177,7 @@ describe("healthCommand", () => {
       await healthCommand();
 
       expect(mockedAxios.get).not.toHaveBeenCalled();
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("unreachable");
     });
   });
@@ -190,7 +194,7 @@ describe("healthCommand", () => {
 
       // Should only health-check the one matched server
       expect(mockedAxios.get).toHaveBeenCalledTimes(1);
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("coolify-test");
     });
 
@@ -200,7 +204,7 @@ describe("healthCommand", () => {
 
       await healthCommand("nonexistent");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Server not found");
       expect(mockedAxios.get).not.toHaveBeenCalled();
     });

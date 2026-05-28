@@ -4,6 +4,7 @@ import * as backupSchedule from "../../../src/core/backupSchedule";
 import * as loggerUtils from "../../../src/utils/logger";
 import { scheduleCommand } from "../../../src/commands/schedule";
 import { Command } from "commander";
+import { createConsoleSpy } from "../../helpers/consoleSpy.js";
 
 jest.mock("../../../src/core/scheduleManager");
 jest.mock("../../../src/utils/serverSelect");
@@ -37,11 +38,11 @@ async function runSubcommand(args: string[]): Promise<void> {
 }
 
 describe("scheduleCommand", () => {
-  let consoleSpy: jest.SpyInstance;
+  const spy = createConsoleSpy();
 
   beforeEach(() => {
     jest.resetAllMocks();
-    consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    spy.setup();
 
     mockedBackupSchedule.validateCronExpr.mockReturnValue({ valid: true });
     mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
@@ -51,7 +52,7 @@ describe("scheduleCommand", () => {
   });
 
   afterEach(() => {
-    consoleSpy.mockRestore();
+    spy.restore();
   });
 
   describe("command structure", () => {
@@ -231,10 +232,10 @@ describe("scheduleCommand", () => {
 
       await runSubcommand(["list"]);
 
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(spy.consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining("Server"),
       );
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(spy.consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining("my-server"),
       );
     });

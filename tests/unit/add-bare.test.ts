@@ -6,6 +6,7 @@
 import * as coreManage from "../../src/core/manage";
 import * as serverSelect from "../../src/utils/serverSelect";
 import { addCommand } from "../../src/commands/add";
+import { createConsoleSpy } from "../helpers/consoleSpy.js";
 
 jest.mock("../../src/core/manage");
 jest.mock("../../src/utils/serverSelect");
@@ -29,11 +30,11 @@ const bareAddResult = {
 };
 
 describe("addCommand — bare mode", () => {
-  let consoleSpy: jest.SpyInstance;
+  const spy = createConsoleSpy();
   let exitSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    spy.setup();
     exitSpy = jest.spyOn(process, "exit").mockImplementation(() => undefined as never);
     jest.clearAllMocks();
     mockedServerSelect.promptApiToken.mockResolvedValue("test-token");
@@ -41,7 +42,7 @@ describe("addCommand — bare mode", () => {
   });
 
   afterEach(() => {
-    consoleSpy.mockRestore();
+    spy.restore();
     exitSpy.mockRestore();
   });
 
@@ -66,7 +67,7 @@ describe("addCommand — bare mode", () => {
       mode: "bare",
     });
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = spy.getCalls().map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Server added successfully");
   });
 

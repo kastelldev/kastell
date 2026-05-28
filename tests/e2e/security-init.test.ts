@@ -56,12 +56,14 @@ const mockedChildProcess = childProcess as jest.Mocked<typeof childProcess>;
 
 describe("security-init E2E", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
   let processExitSpy: jest.SpyInstance;
   let originalProcessTitle: string;
   const originalSetTimeout = global.setTimeout;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     processExitSpy = jest.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit);
     originalProcessTitle = process.title;
     jest.clearAllMocks();
@@ -82,6 +84,7 @@ describe("security-init E2E", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
     processExitSpy.mockRestore();
     process.title = originalProcessTitle;
     global.setTimeout = originalSetTimeout;
@@ -137,7 +140,7 @@ describe("security-init E2E", () => {
         name: "test-server",
       });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("shell history");
       expect(output).toContain("environment variables");
     });
@@ -157,7 +160,7 @@ describe("security-init E2E", () => {
       await initCommand({ provider: "aws", token: "test" });
 
       expect(processExitSpy).toHaveBeenCalledWith(1);
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Invalid provider");
     });
 
@@ -273,7 +276,7 @@ describe("security-init E2E", () => {
         name: "test",
       });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).not.toContain(secretToken);
       expect(output).not.toContain("hcloud-super-secret");
     });
@@ -290,7 +293,7 @@ describe("security-init E2E", () => {
         name: "test",
       });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).not.toContain(secretToken);
     });
   });
@@ -317,7 +320,7 @@ describe("security-init E2E", () => {
       expect(processExitSpy).toHaveBeenCalledWith(1);
 
       // Token should never appear in output
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).not.toContain(secretToken);
     });
   });
@@ -354,7 +357,7 @@ describe("security-init E2E", () => {
         name: "test-server",
       });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
 
       // Token should never appear in any output
       expect(output).not.toContain(token);
@@ -374,7 +377,7 @@ describe("security-init E2E", () => {
         name: "test",
       });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("shell history");
     });
   });

@@ -61,7 +61,7 @@ describe("maintainCommand", () => {
   it("should show error when SSH not available", async () => {
     mockedSsh.checkSshAvailable.mockReturnValue(false);
     await maintainCommand();
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("SSH client not found");
   });
 
@@ -69,7 +69,7 @@ describe("maintainCommand", () => {
     mockedSsh.checkSshAvailable.mockReturnValue(true);
     mockedConfig.findServers.mockReturnValue([]);
     await maintainCommand("nonexistent");
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Server not found");
   });
 
@@ -79,7 +79,7 @@ describe("maintainCommand", () => {
 
     await maintainCommand("1.2.3.4", { dryRun: true });
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Dry Run");
     expect(output).toContain("Step 0");
     expect(output).toContain("Step 1");
@@ -97,7 +97,7 @@ describe("maintainCommand", () => {
 
     await maintainCommand("1.2.3.4", { dryRun: true, skipReboot: true });
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("SKIPPED");
     expect(output).toContain("--skip-reboot");
     expect(mockedSsh.sshExec).not.toHaveBeenCalled();
@@ -137,7 +137,7 @@ describe("maintainCommand", () => {
 
     await maintainCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     // Core handles the error — report shows status FAIL
     expect(output).toContain("status FAIL");
     expect(mockedSsh.sshExec).not.toHaveBeenCalled();
@@ -160,7 +160,7 @@ describe("maintainCommand", () => {
 
     await maintainCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     // Core handles the error — report shows update FAIL
     expect(output).toContain("update FAIL");
   });
@@ -182,7 +182,7 @@ describe("maintainCommand", () => {
 
     await maintainCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     // Core handles the error — report shows update FAIL
     expect(output).toContain("update FAIL");
   });
@@ -204,7 +204,7 @@ describe("maintainCommand", () => {
 
     await maintainCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("SSH connection refused");
   });
 
@@ -261,7 +261,7 @@ describe("maintainCommand", () => {
 
     await maintainCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Maintenance Report");
     expect(output).toContain("status OK");
     expect(output).toContain("update OK");
@@ -290,7 +290,7 @@ describe("maintainCommand", () => {
 
     await maintainCommand("1.2.3.4", { skipReboot: true });
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Maintenance Report");
     expect(output).toContain("reboot SKIP");
     expect(output).toContain("final SKIP");
@@ -318,7 +318,7 @@ describe("maintainCommand", () => {
 
     await maintainCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     // Core handles the error — report shows reboot FAIL
     expect(output).toContain("reboot FAIL");
   });
@@ -345,7 +345,7 @@ describe("maintainCommand", () => {
 
     await maintainCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     // Core's rebootAndWait handles timeout — reboot step fails, final is skipped
     expect(output).toContain("reboot FAIL");
     expect(output).toContain("final SKIP");
@@ -375,7 +375,7 @@ describe("maintainCommand", () => {
 
     await maintainCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     // finalCheck is false because Coolify didn't respond, report shows "final FAIL"
     // The spinner.warn message is not captured by consoleSpy (ora mock behavior)
     expect(output).toContain("final FAIL");
@@ -396,7 +396,7 @@ describe("maintainCommand", () => {
 
     await maintainCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("snapshot");
     expect(output).toContain("Could not estimate snapshot cost");
   });
@@ -406,7 +406,7 @@ describe("maintainCommand", () => {
     it("should show error when SSH not available", async () => {
       mockedSsh.checkSshAvailable.mockReturnValue(false);
       await maintainCommand(undefined, { all: true });
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("SSH client not found");
     });
 
@@ -414,7 +414,7 @@ describe("maintainCommand", () => {
       mockedSsh.checkSshAvailable.mockReturnValue(true);
       mockedConfig.getServers.mockReturnValue([]);
       await maintainCommand(undefined, { all: true });
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("No servers found");
     });
 
@@ -430,7 +430,7 @@ describe("maintainCommand", () => {
 
       await maintainCommand(undefined, { all: true, dryRun: true });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("coolify-test");
       expect(output).toContain("coolify-prod");
       expect(output).toContain("Dry Run");
@@ -461,7 +461,7 @@ describe("maintainCommand", () => {
 
       await maintainCommand(undefined, { all: true });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Maintenance Report");
       expect(output).toContain("status OK");
     });
@@ -484,7 +484,7 @@ describe("maintainCommand", () => {
 
       await maintainCommand(undefined, { all: true, skipReboot: true });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("reboot SKIP");
       expect(output).toContain("final SKIP");
     });
@@ -512,7 +512,7 @@ describe("maintainCommand", () => {
 
     await maintainCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     // The outer catch for final check should show the error
     expect(output).toContain("Maintenance Report");
   });
@@ -531,7 +531,7 @@ describe("maintainCommand", () => {
 
     await maintainCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Maintenance Report");
     expect(output).toContain("status FAIL");
   });
@@ -539,7 +539,7 @@ describe("maintainCommand", () => {
   it("should include SSH setup help messages", async () => {
     mockedSsh.checkSshAvailable.mockReturnValue(false);
     await maintainCommand();
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Windows:");
     expect(output).toContain("Linux/macOS:");
   });
@@ -564,7 +564,7 @@ describe("maintainCommand", () => {
 
       await maintainCommand("9.9.9.9");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("bare");
       // No SSH exec should occur
       expect(mockedSsh.sshExec).not.toHaveBeenCalled();
@@ -584,7 +584,7 @@ describe("maintainCommand", () => {
 
       await maintainCommand("1.2.3.4");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Maintenance Report");
     });
   });
@@ -609,7 +609,7 @@ describe("maintainCommand", () => {
 
     await maintainCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     // Core handles the error — report shows update FAIL
     expect(output).toContain("update FAIL");
     expect(output).toContain("Maintenance Report");

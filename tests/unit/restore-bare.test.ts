@@ -9,6 +9,7 @@ import * as config from "../../src/utils/config";
 import * as sshUtils from "../../src/utils/ssh";
 import * as coreBackup from "../../src/core/backup";
 import { restoreCommand } from "../../src/commands/restore";
+import { createConsoleSpy } from "../helpers/consoleSpy.js";
 
 jest.mock("inquirer");
 jest.mock("fs", () => ({
@@ -73,13 +74,15 @@ const coolifyManifest = {
 };
 
 describe("restoreCommand — bare mode routing", () => {
-  let consoleSpy: jest.SpyInstance;
+  const spy = createConsoleSpy();
+  let stderrSpy: jest.SpyInstance;
   const originalSafeMode = process.env.SAFE_MODE;
   const originalKastellSafeMode = process.env.KASTELL_SAFE_MODE;
   const originalQuicklifySafeMode = process.env.QUICKLIFY_SAFE_MODE;
 
   beforeEach(() => {
-    consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    spy.setup();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
     delete process.env.SAFE_MODE;
     process.env.KASTELL_SAFE_MODE = "false";
@@ -101,7 +104,8 @@ describe("restoreCommand — bare mode routing", () => {
   });
 
   afterEach(() => {
-    consoleSpy.mockRestore();
+    spy.restore();
+    stderrSpy?.mockRestore();
     if (originalSafeMode === undefined) {
       delete process.env.SAFE_MODE;
     } else {
@@ -173,7 +177,7 @@ describe("restoreCommand — bare mode routing", () => {
 
     await restoreCommand("1.2.3.4", { backup: "my-backup" });
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("SAFE_MODE");
     expect(mockedCoreBackup.restoreBareBackup).not.toHaveBeenCalled();
 
@@ -187,7 +191,7 @@ describe("restoreCommand — bare mode routing", () => {
 
     await restoreCommand("1.2.3.4", { backup: "my-backup" });
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("SAFE_MODE");
     // No core restore functions should be called
     expect(mockedCoreBackup.restoreBareBackup).not.toHaveBeenCalled();
@@ -215,7 +219,7 @@ describe("restoreCommand — bare mode routing", () => {
 
     await restoreCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Restart affected services manually");
   });
 
@@ -237,7 +241,7 @@ describe("restoreCommand — bare mode routing", () => {
 
     await restoreCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Upload failed");
   });
 });

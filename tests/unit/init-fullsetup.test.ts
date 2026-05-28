@@ -84,10 +84,12 @@ function setupHetznerMocks() {
 
 describe("init --full-setup", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
   let processExitSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     processExitSpy = jest.spyOn(process, "exit").mockImplementation(() => undefined as never);
     jest.clearAllMocks();
     setupHetznerMocks();
@@ -95,6 +97,7 @@ describe("init --full-setup", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
     processExitSpy.mockRestore();
   });
 
@@ -134,7 +137,7 @@ describe("init --full-setup", () => {
 
     expect(mockedFirewallSetup).not.toHaveBeenCalled();
     expect(mockedSecureSetup).not.toHaveBeenCalled();
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Skipping full setup");
   });
 
@@ -166,7 +169,7 @@ describe("init --full-setup", () => {
       fullSetup: true,
     });
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Firewall setup failed");
     expect(mockedSecureSetup).toHaveBeenCalled();
   });
@@ -184,7 +187,7 @@ describe("init --full-setup", () => {
       fullSetup: true,
     });
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Security setup failed");
     expect(output).toContain("Deployment Successful");
   });
@@ -201,7 +204,7 @@ describe("init --full-setup", () => {
       fullSetup: true,
     });
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).not.toContain("Set up a domain");
   });
 });

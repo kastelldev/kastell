@@ -1,20 +1,21 @@
 import { listCommand } from "../../src/commands/list";
 import * as config from "../../src/utils/config";
+import { createConsoleSpy } from "../helpers/consoleSpy.js";
 
 jest.mock("../../src/utils/config");
 
 const mockedConfig = config as jest.Mocked<typeof config>;
 
 describe("listCommand", () => {
-  let consoleSpy: jest.SpyInstance;
+  const spy = createConsoleSpy();
 
   beforeEach(() => {
-    consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    spy.setup();
     jest.clearAllMocks();
   });
 
   afterEach(() => {
-    consoleSpy.mockRestore();
+    spy.restore();
   });
 
   it("should show info message when no servers exist", async () => {
@@ -22,7 +23,7 @@ describe("listCommand", () => {
 
     await listCommand();
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = spy.getCalls().map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("No servers found");
     expect(output).toContain("kastell init");
   });
@@ -43,7 +44,7 @@ describe("listCommand", () => {
 
     await listCommand();
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = spy.getCalls().map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("123");
     expect(output).toContain("coolify-test");
     expect(output).toContain("hetzner");
@@ -79,7 +80,7 @@ describe("listCommand", () => {
 
     await listCommand();
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = spy.getCalls().map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("srv-a");
     expect(output).toContain("srv-b");
     expect(output).toContain("Total: 2 server(s)");
@@ -101,7 +102,7 @@ describe("listCommand", () => {
 
     await listCommand();
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = spy.getCalls().map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Platform");
   });
 
@@ -121,7 +122,7 @@ describe("listCommand", () => {
 
     await listCommand();
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = spy.getCalls().map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("bare");
   });
 
@@ -141,7 +142,7 @@ describe("listCommand", () => {
 
     await listCommand();
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = spy.getCalls().map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("coolify");
   });
 
@@ -161,7 +162,7 @@ describe("listCommand", () => {
 
     await listCommand();
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = spy.getCalls().map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("N/A");
   });
 });

@@ -78,9 +78,11 @@ function mockAuditSuccess(result: AuditResult, formatterFn?: (r: AuditResult) =>
 
 describe("audit --watch flag", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     process.exitCode = 0;
     jest.clearAllMocks();
     mockedConfig.findServers.mockReturnValue([]);
@@ -93,6 +95,7 @@ describe("audit --watch flag", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
     process.exitCode = 0;
     jest.useRealTimers();
   });
@@ -122,16 +125,18 @@ describe("audit --watch flag", () => {
     await auditCommand("test-server", { watch: "abc" });
     expect(process.exitCode).toBe(1);
     // Error message should appear in console output
-    const output = consoleSpy.mock.calls.join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].join("\n");
     expect(output).toContain("Watch interval must be a positive number");
   });
 });
 
 describe("audit --ci flag", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     process.exitCode = 0;
     jest.clearAllMocks();
     mockedConfig.findServers.mockReturnValue([]);
@@ -140,6 +145,7 @@ describe("audit --ci flag", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
     process.exitCode = 0;
   });
 
@@ -147,7 +153,7 @@ describe("audit --ci flag", () => {
     mockServerResolve();
     await auditCommand("test-server", { ci: true });
     expect(process.exitCode).toBe(1);
-    const output = consoleSpy.mock.calls.join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].join("\n");
     expect(output).toContain("--ci requires --threshold");
   });
 
@@ -166,9 +172,11 @@ describe("audit --ci flag", () => {
 
 describe("audit --badge flag", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     process.exitCode = 0;
     jest.clearAllMocks();
     mockedConfig.findServers.mockReturnValue([]);
@@ -184,6 +192,7 @@ describe("audit --badge flag", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
     process.exitCode = 0;
   });
 
@@ -194,7 +203,7 @@ describe("audit --badge flag", () => {
 
     await auditCommand("test-server", { badge: true });
     expect(mockedBadge.formatBadge).toHaveBeenCalledTimes(1);
-    const output = consoleSpy.mock.calls.join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].join("\n");
     expect(output).toContain("mocked");
   });
 
@@ -219,9 +228,11 @@ describe("audit --badge flag", () => {
 
 describe("audit --ci --threshold --json combination", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     process.exitCode = 0;
     jest.clearAllMocks();
     mockedConfig.findServers.mockReturnValue([]);
@@ -230,13 +241,14 @@ describe("audit --ci --threshold --json combination", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
     process.exitCode = 0;
   });
 
   it("should output JSON to stdout when --ci --threshold 70 --json", async () => {
     mockAuditSuccess(makeSampleResult(), (r: AuditResult) => JSON.stringify(r));
     await auditCommand("test-server", { ci: true, threshold: "70", json: true });
-    const jsonCall = consoleSpy.mock.calls.find((call) => {
+    const jsonCall = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].find((call) => {
       const arg = call[0];
       if (typeof arg !== "string") return false;
       return safeParse(arg) !== null;

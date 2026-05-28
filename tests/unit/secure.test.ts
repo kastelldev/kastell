@@ -11,6 +11,7 @@ import {
   buildAuditCommand,
   buildKeyCheckCommand,
 } from "../../src/commands/secure";
+import { createConsoleSpy } from "../helpers/consoleSpy.js";
 
 jest.mock("../../src/utils/config");
 jest.mock("../../src/utils/ssh");
@@ -44,15 +45,18 @@ PubkeyAuthentication yes
 MaxAuthTries 3`;
 
 describe("secure", () => {
-  let consoleSpy: jest.SpyInstance;
+  const spy = createConsoleSpy();
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    spy.setup();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
   });
 
   afterEach(() => {
-    consoleSpy.mockRestore();
+    spy.restore();
+    stderrSpy?.mockRestore();
   });
 
   // Pure function tests
@@ -307,14 +311,14 @@ port 2222`;
     it("should show error when SSH not available", async () => {
       mockedSsh.checkSshAvailable.mockReturnValue(false);
       await secureCommand();
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("SSH client not found");
     });
 
     it("should show error for invalid subcommand", async () => {
       mockedSsh.checkSshAvailable.mockReturnValue(true);
       await secureCommand("invalid");
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Invalid subcommand");
     });
 
@@ -322,7 +326,7 @@ port 2222`;
       mockedSsh.checkSshAvailable.mockReturnValue(true);
       mockedConfig.findServers.mockReturnValue([]);
       await secureCommand("status", "nonexistent");
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Server not found");
     });
 
@@ -334,7 +338,7 @@ port 2222`;
 
       await secureCommand("setup", "1.2.3.4");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("No SSH keys found");
     });
 
@@ -345,7 +349,7 @@ port 2222`;
 
       await secureCommand("setup", "1.2.3.4", { dryRun: true });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Dry Run");
       expect(output).toContain("No changes applied");
     });
@@ -358,7 +362,7 @@ port 2222`;
 
       await secureCommand("setup", "1.2.3.4");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("cancelled");
     });
 
@@ -373,7 +377,7 @@ port 2222`;
 
       await secureCommand("setup", "1.2.3.4");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("does not match");
     });
 
@@ -391,7 +395,7 @@ port 2222`;
 
       await secureCommand("setup", "1.2.3.4");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Security setup complete");
     });
 
@@ -439,7 +443,7 @@ port 2222`;
 
       await secureCommand("setup", "1.2.3.4");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("SSH authentication failed");
     });
 
@@ -457,7 +461,7 @@ port 2222`;
 
       await secureCommand("setup", "1.2.3.4");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("partially complete");
       expect(output).toContain("fail2ban is not active");
     });
@@ -476,7 +480,7 @@ port 2222`;
 
       await secureCommand("setup", "1.2.3.4");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("partially complete");
       expect(output).toContain("fail2ban is not active");
     });
@@ -488,7 +492,7 @@ port 2222`;
 
       await secureCommand("setup", "1.2.3.4", { port: "abc" });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Invalid --port");
     });
 
@@ -506,7 +510,7 @@ port 2222`;
 
       await secureCommand("setup", "1.2.3.4", { port: "2222" });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("SSH port changed to 2222");
     });
 
@@ -522,7 +526,7 @@ port 2222`;
 
       await secureCommand("status", "1.2.3.4");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Password Auth");
       expect(output).toContain("Root Login");
       expect(output).toContain("Fail2ban");
@@ -559,7 +563,7 @@ port 2222`;
 
       await secureCommand("audit", "1.2.3.4");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Security Score");
     });
 
@@ -574,7 +578,7 @@ port 2222`;
 
       await secureCommand("audit", "1.2.3.4");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("kastell secure setup");
     });
 
@@ -607,7 +611,7 @@ port 2222`;
 
       // inquirer.prompt should NOT have been called
       expect(mockedInquirer.prompt).not.toHaveBeenCalled();
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Security setup complete");
     });
 

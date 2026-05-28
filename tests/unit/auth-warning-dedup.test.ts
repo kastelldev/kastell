@@ -16,9 +16,8 @@ describe("auth list warning dedup", () => {
     jest.spyOn(console, "log").mockImplementation((...args: unknown[]) => {
       consoleOutput.push(...args);
     });
-    jest.spyOn(process.stderr, "write").mockImplementation((msg: string | Uint8Array) => {
-      stderrOutput.push(String(msg));
-      return true;
+    jest.spyOn(console, "error").mockImplementation((...args: unknown[]) => {
+      stderrOutput.push(args.map(a => String(a)).join(" "));
     });
     mockListStoredProviders.mockImplementation(() => {
       throw new Error("decrypt");

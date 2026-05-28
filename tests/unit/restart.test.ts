@@ -4,6 +4,7 @@ import * as coreManage from "../../src/core/manage";
 import * as coreStatus from "../../src/core/status";
 import * as coreTokens from "../../src/core/tokens";
 import * as serverSelect from "../../src/utils/serverSelect";
+import { createConsoleSpy } from "../helpers/consoleSpy.js";
 
 jest.mock("../../src/core/manage");
 jest.mock("../../src/core/status");
@@ -28,11 +29,13 @@ const sampleServer = {
 };
 
 describe("restartCommand", () => {
-  let consoleSpy: jest.SpyInstance;
+  const spy = createConsoleSpy();
+  let stderrSpy: jest.SpyInstance;
   const originalSetTimeout = global.setTimeout;
 
   beforeEach(() => {
-    consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    spy.setup();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
     // Make setTimeout instant
     global.setTimeout = ((fn: () => void) => {
@@ -44,7 +47,7 @@ describe("restartCommand", () => {
   });
 
   afterEach(() => {
-    consoleSpy.mockRestore();
+    spy.restore();
     global.setTimeout = originalSetTimeout;
   });
 
@@ -71,7 +74,7 @@ describe("restartCommand", () => {
 
     await restartCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Restart cancelled");
     expect(mockedCoreManage.rebootServer).not.toHaveBeenCalled();
   });
@@ -86,7 +89,7 @@ describe("restartCommand", () => {
     await restartCommand("1.2.3.4");
 
     expect(mockedCoreManage.rebootServer).toHaveBeenCalledWith("coolify-test");
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("restarted successfully");
   });
 
@@ -101,7 +104,7 @@ describe("restartCommand", () => {
 
     await restartCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).not.toContain("restarted successfully");
   });
 
@@ -114,7 +117,7 @@ describe("restartCommand", () => {
 
     await restartCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("may still be rebooting");
     expect(output).toContain("Check status later");
   });
@@ -157,7 +160,7 @@ describe("restartCommand", () => {
 
     await restartCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Check provider status page");
   });
 
@@ -170,7 +173,7 @@ describe("restartCommand", () => {
 
     await restartCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("may still be rebooting");
   });
 
@@ -193,7 +196,7 @@ describe("restartCommand", () => {
 
     await restartCommand("1.2.3.4", { dryRun: true });
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Dry Run");
     expect(output).toContain("coolify-test");
     expect(output).toContain("1.2.3.4");
@@ -209,7 +212,7 @@ describe("restartCommand", () => {
 
     await restartCommand("1.2.3.4", { dryRun: true });
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("hetzner");
     expect(output).toContain("Reboot server via provider API");
   });
@@ -225,7 +228,7 @@ describe("restartCommand", () => {
 
     await restartCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("ssh root@1.2.3.4");
     expect(output).not.toContain("Access Coolify");
   });
@@ -238,7 +241,7 @@ describe("restartCommand", () => {
 
     await restartCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Access Coolify");
     expect(output).not.toContain("ssh root@");
   });

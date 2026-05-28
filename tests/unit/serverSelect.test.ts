@@ -7,6 +7,7 @@ import {
   collectProviderTokens,
 } from "../../src/utils/serverSelect";
 import type { ServerRecord } from "../../src/types/index";
+import { createConsoleSpy } from "../helpers/consoleSpy.js";
 
 jest.mock("../../src/utils/config");
 
@@ -25,15 +26,15 @@ const sampleServer: ServerRecord = {
 };
 
 describe("serverSelect", () => {
-  let consoleSpy: jest.SpyInstance;
+  const spy = createConsoleSpy();
 
   beforeEach(() => {
-    consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    spy.setup();
     jest.clearAllMocks();
   });
 
   afterEach(() => {
-    consoleSpy.mockRestore();
+    spy.restore();
   });
 
   describe("selectServer", () => {

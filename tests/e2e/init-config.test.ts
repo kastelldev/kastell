@@ -82,12 +82,14 @@ function setupDOSuccess(ip = "55.44.33.22") {
 
 describe("initCommand with --config and --template", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
   let processExitSpy: jest.SpyInstance;
   const originalSetTimeout = global.setTimeout;
   const originalEnv = process.env;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     processExitSpy = jest.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit);
     jest.clearAllMocks();
     process.env = { ...originalEnv };
@@ -101,6 +103,7 @@ describe("initCommand with --config and --template", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
     processExitSpy.mockRestore();
     process.env = originalEnv;
     global.setTimeout = originalSetTimeout;
@@ -171,7 +174,7 @@ describe("initCommand with --config and --template", () => {
       });
 
       expect(processExitSpy).toHaveBeenCalledWith(1);
-      const allOutput = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const allOutput = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(allOutput).toContain("Invalid template");
       expect(allOutput).toContain("enterprise");
     });
@@ -186,7 +189,7 @@ describe("initCommand with --config and --template", () => {
         name: "tmpl-info",
       });
 
-      const allOutput = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const allOutput = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(allOutput).toContain("Using template");
       expect(allOutput).toContain("production");
     });
@@ -279,7 +282,7 @@ describe("initCommand with --config and --template", () => {
         size: "cax11",
       });
 
-      const allOutput = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const allOutput = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(allOutput).toContain("Security warning");
       expect(allOutput).toContain("Unknown config key");
     });
@@ -302,7 +305,7 @@ describe("initCommand with --config and --template", () => {
         name: "missing-config",
       });
 
-      const allOutput = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const allOutput = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(allOutput).toContain("Could not read config file");
     });
 
@@ -320,7 +323,7 @@ describe("initCommand with --config and --template", () => {
         name: "bad-yaml",
       });
 
-      const allOutput = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const allOutput = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(allOutput).toContain("Invalid YAML syntax");
     });
 

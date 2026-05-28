@@ -73,14 +73,17 @@ const mockedRunDoctorFix = runDoctorFix as jest.MockedFunction<typeof runDoctorF
 
 describe("doctorCommand — local mode (no server arg)", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
   });
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
   });
 
   it("should pass Node.js check when version >= 20", () => {
@@ -197,7 +200,7 @@ describe("doctorCommand — local mode (no server arg)", () => {
 
     await doctorCommand(undefined, {}, "0.6.0");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Kastell Doctor");
     expect(output).toContain("Node.js");
     expect(output).toContain("npm");
@@ -211,7 +214,7 @@ describe("doctorCommand — local mode (no server arg)", () => {
 
     await doctorCommand(undefined, { checkTokens: true }, "0.6.0");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("No servers registered");
   });
 
@@ -268,7 +271,7 @@ describe("doctorCommand — local mode (no server arg)", () => {
 
     await doctorCommand(undefined, {}, "0.6.0");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("check(s) failed");
   });
 
@@ -296,7 +299,7 @@ describe("doctorCommand — local mode (no server arg)", () => {
 
     await doctorCommand(undefined, {}, "0.6.0");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("All checks passed!");
   });
 
@@ -315,14 +318,17 @@ describe("doctorCommand — local mode (no server arg)", () => {
 
 describe("doctorCommand — server mode", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
   });
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
   });
 
   const fakeServer = {
@@ -394,7 +400,7 @@ describe("doctorCommand — server mode", () => {
 
     await doctorCommand("my-server", { json: true }, "1.0.0");
 
-    const allOutput = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const allOutput = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(allOutput).toContain('"serverName"');
     expect(allOutput).toContain('"findings"');
   });
@@ -405,7 +411,7 @@ describe("doctorCommand — server mode", () => {
 
     await doctorCommand("my-server", {}, "1.0.0");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("SSH connection failed");
   });
 
@@ -415,7 +421,7 @@ describe("doctorCommand — server mode", () => {
 
     await doctorCommand("my-server", {}, "1.0.0");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("my-server");
     expect(output).toContain("1.2.3.4");
     expect(output).toContain("Disk projected full in 1 day");
@@ -431,7 +437,7 @@ describe("doctorCommand — server mode", () => {
 
     await doctorCommand("my-server", {}, "1.0.0");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("No issues detected");
   });
 
@@ -444,7 +450,7 @@ describe("doctorCommand — server mode", () => {
 
     await doctorCommand("my-server", {}, "1.0.0");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("--fresh");
   });
 
@@ -454,7 +460,7 @@ describe("doctorCommand — server mode", () => {
 
     await doctorCommand("my-server", {}, "1.0.0");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     // Summary should mention finding count
     expect(output).toMatch(/\d+\s+finding/i);
   });
@@ -462,6 +468,7 @@ describe("doctorCommand — server mode", () => {
 
 describe("doctorCommand — --fix mode", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
 
   const fakeServer = {
     id: "srv-1",
@@ -501,17 +508,19 @@ describe("doctorCommand — --fix mode", () => {
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
   });
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
   });
 
   it("shows error and returns when --fix is used without a server argument", async () => {
     await doctorCommand(undefined, { fix: true }, "1.0.0");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("--fix requires a server argument");
     expect(mockedResolveServer).not.toHaveBeenCalled();
     expect(mockedRunDoctorFix).not.toHaveBeenCalled();
@@ -564,7 +573,7 @@ describe("doctorCommand — --fix mode", () => {
     await doctorCommand("my-server", { fix: true, dryRun: true }, "1.0.0");
 
     expect(mockedRunDoctorFix).not.toHaveBeenCalled();
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toMatch(/dry-run/i);
   });
 
@@ -579,7 +588,7 @@ describe("doctorCommand — --fix mode", () => {
 
     await doctorCommand("my-server", { fix: true }, "1.0.0");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toMatch(/fixed.*1/i);
     expect(output).toMatch(/skipped.*1/i);
     expect(output).toMatch(/failed.*1/i);
@@ -588,16 +597,19 @@ describe("doctorCommand — --fix mode", () => {
 
 describe("checkProviderTokens", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
   const originalEnv = process.env;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
     process.env = { ...originalEnv };
   });
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
     process.env = originalEnv;
   });
 
@@ -607,7 +619,7 @@ describe("checkProviderTokens", () => {
 
     await checkProviderTokens();
 
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("No servers registered");
     expect(output).toContain("Token check skipped");
   });
@@ -630,7 +642,7 @@ describe("checkProviderTokens", () => {
 
     await checkProviderTokens();
 
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("HETZNER_TOKEN not set");
   });
 
@@ -653,7 +665,7 @@ describe("checkProviderTokens", () => {
 
     await checkProviderTokens();
 
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("Hetzner");
     expect(output).toContain("Token is valid");
   });
@@ -677,7 +689,7 @@ describe("checkProviderTokens", () => {
 
     await checkProviderTokens();
 
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("DigitalOcean");
     expect(output).toContain("Token is invalid");
   });
@@ -712,7 +724,7 @@ describe("checkProviderTokens", () => {
 
     await checkProviderTokens();
 
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("Hetzner");
     expect(output).toContain("Vultr");
     expect(mockedAxios.get).toHaveBeenCalledTimes(2);
@@ -737,7 +749,7 @@ describe("checkProviderTokens", () => {
 
     await checkProviderTokens();
 
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("Linode");
     expect(output).toContain("Token is invalid");
   });
@@ -759,7 +771,7 @@ describe("checkProviderTokens", () => {
 
     await checkProviderTokens();
 
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("Unknown provider");
   });
 
@@ -841,7 +853,7 @@ describe("checkProviderTokens", () => {
 
     await checkProviderTokens();
 
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("Provider Token Validation");
   });
 });

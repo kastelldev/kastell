@@ -105,13 +105,18 @@ describe("restoreCommand — SAFE_MODE via isSafeMode()", () => {
     mockedManage.isSafeMode.mockReturnValue(true);
 
     const logCalls: string[] = [];
+    const errCalls: string[] = [];
     const consoleSpy = jest.spyOn(console, "log").mockImplementation((...args: unknown[]) => {
       logCalls.push(args.join(" "));
     });
+    const stderrSpy = jest.spyOn(console, "error").mockImplementation((...args: unknown[]) => {
+      errCalls.push(args.join(" "));
+    });
     await restoreCommand();
     consoleSpy.mockRestore();
+    stderrSpy.mockRestore();
 
-    const output = logCalls.join("\n");
+    const output = [...logCalls, ...errCalls].join("\n");
     expect(output).toContain("KASTELL_SAFE_MODE");
     // Must NOT mention old SAFE_MODE (without the prefix)
     // i.e. the error message text should not say "Set SAFE_MODE=false"

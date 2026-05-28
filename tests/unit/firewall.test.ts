@@ -14,6 +14,7 @@ import {
 } from "../../src/core/firewall";
 import { firewallCommand } from "../../src/commands/firewall";
 import type { Platform } from "../../src/types/index.js";
+import { createConsoleSpy } from "../helpers/consoleSpy.js";
 
 jest.mock("../../src/utils/config");
 jest.mock("../../src/utils/ssh");
@@ -46,15 +47,18 @@ const sampleServer = {
 };
 
 describe("firewall", () => {
-  let consoleSpy: jest.SpyInstance;
+  const spy = createConsoleSpy();
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    spy.setup();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
   });
 
   afterEach(() => {
-    consoleSpy.mockRestore();
+    spy.restore();
+    stderrSpy?.mockRestore();
   });
 
   // Pure function tests
@@ -255,14 +259,14 @@ describe("firewall", () => {
     it("should show error when SSH not available", async () => {
       mockedSsh.checkSshAvailable.mockReturnValue(false);
       await firewallCommand();
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("SSH client not found");
     });
 
     it("should show error for invalid subcommand", async () => {
       mockedSsh.checkSshAvailable.mockReturnValue(true);
       await firewallCommand("invalid");
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Invalid subcommand");
     });
 
@@ -270,7 +274,7 @@ describe("firewall", () => {
       mockedSsh.checkSshAvailable.mockReturnValue(true);
       mockedConfig.findServers.mockReturnValue([]);
       await firewallCommand("status", "nonexistent");
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Server not found");
     });
 
@@ -290,7 +294,7 @@ describe("firewall", () => {
 
       await firewallCommand("setup", "1.2.3.4", { dryRun: true });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Dry Run");
       expect(output).toContain("No changes applied");
       expect(mockedSsh.sshExec).not.toHaveBeenCalled();
@@ -323,7 +327,7 @@ describe("firewall", () => {
 
       await firewallCommand("add", "1.2.3.4", {});
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Invalid or missing --port");
     });
 
@@ -333,7 +337,7 @@ describe("firewall", () => {
 
       await firewallCommand("add", "1.2.3.4", { port: "99999" });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Invalid or missing --port");
     });
 
@@ -343,7 +347,7 @@ describe("firewall", () => {
 
       await firewallCommand("add", "1.2.3.4", { port: "80", protocol: "icmp" });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Invalid --protocol");
     });
 
@@ -353,7 +357,7 @@ describe("firewall", () => {
 
       await firewallCommand("add", "1.2.3.4", { port: "3000", dryRun: true });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Dry Run");
       expect(mockedSsh.sshExec).not.toHaveBeenCalled();
     });
@@ -365,7 +369,7 @@ describe("firewall", () => {
 
       await firewallCommand("remove", "1.2.3.4", { port: "22" });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("protected");
       expect(mockedSsh.sshExec).not.toHaveBeenCalled();
     });
@@ -377,7 +381,7 @@ describe("firewall", () => {
 
       await firewallCommand("remove", "1.2.3.4", { port: "8000" });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("cancelled");
     });
 
@@ -397,7 +401,7 @@ describe("firewall", () => {
 
       await firewallCommand("remove", "1.2.3.4", {});
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Invalid or missing --port");
     });
 
@@ -418,7 +422,7 @@ describe("firewall", () => {
 
       await firewallCommand("list", "1.2.3.4");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("22/tcp");
     });
 
@@ -433,7 +437,7 @@ describe("firewall", () => {
 
       await firewallCommand("list", "1.2.3.4");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("inactive");
     });
 
@@ -481,7 +485,7 @@ describe("firewall", () => {
 
       await firewallCommand("status", "1.2.3.4");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("22/tcp");
       expect(output).toContain("80/tcp");
       expect(output).toContain("2 rules");
@@ -498,7 +502,7 @@ describe("firewall", () => {
 
       await firewallCommand("status", "1.2.3.4");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("No rules configured");
     });
 
@@ -519,7 +523,7 @@ describe("firewall", () => {
 
       await firewallCommand("setup", "1.2.3.4");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("SSH connection refused");
     });
 
@@ -601,7 +605,7 @@ describe("firewall", () => {
 
       await firewallCommand("remove", "1.2.3.4", { port: "3000", dryRun: true });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Dry Run");
       expect(mockedSsh.sshExec).not.toHaveBeenCalled();
     });
@@ -622,7 +626,7 @@ describe("firewall", () => {
 
       await firewallCommand("remove", "1.2.3.4", { port: "3000", protocol: "icmp" });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Invalid --protocol");
     });
 
@@ -696,7 +700,7 @@ describe("firewall", () => {
 
       await firewallCommand("list", "1.2.3.4");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("No rules configured");
     });
 
@@ -733,7 +737,7 @@ describe("firewall", () => {
 
       await firewallCommand("add", "1.2.3.4", { port: "3000" });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Failed to add rule");
     });
 
@@ -744,7 +748,7 @@ describe("firewall", () => {
 
       await firewallCommand("remove", "1.2.3.4", { port: "3000" });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Failed to remove rule");
     });
 
@@ -755,7 +759,7 @@ describe("firewall", () => {
 
       await firewallCommand("list", "1.2.3.4");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Failed to get firewall status");
     });
 
@@ -766,7 +770,7 @@ describe("firewall", () => {
 
       await firewallCommand("status", "1.2.3.4");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Failed to get firewall status");
     });
 

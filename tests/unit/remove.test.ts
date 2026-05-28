@@ -2,6 +2,7 @@ import { removeCommand } from "../../src/commands/remove";
 import * as config from "../../src/utils/config";
 import * as serverSelect from "../../src/utils/serverSelect";
 import inquirer from "inquirer";
+import { createConsoleSpy } from "../helpers/consoleSpy.js";
 
 jest.mock("../../src/utils/config");
 jest.mock("../../src/utils/serverSelect");
@@ -23,15 +24,15 @@ const mockServer = {
 };
 
 describe("removeCommand", () => {
-  let consoleSpy: jest.SpyInstance;
+  const spy = createConsoleSpy();
 
   beforeEach(() => {
-    consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    spy.setup();
     jest.clearAllMocks();
   });
 
   afterEach(() => {
-    consoleSpy.mockRestore();
+    spy.restore();
   });
 
   it("should remove server from config when confirmed", async () => {
@@ -46,7 +47,7 @@ describe("removeCommand", () => {
       "Select a server to remove:",
     );
     expect(mockedConfig.removeServer).toHaveBeenCalledWith("123");
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = spy.getCalls().map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("removed from local config");
     expect(output).toContain("cloud server is still running");
   });
@@ -58,7 +59,7 @@ describe("removeCommand", () => {
     await removeCommand("coolify-test");
 
     expect(mockedConfig.removeServer).not.toHaveBeenCalled();
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = spy.getCalls().map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Remove cancelled");
   });
 
@@ -92,7 +93,7 @@ describe("removeCommand", () => {
 
     await removeCommand("coolify-test", { dryRun: true });
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = spy.getCalls().map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Dry Run");
     expect(output).toContain("coolify-test");
     expect(output).toContain("1.2.3.4");
@@ -108,7 +109,7 @@ describe("removeCommand", () => {
 
     await removeCommand("coolify-test", { dryRun: true });
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = spy.getCalls().map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Remove from local config");
     expect(output).toContain("NOT destroyed");
   });

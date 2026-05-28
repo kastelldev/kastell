@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync } from "fs";
 import * as config from "../../src/utils/config";
 import { validateServerRecords, exportCommand, importCommand } from "../../src/commands/transfer";
+import { createConsoleSpy } from "../helpers/consoleSpy.js";
 
 jest.mock("fs", () => ({
   readFileSync: jest.fn(),
@@ -42,15 +43,18 @@ const sampleServer2 = {
 };
 
 describe("transfer", () => {
-  let consoleSpy: jest.SpyInstance;
+  const spy = createConsoleSpy();
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    spy.setup();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
   });
 
   afterEach(() => {
-    consoleSpy.mockRestore();
+    spy.restore();
+    stderrSpy?.mockRestore();
   });
 
   describe("validateServerRecords", () => {
@@ -130,7 +134,7 @@ describe("transfer", () => {
 
       await exportCommand();
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("No servers to export");
       expect(mockedSecureWriteFileSync).not.toHaveBeenCalled();
     });
@@ -143,7 +147,7 @@ describe("transfer", () => {
 
       await exportCommand();
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Failed to write");
     });
 
@@ -157,7 +161,7 @@ describe("transfer", () => {
 
       await exportCommand();
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Permission denied");
     });
 
@@ -167,7 +171,7 @@ describe("transfer", () => {
 
       await exportCommand();
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Store it securely");
     });
   });
@@ -210,7 +214,7 @@ describe("transfer", () => {
         createdAt: sampleServer2.createdAt,
         mode: "coolify" as const,
       });
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Imported 1");
       expect(output).toContain("skipped 1");
     });
@@ -218,7 +222,7 @@ describe("transfer", () => {
     it("should show error for missing path", async () => {
       await importCommand("");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Usage");
     });
 
@@ -229,7 +233,7 @@ describe("transfer", () => {
 
       await importCommand("/tmp/nonexistent.json");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Failed to read");
     });
 
@@ -242,7 +246,7 @@ describe("transfer", () => {
 
       await importCommand("/tmp/missing.json");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("File or directory not found");
     });
 
@@ -251,7 +255,7 @@ describe("transfer", () => {
 
       await importCommand("/tmp/bad.json");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("not valid JSON");
     });
 
@@ -260,7 +264,7 @@ describe("transfer", () => {
 
       await importCommand("/tmp/bad.json");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Invalid server data");
     });
 
@@ -271,7 +275,7 @@ describe("transfer", () => {
       await importCommand("/tmp/export.json");
 
       expect(mockedConfig.saveServer).not.toHaveBeenCalled();
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Imported 0");
       expect(output).toContain("skipped 1");
     });

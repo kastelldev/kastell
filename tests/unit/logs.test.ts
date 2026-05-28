@@ -86,7 +86,7 @@ describe("logsCommand", () => {
   it("should show error when SSH not available", async () => {
     mockedSsh.checkSshAvailable.mockReturnValue(false);
     await logsCommand();
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("SSH client not found");
   });
 
@@ -94,7 +94,7 @@ describe("logsCommand", () => {
     mockedSsh.checkSshAvailable.mockReturnValue(true);
     mockedConfig.findServers.mockReturnValue([]);
     await logsCommand("nonexistent");
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Server not found");
   });
 
@@ -102,7 +102,7 @@ describe("logsCommand", () => {
     mockedSsh.checkSshAvailable.mockReturnValue(true);
     mockedConfig.findServers.mockReturnValue([sampleServer]);
     await logsCommand("1.2.3.4", { lines: "abc" });
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Invalid --lines");
   });
 
@@ -110,7 +110,7 @@ describe("logsCommand", () => {
     mockedSsh.checkSshAvailable.mockReturnValue(true);
     mockedConfig.findServers.mockReturnValue([sampleServer]);
     await logsCommand("1.2.3.4", { service: "invalid" });
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Invalid service");
   });
 
@@ -126,7 +126,7 @@ describe("logsCommand", () => {
     await logsCommand("1.2.3.4", { service: "coolify", lines: "20" });
 
     expect(mockedSsh.sshExec).toHaveBeenCalledWith("1.2.3.4", "docker logs coolify --tail 20");
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("log line 1");
   });
 
@@ -150,7 +150,7 @@ describe("logsCommand", () => {
 
     await logsCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Failed to fetch logs");
   });
 
@@ -161,7 +161,7 @@ describe("logsCommand", () => {
 
     await logsCommand("1.2.3.4", { follow: true });
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Log stream ended with code 1");
   });
 
@@ -172,7 +172,7 @@ describe("logsCommand", () => {
 
     await logsCommand("1.2.3.4", { follow: true });
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).not.toContain("Log stream ended");
   });
 
@@ -223,7 +223,7 @@ describe("logsCommand", () => {
 
       await logsCommand("10.0.0.1", { service: "coolify" });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("not available on Dokploy servers");
       expect(mockedSsh.sshExec).not.toHaveBeenCalled();
     });
@@ -234,7 +234,7 @@ describe("logsCommand", () => {
 
       await logsCommand("1.2.3.4", { service: "dokploy" });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("not available on Coolify servers");
       expect(mockedSsh.sshExec).not.toHaveBeenCalled();
     });
@@ -260,7 +260,7 @@ describe("logsCommand", () => {
 
       await logsCommand("9.9.9.9", { service: "coolify" });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("bare");
       expect(mockedSsh.sshExec).not.toHaveBeenCalled();
     });
@@ -273,7 +273,7 @@ describe("logsCommand", () => {
       await logsCommand("9.9.9.9", { service: "system" });
 
       expect(mockedSsh.sshExec).toHaveBeenCalled();
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("system log");
     });
 

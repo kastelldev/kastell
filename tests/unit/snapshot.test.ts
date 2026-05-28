@@ -5,6 +5,7 @@ import * as serverSelect from "../../src/utils/serverSelect";
 import * as providerFactory from "../../src/utils/providerFactory";
 import { snapshotCommand } from "../../src/commands/snapshot";
 import { restoreSnapshot } from "../../src/core/snapshot";
+import { createConsoleSpy } from "../helpers/consoleSpy.js";
 
 jest.mock("inquirer");
 jest.mock("../../src/utils/config");
@@ -61,10 +62,12 @@ const sampleSnapshot = {
 };
 
 describe("snapshotCommand", () => {
-  let consoleSpy: jest.SpyInstance;
+  const spy = createConsoleSpy();
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    spy.setup();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
     process.env.KASTELL_SAFE_MODE = "false";
     mockedProviderFactory.createProviderWithToken.mockReturnValue(mockProvider);
@@ -72,7 +75,8 @@ describe("snapshotCommand", () => {
   });
 
   afterEach(() => {
-    consoleSpy.mockRestore();
+    spy.restore();
+    stderrSpy?.mockRestore();
   });
 
   it("should default to list subcommand", async () => {
@@ -84,7 +88,7 @@ describe("snapshotCommand", () => {
 
   it("should show error for invalid subcommand", async () => {
     await snapshotCommand("invalid");
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("Invalid subcommand");
   });
 
@@ -130,7 +134,7 @@ describe("snapshotCommand", () => {
       mockProvider.getSnapshotCostEstimate.mockResolvedValue("\u20ac0.24/mo");
 
       await snapshotCommand("create", "test", { dryRun: true });
-      const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
       expect(output).toContain("Dry Run");
       expect(mockProvider.createSnapshot).not.toHaveBeenCalled();
     });
@@ -142,7 +146,7 @@ describe("snapshotCommand", () => {
       mockedInquirer.prompt.mockResolvedValue({ confirm: true });
 
       await snapshotCommand("create", "test");
-      const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
       expect(output).toContain("API error");
     });
 
@@ -173,7 +177,7 @@ describe("snapshotCommand", () => {
       await snapshotCommand("list", "test");
       // Spinner .succeed() is not captured by consoleSpy (ora writes to stream directly)
       // Verify step output from logger.step which IS captured
-      const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
       expect(output).toContain("snap-123");
       expect(output).toContain("5.2 GB");
     });
@@ -193,7 +197,7 @@ describe("snapshotCommand", () => {
       mockProvider.listSnapshots.mockRejectedValue(new Error("API error"));
 
       await snapshotCommand("list", "test");
-      const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
       expect(output).toContain("API error");
     });
   });
@@ -203,7 +207,7 @@ describe("snapshotCommand", () => {
     it("should show no servers message", async () => {
       mockedConfig.getServers.mockReturnValue([]);
       await snapshotCommand("list", undefined, { all: true });
-      const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
       expect(output).toContain("No servers found");
     });
 
@@ -226,7 +230,7 @@ describe("snapshotCommand", () => {
       mockProvider.listSnapshots.mockRejectedValue(new Error("fail"));
 
       await snapshotCommand("list", undefined, { all: true });
-      const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
       expect(output).toContain("fail");
     });
   });
@@ -281,7 +285,7 @@ describe("snapshotCommand", () => {
       mockProvider.deleteSnapshot.mockRejectedValue(new Error("API error"));
 
       await snapshotCommand("delete", "test");
-      const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
       expect(output).toContain("API error");
     });
 
