@@ -83,7 +83,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.27.1",
     "@napi-rs/keyring": "1.2.0",
-    "axios": "1.15.2",
+    "axios": "1.16.0",
     "chalk": "5.6.2",
     "commander": "14.0.3",
     "grammy": "1.41.1",
