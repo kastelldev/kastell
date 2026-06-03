@@ -13,8 +13,7 @@ jest.mock("../../../src/utils/secureWrite.js", () => ({
 // === mevcut import'lar ===
 import { readFileSync, existsSync } from "fs";
 import { secureWriteFileSync, secureMkdirSync } from "../../../src/utils/secureWrite.js";
-import { registerPlugin, clearPluginRegistry, getPluginRegistry, loadPluginCache, savePluginCache, deletePlugin, mapRegistryPlugins, getPluginCommands, getPluginMcpTools } from "../../../src/plugin/registry.js";
-import { registerFailedPlugin } from "../../../src/plugin/registry.js";
+import { registerPlugin, clearPluginRegistry, getPluginRegistry, loadPluginCache, savePluginCache, deletePlugin, mapRegistryPlugins, getPluginCommands, getPluginMcpTools, registerFailedPlugin, registerDisabledPlugin } from "../../../src/plugin/registry.js";
 import type { PluginManifest, PluginCheck, PluginCapability } from "../../../src/plugin/sdk/types.js";
 
 const mockManifest: PluginManifest = {
@@ -279,6 +278,16 @@ describe("getPluginMcpTools", () => {
   it("skips failed plugins", () => {
     registerFailedPlugin(mockManifest, "load error");
     expect(getPluginMcpTools()).toEqual([]);
+  });
+});
+
+describe("registerDisabledPlugin", () => {
+  it("creates a disabled entry with empty checks", () => {
+    registerDisabledPlugin(mockManifest);
+    const entry = getPluginRegistry().get("kastell-plugin-wordpress");
+    expect(entry).toBeDefined();
+    expect(entry!.status).toBe("disabled");
+    expect(entry!.checks).toEqual([]);
   });
 });
 

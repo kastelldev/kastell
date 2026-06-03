@@ -39,6 +39,51 @@ export type PluginRegistryEntry =
       fixesByCheckId: ReadonlyMap<string, never>;
     });
 
+type LoadedEntry = Extract<PluginRegistryEntry, { status: "loaded" }>;
+type FailedEntry = Extract<PluginRegistryEntry, { status: "failed" }>;
+type DisabledEntry = Extract<PluginRegistryEntry, { status: "disabled" }>;
+
+// Typed builders — return the discriminated variant directly so call sites
+// don't need `as unknown as PluginRegistryEntry` (P139 simplify C3).
+function createLoadedEntry(
+  manifest: PluginManifest,
+  checks: PluginCheck[],
+  checksById: ReadonlyMap<string, PluginCheck>,
+  fixesById: ReadonlyMap<string, PluginFix>,
+): LoadedEntry {
+  return {
+    status: "loaded",
+    manifest,
+    checks,
+    checksById,
+    fixesByCheckId: fixesById,
+    fixes: manifest.fixes,
+    commands: manifest.commands,
+    mcpTools: manifest.mcpTools,
+  };
+}
+
+function createFailedEntry(manifest: PluginManifest, reason: string): FailedEntry {
+  return {
+    status: "failed",
+    manifest,
+    reason,
+    checks: [],
+    checksById: new Map<string, never>(),
+    fixesByCheckId: new Map<string, never>(),
+  };
+}
+
+function createDisabledEntry(manifest: PluginManifest): DisabledEntry {
+  return {
+    status: "disabled",
+    manifest,
+    checks: [],
+    checksById: new Map<string, never>(),
+    fixesByCheckId: new Map<string, never>(),
+  };
+}
+
 const PLUGIN_REGISTRY: Map<string, PluginRegistryEntry> = new Map();
 const usedPrefixes: Map<string, string> = new Map();
 const usedCheckIds: Set<string> = new Set();
@@ -86,42 +131,20 @@ export function registerPlugin(
     for (const fix of manifest.fixes) fixesByCheckId.set(fix.checkId, fix);
   }
 
-  PLUGIN_REGISTRY.set(manifest.name, {
-    manifest,
-    checks,
-    status: "loaded",
-    commands: manifest.commands,
-    mcpTools: manifest.mcpTools,
-    fixes: manifest.fixes,
-    checksById,
-    fixesByCheckId,
-  });
+  PLUGIN_REGISTRY.set(manifest.name, createLoadedEntry(manifest, checks, checksById, fixesByCheckId));
 }
 
 export function registerFailedPlugin(
   manifest: PluginManifest,
   reason: string,
 ): void {
-  PLUGIN_REGISTRY.set(manifest.name, {
-    manifest,
-    status: "failed",
-    reason,
-    checks: [],
-    checksById: new Map(),
-    fixesByCheckId: new Map(),
-  } as unknown as PluginRegistryEntry);
+  PLUGIN_REGISTRY.set(manifest.name, createFailedEntry(manifest, reason));
 }
 
 export function registerDisabledPlugin(
   manifest: PluginManifest,
 ): void {
-  PLUGIN_REGISTRY.set(manifest.name, {
-    manifest,
-    status: "disabled",
-    checks: [],
-    checksById: new Map(),
-    fixesByCheckId: new Map(),
-  } as unknown as PluginRegistryEntry);
+  PLUGIN_REGISTRY.set(manifest.name, createDisabledEntry(manifest));
 }
 
 export function deletePlugin(name: string): void {

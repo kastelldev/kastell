@@ -2,6 +2,7 @@ import { spawn } from "child_process";
 import { existsSync } from "fs";
 import { join } from "path";
 import { getPluginRegistry, mapRegistryPlugins, deletePlugin as deletePluginFromRegistry, savePluginCache } from "../plugin/registry.js";
+import type { PluginRegistryEntry } from "../plugin/registry.js";
 import type { PluginManifest } from "../plugin/sdk/types.js";
 import { PLUGIN_NAME_PATTERN } from "../plugin/sdk/constants.js";
 import { loadPlugins } from "../plugin/loader.js";
@@ -114,23 +115,52 @@ export interface PluginListEntry {
   reason?: string;
 }
 
-export function listPlugins(): PluginListEntry[] {
-  return mapRegistryPlugins((_, entry) => ({
+// Discriminator-narrowing helpers — P139 simplify C3/A12: replace
+// `entry.status === "loaded" ? ... : ...` ternaries with structural narrowing.
+function toListEntry(_: string, entry: PluginRegistryEntry): PluginListEntry {
+  const base = {
     name: entry.manifest.name,
     version: entry.manifest.version,
     prefix: entry.manifest.checkPrefix,
-    checks: entry.status === "loaded" ? entry.checks.length : 0,
     status: entry.status,
-    commands: entry.status === "loaded" ? (entry.commands ?? []) : [],
-    mcpTools: entry.status === "loaded" ? (entry.mcpTools ?? []) : [],
-    ...(entry.status === "failed" ? { reason: entry.reason } : {}),
-  }));
+  };
+  if (entry.status === "loaded") {
+    return {
+      ...base,
+      checks: entry.checks.length,
+      commands: entry.commands ?? [],
+      mcpTools: entry.mcpTools ?? [],
+    };
+  }
+  if (entry.status === "failed") {
+    return {
+      ...base,
+      checks: 0,
+      commands: [],
+      mcpTools: [],
+      reason: entry.reason,
+    };
+  }
+  // disabled
+  return { ...base, checks: 0, commands: [], mcpTools: [] };
+}
+
+export function listPlugins(): PluginListEntry[] {
+  return mapRegistryPlugins(toListEntry);
 }
 
 export interface PluginValidationResult {
   name: string;
   valid: boolean;
   reason?: string;
+}
+
+function toValidationResult(name: string, entry: PluginRegistryEntry): PluginValidationResult {
+  return {
+    name: entry.manifest.name,
+    valid: entry.status === "loaded",
+    ...(entry.status === "failed" ? { reason: entry.reason } : {}),
+  };
 }
 
 export function validatePlugins(name?: string): PluginValidationResult[] {
@@ -141,16 +171,8 @@ export function validatePlugins(name?: string): PluginValidationResult[] {
     if (!entry) {
       return [{ name, valid: false, reason: "Plugin not found in registry" }];
     }
-    return [{
-      name: entry.manifest.name,
-      valid: entry.status === "loaded",
-      ...(entry.status === "failed" ? { reason: entry.reason } : {}),
-    }];
+    return [toValidationResult(name, entry)];
   }
 
-  return mapRegistryPlugins((_, entry) => ({
-    name: entry.manifest.name,
-    valid: entry.status === "loaded",
-    ...(entry.status === "failed" ? { reason: entry.reason } : {}),
-  }));
+  return mapRegistryPlugins(toValidationResult);
 }
