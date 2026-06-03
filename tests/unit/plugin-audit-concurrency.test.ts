@@ -74,4 +74,65 @@ describe("executePluginChecks concurrency", () => {
     expect(result.results.find(r => r.checkId === "ok-1")?.status).toBe("pass");
     expect(result.results.find(r => r.checkId === "fail-1")?.status).toBe("error");
   });
+
+  test("clearTimeout called on success (no leaked timer handle)", async () => {
+    const clearTimeoutSpy = jest.spyOn(global, "clearTimeout");
+    const checks = [{ id: "c0", name: "check0", category: "test", severity: "info" as const, description: "test", checkCommand: "echo" }];
+    const ssh = jest.fn(async () => ({ stdout: "ok", stderr: "", code: 0 }));
+
+    mockChunkConcurrent.mockImplementation(async () => [
+      { checkId: "c0", status: "pass" as const },
+    ]);
+
+    await executePluginChecks(checks, { ssh, manifest: {} });
+
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+    clearTimeoutSpy.mockRestore();
+  });
+
+  test("aggregate timeout — AbortController signal aborts after ceiling", async () => {
+    jest.useFakeTimers();
+    try {
+      const checks = [
+        { id: "slow-1", name: "slow", category: "test", severity: "info" as const, description: "test", checkCommand: "sleep 999" },
+        { id: "slow-2", name: "slow", category: "test", severity: "info" as const, description: "test", checkCommand: "sleep 999" },
+      ];
+      // ssh is signal-aware: rejects when AbortController fires
+      const capturedSignals: AbortSignal[] = [];
+      const wrappedSsh = (_cmd: string, opts?: { signal?: AbortSignal }): Promise<{ stdout: string; stderr: string; code: number }> => {
+        const signal = opts?.signal;
+        if (signal) capturedSignals.push(signal);
+        return new Promise((_, reject) => {
+          if (signal) {
+            signal.addEventListener("abort", () => reject(new Error("aborted")));
+          }
+        });
+      };
+
+      mockChunkConcurrent.mockImplementation(async (items: unknown[], _conc: number, worker: (item: unknown) => Promise<unknown>) => {
+        const out: unknown[] = [];
+        for (const item of items) {
+          out.push(await worker(item));
+        }
+        return out;
+      });
+
+      const promise = executePluginChecks(checks, { ssh: wrappedSsh, manifest: {} });
+      // Yield so runCheck captures signal before timers fire
+      await Promise.resolve();
+      await Promise.resolve();
+
+      // Fire all pending timers (LESSONS: use runAllTimersAsync, not advanceTimersByTime)
+      await jest.runAllTimersAsync();
+
+      const result = await promise;
+
+      expect(capturedSignals.length).toBeGreaterThan(0);
+      expect(capturedSignals[0].aborted).toBe(true);
+      // All checks should be marked as timeout once signal aborts
+      expect(result.results.every(r => r.status === "timeout")).toBe(true);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });

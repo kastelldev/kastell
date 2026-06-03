@@ -17,6 +17,10 @@ export interface ExecutePluginChecksResult {
 
 const DEFAULT_PARALLELISM = parseInt(process.env.PLUGIN_AUDIT_PARALLELISM ?? "3", 10);
 
+// Aggregate ceiling — bounds worst-case latency for N slow checks (LESSONS.md
+// "Plugin Parallel Execution" flags this as mandatory: N × per-check = stall risk).
+const AGGREGATE_TIMEOUT_MS = 120_000;
+
 export interface ExecutePluginChecksContext {
   ssh: (cmd: string, opts?: { timeoutMs?: number; signal?: AbortSignal }) => Promise<{ stdout: string; stderr: string; code: number }>;
   manifest: { safeToParallel?: boolean | null; [key: string]: unknown };
@@ -28,24 +32,32 @@ export async function executePluginChecks(
 ): Promise<ExecutePluginChecksResult> {
   const concurrency = ctx.manifest.safeToParallel === false ? 1 : DEFAULT_PARALLELISM;
 
+  const controller = new AbortController();
+  const aggregateTimer = setTimeout(() => controller.abort(), AGGREGATE_TIMEOUT_MS);
+
   const runCheck = async (check: PluginCheck): Promise<CheckResult> => {
+    if (controller.signal.aborted) {
+      return { checkId: check.id, status: "timeout" };
+    }
     try {
-      const ssh = await ctx.ssh(check.checkCommand, { timeoutMs: 15000 });
+      const ssh = await ctx.ssh(check.checkCommand, { timeoutMs: 15000, signal: controller.signal });
       if (ssh.code !== 0) {
         return { checkId: check.id, status: "error", reason: ssh.stderr || `Exit code ${ssh.code}` };
       }
       return { checkId: check.id, status: "pass", output: ssh.stdout };
     } catch (err) {
+      if (controller.signal.aborted) {
+        return { checkId: check.id, status: "timeout" };
+      }
       return { checkId: check.id, status: "error", reason: err instanceof Error ? err.message : String(err) };
     }
   };
 
-  const results = await chunkConcurrent(checks, concurrency, runCheck);
-
-  const completed = results.filter((r) => r.status !== "timeout").length;
-  return {
-    results,
-    completed,
-    pending: checks.length - completed,
-  };
+  try {
+    const results = await chunkConcurrent(checks, concurrency, runCheck);
+    const completed = results.filter((r) => r.status !== "timeout").length;
+    return { results, completed, pending: checks.length - completed };
+  } finally {
+    clearTimeout(aggregateTimer);
+  }
 }
