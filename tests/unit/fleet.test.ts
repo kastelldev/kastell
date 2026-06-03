@@ -13,6 +13,7 @@ jest.mock("../../src/core/health.js", () => ({
 }));
 
 jest.mock("../../src/core/audit/history.js", () => ({
+  loadLatestAudit: jest.fn(),
   loadAuditHistory: jest.fn(),
 }));
 
@@ -35,13 +36,13 @@ jest.mock("../../src/utils/logger.js", () => ({
 import { runFleet, sortRows, getLatestAuditScore, getWeakestCategory } from "../../src/core/fleet.js";
 import { getServers } from "../../src/utils/config.js";
 import { checkServerHealth } from "../../src/core/health.js";
-import { loadAuditHistory } from "../../src/core/audit/history.js";
+import { loadLatestAudit } from "../../src/core/audit/history.js";
 import { listSnapshots, loadSnapshot } from "../../src/core/audit/snapshot.js";
 import { createSpinner } from "../../src/utils/logger.js";
 
 const mockedGetServers = getServers as jest.MockedFunction<typeof getServers>;
 const mockedCheckServerHealth = checkServerHealth as jest.MockedFunction<typeof checkServerHealth>;
-const mockedLoadAuditHistory = loadAuditHistory as jest.MockedFunction<typeof loadAuditHistory>;
+const mockedLoadLatestAudit = loadLatestAudit as jest.MockedFunction<typeof loadLatestAudit>;
 const mockedCreateSpinner = createSpinner as jest.MockedFunction<typeof createSpinner>;
 const mockedListSnapshots = listSnapshots as jest.MockedFunction<typeof listSnapshots>;
 const mockedLoadSnapshot = loadSnapshot as jest.MockedFunction<typeof loadSnapshot>;
@@ -89,15 +90,13 @@ describe("runFleet", () => {
       status: "healthy",
       responseTime: 42,
     });
-    mockedLoadAuditHistory.mockReturnValue([
-      {
-        serverIp: "1.2.3.4",
-        serverName: "web-01",
-        timestamp: "2026-01-10T00:00:00.000Z",
-        overallScore: 85,
-        categoryScores: {},
-      },
-    ]);
+    mockedLoadLatestAudit.mockReturnValue({
+      serverIp: "1.2.3.4",
+      serverName: "web-01",
+      timestamp: "2026-01-10T00:00:00.000Z",
+      overallScore: 85,
+      categoryScores: {},
+    });
 
     const rows = await runFleet({});
 
@@ -117,9 +116,7 @@ describe("runFleet", () => {
     const server = makeServer();
     mockedGetServers.mockReturnValue([server]);
     mockedCheckServerHealth.mockResolvedValue({ server, status: "healthy", responseTime: 120 });
-    mockedLoadAuditHistory.mockReturnValue([
-      { serverIp: "1.2.3.4", serverName: "web-01", timestamp: "2026-01-01T00:00:00.000Z", overallScore: 72, categoryScores: {} },
-    ]);
+    mockedLoadLatestAudit.mockReturnValue({ serverIp: "1.2.3.4", serverName: "web-01", timestamp: "2026-01-01T00:00:00.000Z", overallScore: 72, categoryScores: {} });
 
     const [row] = await runFleet({});
 
@@ -132,7 +129,7 @@ describe("runFleet", () => {
     const server = makeServer();
     mockedGetServers.mockReturnValue([server]);
     mockedCheckServerHealth.mockResolvedValue({ server, status: "unhealthy", responseTime: 200 });
-    mockedLoadAuditHistory.mockReturnValue([]);
+    mockedLoadLatestAudit.mockReturnValue(null);
 
     const [row] = await runFleet({});
 
@@ -143,7 +140,7 @@ describe("runFleet", () => {
     const server = makeServer();
     mockedGetServers.mockReturnValue([server]);
     mockedCheckServerHealth.mockResolvedValue({ server, status: "unreachable", responseTime: 0 });
-    mockedLoadAuditHistory.mockReturnValue([]);
+    mockedLoadLatestAudit.mockReturnValue(null);
 
     let rows: Awaited<ReturnType<typeof runFleet>>;
     expect(async () => {
@@ -158,7 +155,7 @@ describe("runFleet", () => {
     const server = makeServer();
     mockedGetServers.mockReturnValue([server]);
     mockedCheckServerHealth.mockResolvedValue({ server, status: "host-key-mismatch", responseTime: 0 });
-    mockedLoadAuditHistory.mockReturnValue([]);
+    mockedLoadLatestAudit.mockReturnValue(null);
 
     const [row] = await runFleet({});
 
@@ -169,7 +166,7 @@ describe("runFleet", () => {
     const server = makeServer();
     mockedGetServers.mockReturnValue([server]);
     mockedCheckServerHealth.mockResolvedValue({ server, status: "healthy", responseTime: 50 });
-    mockedLoadAuditHistory.mockReturnValue([]);
+    mockedLoadLatestAudit.mockReturnValue(null);
 
     const [row] = await runFleet({});
 
@@ -180,7 +177,7 @@ describe("runFleet", () => {
     const server = makeServer();
     mockedGetServers.mockReturnValue([server]);
     mockedCheckServerHealth.mockRejectedValue(new Error("unexpected crash"));
-    mockedLoadAuditHistory.mockReturnValue([]);
+    mockedLoadLatestAudit.mockReturnValue(null);
 
     const rows = await runFleet({});
 
@@ -193,9 +190,7 @@ describe("runFleet", () => {
     const server = makeServer();
     mockedGetServers.mockReturnValue([server]);
     mockedCheckServerHealth.mockResolvedValue({ server, status: "healthy", responseTime: 10 });
-    mockedLoadAuditHistory.mockReturnValue([
-      { serverIp: "1.2.3.4", serverName: "web-01", timestamp: "2026-01-10T00:00:00.000Z", overallScore: 72, categoryScores: {} },
-    ]);
+    mockedLoadLatestAudit.mockReturnValue({ serverIp: "1.2.3.4", serverName: "web-01", timestamp: "2026-01-10T00:00:00.000Z", overallScore: 72, categoryScores: {} });
     mockedListSnapshots.mockResolvedValue([
       { filename: "snap.json", savedAt: "2026-04-26T10:00:00Z", overallScore: 72 },
     ]);
@@ -225,7 +220,7 @@ describe("runFleet", () => {
     const server = makeServer();
     mockedGetServers.mockReturnValue([server]);
     mockedCheckServerHealth.mockResolvedValue({ server, status: "healthy", responseTime: 10 });
-    mockedLoadAuditHistory.mockReturnValue([]);
+    mockedLoadLatestAudit.mockReturnValue(null);
 
     const consoleSpy = jest.spyOn(console, "log").mockImplementation();
 
@@ -291,7 +286,7 @@ describe("sortRows", () => {
 
 describe("getLatestAuditScore", () => {
   it("returns null when no history entries", () => {
-    mockedLoadAuditHistory.mockReturnValue([]);
+    mockedLoadLatestAudit.mockReturnValue(null);
 
     const score = getLatestAuditScore("1.2.3.4");
 
@@ -299,11 +294,13 @@ describe("getLatestAuditScore", () => {
   });
 
   it("returns latest overallScore from history (sorted by timestamp desc)", () => {
-    mockedLoadAuditHistory.mockReturnValue([
-      { serverIp: "1.2.3.4", serverName: "web-01", timestamp: "2026-01-05T00:00:00.000Z", overallScore: 60, categoryScores: {} },
-      { serverIp: "1.2.3.4", serverName: "web-01", timestamp: "2026-01-10T00:00:00.000Z", overallScore: 80, categoryScores: {} },
-      { serverIp: "1.2.3.4", serverName: "web-01", timestamp: "2026-01-01T00:00:00.000Z", overallScore: 40, categoryScores: {} },
-    ]);
+    mockedLoadLatestAudit.mockReturnValue({
+      serverIp: "1.2.3.4",
+      serverName: "web-01",
+      timestamp: "2026-01-10T00:00:00.000Z",
+      overallScore: 80,
+      categoryScores: {},
+    });
 
     const score = getLatestAuditScore("1.2.3.4");
 

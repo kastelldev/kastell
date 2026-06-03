@@ -3,7 +3,7 @@ import { chunkConcurrent } from "../utils/concurrency.js";
 import { getServers } from "../utils/config.js";
 import { createSpinner } from "../utils/logger.js";
 import { checkServerHealth } from "./health.js";
-import { loadAuditHistory } from "./audit/history.js";
+import { loadLatestAudit } from "./audit/history.js";
 import { listSnapshots, loadSnapshot } from "./audit/snapshot.js";
 import type { FleetRow, FleetOptions, ServerRecord } from "../types/index.js";
 
@@ -14,12 +14,12 @@ export type { FleetRow, FleetOptions };
 /**
  * Get the most recent audit score for a server IP from history.
  * Returns null when no history exists.
+ *
+ * Delegates to `loadLatestAudit` so callers share the mtime-cached read path
+ * (CQS-04 / simplify C1): N fleet rows = 1 file read, not N.
  */
 export function getLatestAuditScore(serverIp: string): number | null {
-  const history = loadAuditHistory(serverIp);
-  if (history.length === 0) return null;
-  const sorted = [...history].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
-  return sorted[0].overallScore;
+  return loadLatestAudit(serverIp)?.overallScore ?? null;
 }
 
 /**
