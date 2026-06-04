@@ -52,6 +52,22 @@ describe("loadLatestAudit", () => {
     });
   });
 
+  it("uses single statSync (not existsSync + statSync) for file existence check", async () => {
+    await jest.isolateModules(async () => {
+      // statSync throws ENOENT — should be caught and return null
+      const err = Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+      mockedFs.statSync.mockImplementation(() => { throw err; });
+
+      const { loadLatestAudit, clearAuditCache } = await import("../../../src/core/audit/history.js");
+      clearAuditCache();
+
+      const result = loadLatestAudit("1.2.3.4");
+
+      expect(result).toBeNull();
+      expect(mockedFs.existsSync).not.toHaveBeenCalled();
+    });
+  });
+
   it("uses mtime cache when called twice", async () => {
     await jest.isolateModules(async () => {
       const historyEntry = {

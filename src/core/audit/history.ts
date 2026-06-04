@@ -87,25 +87,25 @@ export function loadAuditHistory(serverIp: string): AuditHistoryEntry[] {
  */
 export function loadLatestAudit(serverIp: string): AuditHistoryEntry | null {
   const historyFile = getHistoryPath();
-  if (!existsSync(historyFile)) {
-    return null;
-  }
 
+  let stat: import("fs").Stats;
   try {
-    const stat = statSync(historyFile);
-    const cached = latestAuditCache.get(serverIp);
-
-    if (cached && cached.mtime === stat.mtimeMs) {
-      return cached.audit;
-    }
-
-    const history = loadAuditHistory(serverIp);
-    const latest = history[history.length - 1] ?? null;
-    latestAuditCache.set(serverIp, { mtime: stat.mtimeMs, audit: latest });
-    return latest;
+    stat = statSync(historyFile);
   } catch {
+    // ENOENT + permission + I/O errors all return null
+    // (matches loadAuditHistory's catch-all on line 78-80)
     return null;
   }
+
+  const cached = latestAuditCache.get(serverIp);
+  if (cached && cached.mtime === stat.mtimeMs) {
+    return cached.audit;
+  }
+
+  const history = loadAuditHistory(serverIp);
+  const latest = history[history.length - 1] ?? null;
+  latestAuditCache.set(serverIp, { mtime: stat.mtimeMs, audit: latest });
+  return latest;
 }
 
 /**
