@@ -1,10 +1,11 @@
-import { readFileSync, statSync, renameSync } from "fs";
+import { readFileSync, renameSync } from "fs";
 import { join } from "path";
 import type { ServerRecord } from "../types/index.js";
 import { withFileLock } from "./fileLock.js";
 import { KASTELL_DIR } from "./paths.js";
 import { SUPPORTED_PROVIDERS } from "../constants.js";
 import { secureMkdirSync, secureWriteFileSync } from "./secureWrite.js";
+import { memoizeOnStat, type MemoizedEntry } from "./fsMtime.js";
 
 const SERVERS_FILE = join(KASTELL_DIR, "servers.json");
 
@@ -30,72 +31,42 @@ export function atomicWriteServers(servers: ServerRecord[]): void {
   renameSync(tmpFile, SERVERS_FILE);
 }
 
-let cachedServers: ServerRecord[] | null = null;
-let cachedMtime: number | null = null;
-let cachedDev: number | null = null;
+let serversCache: Map<string, MemoizedEntry<ServerRecord[]>> = new Map();
 
 export function clearServersCache(): void {
-  cachedServers = null;
-  cachedMtime = null;
-  cachedDev = null;
+  serversCache.clear();
 }
 
 export function getServers(): ServerRecord[] {
-  if (cachedServers !== null && cachedMtime !== null && cachedDev !== null) {
+  return memoizeOnStat(serversCache, SERVERS_FILE, SERVERS_FILE, () => {
+    let data: string;
     try {
-      const stat = statSync(SERVERS_FILE);
-      if (cachedMtime === stat.mtimeMs && cachedDev === stat.dev) {
-        return cachedServers;
+      data = readFileSync(SERVERS_FILE, "utf-8");
+    } catch (err: unknown) {
+      if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+        return [];
       }
-      // mtime or dev changed — invalidate
-      clearServersCache();
+      throw err;
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(data);
     } catch {
-      clearServersCache();
+      throw new Error("servers.json corrupt (invalid JSON) — check ~/.kastell/servers.json manually");
     }
-  }
-
-  let data: string;
-  try {
-    data = readFileSync(SERVERS_FILE, "utf-8");
-  } catch (err: unknown) {
-    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
-      cachedServers = [];
-      cachedMtime = null;
-      cachedDev = null;
-      return [];
+    if (!Array.isArray(parsed)) {
+      throw new Error("servers.json corrupt — check ~/.kastell/servers.json manually");
     }
-    throw err;
-  }
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(data);
-  } catch {
-    throw new Error("servers.json corrupt (invalid JSON) — check ~/.kastell/servers.json manually");
-  }
-  if (!Array.isArray(parsed)) {
-    throw new Error("servers.json corrupt — check ~/.kastell/servers.json manually");
-  }
-  const validProviders = new Set(SUPPORTED_PROVIDERS as readonly string[]);
-  const validRecords = parsed.filter((s: Record<string, unknown>) => {
-    if (s.provider && !validProviders.has(s.provider as string)) {
-      process.stderr.write(`Warning: skipping server "${s.name}" — unknown provider "${s.provider}"\n`);
-      return false;
-    }
-    return true;
+    const validProviders = new Set(SUPPORTED_PROVIDERS as readonly string[]);
+    const validRecords = parsed.filter((s: Record<string, unknown>) => {
+      if (s.provider && !validProviders.has(s.provider as string)) {
+        process.stderr.write(`Warning: skipping server "${s.name}" — unknown provider "${s.provider}"\n`);
+        return false;
+      }
+      return true;
+    });
+    return validRecords.map((s: ServerRecord) => ({ ...s, mode: s.mode ?? "coolify" }) as ServerRecord);
   });
-  const servers = validRecords.map((s: ServerRecord) => ({ ...s, mode: s.mode ?? "coolify" }) as ServerRecord);
-
-  // populate cache
-  try {
-    const stat = statSync(SERVERS_FILE);
-    cachedServers = servers;
-    cachedMtime = stat.mtimeMs;
-    cachedDev = stat.dev;
-  } catch {
-    // file vanished between readFileSync and statSync — skip caching
-  }
-
-  return servers;
 }
 
 export async function saveServer(record: ServerRecord): Promise<void> {

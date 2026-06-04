@@ -43,6 +43,7 @@ describe("loadLatestAudit", () => {
     await jest.isolateModules(async () => {
       const err = Object.assign(new Error("ENOENT"), { code: "ENOENT" });
       mockedFs.statSync.mockImplementation(() => { throw err; });
+      mockedFs.readFileSync.mockImplementation(() => { throw err; });
 
       const { loadLatestAudit, clearAuditCache } = await import("../../../src/core/audit/history.js");
       clearAuditCache();

@@ -19,6 +19,10 @@ const jsonString = (data: unknown) => JSON.stringify(data) as unknown as string;
 describe("getServers cache", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // mockReset clears mockReturnValue/Once from previous tests' setups.
+    // Without this, Test 1's default mockReturnValue(mtime: 1000) leaks into
+    // Tests 2-4 and breaks their mockReturnValueOnce sequences.
+    mockedFs.statSync.mockReset();
   });
 
   it("cache hit returns same data", async () => {

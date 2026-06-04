@@ -1,4 +1,4 @@
-import { getServers, saveServer, removeServer, findServer } from "../../src/utils/config";
+import { getServers, clearServersCache, saveServer, removeServer, findServer } from "../../src/utils/config";
 import * as fs from "fs";
 
 jest.mock("fs");
@@ -19,10 +19,15 @@ jest.mock("../../src/utils/secureWrite", () => {
 });
 
 const mockedFs = fs as jest.Mocked<typeof fs>;
+const asStats = (obj: object) => obj as unknown as import("fs").Stats;
 
 describe("config edge cases", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    clearServersCache();
+    // memoizeOnStat calls statSync on every invocation — default to a valid
+    // stat so consumer mocks (readFileSync) drive the cache miss path.
+    mockedFs.statSync.mockReturnValue(asStats({ mtimeMs: 1704067200000, dev: 1 }));
   });
 
   describe("getServers edge cases", () => {

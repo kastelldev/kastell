@@ -9,7 +9,6 @@ import {
   readFileSync,
   existsSync,
   renameSync,
-  statSync,
 } from "fs";
 import { join } from "path";
 import { z } from "zod";
@@ -17,6 +16,7 @@ import { KASTELL_DIR } from "../../utils/paths.js";
 import { withFileLock } from "../../utils/fileLock.js";
 import { secureWriteFileSync, secureMkdirSync } from "../../utils/secureWrite.js";
 import { MS_PER_DAY } from "../../utils/dates.js";
+import { memoizeOnStat, type MemoizedEntry } from "../../utils/fsMtime.js";
 import type {
   AuditResult,
   AuditHistoryEntry,
@@ -27,8 +27,8 @@ import type {
 
 const HISTORY_FILENAME = "audit-history.json";
 
-/** mtime-based cache for loadLatestAudit */
-const latestAuditCache = new Map<string, { mtime: number; audit: AuditHistoryEntry | null }>();
+/** mtime-based cache for loadLatestAudit (key: filePath::serverIp) */
+const latestAuditCache = new Map<string, MemoizedEntry<AuditHistoryEntry | null>>();
 
 /** Get history file path lazily to support testing */
 function getHistoryPath(): string {
@@ -135,23 +135,14 @@ function readLastEntryForServer(
 export function loadLatestAudit(serverIp: string): AuditHistoryEntry | null {
   const historyFile = getHistoryPath();
 
-  let stat: import("fs").Stats;
-  try {
-    stat = statSync(historyFile);
-  } catch {
-    // ENOENT + permission + I/O errors all return null
-    // (matches loadAuditHistory's catch-all on line 78-80)
-    return null;
-  }
-
-  const cached = latestAuditCache.get(serverIp);
-  if (cached && cached.mtime === stat.mtimeMs) {
-    return cached.audit;
-  }
-
-  const latest = readLastEntryForServer(historyFile, serverIp);
-  latestAuditCache.set(serverIp, { mtime: stat.mtimeMs, audit: latest });
-  return latest;
+  // Per-server cache: composite key ensures server IP A's result is not
+  // returned for server IP B (the file is shared, but entries are per-IP).
+  return memoizeOnStat(
+    latestAuditCache,
+    `${historyFile}::${serverIp}`,
+    historyFile,
+    () => readLastEntryForServer(historyFile, serverIp),
+  );
 }
 
 /**

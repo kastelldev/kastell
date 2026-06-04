@@ -1,5 +1,6 @@
 import {
   getServers,
+  clearServersCache,
   saveServer,
   updateServer,
   removeServer,
@@ -29,10 +30,17 @@ jest.mock("../../src/utils/secureWrite", () => {
 
 const mockedFs = fs as jest.Mocked<typeof fs>;
 const { secureWriteFileSync } = secureWriteModule;
+const asStats = (obj: object) => obj as unknown as import("fs").Stats;
 
 describe("config", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    clearServersCache();
+    // memoizeOnStat calls statSync on every invocation to check mtime/dev.
+    // Default to a valid stat so the existing tests' setup (readFileSync mock)
+    // continues to drive the cache miss path. Tests that need ENOENT override
+    // with mockReturnValueOnce/mockImplementationOnce.
+    mockedFs.statSync.mockReturnValue(asStats({ mtimeMs: 1704067200000, dev: 1 }));
   });
 
   describe("getServers", () => {
@@ -147,6 +155,44 @@ describe("config", () => {
       expect(result[0].mode).toBe("coolify");
       expect(secureWriteFileSync).not.toHaveBeenCalled();
       expect(mockedFs.renameSync).not.toHaveBeenCalled();
+    });
+
+    it("invalidates cache when file mtime changes", () => {
+      const servers1 = [
+        {
+          id: "1",
+          name: "old",
+          provider: "hetzner",
+          ip: "1.1.1.1",
+          region: "nbg1",
+          size: "cax11",
+          createdAt: "",
+        },
+      ];
+      const servers2 = [
+        {
+          id: "2",
+          name: "new",
+          provider: "hetzner",
+          ip: "2.2.2.2",
+          region: "nbg1",
+          size: "cax11",
+          createdAt: "",
+        },
+      ];
+
+      // First call: mtime 1000, returns servers1
+      mockedFs.statSync.mockReturnValueOnce(asStats({ mtimeMs: 1000, dev: 1 }));
+      mockedFs.readFileSync.mockReturnValueOnce(JSON.stringify(servers1));
+      expect(getServers()).toEqual([{ ...servers1[0], mode: "coolify" }]);
+
+      // Second call: mtime changed to 2000, returns servers2
+      mockedFs.statSync.mockReturnValueOnce(asStats({ mtimeMs: 2000, dev: 1 }));
+      mockedFs.readFileSync.mockReturnValueOnce(JSON.stringify(servers2));
+      expect(getServers()).toEqual([{ ...servers2[0], mode: "coolify" }]);
+
+      // readFileSync was called twice — cache was invalidated by mtime change
+      expect(mockedFs.readFileSync).toHaveBeenCalledTimes(2);
     });
   });
 
