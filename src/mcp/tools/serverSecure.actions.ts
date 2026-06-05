@@ -1,6 +1,8 @@
 // Shared action constants for server secure MCP tool
 // Used by serverSecureSchema (src/mcp/tools/serverSecure.ts) and tests
 
+import { z } from "zod";
+
 export const SECURE_ACTIONS = [
   "audit",
   "secure-setup",
@@ -15,4 +17,10 @@ export const SECURE_ACTIONS = [
   "domain-info",
 ] as const;
 
-export type SecureAction = (typeof SECURE_ACTIONS)[number];
+/**
+ * Co-located Zod schema. Consumers should import this instead of re-deriving
+ * `z.enum(SECURE_ACTIONS)` at the call site (one source of truth).
+ */
+export const serverSecureActionSchema = z.enum(SECURE_ACTIONS);
+
+export type SecureAction = z.infer<typeof serverSecureActionSchema>;
