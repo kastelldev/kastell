@@ -28,6 +28,16 @@ export type McpResponse = {
   isError?: boolean;
 };
 
+/**
+ * Minimal shape of the underlying MCP Server instance that kastell inspects.
+ * Used to cast `McpServer.server` (typed as `@modelcontextprotocol/sdk`'s Server)
+ * to a narrow interface covering only the methods kastell touches — currently
+ * just `getClientCapabilities()` for elicitation support detection (CQS-05).
+ */
+export type McpServerInternal = {
+  getClientCapabilities?: () => Record<string, unknown>;
+};
+
 // ─── mcpLog ──────────────────────────────────────────────────────────────────
 
 /**
@@ -136,9 +146,7 @@ export type ElicitResult =
 export function supportsElicitation(server: McpServer | undefined): boolean {
   if (!server) return false;
   try {
-    const caps = (server.server as unknown as {
-      getClientCapabilities?: () => Record<string, unknown>;
-    }).getClientCapabilities?.();
+    const caps = (server.server as McpServerInternal).getClientCapabilities?.();
     return caps?.elicitation !== undefined;
   } catch {
     return false;
