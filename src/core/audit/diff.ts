@@ -101,6 +101,76 @@ function classifyStatus(
   return "unchanged";
 }
 
+// ─── diffAuditsFlat ──────────────────────────────────────────────────────────
+
+/**
+ * Flat diff result for MCP detail format. Each entry is a single check with
+ * a discriminator status, instead of an AuditDiffResult split across 5 arrays.
+ * Centralizes the flatten+classify logic that was previously in
+ * serverCompare.ts's detail adapter (Altitude A6).
+ */
+export type FlatCheckDiffStatus = "A_better" | "B_better" | "both_pass" | "both_fail";
+
+export interface FlatCheckDiffEntry {
+  id: string;
+  name: string;
+  status: FlatCheckDiffStatus;
+  before: boolean | null;
+  after: boolean | null;
+}
+
+/**
+ * Single-pass diff: produces the same shape that the serverCompare detail
+ * adapter previously assembled with 4 array operations (filter+map+filter+map).
+ * Note: `added` and `removed` checks (no counterpart on the other side) are
+ * excluded — they don't have a clean A/B/both discriminator.
+ */
+export function diffAuditsFlat(
+  before: AuditResult,
+  after: AuditResult,
+  labels?: { before?: string; after?: string },
+): {
+  beforeLabel: string;
+  afterLabel: string;
+  scoreBefore: number;
+  scoreAfter: number;
+  scoreDelta: number;
+  checks: FlatCheckDiffEntry[];
+} {
+  const beforeMap = buildCheckMap(before);
+  const afterMap = buildCheckMap(after);
+  const allIds = new Set([...beforeMap.keys(), ...afterMap.keys()]);
+
+  const checks: FlatCheckDiffEntry[] = [];
+  for (const id of allIds) {
+    const b = beforeMap.get(id) ?? null;
+    const a = afterMap.get(id) ?? null;
+    if (b === null || a === null) continue; // skip added/removed — no A/B pair
+    const source = a ?? b;
+    let status: FlatCheckDiffStatus;
+    if (!b.passed && a.passed) status = "A_better";
+    else if (b.passed && !a.passed) status = "B_better";
+    else if (b.passed && a.passed) status = "both_pass";
+    else status = "both_fail";
+    checks.push({
+      id,
+      name: source.name,
+      status,
+      before: b.passed,
+      after: a.passed,
+    });
+  }
+
+  return {
+    beforeLabel: labels?.before ?? before.timestamp,
+    afterLabel: labels?.after ?? after.timestamp,
+    scoreBefore: before.overallScore,
+    scoreAfter: after.overallScore,
+    scoreDelta: after.overallScore - before.overallScore,
+    checks,
+  };
+}
+
 // ─── resolveSnapshotRef ───────────────────────────────────────────────────────
 
 /**

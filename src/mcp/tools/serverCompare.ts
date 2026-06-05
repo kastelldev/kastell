@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { getServers } from "../../utils/config.js";
-import { resolveAuditPair, buildCategorySummary, diffAudits } from "../../core/audit/diff.js";
+import { resolveAuditPair, buildCategorySummary, diffAuditsFlat } from "../../core/audit/diff.js";
 import {
   mcpSuccess,
   mcpError,
@@ -41,7 +41,7 @@ export const serverCompareOutputSchema = z.object({
       checks: z.array(z.object({
         id: z.string(),
         name: z.string(),
-        status: z.enum(["same", "A_better", "B_better", "both_fail", "both_pass"]),
+        status: z.enum(["A_better", "B_better", "both_pass", "both_fail"]),
         before: z.boolean().nullable(),
         after: z.boolean().nullable(),
       })),
@@ -91,19 +91,12 @@ export async function handleServerCompare(params: {
     const { auditA, auditB } = pairResult.data!;
 
     if (params.detail) {
-      const diff = diffAudits(auditA, auditB, { before: serverA.name, after: serverB.name });
+      const diff = diffAuditsFlat(auditA, auditB, { before: serverA.name, after: serverB.name });
       return mcpSuccess({
         format: "check" as const,
         serverA: serverA.name,
         serverB: serverB.name,
-        checks: [
-          ...diff.improvements.map((c) => ({ ...c, status: "A_better" as const })),
-          ...diff.regressions.map((c) => ({ ...c, status: "B_better" as const })),
-          ...diff.unchanged.map((c) => ({
-            ...c,
-            status: c.before === false ? ("both_fail" as const) : ("both_pass" as const),
-          })),
-        ],
+        checks: diff.checks,
       });
     }
 
