@@ -33,26 +33,52 @@ export function statKey(filePath: string): StatKey | null {
  * `cacheKey` distinguishes entries (caller composes — e.g. `filePath + '::' + serverIp`
  * for per-server caches, or just `filePath` for single-entry files). `filePath` is the
  * file to stat for invalidation — it can equal `cacheKey` for simple cases.
+ *
+ * `options.maxSize` opts the cache into bounded LRU semantics: once `cache.size`
+ * exceeds `maxSize`, the least-recently-used entry is evicted. Hits promote to
+ * MRU. Default (omitted) leaves the cache unbounded (back-compat).
  */
 export function memoizeOnStat<T>(
   cache: Map<string, MemoizedEntry<T>>,
   cacheKey: string,
   filePath: string,
   compute: () => T,
+  options?: { maxSize?: number },
 ): T {
   const current = statKey(filePath);
   const cached = cache.get(cacheKey);
 
-  if (cached && cached.statKey === null && current === null) {
-    return cached.value;
-  }
-  if (cached && current !== null && cached.statKey !== null &&
-      cached.statKey.mtime === current.mtime &&
-      cached.statKey.dev === current.dev) {
+  const isHit =
+    cached !== undefined &&
+    ((cached.statKey === null && current === null) ||
+      (current !== null &&
+        cached.statKey !== null &&
+        cached.statKey.mtime === current.mtime &&
+        cached.statKey.dev === current.dev));
+
+  if (isHit) {
+    // MRU promote: only when LRU is active (preserves unbounded back-compat).
+    if (options?.maxSize !== undefined) {
+      cache.delete(cacheKey);
+      cache.set(cacheKey, cached);
+    }
     return cached.value;
   }
 
   const value = compute();
+  // Re-insert at MRU position when LRU active so insertion order = recency.
+  if (options?.maxSize !== undefined) {
+    cache.delete(cacheKey);
+  }
   cache.set(cacheKey, { statKey: current, value });
+
+  if (options?.maxSize !== undefined) {
+    while (cache.size > options.maxSize) {
+      const oldest = cache.keys().next().value;
+      if (oldest === undefined) break;
+      cache.delete(oldest);
+    }
+  }
+
   return value;
 }

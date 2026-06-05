@@ -85,3 +85,47 @@ describe("memoizeOnStat", () => {
     expect(compute).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("memoizeOnStat — LRU bound (options.maxSize)", () => {
+  it("evicts least-recently-used entry once size exceeds maxSize", () => {
+    const cache = new Map<string, { statKey: { mtime: number; dev: number } | null; value: number }>();
+    mockedFs.statSync.mockReturnValue(asStats({ mtimeMs: 100, dev: 1 }));
+
+    memoizeOnStat(cache, "k1", "/a.json", () => 1, { maxSize: 2 });
+    memoizeOnStat(cache, "k2", "/a.json", () => 2, { maxSize: 2 });
+    memoizeOnStat(cache, "k3", "/a.json", () => 3, { maxSize: 2 });
+
+    expect(cache.size).toBe(2);
+    expect(cache.has("k1")).toBe(false); // oldest evicted
+    expect(cache.has("k2")).toBe(true);
+    expect(cache.has("k3")).toBe(true);
+  });
+
+  it("promotes hits to MRU position so they survive eviction", () => {
+    const cache = new Map<string, { statKey: { mtime: number; dev: number } | null; value: number }>();
+    mockedFs.statSync.mockReturnValue(asStats({ mtimeMs: 100, dev: 1 }));
+
+    memoizeOnStat(cache, "k1", "/a.json", () => 1, { maxSize: 2 });
+    memoizeOnStat(cache, "k2", "/a.json", () => 2, { maxSize: 2 });
+    // Hit k1 — should promote to MRU
+    memoizeOnStat(cache, "k1", "/a.json", () => 99, { maxSize: 2 });
+    // Insert k3 — should evict k2 (now oldest), not k1 (just promoted)
+    memoizeOnStat(cache, "k3", "/a.json", () => 3, { maxSize: 2 });
+
+    expect(cache.size).toBe(2);
+    expect(cache.has("k1")).toBe(true); // survived via MRU promote
+    expect(cache.has("k2")).toBe(false); // evicted
+    expect(cache.has("k3")).toBe(true);
+  });
+
+  it("leaves cache unbounded when maxSize is omitted (back-compat)", () => {
+    const cache = new Map<string, { statKey: { mtime: number; dev: number } | null; value: number }>();
+    mockedFs.statSync.mockReturnValue(asStats({ mtimeMs: 100, dev: 1 }));
+
+    for (let i = 0; i < 50; i++) {
+      memoizeOnStat(cache, `k${i}`, "/a.json", () => i);
+    }
+
+    expect(cache.size).toBe(50);
+  });
+});

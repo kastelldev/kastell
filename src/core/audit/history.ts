@@ -27,6 +27,13 @@ import type {
 
 const HISTORY_FILENAME = "audit-history.json";
 
+/**
+ * LRU cap for latestAuditCache. Prevents unbounded growth as fleet scale grows
+ * (key = filePath::serverIp, so each distinct server occupies one entry).
+ * 100 = generous headroom for current <50-server fleets, bounded for the long tail.
+ */
+const MAX_LATEST_AUDIT_CACHE_SIZE = 100;
+
 /** mtime-based cache for loadLatestAudit (key: filePath::serverIp) */
 const latestAuditCache = new Map<string, MemoizedEntry<AuditHistoryEntry | null>>();
 
@@ -142,6 +149,7 @@ export function loadLatestAudit(serverIp: string): AuditHistoryEntry | null {
     `${historyFile}::${serverIp}`,
     historyFile,
     () => readLastEntryForServer(historyFile, serverIp),
+    { maxSize: MAX_LATEST_AUDIT_CACHE_SIZE },
   );
 }
 
