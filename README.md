@@ -299,7 +299,7 @@ Requires Node.js 20 or later.
 - **CLI default:** `false` — all operations are enabled
 - **Override:** `KASTELL_SAFE_MODE=true kastell destroy <server>` → rejected
 
-Affected commands: `init`, `destroy`, `backup-restore`, `snapshot-restore`.
+Affected commands: `init`, `destroy`, `backup-restore`, `snapshot-restore`, `snapshot-delete`, `restart`, `maintain`.
 
 ## Troubleshooting
 
