@@ -3,10 +3,6 @@ import { findServer } from "../utils/config.js";
 import { getProviderToken } from "../core/tokens.js";
 import type { ServerRecord } from "../types/index.js";
 
-interface McpServerInternal {
-  getClientCapabilities?: () => { elicitation?: unknown } | undefined;
-}
-
 // Version injected at startup by setMcpVersion()
 let _version = "unknown";
 
@@ -140,8 +136,9 @@ export type ElicitResult =
 export function supportsElicitation(server: McpServer | undefined): boolean {
   if (!server) return false;
   try {
-    const caps = (server.server as unknown as McpServerInternal)
-      .getClientCapabilities?.();
+    const caps = (server.server as unknown as {
+      getClientCapabilities?: () => Record<string, unknown>;
+    }).getClientCapabilities?.();
     return caps?.elicitation !== undefined;
   } catch {
     return false;
