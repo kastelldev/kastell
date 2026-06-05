@@ -31,7 +31,7 @@ export function atomicWriteServers(servers: ServerRecord[]): void {
   renameSync(tmpFile, SERVERS_FILE);
 }
 
-let serversCache: Map<string, MemoizedEntry<ServerRecord[]>> = new Map();
+const serversCache: Map<string, MemoizedEntry<ServerRecord[]>> = new Map();
 
 export function clearServersCache(): void {
   serversCache.clear();
