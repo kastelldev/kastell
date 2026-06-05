@@ -1,12 +1,10 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 import * as fs from "fs";
+import { asStats, jsonString } from "../../helpers/fsMock.js";
 
 jest.mock("fs");
 
 const mockedFs = fs as jest.Mocked<typeof fs>;
-
-const asStats = (obj: object) => obj as unknown as import("fs").Stats;
-const jsonString = (data: unknown) => JSON.stringify(data) as unknown as string;
 
 describe("loadLatestAudit", () => {
   beforeEach(() => {

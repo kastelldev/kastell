@@ -4,6 +4,7 @@
  */
 
 import { jest } from "@jest/globals";
+import type { Stats } from "fs";
 
 export interface FsMockOptions {
   readFileSync?: jest.Mock;
@@ -28,3 +29,9 @@ export function createFsMock(overrides: FsMockOptions = {}) {
     ...overrides,
   };
 }
+
+/** Cast a partial object to a `fs.Stats` for stat-mock return values. */
+export const asStats = (obj: object): Stats => obj as unknown as Stats;
+
+/** Stringify data and cast to the `string` return type of `fs.readFileSync`. */
+export const jsonString = (data: unknown): string => JSON.stringify(data) as unknown as string;

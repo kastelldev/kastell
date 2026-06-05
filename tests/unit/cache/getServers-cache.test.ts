@@ -1,5 +1,6 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 import * as fs from "fs";
+import { asStats, jsonString } from "../../helpers/fsMock.js";
 
 jest.mock("fs");
 jest.mock("../../../src/utils/paths.js", () => ({
@@ -12,9 +13,6 @@ jest.mock("../../../src/utils/secureWrite.js", () => ({
 }));
 
 const mockedFs = fs as jest.Mocked<typeof fs>;
-
-const asStats = (obj: object) => obj as unknown as import("fs").Stats;
-const jsonString = (data: unknown) => JSON.stringify(data) as unknown as string;
 
 describe("getServers cache", () => {
   beforeEach(() => {
