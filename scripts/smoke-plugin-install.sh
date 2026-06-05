@@ -38,7 +38,9 @@ EXTRACTED="$TMP/package"
 
 # --- Step 2b: empty dir + manifest check -----------------------------------
 echo "[smoke] Step 2b: empty dir and manifest validation"
-if [ -z "$(ls -A "$EXTRACTED" 2>/dev/null)" ]; then
+# `find -mindepth 1 -print -quit` is portable across Git-Bash/MSYS/Cygwin
+# `ls` variants and exits on the first match — cheaper than `ls -A` on large dirs.
+if [ -z "$(find "$EXTRACTED" -mindepth 1 -print -quit 2>/dev/null)" ]; then
   echo "::error::Plugin extract dir is empty: $EXTRACTED" >&2
   exit 1
 fi
