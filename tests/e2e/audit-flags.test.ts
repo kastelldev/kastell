@@ -262,6 +262,6 @@ describe("audit --ci --threshold --json combination", () => {
     await auditCommand("test-server", { ci: true, threshold: "70", json: true });
     const jsonCall = findStdioJsonCall(consoleSpy, stderrSpy);
     expect(jsonCall).toBeDefined();
-    expect(() => JSON.parse(jsonCall![0] as string)).not.toThrow();
+    expect(safeParse(jsonCall![0] as string)).not.toBeNull();
   });
 });
