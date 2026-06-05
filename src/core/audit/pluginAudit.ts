@@ -1,4 +1,5 @@
 import { debugLog } from "../../utils/logger.js";
+import { PLUGIN_STATUS_LOADED } from "../../plugin/registry.js";
 import { getShortName } from "../../plugin/registry.js";
 import type { PluginRegistryEntry } from "../../plugin/registry.js";
 import type { PluginCheck } from "../../plugin/sdk/types.js";
@@ -108,7 +109,7 @@ export function parsePluginBatchOutput(
   const sectionsByPluginCheck = new Map<string, ParsedSection>();
   for (const section of sections) {
     const entry = registry.get(section.pluginName);
-    if (!entry || entry.status !== "loaded") {
+    if (!entry || entry.status !== PLUGIN_STATUS_LOADED) {
       debugLog?.(`Plugin batch: unknown plugin "${section.pluginName}", section ignored`);
       continue;
     }
@@ -125,7 +126,7 @@ export function parsePluginBatchOutput(
   // fallback otherwise. Linear over the registry, no double-mutation of byPlugin.
   const byPlugin = new Map<string, AuditCheck[]>();
   for (const [pluginName, entry] of registry) {
-    if (entry.status !== "loaded") continue;
+    if (entry.status !== PLUGIN_STATUS_LOADED) continue;
     if (entry.checks.length === 0) continue;
 
     const checks: AuditCheck[] = [];

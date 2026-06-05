@@ -1,4 +1,5 @@
 import { sshExec } from "../../utils/ssh.js";
+import { PLUGIN_STATUS_LOADED } from "../../plugin/registry.js";
 import { raw } from "../../utils/sshCommand.js";
 import { debugLog } from "../../utils/logger.js";
 import { isSafeMode } from "../../utils/safeMode.js";
@@ -42,7 +43,7 @@ export function getPluginFixMetadata(failedCheckIds: string[], appliedCheckIds: 
   const backupPaths: string[] = [];
   const pluginNames = new Set<string>();
   for (const [, entry] of registry) {
-    if (entry.status !== "loaded" || !entry.manifest.fixes) continue;
+    if (entry.status !== PLUGIN_STATUS_LOADED || !entry.manifest.fixes) continue;
     for (const fix of entry.manifest.fixes) {
       if (failedSet.has(fix.checkId) && fix.backupPaths) {
         backupPaths.push(...fix.backupPaths);
@@ -92,7 +93,7 @@ export async function executePluginFix(
 
   const registry = getPluginRegistry();
   const entry = registry.get(pluginName);
-  if (!entry || entry.status !== "loaded") {
+  if (!entry || entry.status !== PLUGIN_STATUS_LOADED) {
     return { success: false, error: `Plugin "${pluginName}" not found or failed to load` };
   }
 

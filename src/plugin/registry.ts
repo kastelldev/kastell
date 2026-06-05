@@ -9,6 +9,16 @@ import { PLUGIN_NAME_PREFIX, PLUGIN_TOOL_PREFIX } from "./sdk/constants.js";
 
 const PLUGIN_CACHE_PATH = join(KASTELL_DIR, "plugin-manifests.json");
 
+/**
+ * Status string-literal constants. CQS-08: prefer these over `"loaded"` magic
+ * strings at call sites. `as const` preserves the literal type so discriminated
+ * union narrowing (`entry.status === PLUGIN_STATUS_LOADED`) still narrows
+ * correctly to the loaded variant.
+ */
+export const PLUGIN_STATUS_LOADED = "loaded" as const;
+export const PLUGIN_STATUS_FAILED = "failed" as const;
+export const PLUGIN_STATUS_DISABLED = "disabled" as const;
+
 // ─── PluginRegistryEntry discriminated union ───────────────────────────────────
 // Each variant shares `manifest`; status narrows what else is accessible.
 

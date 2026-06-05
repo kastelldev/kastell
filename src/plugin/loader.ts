@@ -1,4 +1,5 @@
 import { FAILED_PLUGIN_PREFIX } from "./sdk/constants.js";
+import { PLUGIN_STATUS_LOADED } from "./registry.js";
 import { existsSync, readdirSync, readFileSync } from "fs";
 import { join, resolve, sep } from "path";
 import { pathToFileURL } from "url";
@@ -217,7 +218,7 @@ export async function loadPlugins(
   }
 
   const manifests = mapRegistryPlugins((_, entry) =>
-    entry.status === "loaded" ? entry.manifest : null,
+    entry.status === PLUGIN_STATUS_LOADED ? entry.manifest : null,
   ).filter((m): m is PluginManifest => m !== null);
   savePluginCache(manifests);
 

@@ -1,4 +1,5 @@
 import { spawn } from "child_process";
+import { PLUGIN_STATUS_LOADED } from "../plugin/registry.js";
 import { existsSync } from "fs";
 import { join } from "path";
 import { getPluginRegistry, mapRegistryPlugins, deletePlugin as deletePluginFromRegistry, savePluginCache } from "../plugin/registry.js";
@@ -97,7 +98,7 @@ export async function removePlugin(name: string): Promise<PluginOperationResult>
   deletePluginFromRegistry(name);
 
   const manifests = mapRegistryPlugins((_, entry) =>
-    entry.status === "loaded" ? entry.manifest : null,
+    entry.status === PLUGIN_STATUS_LOADED ? entry.manifest : null,
   ).filter((m): m is PluginManifest => m !== null);
   savePluginCache(manifests);
 
@@ -137,14 +138,14 @@ export type PluginListEntry =
     });
 
 // Discriminator-narrowing helpers — P139 simplify C3/A12: replace
-// `entry.status === "loaded" ? ... : ...` ternaries with structural narrowing.
+// `entry.status === PLUGIN_STATUS_LOADED ? ... : ...` ternaries with structural narrowing.
 function toListEntry(_: string, entry: PluginRegistryEntry): PluginListEntry {
   const base = {
     name: entry.manifest.name,
     version: entry.manifest.version,
     prefix: entry.manifest.checkPrefix,
   };
-  if (entry.status === "loaded") {
+  if (entry.status === PLUGIN_STATUS_LOADED) {
     return {
       ...base,
       status: "loaded",
@@ -180,7 +181,7 @@ export interface PluginValidationResult {
 function toValidationResult(name: string, entry: PluginRegistryEntry): PluginValidationResult {
   return {
     name: entry.manifest.name,
-    valid: entry.status === "loaded",
+    valid: entry.status === PLUGIN_STATUS_LOADED,
     ...(entry.status === "failed" ? { reason: entry.reason } : {}),
   };
 }

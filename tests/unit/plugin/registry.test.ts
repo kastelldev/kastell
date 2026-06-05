@@ -13,7 +13,7 @@ jest.mock("../../../src/utils/secureWrite.js", () => ({
 // === mevcut import'lar ===
 import { readFileSync, existsSync } from "fs";
 import { secureWriteFileSync, secureMkdirSync } from "../../../src/utils/secureWrite.js";
-import { registerPlugin, clearPluginRegistry, getPluginRegistry, loadPluginCache, savePluginCache, deletePlugin, mapRegistryPlugins, getPluginCommands, getPluginMcpTools, registerFailedPlugin, registerDisabledPlugin } from "../../../src/plugin/registry.js";
+import { registerPlugin, clearPluginRegistry, getPluginRegistry, loadPluginCache, savePluginCache, deletePlugin, mapRegistryPlugins, getPluginCommands, getPluginMcpTools, registerFailedPlugin, registerDisabledPlugin, PLUGIN_STATUS_LOADED, PLUGIN_STATUS_FAILED, PLUGIN_STATUS_DISABLED } from "../../../src/plugin/registry.js";
 import type { PluginManifest, PluginCheck, PluginCapability } from "../../../src/plugin/sdk/types.js";
 
 const mockManifest: PluginManifest = {
@@ -330,5 +330,17 @@ describe("plugin cache", () => {
         JSON.stringify([mockManifest], null, 2),
       );
     });
+  });
+});
+
+describe("PLUGIN_STATUS_* constants (CQS-08)", () => {
+  it("PLUGIN_STATUS_LOADED has literal value 'loaded'", () => {
+    expect(PLUGIN_STATUS_LOADED).toBe("loaded");
+  });
+  it("PLUGIN_STATUS_FAILED has literal value 'failed'", () => {
+    expect(PLUGIN_STATUS_FAILED).toBe("failed");
+  });
+  it("PLUGIN_STATUS_DISABLED has literal value 'disabled'", () => {
+    expect(PLUGIN_STATUS_DISABLED).toBe("disabled");
   });
 });
