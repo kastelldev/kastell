@@ -15,12 +15,16 @@ export const serverCompareSchema = {
   detail: z.boolean().default(false).describe("Return check-level diff instead of category summary. Default: false."),
 };
 
+const serverCompareBaseFields = {
+  serverA: z.string(),
+  serverB: z.string(),
+};
+
 export const serverCompareOutputSchema = z.object({
   result: z.discriminatedUnion("format", [
     z.object({
       format: z.literal("category"),
-      serverA: z.string(),
-      serverB: z.string(),
+      ...serverCompareBaseFields,
       categories: z.array(z.object({
         category: z.string(),
         scoreBefore: z.number(),
@@ -33,8 +37,7 @@ export const serverCompareOutputSchema = z.object({
     }),
     z.object({
       format: z.literal("check"),
-      serverA: z.string(),
-      serverB: z.string(),
+      ...serverCompareBaseFields,
       checks: z.array(z.object({
         id: z.string(),
         name: z.string(),
