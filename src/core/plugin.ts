@@ -104,16 +104,37 @@ export async function removePlugin(name: string): Promise<PluginOperationResult>
   return { success: true, name };
 }
 
-export interface PluginListEntry {
+// PluginListEntry — discriminated union (A12). Status narrows what other fields
+// are guaranteed: loaded variant carries commands/mcpTools, failed adds reason,
+// disabled has neither. Mirrors PluginRegistryEntry's shape (registry.ts).
+// Narrow once at the call site (`if (entry.status === "failed") entry.reason ...`).
+
+interface PluginListEntryBase {
   name: string;
   version: string;
   prefix: string;
-  checks: number;
-  status: "loaded" | "failed" | "disabled";
-  commands?: { name: string }[];
-  mcpTools?: { name: string }[];
-  reason?: string;
 }
+
+export type PluginListEntry =
+  | (PluginListEntryBase & {
+      status: "loaded";
+      checks: number;
+      commands: { name: string }[];
+      mcpTools: { name: string }[];
+    })
+  | (PluginListEntryBase & {
+      status: "failed";
+      checks: 0;
+      commands: [];
+      mcpTools: [];
+      reason: string;
+    })
+  | (PluginListEntryBase & {
+      status: "disabled";
+      checks: 0;
+      commands: [];
+      mcpTools: [];
+    });
 
 // Discriminator-narrowing helpers — P139 simplify C3/A12: replace
 // `entry.status === "loaded" ? ... : ...` ternaries with structural narrowing.
@@ -122,11 +143,11 @@ function toListEntry(_: string, entry: PluginRegistryEntry): PluginListEntry {
     name: entry.manifest.name,
     version: entry.manifest.version,
     prefix: entry.manifest.checkPrefix,
-    status: entry.status,
   };
   if (entry.status === "loaded") {
     return {
       ...base,
+      status: "loaded",
       checks: entry.checks.length,
       commands: entry.commands ?? [],
       mcpTools: entry.mcpTools ?? [],
@@ -135,6 +156,7 @@ function toListEntry(_: string, entry: PluginRegistryEntry): PluginListEntry {
   if (entry.status === "failed") {
     return {
       ...base,
+      status: "failed",
       checks: 0,
       commands: [],
       mcpTools: [],
@@ -142,7 +164,7 @@ function toListEntry(_: string, entry: PluginRegistryEntry): PluginListEntry {
     };
   }
   // disabled
-  return { ...base, checks: 0, commands: [], mcpTools: [] };
+  return { ...base, status: "disabled", checks: 0, commands: [], mcpTools: [] };
 }
 
 export function listPlugins(): PluginListEntry[] {

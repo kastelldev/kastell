@@ -45,8 +45,8 @@ export async function handleServerPlugin(params: ServerPluginParams) {
         version: p.version,
         status: p.status,
         checks: p.checks,
-        commandCount: p.commands?.length ?? 0,
-        mcpToolCount: p.mcpTools?.length ?? 0,
+        commandCount: p.commands.length,
+        mcpToolCount: p.mcpTools.length,
       })),
       count: plugins.length,
     });

@@ -3,8 +3,8 @@ import type { PluginListEntry, PluginValidationResult } from "../../../src/core/
 import * as pluginCore from "../../../src/core/plugin.js";
 
 const mockPlugins: PluginListEntry[] = [
-  { name: "auditor", version: "1.0.0", prefix: "AUD", checks: 0, status: "loaded" },
-  { name: "remediator", version: "1.0.0", prefix: "REM", checks: 0, status: "loaded" },
+  { name: "auditor", version: "1.0.0", prefix: "AUD", checks: 0, status: "loaded", commands: [], mcpTools: [] },
+  { name: "remediator", version: "1.0.0", prefix: "REM", checks: 0, status: "loaded", commands: [], mcpTools: [] },
 ];
 
 const mockValidationResults: PluginValidationResult[] = [
