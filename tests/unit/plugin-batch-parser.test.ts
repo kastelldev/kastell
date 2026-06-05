@@ -185,4 +185,67 @@ describe("parsePluginBatchOutput", () => {
     const result = parsePluginBatchOutput(stdout, reg);
     expect(result[0].checks[0].currentValue).toBe("ok");
   });
+
+  // CQS-08 #6d: malformed header edge cases. Per spec skip rule — if these
+  // tests PASS, no additional guard is needed (current code already handles
+  // the cases). If any FAIL, the fix is added in the same commit.
+  describe("malformed headers (CQS-08 #6d)", () => {
+    it("skips header with no colon, body not attached to next section", () => {
+      const reg = new Map<string, PluginRegistryEntry>();
+      reg.set("kastell-plugin-wp", entry("kastell-plugin-wp", [check("WP-001", { passPattern: "^ok$" })]));
+      // Malformed: ---SECTION:no_colon--- (no colon between PLUGIN and checkId)
+      // Followed by garbage body, then a valid section.
+      const stdout =
+        "---SECTION:no_colon---\n" +
+        "garbage body that should not bleed into next section\n" +
+        "---SECTION:PLUGIN:kastell-plugin-wp:WP-001---\n" +
+        "ok";
+      const result = parsePluginBatchOutput(stdout, reg);
+      expect(result).toHaveLength(1);
+      expect(result[0].checks[0].currentValue).toBe("ok");
+      expect(result[0].checks[0].passed).toBe(true);
+    });
+
+    it("handles empty header (---SECTION:---)", () => {
+      const reg = new Map<string, PluginRegistryEntry>();
+      reg.set("kastell-plugin-wp", entry("kastell-plugin-wp", [check("WP-001", { passPattern: "^ok$" })]));
+      const stdout =
+        "---SECTION:---\n" +
+        "---SECTION:PLUGIN:kastell-plugin-wp:WP-001---\n" +
+        "ok";
+      const result = parsePluginBatchOutput(stdout, reg);
+      expect(result).toHaveLength(1);
+      expect(result[0].checks[0].currentValue).toBe("ok");
+    });
+
+    it("handles header with no checkId (PLUGIN: present, checkId empty)", () => {
+      const reg = new Map<string, PluginRegistryEntry>();
+      reg.set("kastell-plugin-wp", entry("kastell-plugin-wp", [check("WP-001", { passPattern: "^ok$" })]));
+      // ---SECTION:PLUGIN:kastell-plugin-wp:--- — colonIdx=lastIndexOf(':'), plugin=full, checkId=""
+      const stdout =
+        "---SECTION:PLUGIN:kastell-plugin-wp:---\n" +
+        "ok\n" +
+        "---SECTION:PLUGIN:kastell-plugin-wp:WP-001---\n" +
+        "ok";
+      const result = parsePluginBatchOutput(stdout, reg);
+      // Only WP-001 should produce a check (the empty-checkId section is unknown id → ignored)
+      expect(result).toHaveLength(1);
+      expect(result[0].checks).toHaveLength(1);
+      expect(result[0].checks[0].id).toBe("WP-001");
+    });
+
+    it("handles line that starts with prefix but lacks closing ---", () => {
+      const reg = new Map<string, PluginRegistryEntry>();
+      reg.set("kastell-plugin-wp", entry("kastell-plugin-wp", [check("WP-001", { passPattern: "^ok$" })]));
+      // Malformed: no closing --- → treated as body (line.endsWith("---") false)
+      const stdout =
+        "---SECTION:PLUGIN:kastell-plugin-wp:WP-001\n" +
+        "ok";
+      const result = parsePluginBatchOutput(stdout, reg);
+      // No valid section produced → WP-001 should be "Unable to determine"
+      expect(result).toHaveLength(1);
+      expect(result[0].checks[0].passed).toBe(false);
+      expect(result[0].checks[0].currentValue).toBe("Unable to determine");
+    });
+  });
 });
