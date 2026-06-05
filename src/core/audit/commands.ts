@@ -725,9 +725,9 @@ export function buildPluginBatchSection(
  * Parsers route by section name, not integer index.
  */
 export function buildAuditBatchCommands(
-  platform: string,
-  pluginRegistry?: ReadonlyMap<string, PluginRegistryEntry>,
+  options: { platform: string; pluginRegistry?: ReadonlyMap<string, PluginRegistryEntry> },
 ): BatchDef[] {
+  const { platform, pluginRegistry } = options;
   const fast: BatchDef = {
     tier: "fast",
     command: [

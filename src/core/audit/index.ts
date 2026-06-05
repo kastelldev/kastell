@@ -51,7 +51,7 @@ export async function runAudit(
 ): Promise<KastellResult<AuditResult>> {
   try {
     const pluginRegistry = getPluginRegistry();
-    const batches = buildAuditBatchCommands(platform, pluginRegistry);
+    const batches = buildAuditBatchCommands({ platform, pluginRegistry });
     const batchOutputs: string[] = [];
     const batchErrors: Array<{ tier: string; error: string }> = [];
 

@@ -82,20 +82,20 @@ describe("buildPluginBatchSection", () => {
 
 describe("buildAuditBatchCommands with registry", () => {
   it("returns 3 batches when registry is undefined", () => {
-    const batches = buildAuditBatchCommands("coolify");
+    const batches = buildAuditBatchCommands({ platform: "coolify" });
     expect(batches).toHaveLength(3);
     expect(batches.map((b) => b.tier)).toEqual(["fast", "medium", "slow"]);
   });
 
   it("returns 3 batches when registry is empty", () => {
-    const batches = buildAuditBatchCommands("coolify", new Map());
+    const batches = buildAuditBatchCommands({ platform: "coolify", pluginRegistry: new Map() });
     expect(batches).toHaveLength(3);
   });
 
   it("returns 4 batches when registry has loaded plugin with checks", () => {
     const reg = new Map<string, PluginRegistryEntry>();
     reg.set("kastell-plugin-wp", makeEntry("kastell-plugin-wp", [check("WP-001")]));
-    const batches = buildAuditBatchCommands("coolify", reg);
+    const batches = buildAuditBatchCommands({ platform: "coolify", pluginRegistry: reg });
     expect(batches).toHaveLength(4);
     expect(batches[3].tier).toBe("plugin");
     expect(batches[3].command).toContain("PLUGIN:kastell-plugin-wp:WP-001");
