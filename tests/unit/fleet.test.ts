@@ -183,7 +183,36 @@ describe("runFleet", () => {
 
     expect(rows).toHaveLength(1);
     expect(rows[0].status).toBe("OFFLINE");
-    expect(rows[0].errorReason).toBe(null);
+    expect(rows[0].errorReason).toBe("unexpected crash");
+  });
+
+  it("sets errorReason when health check rejects (was null — observability regression)", async () => {
+    const server = makeServer();
+    mockedGetServers.mockReturnValue([server]);
+    mockedCheckServerHealth.mockRejectedValue(new Error("Connection refused"));
+    mockedLoadLatestAudit.mockReturnValue(null);
+
+    const rows = await runFleet({});
+
+    expect(rows[0].status).toBe("OFFLINE");
+    expect(rows[0].errorReason).toBe("Connection refused");
+  });
+
+  it("logs error via logger.error when safeProbe catches an exception", async () => {
+    const server = makeServer();
+    mockedGetServers.mockReturnValue([server]);
+    mockedCheckServerHealth.mockRejectedValue(new Error("ECONNREFUSED"));
+    mockedLoadLatestAudit.mockReturnValue(null);
+
+    const { logger } = await import("../../src/utils/logger.js");
+    const loggerMock = logger as unknown as { error: jest.Mock };
+
+    await runFleet({});
+
+    expect(loggerMock.error).toHaveBeenCalledWith(
+      expect.stringContaining("safeProbe failed"),
+      expect.objectContaining({ server: server.name, error: "ECONNREFUSED" }),
+    );
   });
 
   it("renders Weakest Category column in terminal when categories option is set", async () => {

@@ -1,7 +1,8 @@
 import chalk from "chalk";
 import { chunkConcurrent } from "../utils/concurrency.js";
 import { getServers } from "../utils/config.js";
-import { createSpinner } from "../utils/logger.js";
+import { createSpinner, logger } from "../utils/logger.js";
+import { getErrorMessage } from "../utils/errorMapper.js";
 import { checkServerHealth } from "./health.js";
 import { loadLatestAudit } from "./audit/history.js";
 import { listSnapshots, loadSnapshot } from "./audit/snapshot.js";
@@ -87,24 +88,24 @@ export async function runFleet(options: FleetOptions): Promise<FleetRow[]> {
   const spinner = createSpinner(`Probing ${servers.length} server(s)...`);
   spinner.start();
 
-  type ProbeResult = { health: Awaited<ReturnType<typeof checkServerHealth>>; auditScore: number | null; weakest: Awaited<ReturnType<typeof getWeakestCategory>> | null };
+  type ProbeResult = { health: Awaited<ReturnType<typeof checkServerHealth>>; auditScore: number | null; weakest: Awaited<ReturnType<typeof getWeakestCategory>> | null; errorReason: string | null };
 
   const safeProbe = async (server: ServerRecord): Promise<ProbeResult> => {
   try {
     const health = await checkServerHealth(server);
     const auditScore: number | null = getLatestAuditScore(server.ip);
     const weakest = options.categories ? await getWeakestCategory(server.ip) ?? null : null;
-    return { health, auditScore, weakest };
-  } catch (__err) {
-    void __err;
+    return { health, auditScore, weakest, errorReason: null };
+  } catch (err: unknown) {
+    const reason = getErrorMessage(err);
+    logger.error("safeProbe failed", { server: server.name, ip: server.ip, error: reason });
     const unreachableHealth: ProbeResult["health"] = { server, status: "unreachable", responseTime: 0 };
-    const auditScoreVal: number | null = null;
-    const probeResult: ProbeResult = {
+    return {
       health: unreachableHealth,
-      auditScore: auditScoreVal,
+      auditScore: null,
       weakest: null,
+      errorReason: reason,
     };
-    return probeResult;
   }
 };
 
@@ -123,7 +124,7 @@ const rawResults = await chunkConcurrent(servers, 5, safeProbe);
         status: "OFFLINE",
         auditScore: null,
         responseTime: null,
-        errorReason: null,
+        errorReason: result?.errorReason ?? null,
       } satisfies FleetRow;
     }
 
