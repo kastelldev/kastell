@@ -76,6 +76,10 @@ function mockAuditSuccess(result: AuditResult, formatterFn?: (r: AuditResult) =>
   }
 }
 
+function safeParse(payload: string): Record<string, unknown> | null {
+  try { return JSON.parse(payload); } catch { return null; }
+}
+
 describe("audit --watch flag", () => {
   let consoleSpy: jest.SpyInstance;
   let stderrSpy: jest.SpyInstance;
@@ -257,7 +261,3 @@ describe("audit --ci --threshold --json combination", () => {
     expect(() => JSON.parse(jsonCall![0] as string)).not.toThrow();
   });
 });
-
-function safeParse(payload: string): Record<string, unknown> | null {
-  try { return JSON.parse(payload); } catch { return null; }
-}
