@@ -15,7 +15,12 @@ export interface ExecutePluginChecksResult {
   pending: number;
 }
 
-const DEFAULT_PARALLELISM = parseInt(process.env.PLUGIN_AUDIT_PARALLELISM ?? "3", 10);
+// Lazy lookup — module-load `parseInt(process.env, …)` traps tests that
+// mutate PLUGIN_AUDIT_PARALLELISM after import. Evaluated per-call so
+// `jest.isolateModules` is no longer required for env variation.
+function getDefaultParallelism(): number {
+  return parseInt(process.env.PLUGIN_AUDIT_PARALLELISM ?? "3", 10);
+}
 
 // Aggregate ceiling — bounds worst-case latency for N slow checks (LESSONS.md
 // "Plugin Parallel Execution" flags this as mandatory: N × per-check = stall risk).
@@ -30,7 +35,7 @@ export async function executePluginChecks(
   checks: PluginCheck[],
   ctx: ExecutePluginChecksContext,
 ): Promise<ExecutePluginChecksResult> {
-  const concurrency = ctx.manifest.safeToParallel === false ? 1 : DEFAULT_PARALLELISM;
+  const concurrency = ctx.manifest.safeToParallel === false ? 1 : getDefaultParallelism();
 
   const controller = new AbortController();
   const aggregateTimer = setTimeout(() => controller.abort(), AGGREGATE_TIMEOUT_MS);
