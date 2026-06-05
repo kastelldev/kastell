@@ -96,8 +96,10 @@ export async function handleServerCompare(params: {
         checks: [
           ...diff.improvements.map((c) => ({ ...c, status: "A_better" as const })),
           ...diff.regressions.map((c) => ({ ...c, status: "B_better" as const })),
-          ...diff.unchanged.filter((c) => c.before === false).map((c) => ({ ...c, status: "both_fail" as const })),
-          ...diff.unchanged.filter((c) => c.before === true).map((c) => ({ ...c, status: "both_pass" as const })),
+          ...diff.unchanged.map((c) => ({
+            ...c,
+            status: c.before === false ? ("both_fail" as const) : ("both_pass" as const),
+          })),
         ],
       });
     }

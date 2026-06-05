@@ -144,6 +144,36 @@ describe("handleServerCompare", () => {
     expect(statuses).toContain("both_pass");
   });
 
+  it("detail mode derives both_pass/both_fail from single unchanged.map pass", async () => {
+    mockedConfig.getServers.mockReturnValue([sampleServer, sampleServerB]);
+    mockedDiff.resolveAuditPair.mockResolvedValue({
+      success: true, data: { auditA: makeAudit("server-a"), auditB: makeAudit("server-b") },
+    });
+    mockedDiff.diffAudits.mockReturnValue({
+      beforeLabel: "server-a", afterLabel: "server-b", scoreBefore: 80, scoreAfter: 80,
+      scoreDelta: 0,
+      improvements: [{ id: "A-1", name: "A1", category: "c", severity: "warning" as const, status: "improved" as const, before: null, after: true }],
+      regressions: [{ id: "B-1", name: "B1", category: "c", severity: "critical" as const, status: "regressed" as const, before: true, after: false }],
+      unchanged: [
+        { id: "C-1", name: "C1", category: "c", severity: "warning" as const, status: "unchanged" as const, before: false, after: false },
+        { id: "D-1", name: "D1", category: "c", severity: "warning" as const, status: "unchanged" as const, before: true, after: true },
+      ],
+      added: [],
+      removed: [],
+    });
+
+    const result = await handleServerCompare({ serverA: "server-a", serverB: "server-b", detail: true });
+    const body = result.structuredContent!.result as { checks: Array<{ id: string; status: string }> };
+
+    // Verify ordering: improvements, regressions, then unchanged (both_fail, then both_pass)
+    expect(body.checks.map((c) => c.id)).toEqual(["A-1", "B-1", "C-1", "D-1"]);
+    // Verify statuses
+    const c1 = body.checks.find((c) => c.id === "C-1")!;
+    const d1 = body.checks.find((c) => c.id === "D-1")!;
+    expect(c1.status).toBe("both_fail"); // before === false
+    expect(d1.status).toBe("both_pass"); // before === true
+  });
+
   it("returns error when resolveAuditPair fails", async () => {
     mockedConfig.getServers.mockReturnValue([sampleServer, sampleServerB]);
     mockedDiff.resolveAuditPair.mockResolvedValue({
