@@ -7,12 +7,26 @@
  * import { createConsoleSpy } from "./consoleSpy";
  *
  * describe("my tests", () => {
- *   const { consoleSpy, restore } = createConsoleSpy();
+ *   const spy = createConsoleSpy();
  *
- *   beforeEach(() => consoleSpy.setup());
- *   afterEach(() => restore());
+ *   beforeEach(() => spy.setup());
+ *   afterEach(() => spy.restore());
+ *
+ *   it("captures output", () => {
+ *     spy.setup();
+ *     console.log("hello");
+ *     // Either assertion style works:
+ *     expect(spy.getCalls()).toEqual([["hello"]]);
+ *     expect(spy.consoleSpy).toHaveBeenCalledWith("hello");
+ *   });
  * });
  * ```
+ *
+ * The `consoleSpy` getter exposes the underlying jest.SpyInstance for direct
+ * assertion methods like `toHaveBeenCalledWith`. CQS-11 M6 evaluated removing
+ * it (the project prefers direct property over getter per LESSONS) — kept
+ * because 3 test files rely on `spy.consoleSpy.toHaveBeenCalledWith(...)`
+ * for richer Jest matchers. The getter IS the public surface for spy access.
  */
 
 export function createConsoleSpy() {
