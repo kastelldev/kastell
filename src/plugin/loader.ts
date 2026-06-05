@@ -14,7 +14,7 @@ import {
 } from "./registry.js";
 import type { PluginCheck, PluginManifest, PluginCommand, PluginMcpTool, PluginFix } from "./sdk/types.js";
 
-const PARALLEL_BLACKLIST: Array<RegExp | string> = [
+const PARALLEL_BLACKLIST: RegExp[] = [
   /\brm\b/, /\bmv\b/, /\bcp\s+-f\b/,
   /\bdd\b/, /\btruncate\b/, /\bmkfs\b/, /\bmount\b/, /\bumount\b/,
   />/,      // output redirection (single > or >>)
@@ -31,9 +31,8 @@ const PARALLEL_BLACKLIST: Array<RegExp | string> = [
 
 function isCommandReadOnly(command: string): { safe: boolean; matched?: string } {
   for (const pattern of PARALLEL_BLACKLIST) {
-    const re = typeof pattern === "string" ? new RegExp(pattern) : pattern;
-    if (re.test(command)) {
-      return { safe: false, matched: re.source };
+    if (pattern.test(command)) {
+      return { safe: false, matched: pattern.source };
     }
   }
   return { safe: true };
