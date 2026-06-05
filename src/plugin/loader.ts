@@ -38,6 +38,24 @@ function isCommandReadOnly(command: string): { safe: boolean; matched?: string }
   return { safe: true };
 }
 
+/**
+ * Check a manifest's checks against the mutating-command blacklist.
+ * Returns an error string describing the first violation, or null if all
+ * checks pass (or if the manifest opts out via `safeToParallel: false`).
+ */
+function enforceReadOnlyChecks(manifest: PluginManifest, checks: PluginCheck[]): string | null {
+  if (manifest.safeToParallel === false) return null;
+  for (const check of checks) {
+    const result = isCommandReadOnly(check.checkCommand);
+    if (!result.safe) {
+      return `Plugin "${manifest.name}" check "${check.id}" has forbidden token in checkCommand ` +
+        `(matched: ${result.matched}). checkCommand MUST be read-only. ` +
+        `Set "safeToParallel: false" in manifest if mutation is intentional.`;
+    }
+  }
+  return null;
+}
+
 interface LoadPluginsOptions {
   importer?: (path: string) => Promise<unknown>;
 }
@@ -143,18 +161,10 @@ export async function loadPlugins(
       }
 
       // Blacklist check — reject mutating checkCommand unless safeToParallel: false
-      if (manifest.safeToParallel !== false) {
-        for (const check of checks) {
-          const result = isCommandReadOnly(check.checkCommand);
-          if (!result.safe) {
-            const errMsg =
-              `Plugin "${manifest.name}" check "${check.id}" has forbidden token in checkCommand ` +
-              `(matched: ${result.matched}). checkCommand MUST be read-only. ` +
-              `Set "safeToParallel: false" in manifest if mutation is intentional.`;
-            registerFailedPlugin(manifest, errMsg);
-            throw new Error(errMsg);
-          }
-        }
+      const blacklistErr = enforceReadOnlyChecks(manifest, checks);
+      if (blacklistErr) {
+        registerFailedPlugin(manifest, blacklistErr);
+        throw new Error(blacklistErr);
       }
 
       const enrichedManifest: PluginManifest = {
