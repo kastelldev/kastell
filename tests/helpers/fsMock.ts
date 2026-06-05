@@ -35,3 +35,22 @@ export const asStats = (obj: object): Stats => obj as unknown as Stats;
 
 /** Stringify data and cast to the `string` return type of `fs.readFileSync`. */
 export const jsonString = (data: unknown): string => JSON.stringify(data) as unknown as string;
+
+/**
+ * Reset all jest.fn mocks on an fs mock object — including mockReturnValue
+ * and mockImplementation. `jest.clearAllMocks()` only clears call records;
+ * mockReturnValue/Once setups from previous tests leak (LESSONS: P139 HIGH #7).
+ *
+ * Accepts either `createFsMock()` output or `jest.Mocked<typeof fs>` (automock
+ * via `jest.mock("fs")`).
+ */
+export function resetFsMock(mock: Record<string, unknown>): void {
+  for (const fn of Object.values(mock)) {
+    if (
+      typeof fn === "function" &&
+      typeof (fn as { mockReset?: unknown }).mockReset === "function"
+    ) {
+      (fn as jest.Mock).mockReset();
+    }
+  }
+}

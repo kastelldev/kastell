@@ -1,6 +1,6 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 import * as fs from "fs";
-import { asStats, jsonString } from "../../helpers/fsMock.js";
+import { asStats, jsonString, resetFsMock } from "../../helpers/fsMock.js";
 
 jest.mock("fs");
 jest.mock("../../../src/utils/paths.js", () => ({
@@ -17,10 +17,10 @@ const mockedFs = fs as jest.Mocked<typeof fs>;
 describe("getServers cache", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // mockReset clears mockReturnValue/Once from previous tests' setups.
-    // Without this, Test 1's default mockReturnValue(mtime: 1000) leaks into
-    // Tests 2-4 and breaks their mockReturnValueOnce sequences.
-    mockedFs.statSync.mockReset();
+    // resetFsMock clears mockReturnValue/Once across ALL fs methods —
+    // without it, Test 1's default mockReturnValue leaks into later tests'
+    // mockReturnValueOnce sequences (LESSONS: P139 HIGH #7).
+    resetFsMock(mockedFs);
   });
 
   it("cache hit returns same data", async () => {

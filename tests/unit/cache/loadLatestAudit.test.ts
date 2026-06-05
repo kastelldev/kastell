@@ -1,6 +1,6 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 import * as fs from "fs";
-import { asStats, jsonString } from "../../helpers/fsMock.js";
+import { asStats, jsonString, resetFsMock } from "../../helpers/fsMock.js";
 
 jest.mock("fs");
 
@@ -9,6 +9,9 @@ const mockedFs = fs as jest.Mocked<typeof fs>;
 describe("loadLatestAudit", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // resetFsMock — see fsMock.ts. jest.clearAllMocks() leaves
+    // mockReturnValue/Once setups intact, which corrupts later tests.
+    resetFsMock(mockedFs);
   });
 
   it("returns most recent audit for given IP", async () => {
