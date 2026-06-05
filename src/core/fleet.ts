@@ -94,7 +94,7 @@ export async function runFleet(options: FleetOptions): Promise<FleetRow[]> {
   try {
     const health = await checkServerHealth(server);
     const auditScore: number | null = getLatestAuditScore(server.ip);
-    const weakest = options.categories ? await getWeakestCategory(server.ip) ?? null : null;
+    const weakest = options.categories ? await getWeakestCategory(server.ip) : null;
     return { health, auditScore, weakest, errorReason: null };
   } catch (err: unknown) {
     const reason = getErrorMessage(err);
