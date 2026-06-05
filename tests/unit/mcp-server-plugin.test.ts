@@ -26,7 +26,7 @@ describe("server_plugin MCP tool", () => {
 
     it("returns plugin list with check counts", async () => {
       mockedListPlugins.mockReturnValue([
-        { name: "kastell-plugin-wordpress", version: "1.0.0", prefix: "WP", checks: 2, status: "loaded" },
+        { name: "kastell-plugin-wordpress", version: "1.0.0", prefix: "WP", checks: 2, status: "loaded", commands: [], mcpTools: [] },
       ]);
       const result = await handleServerPlugin({ action: "list" });
       const data = JSON.parse(result.content[0].text);
