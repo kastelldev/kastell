@@ -185,8 +185,8 @@ describe("plugin/registry", () => {
       registerPlugin(manifestWithFields, []);
       const entry = getPluginRegistry().get("kastell-plugin-wp");
       if (entry && entry.status === "loaded") {
-        expect(entry.fixes).toHaveLength(1);
-        expect(entry.fixes![0].checkId).toBe("WP-001");
+        expect(entry.manifest.fixes).toHaveLength(1);
+        expect(entry.manifest.fixes![0].checkId).toBe("WP-001");
       }
     });
 
@@ -205,7 +205,7 @@ describe("plugin/registry", () => {
       const entry = getPluginRegistry().get("kastell-plugin-wordpress");
       if (entry && entry.status === "loaded") {
         expect(entry.commands).toBeUndefined();
-        expect(entry.fixes).toBeUndefined();
+        expect(entry.manifest.fixes).toBeUndefined();
         expect(entry.mcpTools).toBeUndefined();
       }
     });

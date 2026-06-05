@@ -403,7 +403,7 @@ describe("loader capability expansion", () => {
       expect(result.loaded).toContain("kastell-plugin-wp");
       const entry = getPluginRegistry().get("kastell-plugin-wp");
       if (entry && entry.status === "loaded") {
-        expect(entry.fixes).toHaveLength(1);
+        expect(entry.manifest.fixes).toHaveLength(1);
       }
     });
   });

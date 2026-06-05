@@ -27,7 +27,6 @@ export type PluginRegistryEntry =
       status: "loaded";
       manifest: PluginManifest;
       checks: PluginCheck[];
-      fixes?: PluginFix[];
       commands?: PluginCommand[];
       mcpTools?: PluginMcpTool[];
       checksById: ReadonlyMap<string, PluginCheck>;
@@ -67,7 +66,6 @@ function createLoadedEntry(
     checks,
     checksById,
     fixesByCheckId: fixesById,
-    fixes: manifest.fixes,
     commands: manifest.commands,
     mcpTools: manifest.mcpTools,
   };
