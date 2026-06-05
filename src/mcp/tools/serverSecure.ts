@@ -25,7 +25,7 @@ import {
   handleDomainCheck,
   handleDomainInfo,
 } from "./serverSecure.handlers.js";
-import { SECURE_ACTIONS, serverSecureActionSchema } from "./serverSecure.actions.js";
+import { serverSecureActionSchema } from "./serverSecure.actions.js";
 
 export const serverSecureSchema = {
   action: serverSecureActionSchema.describe(
