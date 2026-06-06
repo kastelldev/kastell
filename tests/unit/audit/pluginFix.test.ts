@@ -100,7 +100,12 @@ describe("parsePluginFixCommand", () => {
 
 describe("executePluginFix", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    // LESSONS: jest.clearAllMocks() only wipes call history, not
+    // mockImplementation — use mockReset() per-mock to prevent leak
+    // (e.g. mockResolvePluginHandler.mockRejectedValue from one test
+    // bleeding into the next).
+    mockSshExec.mockReset();
+    mockResolvePluginHandler.mockReset();
   });
 
   it("returns error when SAFE_MODE is active", async () => {
@@ -196,7 +201,7 @@ it("returns success with executionLog when handler resolves with success result"
     expect(typeof ctx.logger.info).toBe("function");
     return { success: true, modifiedFiles: ["/etc/foo.conf"] };
   };
-  mockResolvePluginHandler.mockResolvedValue(handler as never);
+  mockResolvePluginHandler.mockResolvedValue(handler as unknown as ReturnType<typeof resolvePluginHandler>);
 
   const result = await executePluginFix({
     ip: "1.2.3.4",
@@ -230,7 +235,7 @@ it("returns success:false with 'handler threw' error when handlerFn throws", asy
   const handler: PluginFixHandler = async () => {
     throw new Error("boom from handler");
   };
-  mockResolvePluginHandler.mockResolvedValue(handler as never);
+  mockResolvePluginHandler.mockResolvedValue(handler as unknown as ReturnType<typeof resolvePluginHandler>);
 
   const result = await executePluginFix({
     ip: "1.2.3.4",

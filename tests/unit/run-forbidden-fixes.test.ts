@@ -19,7 +19,7 @@ import { sshMasterOpen, sshMasterClose } from "../../src/utils/ssh.js";
 import { runForbiddenFixes } from "../../src/core/audit/fix.js";
 import type { FixPreview } from "../../src/core/audit/fix.js";
 
-const mockInquirer = inquirer as unknown as { prompt: jest.Mock };
+const mockInquirer = inquirer as jest.Mocked<typeof inquirer>;
 const mockSshMasterOpen = sshMasterOpen as jest.MockedFunction<typeof sshMasterOpen>;
 const mockSshMasterClose = sshMasterClose as jest.MockedFunction<typeof sshMasterClose>;
 
@@ -31,10 +31,10 @@ describe("runForbiddenFixes", () => {
     mockInquirer.prompt.mockReset();
     mockSshMasterOpen.mockReset();
     mockSshMasterClose.mockReset();
-    // Default: open/close succeed silently so the non-empty path doesn't
-    // blow up before the inquirer mock can respond.
-    mockSshMasterOpen.mockResolvedValue(undefined as never);
-    mockSshMasterClose.mockResolvedValue(undefined as never);
+    // Default: sshMasterOpen returns true so the non-empty path proceeds
+    // (real signature is Promise<boolean>). sshMasterClose is void; jest.fn()
+    // default returns undefined, no explicit mock needed.
+    mockSshMasterOpen.mockResolvedValue(true);
   });
 
   it("returns empty result and skips SSH open when forbiddenFixes is empty", async () => {
