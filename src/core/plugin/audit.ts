@@ -28,14 +28,19 @@ const AGGREGATE_TIMEOUT_MS = 120_000;
 
 export interface ExecutePluginChecksContext {
   ssh: (cmd: string, opts?: { timeoutMs?: number; signal?: AbortSignal }) => Promise<{ stdout: string; stderr: string; code: number }>;
-  manifest: { safeToParallel?: boolean | null; [key: string]: unknown };
+  // C4: manifest accepts both `mutates: true` (preferred) and legacy
+  // `safeToParallel: false`. `mutates` takes precedence.
+  manifest: { mutates?: boolean | null; safeToParallel?: boolean | null; [key: string]: unknown };
 }
 
 export async function executePluginChecks(
   checks: PluginCheck[],
   ctx: ExecutePluginChecksContext,
 ): Promise<ExecutePluginChecksResult> {
-  const concurrency = ctx.manifest.safeToParallel === false ? 1 : getDefaultParallelism();
+  // C4: mutates: true forces cap=1. Legacy safeToParallel: false is the
+  // inverted-polarity form of the same intent — both accepted.
+  const isMutating = ctx.manifest.mutates === true || ctx.manifest.safeToParallel === false;
+  const concurrency = isMutating ? 1 : getDefaultParallelism();
 
   const controller = new AbortController();
   const aggregateTimer = setTimeout(() => controller.abort(), AGGREGATE_TIMEOUT_MS);

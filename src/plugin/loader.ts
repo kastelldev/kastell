@@ -42,16 +42,20 @@ function isCommandReadOnly(command: string): { safe: boolean; matched?: string }
 /**
  * Check a manifest's checks against the mutating-command blacklist.
  * Returns an error string describing the first violation, or null if all
- * checks pass (or if the manifest opts out via `safeToParallel: false`).
+ * checks pass (or if the manifest declares its checks as mutating via
+ * `mutates: true` or legacy `safeToParallel: false`).
+ *
+ * C4: `mutates: true` is the preferred positive-polarity form; the
+ * inverted `safeToParallel: false` is still accepted for back-compat.
  */
 function enforceReadOnlyChecks(manifest: PluginManifest, checks: PluginCheck[]): string | null {
-  if (manifest.safeToParallel === false) return null;
+  if (manifest.mutates === true || manifest.safeToParallel === false) return null;
   for (const check of checks) {
     const result = isCommandReadOnly(check.checkCommand);
     if (!result.safe) {
       return `Plugin "${manifest.name}" check "${check.id}" has forbidden token in checkCommand ` +
         `(matched: ${result.matched}). checkCommand MUST be read-only. ` +
-        `Set "safeToParallel: false" in manifest if mutation is intentional.`;
+        `Set "mutates: true" in manifest if mutation is intentional.`;
     }
   }
   return null;

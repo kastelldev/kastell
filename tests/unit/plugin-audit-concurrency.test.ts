@@ -52,6 +52,35 @@ describe("executePluginChecks concurrency", () => {
     expect(mockChunkConcurrent).toHaveBeenCalledWith(expect.any(Array), 1, expect.any(Function));
   });
 
+  // C4: mutates: true is the preferred positive-polarity form, replacing
+  // the inverted safeToParallel: false. Both fields are accepted; mutates
+  // takes precedence when both are set.
+  test("mutates: true → cap=1 (C4 preferred form)", async () => {
+    const checks = [{ id: "c0", name: "check0", category: "test", severity: "info" as const, description: "test", checkCommand: "echo" }];
+    const ssh = jest.fn(async () => ({ stdout: "ok", stderr: "", code: 0 }));
+
+    mockChunkConcurrent.mockImplementation(async () => []);
+
+    await executePluginChecks(checks, { ssh, manifest: { mutates: true } });
+
+    expect(mockChunkConcurrent).toHaveBeenCalledWith(expect.any(Array), 1, expect.any(Function));
+  });
+
+  test("mutates: false → default cap (read-only, safe to parallelize)", async () => {
+    let capturedConcurrency = 0;
+    const checks = [{ id: "c0", name: "check0", category: "test", severity: "info" as const, description: "test", checkCommand: "echo" }];
+    const ssh = jest.fn(async () => ({ stdout: "ok", stderr: "", code: 0 }));
+
+    mockChunkConcurrent.mockImplementation(async (items: unknown[], concurrency: number) => {
+      capturedConcurrency = concurrency;
+      return items.map(() => ({ checkId: "x", status: "pass" as const }));
+    });
+
+    await executePluginChecks(checks, { ssh, manifest: { mutates: false } });
+
+    expect(capturedConcurrency).toBeGreaterThan(1);
+  });
+
   test("partial failure — error results returned with error status", async () => {
     const checks = [
       { id: "ok-1", name: "ok", category: "test", severity: "info" as const, description: "test", checkCommand: "echo" },
