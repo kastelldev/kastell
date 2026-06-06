@@ -238,5 +238,22 @@ describe("file-based fallback (no keyring)", () => {
 
       stderrSpy.mockRestore();
     });
+
+    // CQS-07 Layer 2: listStoredProviders silently returns [] when decrypt fails,
+    // so auth list command shows "No tokens stored" (contradicting the stderr
+    // warning). Fix deferred to v3.0 — 8c improves the warning, but the
+    // structural fix requires changing listStoredProviders return shape
+    // (string[] → { providers, decryptFailed }) which is API-breaking and
+    // affects 2 callers + 3 test mocks.
+    //
+    // Test setup when implementing the fix:
+    //   encMock.isEncryptedPayload.mockReturnValueOnce(true);
+    //   encMock.decryptData.mockImplementationOnce(() => { throw new Error("decryption failed"); });
+    //   mockExistsSync.mockReturnValue(true);
+    //   mockReadFileSync.mockReturnValue(JSON.stringify({ encrypted: true, version: 1, iv: "bad", data: "bad", tag: "bad" }));
+    //   const result = listStoredProviders();
+    //   expect(result.decryptFailed).toBe(true);
+    //   expect(result.providers).toEqual([]);
+    it.todo("listStoredProviders signals decrypt failure to caller (CQS-07 Layer 2, deferred to v3.0)");
   });
 });
