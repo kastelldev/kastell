@@ -39,6 +39,7 @@ import * as config from "../../src/utils/config";
 import * as sshUtils from "../../src/utils/ssh";
 import * as coreBackup from "../../src/core/backup";
 import { restoreCommand } from "../../src/commands/restore";
+import { createConsoleSpy } from "../helpers/consoleSpy.js";
 
 const mockedConfig = config as jest.Mocked<typeof config>;
 const mockedSsh = sshUtils as jest.Mocked<typeof sshUtils>;
@@ -67,10 +68,12 @@ const sampleManifest = {
 };
 
 describe("BUG-02 — restore --force backup auto-selection", () => {
-  let consoleSpy: jest.SpyInstance;
+  const spy = createConsoleSpy();
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    spy.setup();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.resetAllMocks();
     process.env.KASTELL_SAFE_MODE = "false";
     mockedSsh.checkSshAvailable.mockReturnValue(true);
@@ -81,7 +84,8 @@ describe("BUG-02 — restore --force backup auto-selection", () => {
   });
 
   afterEach(() => {
-    consoleSpy.mockRestore();
+    spy.restore();
+    stderrSpy?.mockRestore();
   });
 
   describe("--force without --backup", () => {
@@ -108,7 +112,7 @@ describe("BUG-02 — restore --force backup auto-selection", () => {
 
       await restoreCommand("my-server", { force: true });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain(latestBackup);
     });
 
@@ -117,7 +121,7 @@ describe("BUG-02 — restore --force backup auto-selection", () => {
 
       await restoreCommand("my-server", { force: true });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toMatch(/auto.?selected|latest backup/i);
     });
 
@@ -126,7 +130,7 @@ describe("BUG-02 — restore --force backup auto-selection", () => {
 
       await restoreCommand("my-server", { force: true });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("No backups found");
       // Should not proceed to manifest loading
       expect(mockedExistsSync).not.toHaveBeenCalled();

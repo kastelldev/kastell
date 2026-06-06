@@ -16,9 +16,8 @@ describe("auth list warning dedup", () => {
     jest.spyOn(console, "log").mockImplementation((...args: unknown[]) => {
       consoleOutput.push(...args);
     });
-    jest.spyOn(process.stderr, "write").mockImplementation((msg: string | Uint8Array) => {
-      stderrOutput.push(String(msg));
-      return true;
+    jest.spyOn(console, "error").mockImplementation((...args: unknown[]) => {
+      stderrOutput.push(args.map(a => String(a)).join(" "));
     });
     mockListStoredProviders.mockImplementation(() => {
       throw new Error("decrypt");
@@ -39,5 +38,18 @@ describe("auth list warning dedup", () => {
 
     expect(allWarnings.length).toBe(1);
     expect(allWarnings[0]).toMatch(/re-enter/);
+  });
+
+  test("decrypt failure warning lists all supported providers (CQS-07 8c)", async () => {
+    await authListAction();
+
+    const allWarnings = [
+      ...consoleOutput.map(o => String(o)),
+      ...stderrOutput
+    ].filter(w => w.includes("Token decryption failed"));
+
+    expect(allWarnings.length).toBe(1);
+    // CQS-07 8c: warning must list every SUPPORTED_PROVIDER so user knows which tokens to re-enter
+    expect(allWarnings[0]).toMatch(/hetzner, digitalocean, vultr, linode/);
   });
 });

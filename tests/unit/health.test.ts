@@ -59,16 +59,18 @@ const coolifyServer = {
 
 describe("health command — bare server SSH checks", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
-    jest.spyOn(console, "error").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.spyOn(console, "warn").mockImplementation();
     jest.clearAllMocks();
   });
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
   });
 
   describe("checkServerHealth — bare server", () => {
@@ -158,7 +160,7 @@ describe("health command — bare server SSH checks", () => {
 
       await healthCommand();
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("host key");
     });
 
@@ -172,7 +174,7 @@ describe("health command — bare server SSH checks", () => {
 
       await healthCommand();
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("ssh-keygen -R");
     });
 
@@ -188,7 +190,7 @@ describe("health command — bare server SSH checks", () => {
 
       await healthCommand();
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       // Should show healthy count and host-key mismatch count
       expect(output).toContain("1 healthy");
       expect(output).toContain("host key");
@@ -201,7 +203,7 @@ describe("health command — bare server SSH checks", () => {
       await healthCommand();
 
       expect(mockedSsh.sshExec).toHaveBeenCalledTimes(1);
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("bare-test");
       expect(output).toContain("healthy");
     });

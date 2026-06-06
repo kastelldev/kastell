@@ -2,7 +2,7 @@ import { buildAuditBatchCommands, buildPluginBatchSection } from "../../src/core
 import type { PluginRegistryEntry } from "../../src/plugin/registry.js";
 import type { PluginManifest, PluginCheck } from "../../src/plugin/sdk/types.js";
 
-function makeEntry(name: string, checks: PluginCheck[], status: "loaded" | "failed" = "loaded"): PluginRegistryEntry {
+function makeEntry(name: string, checks: PluginCheck[], s: "loaded" | "failed" = "loaded"): PluginRegistryEntry {
   const manifest: PluginManifest = {
     name,
     version: "1.0.0",
@@ -12,8 +12,18 @@ function makeEntry(name: string, checks: PluginCheck[], status: "loaded" | "fail
     checkPrefix: name.split("-").pop()!.toUpperCase().slice(0, 6),
     entry: "./index.js",
   };
+  if (s === "failed") {
+    return {
+      manifest,
+      status: "failed",
+      reason: "test reason",
+      checks: [],
+      checksById: new Map(),
+      fixesByCheckId: new Map(),
+    } as unknown as PluginRegistryEntry;
+  }
   const checksById = new Map(checks.map((c) => [c.id, c]));
-  return { manifest, checks, status, checksById, fixesByCheckId: new Map() };
+  return { manifest, checks, status: "loaded", checksById, fixesByCheckId: new Map() } as unknown as PluginRegistryEntry;
 }
 
 function check(id: string, cmd = "echo ok"): PluginCheck {
@@ -72,20 +82,20 @@ describe("buildPluginBatchSection", () => {
 
 describe("buildAuditBatchCommands with registry", () => {
   it("returns 3 batches when registry is undefined", () => {
-    const batches = buildAuditBatchCommands("coolify");
+    const batches = buildAuditBatchCommands({ platform: "coolify" });
     expect(batches).toHaveLength(3);
     expect(batches.map((b) => b.tier)).toEqual(["fast", "medium", "slow"]);
   });
 
   it("returns 3 batches when registry is empty", () => {
-    const batches = buildAuditBatchCommands("coolify", new Map());
+    const batches = buildAuditBatchCommands({ platform: "coolify", pluginRegistry: new Map() });
     expect(batches).toHaveLength(3);
   });
 
   it("returns 4 batches when registry has loaded plugin with checks", () => {
     const reg = new Map<string, PluginRegistryEntry>();
     reg.set("kastell-plugin-wp", makeEntry("kastell-plugin-wp", [check("WP-001")]));
-    const batches = buildAuditBatchCommands("coolify", reg);
+    const batches = buildAuditBatchCommands({ platform: "coolify", pluginRegistry: reg });
     expect(batches).toHaveLength(4);
     expect(batches[3].tier).toBe("plugin");
     expect(batches[3].command).toContain("PLUGIN:kastell-plugin-wp:WP-001");

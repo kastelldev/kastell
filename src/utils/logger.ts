@@ -16,13 +16,17 @@ export const logger = {
     console.log(chalk.green("✔"), message);
   },
 
-  error: (message: string) => {
-    console.log(chalk.red("✖"), message);
+  error: (message: string, context?: Record<string, unknown>) => {
+    if (context) {
+      console.error(chalk.red("✖"), message, context);
+    } else {
+      console.error(chalk.red("✖"), message);
+    }
   },
 
   warning: (message: string) => {
      
-    console.log(chalk.yellow("⚠"), message);
+    console.error(chalk.yellow("⚠"), message);
   },
 
   title: (message: string) => {

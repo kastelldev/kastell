@@ -5,6 +5,7 @@ import { withFileLock } from "./fileLock.js";
 import { KASTELL_DIR } from "./paths.js";
 import { SUPPORTED_PROVIDERS } from "../constants.js";
 import { secureMkdirSync, secureWriteFileSync } from "./secureWrite.js";
+import { memoizeOnStat, type MemoizedEntry } from "./fsMtime.js";
 
 const SERVERS_FILE = join(KASTELL_DIR, "servers.json");
 
@@ -30,35 +31,42 @@ export function atomicWriteServers(servers: ServerRecord[]): void {
   renameSync(tmpFile, SERVERS_FILE);
 }
 
+const serversCache: Map<string, MemoizedEntry<ServerRecord[]>> = new Map();
+
+export function clearServersCache(): void {
+  serversCache.clear();
+}
+
 export function getServers(): ServerRecord[] {
-  let data: string;
-  try {
-    data = readFileSync(SERVERS_FILE, "utf-8");
-  } catch (err: unknown) {
-    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
-      return [];
+  return memoizeOnStat(serversCache, SERVERS_FILE, SERVERS_FILE, () => {
+    let data: string;
+    try {
+      data = readFileSync(SERVERS_FILE, "utf-8");
+    } catch (err: unknown) {
+      if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+        return [];
+      }
+      throw err;
     }
-    throw err;
-  }
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(data);
-  } catch {
-    throw new Error("servers.json corrupt (invalid JSON) — check ~/.kastell/servers.json manually");
-  }
-  if (!Array.isArray(parsed)) {
-    throw new Error("servers.json corrupt — check ~/.kastell/servers.json manually");
-  }
-  const validProviders = new Set(SUPPORTED_PROVIDERS as readonly string[]);
-  const validRecords = parsed.filter((s: Record<string, unknown>) => {
-    if (s.provider && !validProviders.has(s.provider as string)) {
-      process.stderr.write(`Warning: skipping server "${s.name}" — unknown provider "${s.provider}"\n`);
-      return false;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(data);
+    } catch {
+      throw new Error("servers.json corrupt (invalid JSON) — check ~/.kastell/servers.json manually");
     }
-    return true;
+    if (!Array.isArray(parsed)) {
+      throw new Error("servers.json corrupt — check ~/.kastell/servers.json manually");
+    }
+    const validProviders = new Set(SUPPORTED_PROVIDERS as readonly string[]);
+    const validRecords = parsed.filter((s: Record<string, unknown>) => {
+      if (s.provider && !validProviders.has(s.provider as string)) {
+        process.stderr.write(`Warning: skipping server "${s.name}" — unknown provider "${s.provider}"\n`);
+        return false;
+      }
+      return true;
+    });
+    return validRecords.map((s: ServerRecord) => ({ ...s, mode: s.mode ?? "coolify" }) as ServerRecord);
   });
-  const servers = validRecords.map((s: ServerRecord) => ({ ...s, mode: s.mode ?? "coolify" }) as ServerRecord);
-  return servers;
 }
 
 export async function saveServer(record: ServerRecord): Promise<void> {

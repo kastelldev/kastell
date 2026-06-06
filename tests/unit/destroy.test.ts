@@ -42,9 +42,11 @@ const destroyNotFoundResult = {
 
 describe("destroyCommand", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
     // Default: no backups exist for servers
     mockedCoreBackup.listBackups.mockReturnValue([]);
@@ -53,6 +55,7 @@ describe("destroyCommand", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy.mockRestore();
   });
 
   it("should show error when server not found by query", async () => {
@@ -95,7 +98,7 @@ describe("destroyCommand", () => {
 
     await destroyCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = stderrSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("does not match");
     expect(mockedCoreManage.destroyCloudServer).not.toHaveBeenCalled();
   });
@@ -131,8 +134,8 @@ describe("destroyCommand", () => {
 
     await destroyCommand("1.2.3.4");
 
-    // logger.error("API Error") is captured via console.log
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    // logger.error("API Error") is captured via stderr spy
+    const output = stderrSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("API Error");
   });
 
@@ -313,9 +316,10 @@ describe("destroyCommand", () => {
 
     await destroyCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
-    expect(output).toContain("API Timeout");
-    expect(output).toContain("Try again later");
+    const errOutput = stderrSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    expect(errOutput).toContain("API Timeout");
+    const outOutput = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    expect(outOutput).toContain("Try again later");
   });
 
   it("should handle cleanup failure gracefully", async () => {
@@ -330,7 +334,7 @@ describe("destroyCommand", () => {
 
     await destroyCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = stderrSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Failed to remove backups");
   });
 

@@ -28,12 +28,14 @@ const mockedInquirer = inquirer as jest.Mocked<typeof inquirer>;
 
 describe("initCommand Non-Interactive", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
   let processExitSpy: jest.SpyInstance;
   const originalSetTimeout = global.setTimeout;
   const originalEnv = process.env;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     processExitSpy = jest.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit);
     jest.clearAllMocks();
     process.env = { ...originalEnv };
@@ -47,6 +49,7 @@ describe("initCommand Non-Interactive", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
     processExitSpy.mockRestore();
     process.env = originalEnv;
     global.setTimeout = originalSetTimeout;
@@ -77,7 +80,7 @@ describe("initCommand Non-Interactive", () => {
 
     expect(mockedInquirer.prompt).not.toHaveBeenCalled();
     expect(mockedAxios.post).toHaveBeenCalled();
-    const allOutput = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const allOutput = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(allOutput).toContain("99.88.77.66");
     expect(processExitSpy).not.toHaveBeenCalled();
   });
@@ -107,7 +110,7 @@ describe("initCommand Non-Interactive", () => {
 
     expect(mockedInquirer.prompt).not.toHaveBeenCalled();
     expect(mockedAxios.post).toHaveBeenCalled();
-    const allOutput = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const allOutput = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(allOutput).toContain("55.44.33.22");
   });
 
@@ -115,7 +118,7 @@ describe("initCommand Non-Interactive", () => {
     await initCommand({ provider: "aws", token: "test" });
 
     expect(processExitSpy).toHaveBeenCalledWith(1);
-    const allOutput = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const allOutput = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(allOutput).toContain("Invalid provider");
   });
 
@@ -227,7 +230,7 @@ describe("initCommand Non-Interactive", () => {
       name: "do-pending",
     });
 
-    const allOutput = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const allOutput = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(allOutput).toContain("77.88.99.11");
   });
 
@@ -276,7 +279,7 @@ describe("initCommand Non-Interactive", () => {
       name: "timeout-test",
     });
 
-    const allOutput = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const allOutput = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(allOutput).toContain("check your cloud provider dashboard");
   });
 
@@ -306,7 +309,7 @@ describe("initCommand Non-Interactive", () => {
 
     expect(mockedInquirer.prompt).not.toHaveBeenCalled();
     expect(mockedAxios.post).toHaveBeenCalled();
-    const allOutput = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const allOutput = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(allOutput).toContain("10.20.30.40");
   });
 
@@ -336,7 +339,7 @@ describe("initCommand Non-Interactive", () => {
 
     expect(mockedInquirer.prompt).not.toHaveBeenCalled();
     expect(mockedAxios.post).toHaveBeenCalled();
-    const allOutput = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const allOutput = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(allOutput).toContain("50.60.70.80");
   });
 
@@ -440,7 +443,7 @@ describe("initCommand Non-Interactive", () => {
         name: "vultr-timeout-test",
       });
 
-      const allOutput = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const allOutput = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(allOutput).toContain("IP assignment timed out");
       expect(allOutput).toContain("kastell status vultr-timeout");
     });
@@ -488,7 +491,7 @@ describe("initCommand Non-Interactive", () => {
         name: "vultr-delayed-test",
       });
 
-      const allOutput = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const allOutput = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(allOutput).toContain("45.76.100.50");
       expect(allOutput).not.toContain("IP assignment timed out");
     });
@@ -529,7 +532,7 @@ describe("initCommand Non-Interactive", () => {
         name: "vultr-prov-test",
       });
 
-      const allOutput = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const allOutput = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(allOutput).toContain("45.76.100.51");
       expect(processExitSpy).not.toHaveBeenCalled();
     });
@@ -558,7 +561,7 @@ describe("initCommand Non-Interactive", () => {
       name: "ssl-warn-test",
     });
 
-    const allOutput = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const allOutput = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(allOutput).toContain("What's Next?");
     expect(allOutput).toContain("firewall setup");
     expect(allOutput).toContain("domain add");

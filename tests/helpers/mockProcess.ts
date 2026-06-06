@@ -22,7 +22,9 @@ export function createMockProcess(
     if (stderrData) {
       process.nextTick(() => (cp as any).stderr.emit("data", Buffer.from(stderrData)));
     }
-    setTimeout(() => cp.emit("close", exitCode), delayMs);
+    // .unref() lets the event loop exit naturally — mirrors ssh-factories.ts:26 fix
+    // to prevent open handle leaks in Jest worker force-exit (CQS-10 #1 parallel).
+    setTimeout(() => cp.emit("close", exitCode), delayMs).unref();
   } else {
     if (stderrData) {
       process.nextTick(() => (cp as any).stderr.emit("data", Buffer.from(stderrData)));

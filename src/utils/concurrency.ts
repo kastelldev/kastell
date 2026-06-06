@@ -21,3 +21,25 @@ export async function chunkConcurrent<T, R>(
   await Promise.all(workers);
   return results;
 }
+
+/**
+ * Bounded parallel fan-out that lets the worker throw. Returns one
+ * `PromiseSettledResult<R>` per input item, in input order, so callers
+ * don't have to wrap try/catch around their worker bodies just to capture
+ * failures. Use when the worker result type can't naturally encode a
+ * failure variant (e.g. typed domain objects that don't have a "failed" shape).
+ */
+export async function chunkConcurrentSettled<T, R>(
+  items: T[],
+  chunkSize: number,
+  worker: (item: T, index: number) => Promise<R>,
+): Promise<PromiseSettledResult<R>[]> {
+  return chunkConcurrent(items, chunkSize, async (item, idx) => {
+    try {
+      const value = await worker(item, idx);
+      return { status: "fulfilled" as const, value };
+    } catch (reason) {
+      return { status: "rejected" as const, reason };
+    }
+  });
+}

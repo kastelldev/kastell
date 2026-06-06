@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { getServers } from "../../utils/config.js";
-import { resolveAuditPair, buildCategorySummary, diffAudits } from "../../core/audit/diff.js";
+import { resolveAuditPair, buildCategorySummary, diffAuditsFlat } from "../../core/audit/diff.js";
 import {
   mcpSuccess,
   mcpError,
@@ -15,14 +15,16 @@ export const serverCompareSchema = {
   detail: z.boolean().default(false).describe("Return check-level diff instead of category summary. Default: false."),
 };
 
+const serverCompareBaseFields = {
+  serverA: z.string(),
+  serverB: z.string(),
+};
+
 export const serverCompareOutputSchema = z.object({
-  result: z.object({
-    format: z.enum(["category", "check"]),
-    serverA: z.string(),
-    serverB: z.string(),
-  }).and(z.union([
+  result: z.discriminatedUnion("format", [
     z.object({
       format: z.literal("category"),
+      ...serverCompareBaseFields,
       categories: z.array(z.object({
         category: z.string(),
         scoreBefore: z.number(),
@@ -35,15 +37,16 @@ export const serverCompareOutputSchema = z.object({
     }),
     z.object({
       format: z.literal("check"),
+      ...serverCompareBaseFields,
       checks: z.array(z.object({
         id: z.string(),
         name: z.string(),
-        status: z.enum(["same", "A_better", "B_better", "both_fail", "both_pass"]),
+        status: z.enum(["A_better", "B_better", "both_pass", "both_fail"]),
         before: z.boolean().nullable(),
         after: z.boolean().nullable(),
       })),
     }),
-  ])),
+  ]),
 });
 
 export async function handleServerCompare(params: {
@@ -88,12 +91,12 @@ export async function handleServerCompare(params: {
     const { auditA, auditB } = pairResult.data!;
 
     if (params.detail) {
-      const diff = diffAudits(auditA, auditB, { before: serverA.name, after: serverB.name });
+      const diff = diffAuditsFlat(auditA, auditB, { before: serverA.name, after: serverB.name });
       return mcpSuccess({
         format: "check" as const,
         serverA: serverA.name,
         serverB: serverB.name,
-        checks: diff,
+        checks: diff.checks,
       });
     }
 

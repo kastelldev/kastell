@@ -170,7 +170,7 @@ describe("pluginListCommand", () => {
 
   it("should render table header with correct columns", () => {
     mockedPluginCore.listPlugins.mockReturnValueOnce([
-      { name: "a-plugin", version: "1.0.0", prefix: "ap", status: "loaded" as const, checks: 1 },
+      { name: "a-plugin", version: "1.0.0", prefix: "ap", status: "loaded" as const, checks: 1, commands: [], mcpTools: [] },
     ]);
 
     pluginListCommand();
@@ -197,6 +197,8 @@ describe("pluginListCommand", () => {
         prefix: "tp",
         status: "loaded",
         checks: 3,
+        commands: [],
+        mcpTools: [],
       },
     ]);
 
@@ -217,6 +219,8 @@ describe("pluginListCommand", () => {
         status: "failed",
         reason: "missing entry point",
         checks: 0,
+        commands: [],
+        mcpTools: [],
       },
     ]);
 
@@ -238,6 +242,8 @@ describe("pluginListCommand", () => {
         status: "failed",
         reason: "load error",
         checks: 0,
+        commands: [],
+        mcpTools: [],
       },
     ]);
 
@@ -258,6 +264,8 @@ describe("pluginListCommand", () => {
         prefix: "gp",
         status: "loaded",
         checks: 5,
+        commands: [],
+        mcpTools: [],
       },
     ]);
 

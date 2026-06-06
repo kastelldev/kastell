@@ -174,3 +174,10 @@ reports/mutation/
 security-audit-report.md
 security-audit-report.json
 security-audit-report.sarif
+
+# Crossfire + simplify sandbox (review tooling internals — local only)
+.crossfire/
+.simplify-sandbox/
+
+# CQS-02 console.log triage report (one-shot, not part of source)
+docs/audits/console-log-triage.json

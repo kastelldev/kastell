@@ -64,6 +64,11 @@ const PluginManifestSchema = z
     capabilities: z.array(z.enum(["audit", "command", "mcp-tool", "fix"])).min(1),
     checkPrefix: z.string().regex(/^[A-Z]{2,6}$/, "checkPrefix must be 2-6 uppercase letters"),
     entry: z.string().min(1, "Entry point required"),
+    // C4: preferred over safeToParallel — positive polarity (mutates: true)
+    // replaces inverted safeToParallel: false. Both fields accepted; mutates
+    // takes precedence when both are set.
+    mutates: z.boolean().optional(),
+    safeToParallel: z.boolean().optional(),
     commands: z.array(PluginCommandSchema).optional(),
     mcpTools: z.array(PluginMcpToolSchema).optional(),
     fixes: z.array(PluginFixSchema).optional(),

@@ -2,6 +2,7 @@ import * as config from "../../src/utils/config";
 import * as sshUtils from "../../src/utils/ssh";
 import { monitorCommand, parseMetrics } from "../../src/commands/monitor";
 import { buildMonitorCommand } from "../../src/core/logs";
+import { createConsoleSpy } from "../helpers/consoleSpy.js";
 
 jest.mock("../../src/utils/config");
 jest.mock("../../src/utils/ssh");
@@ -38,15 +39,18 @@ coolify   Up 5 days       0.0.0.0:8000->8000/tcp
 nginx     Up 5 days       0.0.0.0:80->80/tcp`;
 
 describe("monitorCommand", () => {
-  let consoleSpy: jest.SpyInstance;
+  const spy = createConsoleSpy();
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    spy.setup();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
   });
 
   afterEach(() => {
-    consoleSpy.mockRestore();
+    spy.restore();
+    stderrSpy?.mockRestore();
   });
 
   describe("parseMetrics", () => {
@@ -109,7 +113,7 @@ describe("monitorCommand", () => {
   it("should show error when SSH not available", async () => {
     mockedSsh.checkSshAvailable.mockReturnValue(false);
     await monitorCommand();
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("SSH client not found");
   });
 
@@ -117,7 +121,7 @@ describe("monitorCommand", () => {
     mockedSsh.checkSshAvailable.mockReturnValue(true);
     mockedConfig.findServers.mockReturnValue([]);
     await monitorCommand("nonexistent");
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Server not found");
   });
 
@@ -129,7 +133,7 @@ describe("monitorCommand", () => {
 
     await monitorCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("CPU Usage");
     expect(output).toContain("RAM Usage");
     expect(output).toContain("Disk Usage");
@@ -143,7 +147,7 @@ describe("monitorCommand", () => {
 
     await monitorCommand("1.2.3.4", { containers: true });
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Docker Containers");
     expect(output).toContain("coolify");
   });
@@ -166,7 +170,7 @@ describe("monitorCommand", () => {
 
     await monitorCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("unexpected string error");
   });
 
@@ -177,7 +181,7 @@ describe("monitorCommand", () => {
 
     await monitorCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("SSH connection failed");
   });
 
@@ -188,7 +192,7 @@ describe("monitorCommand", () => {
 
     await monitorCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("SSH connection refused");
   });
 
@@ -224,7 +228,7 @@ describe("monitorCommand", () => {
 
     await monitorCommand("1.2.3.4", { containers: true });
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).not.toContain("Docker Containers");
   });
 });

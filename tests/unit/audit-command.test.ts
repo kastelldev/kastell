@@ -108,10 +108,12 @@ const mockAuditResult = {
 
 describe("auditCommand", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
   let exitSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     exitSpy = jest.spyOn(process, "exit").mockImplementation(() => undefined as never);
     process.exitCode = undefined;
     jest.clearAllMocks();
@@ -161,6 +163,7 @@ describe("auditCommand", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
     exitSpy.mockRestore();
   });
 
@@ -183,7 +186,7 @@ describe("auditCommand", () => {
     expect(mockedFormatters.selectFormatter).toHaveBeenCalledWith(
       expect.objectContaining({ json: true }),
     );
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(() => JSON.parse(output)).not.toThrow();
   });
 
@@ -198,7 +201,7 @@ describe("auditCommand", () => {
     expect(mockedFormatters.selectFormatter).toHaveBeenCalledWith(
       expect.objectContaining({ badge: true }),
     );
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("<svg");
     expect(output).toContain("xmlns");
   });
@@ -207,7 +210,7 @@ describe("auditCommand", () => {
     const { auditCommand } = await import("../../src/commands/audit");
     await auditCommand(undefined, { scoreOnly: true });
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("72/100");
     // selectFormatter should NOT be called for score-only
     expect(mockedFormatters.selectFormatter).not.toHaveBeenCalled();
@@ -248,7 +251,7 @@ describe("auditCommand", () => {
     await auditCommand(undefined, {});
 
     // Hint message goes through logger.info -> console.log
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Check SSH config");
     // selectFormatter should not be called on failure
     expect(mockedFormatters.selectFormatter).not.toHaveBeenCalled();
@@ -258,7 +261,7 @@ describe("auditCommand", () => {
     const { auditCommand } = await import("../../src/commands/audit");
     await auditCommand(undefined, { scoreOnly: true, threshold: "60" });
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("72/100");
     expect(process.exitCode).toBeUndefined();
   });
@@ -292,7 +295,7 @@ describe("auditCommand", () => {
     const { auditCommand } = await import("../../src/commands/audit");
     await auditCommand(undefined, {});
 
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("methodology updated");
   });
 
@@ -301,7 +304,7 @@ describe("auditCommand", () => {
     const { auditCommand } = await import("../../src/commands/audit");
     await auditCommand(undefined, {});
 
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("Trend: improving");
   });
 
@@ -309,7 +312,7 @@ describe("auditCommand", () => {
     const { auditCommand } = await import("../../src/commands/audit");
     await auditCommand(undefined, { scoreOnly: true, threshold: "abc" });
 
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("--threshold must be a number");
   });
 
@@ -317,7 +320,7 @@ describe("auditCommand", () => {
     const { auditCommand } = await import("../../src/commands/audit");
     await auditCommand(undefined, { threshold: "abc" });
 
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("--threshold must be a number");
   });
 
@@ -326,7 +329,7 @@ describe("auditCommand", () => {
     const { auditCommand } = await import("../../src/commands/audit");
     await auditCommand(undefined, { severity: "invalid-level" });
 
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("Invalid severity");
   });
 
@@ -334,7 +337,7 @@ describe("auditCommand", () => {
     const { auditCommand } = await import("../../src/commands/audit");
     await auditCommand(undefined, {});
 
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("Quick wins");
     expect(output).toContain("85/100");
   });
@@ -346,7 +349,7 @@ describe("auditCommand", () => {
     const { auditCommand } = await import("../../src/commands/audit");
     await auditCommand(undefined, { json: true });
 
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).not.toContain("Quick wins");
   });
 
@@ -360,7 +363,7 @@ describe("auditCommand", () => {
     const { auditCommand } = await import("../../src/commands/audit");
     await auditCommand(undefined, { fix: true });
 
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("Errors:");
     expect(output).toContain("SSH-FAIL");
   });
@@ -386,7 +389,7 @@ describe("auditCommand", () => {
     const { auditCommand } = await import("../../src/commands/audit");
     await auditCommand(undefined, { fix: true, dryRun: true });
 
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("critical");
     expect(output).toContain("1 fixable issue(s)");
     expect(output).toContain("SSH-01");
@@ -450,7 +453,7 @@ describe("auditCommand", () => {
     const { auditCommand } = await import("../../src/commands/audit");
     await auditCommand(undefined, { category: "ssh" });
 
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("(showing category: ssh)");
   });
 
@@ -543,6 +546,7 @@ describe("auditCommand", () => {
 
   it("should call checkRegression when baseline exists and display regressions", async () => {
     const loggerSpy = jest.spyOn(console, "log").mockImplementation();
+    const errSpy = jest.spyOn(console, "error").mockImplementation();
     mockedRegression.saveBaselineSafe.mockResolvedValue();
     mockedRegression.loadBaseline.mockReturnValue({
       version: 1,
@@ -566,9 +570,10 @@ describe("auditCommand", () => {
     await auditCommand("test-server", {});
 
     expect(mockedRegression.checkRegression).toHaveBeenCalled();
-    const output = loggerSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...loggerSpy.mock.calls, ...errSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("Regression");
     loggerSpy.mockRestore();
+    errSpy.mockRestore();
   });
 
   it("should call checkRegression when baseline exists and display new passes", async () => {
@@ -604,6 +609,7 @@ describe("auditCommand", () => {
 
 describe("auditCommand --trend", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
 
   const mockHistory = [
     {
@@ -638,6 +644,7 @@ describe("auditCommand --trend", () => {
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.resetAllMocks();
 
     mockedServerSelect.resolveServer.mockResolvedValue({
@@ -662,6 +669,7 @@ describe("auditCommand --trend", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
   });
 
   it("should call computeTrend with loadAuditHistory result and NOT call runAudit", async () => {
@@ -718,9 +726,11 @@ describe("auditCommand --trend", () => {
 
 describe("auditCommand --list-checks", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
     mockedListChecks.listAllChecks.mockReturnValue([]);
     mockedListChecks.formatListChecksTerminal.mockReturnValue("terminal-checks");
@@ -732,6 +742,7 @@ describe("auditCommand --list-checks", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
   });
 
   it("should call listAllChecks and format as terminal by default", async () => {
@@ -777,9 +788,11 @@ describe("auditCommand --list-checks", () => {
 
 describe("auditCommand --watch", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
 
     mockedServerSelect.resolveServer.mockResolvedValue({
@@ -803,6 +816,7 @@ describe("auditCommand --watch", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
   });
 
   it("should call watchAudit with default interval when --watch has no value", async () => {
@@ -834,7 +848,7 @@ describe("auditCommand --watch", () => {
     const { auditCommand } = await import("../../src/commands/audit");
     await auditCommand("test-server", { watch: "abc" });
 
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("positive number");
     expect(mockedWatch.watchAudit).not.toHaveBeenCalled();
   });
@@ -843,7 +857,7 @@ describe("auditCommand --watch", () => {
     const { auditCommand } = await import("../../src/commands/audit");
     await auditCommand("test-server", { watch: "0" });
 
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("positive number");
     expect(mockedWatch.watchAudit).not.toHaveBeenCalled();
   });
@@ -851,6 +865,7 @@ describe("auditCommand --watch", () => {
 
 describe("auditCommand --compliance", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
 
   const mockSpinner = {
     start: jest.fn().mockReturnThis(),
@@ -862,6 +877,7 @@ describe("auditCommand --compliance", () => {
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
 
     // Re-mock createSpinner after clearAllMocks
@@ -907,13 +923,14 @@ describe("auditCommand --compliance", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
   });
 
   it("should show error for invalid compliance framework", async () => {
     const { auditCommand } = await import("../../src/commands/audit");
     await auditCommand("test-server", { compliance: "invalid-framework" });
 
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("Invalid framework");
   });
 
@@ -922,7 +939,7 @@ describe("auditCommand --compliance", () => {
     await auditCommand("test-server", { compliance: "pci-dss" });
 
     expect(mockedComplianceFormatter.formatComplianceReport).toHaveBeenCalled();
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("compliance-report-output");
   });
 
@@ -934,7 +951,7 @@ describe("auditCommand --compliance", () => {
     const { auditCommand } = await import("../../src/commands/audit");
     await auditCommand("test-server", { compliance: "pci-dss", json: true });
 
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("overallScore");
     expect(output).toContain("compliance");
   });
@@ -942,6 +959,7 @@ describe("auditCommand --compliance", () => {
 
 describe("auditCommand --profile", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
 
   const mockSpinner = {
     start: jest.fn().mockReturnThis(),
@@ -953,6 +971,7 @@ describe("auditCommand --profile", () => {
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
 
     // Re-mock createSpinner after clearAllMocks
@@ -1001,13 +1020,14 @@ describe("auditCommand --profile", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
   });
 
   it("should show error for invalid profile name", async () => {
     const { auditCommand } = await import("../../src/commands/audit");
     await auditCommand("test-server", { profile: "invalid-profile" });
 
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("Invalid profile");
   });
 
@@ -1027,7 +1047,7 @@ describe("auditCommand --profile", () => {
     const { auditCommand } = await import("../../src/commands/audit");
     await auditCommand("test-server", { profile: "pci-dss" });
 
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("8/10 controls");
     expect(output).toContain("80%");
   });
@@ -1035,11 +1055,13 @@ describe("auditCommand --profile", () => {
 
 describe("--ci flag", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
   let exitSpy: jest.SpyInstance;
   let createSpinnerSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     exitSpy = jest.spyOn(process, "exit").mockImplementation(() => undefined as never);
     createSpinnerSpy = jest.spyOn(loggerModule, "createSpinner");
     process.exitCode = undefined;
@@ -1094,7 +1116,7 @@ describe("--ci flag", () => {
     await auditCommand("test-server", { ci: true });
 
     // --ci without --threshold shows error and returns early before server resolution
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("--ci requires --threshold");
   });
 

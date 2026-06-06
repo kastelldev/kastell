@@ -16,6 +16,7 @@ import { KASTELL_DIR } from "../../utils/paths.js";
 import { withFileLock } from "../../utils/fileLock.js";
 import { secureWriteFileSync, secureMkdirSync } from "../../utils/secureWrite.js";
 import { MS_PER_DAY } from "../../utils/dates.js";
+import { memoizeOnStat, type MemoizedEntry } from "../../utils/fsMtime.js";
 import type {
   AuditResult,
   AuditHistoryEntry,
@@ -26,9 +27,24 @@ import type {
 
 const HISTORY_FILENAME = "audit-history.json";
 
+/**
+ * LRU cap for latestAuditCache. Prevents unbounded growth as fleet scale grows
+ * (key = filePath::serverIp, so each distinct server occupies one entry).
+ * 100 = generous headroom for current <50-server fleets, bounded for the long tail.
+ */
+const MAX_LATEST_AUDIT_CACHE_SIZE = 100;
+
+/** mtime-based cache for loadLatestAudit (key: filePath::serverIp) */
+const latestAuditCache = new Map<string, MemoizedEntry<AuditHistoryEntry | null>>();
+
 /** Get history file path lazily to support testing */
 function getHistoryPath(): string {
   return join(KASTELL_DIR, HISTORY_FILENAME);
+}
+
+/** Clear the latest-audit cache (exported for test isolation) */
+export function clearAuditCache(): void {
+  latestAuditCache.clear();
 }
 
 /** Max history entries per server to prevent unbounded growth */
@@ -69,6 +85,72 @@ export function loadAuditHistory(serverIp: string): AuditHistoryEntry[] {
   } catch {
     return [];
   }
+}
+
+/**
+ * Read history file and return the LAST entry matching serverIp.
+ * Validates only the matching entry with Zod (O(1) on cache miss for the target server,
+ * full file still O(n) for the walk). Skips malformed entries mid-file by checking
+ * schema validity per entry.
+ */
+function readLastEntryForServer(
+  historyFile: string,
+  serverIp: string,
+): AuditHistoryEntry | null {
+  let raw: string;
+  try {
+    raw = readFileSync(historyFile, "utf-8");
+  } catch {
+    return null;
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+
+  if (!Array.isArray(parsed)) {
+    return null;
+  }
+
+  // Walk backwards to find the last matching entry; validate only that one
+  for (let i = parsed.length - 1; i >= 0; i--) {
+    const candidate = parsed[i];
+    if (
+      candidate !== null &&
+      typeof candidate === "object" &&
+      (candidate as Record<string, unknown>).serverIp === serverIp
+    ) {
+      const result = auditHistoryEntrySchema.safeParse(candidate);
+      if (result.success) {
+        return result.data;
+      }
+      // Malformed entry — continue searching backwards (defensive)
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Load the most recent audit entry for a given server IP.
+ * Uses mtime-based cache to avoid repeated file reads when the history file hasn't changed.
+ * Returns null if no history exists.
+ */
+export function loadLatestAudit(serverIp: string): AuditHistoryEntry | null {
+  const historyFile = getHistoryPath();
+
+  // Per-server cache: composite key ensures server IP A's result is not
+  // returned for server IP B (the file is shared, but entries are per-IP).
+  return memoizeOnStat(
+    latestAuditCache,
+    `${historyFile}::${serverIp}`,
+    historyFile,
+    () => readLastEntryForServer(historyFile, serverIp),
+    { maxSize: MAX_LATEST_AUDIT_CACHE_SIZE },
+  );
 }
 
 /**

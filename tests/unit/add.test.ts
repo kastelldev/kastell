@@ -2,6 +2,7 @@ import inquirer from "inquirer";
 import * as coreManage from "../../src/core/manage";
 import * as serverSelect from "../../src/utils/serverSelect";
 import { addCommand } from "../../src/commands/add";
+import { createConsoleSpy } from "../helpers/consoleSpy.js";
 
 jest.mock("../../src/core/manage", () => {
   const actual = jest.requireActual("../../src/core/manage");
@@ -32,11 +33,11 @@ const baseAddResult = {
 };
 
 describe("addCommand", () => {
-  let consoleSpy: jest.SpyInstance;
+  const spy = createConsoleSpy();
   let exitSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    spy.setup();
     exitSpy = jest.spyOn(process, "exit").mockImplementation(() => undefined as never);
     jest.clearAllMocks();
 
@@ -45,7 +46,7 @@ describe("addCommand", () => {
   });
 
   afterEach(() => {
-    consoleSpy.mockRestore();
+    spy.restore();
     exitSpy.mockRestore();
   });
 
@@ -62,7 +63,7 @@ describe("addCommand", () => {
           apiToken: "test-token",
         }),
       );
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = spy.getCalls().map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Server added successfully");
     });
 
@@ -146,7 +147,7 @@ describe("addCommand", () => {
 
       await addCommand({ provider: "hetzner", ip: "1.2.3.4", name: "test" });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = spy.getCalls().map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Server added successfully");
     });
 
@@ -284,7 +285,7 @@ describe("addCommand", () => {
     it("should display success message with server details", async () => {
       await addCommand({ provider: "hetzner", ip: "1.2.3.4", name: "test", skipVerify: true });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = spy.getCalls().map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("1.2.3.4");
       expect(output).toContain("my-server");
     });

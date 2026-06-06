@@ -522,7 +522,7 @@ export async function runPostFixReAudit(
   if (affectedCategories.length === 0) return null;
 
   try {
-    const batches = buildAuditBatchCommands(platform);
+    const batches = buildAuditBatchCommands({ platform });
     const batchOutputs: string[] = [];
 
     for (const batch of batches) {

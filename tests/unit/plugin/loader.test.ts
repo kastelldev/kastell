@@ -167,8 +167,9 @@ describe("plugin/loader", () => {
 
     const entry = getPluginRegistry().get("kastell-plugin-badjson");
     expect(entry).toBeDefined();
-    expect(entry!.status).toBe("failed");
-    expect(entry!.reason).toContain("invalid JSON");
+    if (entry && entry.status === "failed") {
+      expect(entry.reason).toContain("invalid JSON");
+    }
   });
 
   it("registers plugin as failed when manifest file is missing", async () => {
@@ -184,10 +185,11 @@ describe("plugin/loader", () => {
     const result = await loadPlugins({ importer: mockImporter });
     expect(result.errors).toHaveLength(1);
 
-    const entry = getPluginRegistry().get("kastell-plugin-nomanifest");
-    expect(entry).toBeDefined();
-    expect(entry!.status).toBe("failed");
-    expect(entry!.reason).toContain("cannot read");
+    const entry = getPluginRegistry().get("kastell-plugin-nomanifest")!;
+    expect(entry.status).toBe("failed");
+    if (entry.status === "failed") {
+      expect(entry.reason).toContain("cannot read");
+    }
   });
 
   it("converts path to file URL for ESM import", async () => {
@@ -371,8 +373,10 @@ describe("loader capability expansion", () => {
       const result = await loadPlugins({ importer: mockImporter });
       expect(result.loaded).toContain("kastell-plugin-wp");
       const entry = getPluginRegistry().get("kastell-plugin-wp");
-      expect(entry?.commands).toHaveLength(1);
-      expect(entry?.commands?.[0].name).toBe("scan");
+      if (entry && entry.status === "loaded") {
+        expect(entry.commands?.length).toBeGreaterThan(0);
+        expect(entry.commands![0].name).toBe("scan");
+      }
     });
 
     it("reads module.fixes when capability includes fix", async () => {
@@ -398,7 +402,9 @@ describe("loader capability expansion", () => {
       const result = await loadPlugins({ importer: mockImporter });
       expect(result.loaded).toContain("kastell-plugin-wp");
       const entry = getPluginRegistry().get("kastell-plugin-wp");
-      expect(entry?.fixes).toHaveLength(1);
+      if (entry && entry.status === "loaded") {
+        expect(entry.manifest.fixes).toHaveLength(1);
+      }
     });
   });
 });

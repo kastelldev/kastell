@@ -3,11 +3,10 @@ import { spawnSync } from "child_process";
 import { findLocalSshKey, generateSshKey, getSshKeyName } from "../../src/utils/sshKey";
 import { secureMkdirSync } from "../../src/utils/secureWrite";
 
-jest.mock("fs", () => ({
-  readFileSync: jest.fn(),
-  existsSync: jest.fn(),
-  mkdirSync: jest.fn(),
-}));
+jest.mock("fs", () => {
+  const { createFsMock } = require("../helpers/fsMock.js");
+  return createFsMock();
+});
 jest.mock("child_process", () => ({
   spawnSync: jest.fn(),
 }));

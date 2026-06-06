@@ -8,6 +8,7 @@ import {
   validatePlugins,
 } from "../core/plugin.js";
 import { PLUGIN_NAME_PATTERN } from "../plugin/sdk/constants.js";
+import { PLUGIN_STATUS_LOADED } from "../plugin/registry.js";
 
 export async function pluginInstallCommand(
   name: string,
@@ -81,11 +82,11 @@ export function pluginListCommand(): void {
 
   for (const p of plugins) {
     const status =
-      p.status === "loaded"
+      p.status === PLUGIN_STATUS_LOADED
         ? chalk.green(p.status)
-        : chalk.red(`${p.status} (${p.reason ?? "unknown"})`);
-    const cmds = String(p.commands?.length ?? 0);
-    const tools = String(p.mcpTools?.length ?? 0);
+        : chalk.red(`${p.status} (${p.status === "failed" ? p.reason : "unknown"})`);
+    const cmds = String(p.commands.length);
+    const tools = String(p.mcpTools.length);
     logger.info(
       `${p.name.padEnd(maxName)} ${p.version.padEnd(maxVer)} ${p.prefix.padEnd(maxPrefix)} ${String(p.checks).padEnd(maxChecks)} ${cmds.padEnd(maxCmds)} ${tools.padEnd(maxTools)} ${status}`,
     );

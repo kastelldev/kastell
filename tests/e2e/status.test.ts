@@ -22,14 +22,17 @@ const sampleServer = {
 
 describe("statusCommand E2E", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
   });
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
   });
 
   it("should show Coolify running status with access URL", async () => {
@@ -42,7 +45,7 @@ describe("statusCommand E2E", () => {
 
     await statusCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Coolify Status: running");
     expect(output).toContain("http://1.2.3.4:8000");
   });
@@ -57,7 +60,7 @@ describe("statusCommand E2E", () => {
 
     await statusCommand("coolify-test");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("not reachable");
     expect(output).toContain("still be installing");
   });
@@ -73,7 +76,7 @@ describe("statusCommand E2E", () => {
 
     await statusCommand("10.20.30.40");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("digitalocean");
     expect(output).toContain("10.20.30.40");
   });
@@ -88,7 +91,7 @@ describe("statusCommand E2E", () => {
 
     await statusCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Name:");
     expect(output).toContain("coolify-test");
     expect(output).toContain("Region:");
@@ -123,7 +126,7 @@ describe("statusCommand E2E", () => {
 
     await statusCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Failed to get server status");
   });
 
@@ -136,7 +139,7 @@ describe("statusCommand E2E", () => {
 
     await statusCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("unexpected api failure");
   });
 });

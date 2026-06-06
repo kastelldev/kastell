@@ -79,8 +79,10 @@ export async function authListAction(): Promise<void> {
   }
 
   if (decryptFailed) {
+    // CQS-07 8c: list every supported provider so the user knows which
+    // tokens to re-enter, instead of an opaque "decryption failed" hint.
     logger.warning(
-      "Token decryption failed — re-enter tokens with 'kastell provider add'",
+      `Token decryption failed for: ${SUPPORTED_PROVIDERS.join(", ")} — re-enter with 'kastell provider add'`,
     );
     return;
   }

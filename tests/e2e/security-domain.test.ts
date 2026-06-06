@@ -27,14 +27,17 @@ const sampleServer = {
 
 describe("security-domain E2E", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
   });
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
   });
 
   describe("buildSetFqdnCommand - shell injection protection", () => {
@@ -246,7 +249,7 @@ describe("security-domain E2E", () => {
       await domainCommand("add", "1.2.3.4", { domain: "-invalid" });
 
       expect(mockedSsh.sshExec).not.toHaveBeenCalled();
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Invalid domain");
     });
 
@@ -274,7 +277,7 @@ describe("security-domain E2E", () => {
       await domainCommand("add", "1.2.3.4", { domain: "example.com; rm -rf /" });
 
       expect(mockedSsh.sshExec).not.toHaveBeenCalled();
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Invalid domain");
     });
 
@@ -284,7 +287,7 @@ describe("security-domain E2E", () => {
       await domainCommand("add", "1.2.3.4", { domain: "example.com" });
 
       expect(mockedSsh.sshExec).not.toHaveBeenCalled();
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("SSH client not found");
     });
 
@@ -295,7 +298,7 @@ describe("security-domain E2E", () => {
       await domainCommand("add", "nonexistent", { domain: "example.com" });
 
       expect(mockedSsh.sshExec).not.toHaveBeenCalled();
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Server not found");
     });
 
@@ -304,7 +307,7 @@ describe("security-domain E2E", () => {
 
       await domainCommand("inject; whoami");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Invalid subcommand");
     });
   });
@@ -329,7 +332,7 @@ describe("security-domain E2E", () => {
       await domainCommand("check", "1.2.3.4", { domain: "-invalid" });
 
       expect(mockedSsh.sshExec).not.toHaveBeenCalled();
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Invalid domain");
     });
   });
@@ -342,7 +345,7 @@ describe("security-domain E2E", () => {
       await domainCommand("add", "1.2.3.4", { domain: "example.com", dryRun: true });
 
       expect(mockedSsh.sshExec).not.toHaveBeenCalled();
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Dry Run");
       expect(output).toContain("No changes applied");
     });
@@ -354,7 +357,7 @@ describe("security-domain E2E", () => {
       await domainCommand("remove", "1.2.3.4", { dryRun: true });
 
       expect(mockedSsh.sshExec).not.toHaveBeenCalled();
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Dry Run");
     });
   });

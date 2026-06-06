@@ -34,14 +34,17 @@ const doServer = {
 
 describe("destroyCommand E2E", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
   });
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy.mockRestore();
   });
 
   it("should complete full destroy flow with Hetzner", async () => {
@@ -102,7 +105,7 @@ describe("destroyCommand E2E", () => {
     await destroyCommand("1.2.3.4");
 
     expect(mockedCoreManage.destroyCloudServer).not.toHaveBeenCalled();
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = stderrSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("does not match");
   });
 
@@ -122,8 +125,8 @@ describe("destroyCommand E2E", () => {
 
     await destroyCommand("1.2.3.4");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
-    // logger.error("quota exceeded") is captured via console.log
+    const output = stderrSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    // logger.error("quota exceeded") is captured via stderr spy
     expect(output).toContain("quota exceeded");
   });
 

@@ -1,5 +1,6 @@
 import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 import { explainCommand } from "../../src/commands/explain.js";
+import { createConsoleSpy } from "../helpers/consoleSpy.js";
 
 jest.mock("../../src/core/audit/explainCheck.js", () => ({
   findCheckById: jest.fn(),
@@ -19,17 +20,17 @@ import {
 const mockedFind = findCheckById as jest.MockedFunction<typeof findCheckById>;
 
 describe("explainCommand", () => {
-  let consoleSpy: jest.SpyInstance;
+  const spy = createConsoleSpy();
   let exitSpy: jest.SpyInstance;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    spy.setup();
     exitSpy = jest.spyOn(process, "exit").mockImplementation(() => { throw new Error("exit"); });
   });
 
   afterEach(() => {
-    consoleSpy.mockRestore();
+    spy.restore();
     exitSpy.mockRestore();
   });
 
@@ -41,7 +42,7 @@ describe("explainCommand", () => {
 
     await explainCommand(CHECK_IDS.SSH.SSH_PASSWORD_AUTH, {});
     expect(formatExplainTerminal).toHaveBeenCalled();
-    expect(consoleSpy).toHaveBeenCalledWith("terminal output");
+    expect(spy.consoleSpy).toHaveBeenCalledWith("terminal output");
   });
 
   it("prints JSON when --format json", async () => {

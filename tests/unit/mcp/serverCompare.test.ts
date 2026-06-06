@@ -98,15 +98,75 @@ describe("handleServerCompare", () => {
     mockedDiff.resolveAuditPair.mockResolvedValue({
       success: true, data: { auditA: makeAudit("server-a"), auditB: makeAudit("server-b") },
     });
-    mockedDiff.diffAudits.mockReturnValue({
+    mockedDiff.diffAuditsFlat.mockReturnValue({
       beforeLabel: "server-a", afterLabel: "server-b", scoreBefore: 80, scoreAfter: 80,
-      scoreDelta: 0, improvements: [], regressions: [], unchanged: [], added: [], removed: [],
+      scoreDelta: 0, checks: [],
     });
 
     const result = await handleServerCompare({ serverA: "server-a", serverB: "server-b", detail: true });
     expect(result.isError).toBeUndefined();
-    expect(mockedDiff.diffAudits).toHaveBeenCalled();
+    expect(mockedDiff.diffAuditsFlat).toHaveBeenCalled();
     expect(mockedDiff.buildCategorySummary).not.toHaveBeenCalled();
+  });
+
+  it("detail mode returns flat checks array (not object)", async () => {
+    mockedConfig.getServers.mockReturnValue([sampleServer, sampleServerB]);
+    mockedDiff.resolveAuditPair.mockResolvedValue({
+      success: true, data: { auditA: makeAudit("server-a"), auditB: makeAudit("server-b") },
+    });
+    mockedDiff.diffAuditsFlat.mockReturnValue({
+      beforeLabel: "server-a", afterLabel: "server-b", scoreBefore: 80, scoreAfter: 80,
+      scoreDelta: 0,
+      checks: [
+        { id: "A-1", name: "Check A", status: "A_better" as const, before: false, after: true },
+        { id: "B-1", name: "Check B", status: "B_better" as const, before: true, after: false },
+        { id: "C-1", name: "Check C", status: "both_fail" as const, before: false, after: false },
+        { id: "D-1", name: "Check D", status: "both_pass" as const, before: true, after: true },
+      ],
+    });
+
+    const result = await handleServerCompare({ serverA: "server-a", serverB: "server-b", detail: true });
+    expect(result.isError).toBeUndefined();
+    const body = result.structuredContent!.result as { format: string; checks: Array<{ id: string; name: string; status: string }> };
+    expect(body.format).toBe("check");
+    expect(Array.isArray(body.checks)).toBe(true);
+    expect(body.checks).toHaveLength(4);
+    body.checks.forEach((c) => {
+      expect(typeof c.id).toBe("string");
+      expect(["A_better", "B_better", "both_fail", "both_pass"]).toContain(c.status);
+    });
+    const statuses = body.checks.map((c) => c.status);
+    expect(statuses).toContain("A_better");
+    expect(statuses).toContain("B_better");
+    expect(statuses).toContain("both_fail");
+    expect(statuses).toContain("both_pass");
+  });
+
+  it("detail mode preserves check order from diffAuditsFlat", async () => {
+    mockedConfig.getServers.mockReturnValue([sampleServer, sampleServerB]);
+    mockedDiff.resolveAuditPair.mockResolvedValue({
+      success: true, data: { auditA: makeAudit("server-a"), auditB: makeAudit("server-b") },
+    });
+    mockedDiff.diffAuditsFlat.mockReturnValue({
+      beforeLabel: "server-a", afterLabel: "server-b", scoreBefore: 80, scoreAfter: 80,
+      scoreDelta: 0,
+      checks: [
+        { id: "A-1", name: "A1", status: "A_better" as const, before: false, after: true },
+        { id: "B-1", name: "B1", status: "B_better" as const, before: true, after: false },
+        { id: "C-1", name: "C1", status: "both_fail" as const, before: false, after: false },
+        { id: "D-1", name: "D1", status: "both_pass" as const, before: true, after: true },
+      ],
+    });
+
+    const result = await handleServerCompare({ serverA: "server-a", serverB: "server-b", detail: true });
+    const body = result.structuredContent!.result as { checks: Array<{ id: string; status: string }> };
+
+    // diffAuditsFlat returns in iteration order — adapter just spreads.
+    expect(body.checks.map((c) => c.id)).toEqual(["A-1", "B-1", "C-1", "D-1"]);
+    const c1 = body.checks.find((c) => c.id === "C-1")!;
+    const d1 = body.checks.find((c) => c.id === "D-1")!;
+    expect(c1.status).toBe("both_fail");
+    expect(d1.status).toBe("both_pass");
   });
 
   it("returns error when resolveAuditPair fails", async () => {

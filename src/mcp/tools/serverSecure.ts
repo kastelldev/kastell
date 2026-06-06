@@ -25,13 +25,10 @@ import {
   handleDomainCheck,
   handleDomainInfo,
 } from "./serverSecure.handlers.js";
+import { serverSecureActionSchema } from "./serverSecure.actions.js";
 
 export const serverSecureSchema = {
-  action: z.enum([
-    "audit", "secure-setup", "secure-audit",
-    "firewall-setup", "firewall-add", "firewall-remove", "firewall-status",
-    "domain-set", "domain-remove", "domain-check", "domain-info",
-  ]).describe(
+  action: serverSecureActionSchema.describe(
     "Action: Secure: 'secure-setup' hardens SSH + installs fail2ban, 'secure-audit' runs security audit with score. Firewall: 'firewall-setup' installs UFW, 'firewall-add'/'firewall-remove' manage port rules, 'firewall-status' shows rules. Domain: 'domain-set'/'domain-remove' manage FQDN, 'domain-check' verifies DNS, 'domain-info' shows current FQDN.",
   ),
   server: z.string().optional().describe(

@@ -36,6 +36,20 @@ rm -f "$TARBALL_ABS"
 EXTRACTED="$TMP/package"
 [ -d "$EXTRACTED" ] || { echo "[smoke] FAIL: package/ not found in tarball" >&2; exit 1; }
 
+# --- Step 2b: empty dir + manifest check -----------------------------------
+echo "[smoke] Step 2b: empty dir and manifest validation"
+# `find -mindepth 1 -print -quit` is portable across Git-Bash/MSYS/Cygwin
+# `ls` variants and exits on the first match — cheaper than `ls -A` on large dirs.
+if [ -z "$(find "$EXTRACTED" -mindepth 1 -print -quit 2>/dev/null)" ]; then
+  echo "::error::Plugin extract dir is empty: $EXTRACTED" >&2
+  exit 1
+fi
+if [ ! -f "$EXTRACTED/.claude-plugin/plugin.json" ]; then
+  echo "::error::plugin.json not found in tarball at .claude-plugin/plugin.json" >&2
+  exit 1
+fi
+echo "[smoke]   extract dir populated + manifest present"
+
 # --- Step 3: manifest path assertions --------------------------------------
 echo "[smoke] Step 3: plugin manifest paths shipped in tarball"
 # `cd` first so Node uses cwd-relative paths — avoids Git Bash POSIX→Windows
@@ -74,12 +88,20 @@ echo "[smoke] Step 3: plugin manifest paths shipped in tarball"
 # --- Step 4: MCP bundle bootable -------------------------------------------
 echo "[smoke] Step 4: dist/mcp-bundle.mjs boots without module errors"
 [ -f "$EXTRACTED/dist/mcp-bundle.mjs" ] || { echo "[smoke] FAIL: dist/mcp-bundle.mjs not in tarball" >&2; exit 1; }
+MCP_LOG="/tmp/mcp-boot-$$.log"
+BOOT_START=$(date +%s%N)
 # `cd` so the path passed to node is cwd-relative (Git Bash POSIX/Win conversion safe).
 MCP_STDERR="$(cd "$EXTRACTED" && KASTELL_SAFE_MODE=true node dist/mcp-bundle.mjs </dev/null 2>&1 &
   PID=$!
   sleep 3
   kill -TERM "$PID" 2>/dev/null || true
   wait "$PID" 2>/dev/null || true)" || true
+BOOT_END=$(date +%s%N)
+BOOT_MS=$(( (BOOT_END - BOOT_START) / 1000000 ))
+echo "[smoke]   MCP boot time: ${BOOT_MS}ms"
+if [ "$BOOT_MS" -gt 5000 ]; then
+  echo "::warning::MCP boot regression: ${BOOT_MS}ms (threshold 5000ms)"
+fi
 if echo "$MCP_STDERR" | grep -Eq 'Cannot find module|MODULE_NOT_FOUND|ERR_MODULE_NOT_FOUND|dlopen'; then
   echo "[smoke] FAIL: MCP bundle has unresolved imports:" >&2
   echo "$MCP_STDERR" | head -20 >&2

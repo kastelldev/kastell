@@ -1,4 +1,5 @@
 import { FAILED_PLUGIN_PREFIX } from "./sdk/constants.js";
+import { PLUGIN_STATUS_LOADED } from "./registry.js";
 import { existsSync, readdirSync, readFileSync } from "fs";
 import { join, resolve, sep } from "path";
 import { pathToFileURL } from "url";
@@ -14,6 +15,51 @@ import {
 } from "./registry.js";
 import type { PluginCheck, PluginManifest, PluginCommand, PluginMcpTool, PluginFix } from "./sdk/types.js";
 
+const PARALLEL_BLACKLIST: RegExp[] = [
+  /\brm\b/, /\bmv\b/, /\bcp\s+-f\b/,
+  /\bdd\b/, /\btruncate\b/, /\bmkfs\b/, /\bmount\b/, /\bumount\b/,
+  />/,      // output redirection (single > or >>)
+  /\btee\b/,
+  /\bchmod\b/, /\bchown\b/,
+  /\bsed\s+-i\b/,
+  /\bsystemctl\s+(restart|stop|start|enable|disable)\b/,
+  /\bservice\s+\S+\s+restart\b/,
+  /\bapt(-get)?\s+(install|remove|upgrade|update)\b/,
+  /\bdnf\s+(install|remove)\b/,
+  /\byum\s+(install|remove)\b/,
+  /\bpkg\s+(install|remove)\b/,
+];
+
+function isCommandReadOnly(command: string): { safe: boolean; matched?: string } {
+  for (const pattern of PARALLEL_BLACKLIST) {
+    if (pattern.test(command)) {
+      return { safe: false, matched: pattern.source };
+    }
+  }
+  return { safe: true };
+}
+
+/**
+ * Check a manifest's checks against the mutating-command blacklist.
+ * Returns an error string describing the first violation, or null if all
+ * checks pass (or if the manifest declares its checks as mutating via
+ * `mutates: true` or legacy `safeToParallel: false`).
+ *
+ * C4: `mutates: true` is the preferred positive-polarity form; the
+ * inverted `safeToParallel: false` is still accepted for back-compat.
+ */
+function enforceReadOnlyChecks(manifest: PluginManifest, checks: PluginCheck[]): string | null {
+  if (manifest.mutates === true || manifest.safeToParallel === false) return null;
+  for (const check of checks) {
+    const result = isCommandReadOnly(check.checkCommand);
+    if (!result.safe) {
+      return `Plugin "${manifest.name}" check "${check.id}" has forbidden token in checkCommand ` +
+        `(matched: ${result.matched}). checkCommand MUST be read-only. ` +
+        `Set "mutates: true" in manifest if mutation is intentional.`;
+    }
+  }
+  return null;
+}
 
 interface LoadPluginsOptions {
   importer?: (path: string) => Promise<unknown>;
@@ -119,6 +165,13 @@ export async function loadPlugins(
         throw new Error(`${dir.name}: check validation failed — ${msg}`, { cause: err });
       }
 
+      // Blacklist check — reject mutating checkCommand unless safeToParallel: false
+      const blacklistErr = enforceReadOnlyChecks(manifest, checks);
+      if (blacklistErr) {
+        registerFailedPlugin(manifest, blacklistErr);
+        throw new Error(blacklistErr);
+      }
+
       const enrichedManifest: PluginManifest = {
         ...manifest,
         commands: (moduleObj.commands as PluginCommand[] | undefined) ?? manifest.commands,
@@ -169,7 +222,7 @@ export async function loadPlugins(
   }
 
   const manifests = mapRegistryPlugins((_, entry) =>
-    entry.status === "loaded" ? entry.manifest : null,
+    entry.status === PLUGIN_STATUS_LOADED ? entry.manifest : null,
   ).filter((m): m is PluginManifest => m !== null);
   savePluginCache(manifests);
 

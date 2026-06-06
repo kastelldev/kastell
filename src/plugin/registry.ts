@@ -9,16 +9,87 @@ import { PLUGIN_NAME_PREFIX, PLUGIN_TOOL_PREFIX } from "./sdk/constants.js";
 
 const PLUGIN_CACHE_PATH = join(KASTELL_DIR, "plugin-manifests.json");
 
-export interface PluginRegistryEntry {
-  manifest: PluginManifest;
-  checks: PluginCheck[];
-  status: "loaded" | "failed";
-  reason?: string;
-  commands?: PluginCommand[];
-  mcpTools?: PluginMcpTool[];
-  fixes?: PluginFix[];
-  checksById: ReadonlyMap<string, PluginCheck>;
-  fixesByCheckId: ReadonlyMap<string, PluginFix>;
+/**
+ * Status string-literal constants. CQS-08: prefer these over `"loaded"` magic
+ * strings at call sites. `as const` preserves the literal type so discriminated
+ * union narrowing (`entry.status === PLUGIN_STATUS_LOADED`) still narrows
+ * correctly to the loaded variant.
+ */
+export const PLUGIN_STATUS_LOADED = "loaded" as const;
+export const PLUGIN_STATUS_FAILED = "failed" as const;
+export const PLUGIN_STATUS_DISABLED = "disabled" as const;
+
+// ─── PluginRegistryEntry discriminated union ───────────────────────────────────
+// Each variant shares `manifest`; status narrows what else is accessible.
+
+export type PluginRegistryEntry =
+  | ({
+      status: "loaded";
+      manifest: PluginManifest;
+      checks: PluginCheck[];
+      commands?: PluginCommand[];
+      mcpTools?: PluginMcpTool[];
+      checksById: ReadonlyMap<string, PluginCheck>;
+      fixesByCheckId: ReadonlyMap<string, PluginFix>;
+    })
+  | ({
+      status: "failed";
+      manifest: PluginManifest;
+      reason: string;
+      checks: [];
+      checksById: ReadonlyMap<string, never>;
+      fixesByCheckId: ReadonlyMap<string, never>;
+    })
+  | ({
+      status: "disabled";
+      manifest: PluginManifest;
+      checks: [];
+      checksById: ReadonlyMap<string, never>;
+      fixesByCheckId: ReadonlyMap<string, never>;
+    });
+
+type LoadedEntry = Extract<PluginRegistryEntry, { status: "loaded" }>;
+type FailedEntry = Extract<PluginRegistryEntry, { status: "failed" }>;
+type DisabledEntry = Extract<PluginRegistryEntry, { status: "disabled" }>;
+
+// Typed builders — return the discriminated variant directly so call sites
+// don't need `as unknown as PluginRegistryEntry` (P139 simplify C3).
+function createLoadedEntry(
+  manifest: PluginManifest,
+  checks: PluginCheck[],
+  checksById: ReadonlyMap<string, PluginCheck>,
+  fixesById: ReadonlyMap<string, PluginFix>,
+): LoadedEntry {
+  return {
+    status: "loaded",
+    manifest,
+    checks,
+    checksById,
+    fixesByCheckId: fixesById,
+    commands: manifest.commands,
+    mcpTools: manifest.mcpTools,
+  };
+}
+
+function createFailedEntry(manifest: PluginManifest, reason: string): FailedEntry {
+  return {
+    status: "failed",
+    manifest,
+    reason,
+    checks: [],
+    checksById: new Map<string, never>(),
+    fixesByCheckId: new Map<string, never>(),
+  };
+}
+
+function createDisabledEntry(manifest: PluginManifest): DisabledEntry {
+  return {
+    status: "disabled",
+    manifest,
+    checks: [],
+    checksById: new Map<string, never>(),
+    fixesByCheckId: new Map<string, never>(),
+  };
 }
 
 const PLUGIN_REGISTRY: Map<string, PluginRegistryEntry> = new Map();
@@ -68,30 +139,20 @@ export function registerPlugin(
     for (const fix of manifest.fixes) fixesByCheckId.set(fix.checkId, fix);
   }
 
-  PLUGIN_REGISTRY.set(manifest.name, {
-    manifest,
-    checks,
-    status: "loaded",
-    commands: manifest.commands,
-    mcpTools: manifest.mcpTools,
-    fixes: manifest.fixes,
-    checksById,
-    fixesByCheckId,
-  });
+  PLUGIN_REGISTRY.set(manifest.name, createLoadedEntry(manifest, checks, checksById, fixesByCheckId));
 }
 
 export function registerFailedPlugin(
   manifest: PluginManifest,
   reason: string,
 ): void {
-  PLUGIN_REGISTRY.set(manifest.name, {
-    manifest,
-    checks: [],
-    status: "failed",
-    reason,
-    checksById: new Map(),
-    fixesByCheckId: new Map(),
-  });
+  PLUGIN_REGISTRY.set(manifest.name, createFailedEntry(manifest, reason));
+}
+
+export function registerDisabledPlugin(
+  manifest: PluginManifest,
+): void {
+  PLUGIN_REGISTRY.set(manifest.name, createDisabledEntry(manifest));
 }
 
 export function deletePlugin(name: string): void {

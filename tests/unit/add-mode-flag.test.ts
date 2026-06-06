@@ -5,6 +5,7 @@
 import * as coreManage from "../../src/core/manage";
 import * as serverSelect from "../../src/utils/serverSelect";
 import { addCommand } from "../../src/commands/add";
+import { createConsoleSpy } from "../helpers/consoleSpy.js";
 
 jest.mock("../../src/core/manage");
 jest.mock("../../src/utils/serverSelect");
@@ -28,11 +29,11 @@ const coolifyAddResult = {
 };
 
 describe("kastell add --mode flag", () => {
-  let consoleSpy: jest.SpyInstance;
+  const spy = createConsoleSpy();
   let exitSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    spy.setup();
     exitSpy = jest.spyOn(process, "exit").mockImplementation(() => undefined as never);
     jest.clearAllMocks();
     mockedServerSelect.promptApiToken.mockResolvedValue("test-token");
@@ -40,7 +41,7 @@ describe("kastell add --mode flag", () => {
   });
 
   afterEach(() => {
-    consoleSpy.mockRestore();
+    spy.restore();
     exitSpy.mockRestore();
   });
 

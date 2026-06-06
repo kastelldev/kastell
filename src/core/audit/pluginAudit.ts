@@ -1,4 +1,5 @@
 import { debugLog } from "../../utils/logger.js";
+import { PLUGIN_STATUS_LOADED } from "../../plugin/registry.js";
 import { getShortName } from "../../plugin/registry.js";
 import type { PluginRegistryEntry } from "../../plugin/registry.js";
 import type { PluginCheck } from "../../plugin/sdk/types.js";
@@ -101,11 +102,14 @@ export function parsePluginBatchOutput(
   registry: ReadonlyMap<string, PluginRegistryEntry>,
 ): AuditCategory[] {
   const sections = stdout ? splitSections(stdout) : [];
-  const byPlugin = new Map<string, AuditCheck[]>();
 
+  // Pass 1: index valid sections by `${pluginName}:${checkId}` for O(1) lookup.
+  // Unknown plugins/checks are dropped here with a debugLog, matching the
+  // pre-refactor behavior.
+  const sectionsByPluginCheck = new Map<string, ParsedSection>();
   for (const section of sections) {
     const entry = registry.get(section.pluginName);
-    if (!entry || entry.status !== "loaded") {
+    if (!entry || entry.status !== PLUGIN_STATUS_LOADED) {
       debugLog?.(`Plugin batch: unknown plugin "${section.pluginName}", section ignored`);
       continue;
     }
@@ -114,31 +118,32 @@ export function parsePluginBatchOutput(
       debugLog?.(`Plugin batch: unknown check id "${section.checkId}" for plugin "${section.pluginName}"`);
       continue;
     }
-
-    const passed = evaluateCheck(section.body, checkDef);
-    const auditCheck = buildAuditCheck(checkDef, { passed, currentValue: section.body }, entry);
-
-    let pluginChecks = byPlugin.get(section.pluginName);
-    if (!pluginChecks) {
-      pluginChecks = [];
-      byPlugin.set(section.pluginName, pluginChecks);
-    }
-    pluginChecks.push(auditCheck);
+    sectionsByPluginCheck.set(`${section.pluginName}:${section.checkId}`, section);
   }
 
-  // "Unable to determine" fills every loaded plugin's missing check so runAudit's
-  // allUndetermined heuristic can flag plugin categories on batch failure.
+  // Pass 2: iterate the registry as the single source of truth — apply the
+  // section's evaluated result if present, or the "Unable to determine"
+  // fallback otherwise. Linear over the registry, no double-mutation of byPlugin.
+  const byPlugin = new Map<string, AuditCheck[]>();
   for (const [pluginName, entry] of registry) {
-    if (entry.status !== "loaded") continue;
+    if (entry.status !== PLUGIN_STATUS_LOADED) continue;
     if (entry.checks.length === 0) continue;
-    const existing = byPlugin.get(pluginName) ?? [];
-    const haveIds = new Set(existing.map((c) => c.id));
+
+    const checks: AuditCheck[] = [];
     for (const checkDef of entry.checks) {
-      if (!haveIds.has(checkDef.id)) {
-        existing.push(buildAuditCheck(checkDef, { passed: false, currentValue: "Unable to determine" }));
+      const section = sectionsByPluginCheck.get(`${pluginName}:${checkDef.id}`);
+      if (section) {
+        const passed = evaluateCheck(section.body, checkDef);
+        checks.push(buildAuditCheck(checkDef, { passed, currentValue: section.body }, entry));
+      } else {
+        // Missing section → runAudit's allUndetermined heuristic flags this
+        // plugin category as a batch failure.
+        checks.push(
+          buildAuditCheck(checkDef, { passed: false, currentValue: "Unable to determine" }),
+        );
       }
     }
-    byPlugin.set(pluginName, existing);
+    byPlugin.set(pluginName, checks);
   }
 
   const categories: AuditCategory[] = [];

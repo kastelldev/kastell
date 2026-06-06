@@ -1,9 +1,10 @@
-import pLimit from "p-limit";
 import chalk from "chalk";
+import { chunkConcurrent } from "../utils/concurrency.js";
 import { getServers } from "../utils/config.js";
-import { createSpinner } from "../utils/logger.js";
+import { createSpinner, logger } from "../utils/logger.js";
+import { getErrorMessage } from "../utils/errorMapper.js";
 import { checkServerHealth } from "./health.js";
-import { loadAuditHistory } from "./audit/history.js";
+import { loadLatestAudit } from "./audit/history.js";
 import { listSnapshots, loadSnapshot } from "./audit/snapshot.js";
 import type { FleetRow, FleetOptions, ServerRecord } from "../types/index.js";
 
@@ -14,12 +15,12 @@ export type { FleetRow, FleetOptions };
 /**
  * Get the most recent audit score for a server IP from history.
  * Returns null when no history exists.
+ *
+ * Delegates to `loadLatestAudit` so callers share the mtime-cached read path
+ * (CQS-04 / simplify C1): N fleet rows = 1 file read, not N.
  */
 export function getLatestAuditScore(serverIp: string): number | null {
-  const history = loadAuditHistory(serverIp);
-  if (history.length === 0) return null;
-  const sorted = [...history].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
-  return sorted[0].overallScore;
+  return loadLatestAudit(serverIp)?.overallScore ?? null;
 }
 
 /**
@@ -73,8 +74,8 @@ export function sortRows(rows: FleetRow[], field: string): FleetRow[] {
 }
 
 /**
- * Probe all registered servers in parallel (p-limit 5) and return fleet rows.
- * Uses Promise.allSettled — rejected probes become OFFLINE rows, never thrown.
+ * Probe all registered servers in parallel (chunkConcurrent, concurrency=5) and return fleet rows.
+ * Unreachable servers become OFFLINE rows, never thrown.
  */
 export async function runFleet(options: FleetOptions): Promise<FleetRow[]> {
   const servers = getServers();
@@ -87,25 +88,35 @@ export async function runFleet(options: FleetOptions): Promise<FleetRow[]> {
   const spinner = createSpinner(`Probing ${servers.length} server(s)...`);
   spinner.start();
 
-  const limit = pLimit(5);
+  type ProbeResult = { health: Awaited<ReturnType<typeof checkServerHealth>>; auditScore: number | null; weakest: Awaited<ReturnType<typeof getWeakestCategory>> | null; errorReason: string | null };
 
-  const tasks = servers.map((server: ServerRecord) =>
-    limit(async () => {
-      const health = await checkServerHealth(server);
-      const auditScore = getLatestAuditScore(server.ip);
-      const weakest = options.categories ? await getWeakestCategory(server.ip) : undefined;
-      return { health, auditScore, weakest };
-    }),
-  );
+  const safeProbe = async (server: ServerRecord): Promise<ProbeResult> => {
+  try {
+    const health = await checkServerHealth(server);
+    const auditScore: number | null = getLatestAuditScore(server.ip);
+    const weakest = options.categories ? await getWeakestCategory(server.ip) : null;
+    return { health, auditScore, weakest, errorReason: null };
+  } catch (err: unknown) {
+    const reason = getErrorMessage(err);
+    logger.error("safeProbe failed", { server: server.name, ip: server.ip, error: reason });
+    const unreachableHealth: ProbeResult["health"] = { server, status: "unreachable", responseTime: 0 };
+    return {
+      health: unreachableHealth,
+      auditScore: null,
+      weakest: null,
+      errorReason: reason,
+    };
+  }
+};
 
-  const results = await Promise.allSettled(tasks);
+const rawResults = await chunkConcurrent(servers, 5, safeProbe);
 
   spinner.stop();
 
-  const rows: FleetRow[] = results.map((result, i) => {
+  const rows: FleetRow[] = rawResults.map((result, i) => {
     const server = servers[i];
 
-    if (result.status === "rejected") {
+    if (!result || result.health.status === "unreachable") {
       return {
         name: server.name,
         ip: server.ip,
@@ -113,11 +124,11 @@ export async function runFleet(options: FleetOptions): Promise<FleetRow[]> {
         status: "OFFLINE",
         auditScore: null,
         responseTime: null,
-        errorReason: String(result.reason),
+        errorReason: result?.errorReason ?? null,
       } satisfies FleetRow;
     }
 
-    const { health, auditScore, weakest } = result.value;
+    const { health, auditScore, weakest } = result;
 
     let status: FleetRow["status"];
     if (health.status === "healthy") {

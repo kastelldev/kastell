@@ -3,18 +3,18 @@ import type { BatchDef, BatchTier } from "../../src/core/audit/commands.js";
 
 describe("buildAuditBatchCommands", () => {
   it("should return exactly 3 BatchDef objects", () => {
-    const batches = buildAuditBatchCommands("bare");
+    const batches = buildAuditBatchCommands({ platform: "bare" });
     expect(batches).toHaveLength(3);
   });
 
   it("should give each BatchDef a valid tier property", () => {
-    const batches = buildAuditBatchCommands("bare");
+    const batches = buildAuditBatchCommands({ platform: "bare" });
     const tiers = batches.map((b: BatchDef) => b.tier);
     expect(tiers).toEqual(["fast", "medium", "slow"]);
   });
 
   it("should contain named separators for SSH, FIREWALL, UPDATES, AUTH in batch 1 (fast)", () => {
-    const [fast] = buildAuditBatchCommands("bare");
+    const [fast] = buildAuditBatchCommands({ platform: "bare" });
     expect(fast.command).toContain("---SECTION:SSH---");
     expect(fast.command).toContain("---SECTION:FIREWALL---");
     expect(fast.command).toContain("---SECTION:UPDATES---");
@@ -22,7 +22,7 @@ describe("buildAuditBatchCommands", () => {
   });
 
   it("should contain named separators for DOCKER, NETWORK, LOGGING, KERNEL in batch 2 (medium)", () => {
-    const [, medium] = buildAuditBatchCommands("bare");
+    const [, medium] = buildAuditBatchCommands({ platform: "bare" });
     expect(medium.command).toContain("---SECTION:DOCKER---");
     expect(medium.command).toContain("---SECTION:NETWORK---");
     expect(medium.command).toContain("---SECTION:LOGGING---");
@@ -30,7 +30,7 @@ describe("buildAuditBatchCommands", () => {
   });
 
   it("should contain named separator for FILESYSTEM in batch 3 (slow)", () => {
-    const [, , slow] = buildAuditBatchCommands("bare");
+    const [, , slow] = buildAuditBatchCommands({ platform: "bare" });
     expect(slow.command).toContain("---SECTION:FILESYSTEM---");
   });
 
@@ -41,7 +41,7 @@ describe("buildAuditBatchCommands", () => {
   });
 
   it("should not contain old ---SEPARATOR--- format in any batch", () => {
-    const batches = buildAuditBatchCommands("bare");
+    const batches = buildAuditBatchCommands({ platform: "bare" });
     batches.forEach((b: BatchDef) => {
       expect(b.command).not.toContain("---SEPARATOR---");
     });
@@ -53,19 +53,19 @@ describe("buildAuditBatchCommands", () => {
   });
 
   it("should include platform-specific sections for coolify in medium batch", () => {
-    const [, mediumBare] = buildAuditBatchCommands("bare");
-    const [, mediumCoolify] = buildAuditBatchCommands("coolify");
+    const [, mediumBare] = buildAuditBatchCommands({ platform: "bare" });
+    const [, mediumCoolify] = buildAuditBatchCommands({ platform: "coolify" });
     expect(mediumCoolify.command.length).toBeGreaterThan(mediumBare.command.length);
   });
 
   it("should include platform-specific sections for dokploy in medium batch", () => {
-    const [, mediumBare] = buildAuditBatchCommands("bare");
-    const [, mediumDokploy] = buildAuditBatchCommands("dokploy");
+    const [, mediumBare] = buildAuditBatchCommands({ platform: "bare" });
+    const [, mediumDokploy] = buildAuditBatchCommands({ platform: "dokploy" });
     expect(mediumDokploy.command.length).toBeGreaterThan(mediumBare.command.length);
   });
 
   it("should use defensive patterns in commands", () => {
-    const batches = buildAuditBatchCommands("bare");
+    const batches = buildAuditBatchCommands({ platform: "bare" });
     const allCommands = batches.map((b: BatchDef) => b.command).join("\n");
     expect(allCommands).toContain("2>/dev/null");
     expect(allCommands).toMatch(/\|\| echo ['"]N\/A['"]/);
@@ -76,22 +76,22 @@ describe("buildAuditBatchCommands", () => {
 
 describe("BatchDef tier — exact values", () => {
   it("first batch tier is exactly 'fast'", () => {
-    const [fast] = buildAuditBatchCommands("bare");
+    const [fast] = buildAuditBatchCommands({ platform: "bare" });
     expect(fast.tier).toBe("fast");
   });
 
   it("second batch tier is exactly 'medium'", () => {
-    const [, medium] = buildAuditBatchCommands("bare");
+    const [, medium] = buildAuditBatchCommands({ platform: "bare" });
     expect(medium.tier).toBe("medium");
   });
 
   it("third batch tier is exactly 'slow'", () => {
-    const [, , slow] = buildAuditBatchCommands("bare");
+    const [, , slow] = buildAuditBatchCommands({ platform: "bare" });
     expect(slow.tier).toBe("slow");
   });
 
   it("tier values are not 'fast '/'medium '/'slow ' (no trailing space)", () => {
-    const batches = buildAuditBatchCommands("bare");
+    const batches = buildAuditBatchCommands({ platform: "bare" });
     batches.forEach((b) => {
       expect(b.tier).not.toMatch(/\s/);
     });
@@ -102,92 +102,92 @@ describe("BatchDef tier — exact values", () => {
 
 describe("Named section separators — exact format", () => {
   it("SSH section separator is exactly echo '---SECTION:SSH---'", () => {
-    const [fast] = buildAuditBatchCommands("bare");
+    const [fast] = buildAuditBatchCommands({ platform: "bare" });
     expect(fast.command).toContain("echo '---SECTION:SSH---'");
   });
 
   it("FIREWALL section separator is exactly echo '---SECTION:FIREWALL---'", () => {
-    const [fast] = buildAuditBatchCommands("bare");
+    const [fast] = buildAuditBatchCommands({ platform: "bare" });
     expect(fast.command).toContain("echo '---SECTION:FIREWALL---'");
   });
 
   it("DOCKER section separator is exactly echo '---SECTION:DOCKER---'", () => {
-    const [, medium] = buildAuditBatchCommands("bare");
+    const [, medium] = buildAuditBatchCommands({ platform: "bare" });
     expect(medium.command).toContain("echo '---SECTION:DOCKER---'");
   });
 
   it("FILESYSTEM section separator is exactly echo '---SECTION:FILESYSTEM---'", () => {
-    const [, , slow] = buildAuditBatchCommands("bare");
+    const [, , slow] = buildAuditBatchCommands({ platform: "bare" });
     expect(slow.command).toContain("echo '---SECTION:FILESYSTEM---'");
   });
 
   it("CRYPTO section is in slow batch", () => {
-    const [, , slow] = buildAuditBatchCommands("bare");
+    const [, , slow] = buildAuditBatchCommands({ platform: "bare" });
     expect(slow.command).toContain("echo '---SECTION:CRYPTO---'");
   });
 
   it("MALWARE section is in slow batch", () => {
-    const [, , slow] = buildAuditBatchCommands("bare");
+    const [, , slow] = buildAuditBatchCommands({ platform: "bare" });
     expect(slow.command).toContain("echo '---SECTION:MALWARE---'");
   });
 
   it("SECRETS section is in slow batch", () => {
-    const [, , slow] = buildAuditBatchCommands("bare");
+    const [, , slow] = buildAuditBatchCommands({ platform: "bare" });
     expect(slow.command).toContain("echo '---SECTION:SECRETS---'");
   });
 
   it("SUPPLYCHAIN section is in slow batch", () => {
-    const [, , slow] = buildAuditBatchCommands("bare");
+    const [, , slow] = buildAuditBatchCommands({ platform: "bare" });
     expect(slow.command).toContain("echo '---SECTION:SUPPLYCHAIN---'");
   });
 
   it("FILEINTEGRITY section is in slow batch", () => {
-    const [, , slow] = buildAuditBatchCommands("bare");
+    const [, , slow] = buildAuditBatchCommands({ platform: "bare" });
     expect(slow.command).toContain("echo '---SECTION:FILEINTEGRITY---'");
   });
 
   it("ACCOUNTS section is in fast batch", () => {
-    const [fast] = buildAuditBatchCommands("bare");
+    const [fast] = buildAuditBatchCommands({ platform: "bare" });
     expect(fast.command).toContain("echo '---SECTION:ACCOUNTS---'");
   });
 
   it("BOOT section is in fast batch", () => {
-    const [fast] = buildAuditBatchCommands("bare");
+    const [fast] = buildAuditBatchCommands({ platform: "bare" });
     expect(fast.command).toContain("echo '---SECTION:BOOT---'");
   });
 
   it("SCHEDULING section is in fast batch", () => {
-    const [fast] = buildAuditBatchCommands("bare");
+    const [fast] = buildAuditBatchCommands({ platform: "bare" });
     expect(fast.command).toContain("echo '---SECTION:SCHEDULING---'");
   });
 
   it("BANNERS section is in fast batch", () => {
-    const [fast] = buildAuditBatchCommands("bare");
+    const [fast] = buildAuditBatchCommands({ platform: "bare" });
     expect(fast.command).toContain("echo '---SECTION:BANNERS---'");
   });
 
   it("TIME section is in medium batch", () => {
-    const [, medium] = buildAuditBatchCommands("bare");
+    const [, medium] = buildAuditBatchCommands({ platform: "bare" });
     expect(medium.command).toContain("echo '---SECTION:TIME---'");
   });
 
   it("MAC section is in medium batch", () => {
-    const [, medium] = buildAuditBatchCommands("bare");
+    const [, medium] = buildAuditBatchCommands({ platform: "bare" });
     expect(medium.command).toContain("echo '---SECTION:MAC---'");
   });
 
   it("MEMORY section is in medium batch", () => {
-    const [, medium] = buildAuditBatchCommands("bare");
+    const [, medium] = buildAuditBatchCommands({ platform: "bare" });
     expect(medium.command).toContain("echo '---SECTION:MEMORY---'");
   });
 
   it("CLOUDMETA section is in medium batch", () => {
-    const [, medium] = buildAuditBatchCommands("bare");
+    const [, medium] = buildAuditBatchCommands({ platform: "bare" });
     expect(medium.command).toContain("echo '---SECTION:CLOUDMETA---'");
   });
 
   it("SERVICES section is in medium batch", () => {
-    const [, medium] = buildAuditBatchCommands("bare");
+    const [, medium] = buildAuditBatchCommands({ platform: "bare" });
     expect(medium.command).toContain("echo '---SECTION:SERVICES---'");
   });
 });
@@ -196,47 +196,47 @@ describe("Named section separators — exact format", () => {
 
 describe("Platform variation — command content differences", () => {
   it("coolify medium batch includes /data/coolify path", () => {
-    const [, medium] = buildAuditBatchCommands("coolify");
+    const [, medium] = buildAuditBatchCommands({ platform: "coolify" });
     expect(medium.command).toContain("/data/coolify");
   });
 
   it("dokploy medium batch includes /etc/dokploy path", () => {
-    const [, medium] = buildAuditBatchCommands("dokploy");
+    const [, medium] = buildAuditBatchCommands({ platform: "dokploy" });
     expect(medium.command).toContain("/etc/dokploy");
   });
 
   it("bare platform does NOT include coolify-specific path", () => {
-    const [, medium] = buildAuditBatchCommands("bare");
+    const [, medium] = buildAuditBatchCommands({ platform: "bare" });
     expect(medium.command).not.toContain("/data/coolify");
   });
 
   it("bare platform does NOT include dokploy-specific path", () => {
-    const [, medium] = buildAuditBatchCommands("bare");
+    const [, medium] = buildAuditBatchCommands({ platform: "bare" });
     expect(medium.command).not.toContain("/etc/dokploy");
   });
 
   it("coolify medium batch includes docker inspect coolify command", () => {
-    const [, medium] = buildAuditBatchCommands("coolify");
+    const [, medium] = buildAuditBatchCommands({ platform: "coolify" });
     expect(medium.command).toContain("docker inspect coolify");
   });
 
   it("dokploy medium batch includes docker inspect dokploy command", () => {
-    const [, medium] = buildAuditBatchCommands("dokploy");
+    const [, medium] = buildAuditBatchCommands({ platform: "dokploy" });
     expect(medium.command).toContain("docker inspect dokploy");
   });
 
   it("fast batch is identical for all platforms", () => {
-    const [fastBare] = buildAuditBatchCommands("bare");
-    const [fastCoolify] = buildAuditBatchCommands("coolify");
-    const [fastDokploy] = buildAuditBatchCommands("dokploy");
+    const [fastBare] = buildAuditBatchCommands({ platform: "bare" });
+    const [fastCoolify] = buildAuditBatchCommands({ platform: "coolify" });
+    const [fastDokploy] = buildAuditBatchCommands({ platform: "dokploy" });
     expect(fastBare.command).toBe(fastCoolify.command);
     expect(fastBare.command).toBe(fastDokploy.command);
   });
 
   it("slow batch is identical for all platforms", () => {
-    const [, , slowBare] = buildAuditBatchCommands("bare");
-    const [, , slowCoolify] = buildAuditBatchCommands("coolify");
-    const [, , slowDokploy] = buildAuditBatchCommands("dokploy");
+    const [, , slowBare] = buildAuditBatchCommands({ platform: "bare" });
+    const [, , slowCoolify] = buildAuditBatchCommands({ platform: "coolify" });
+    const [, , slowDokploy] = buildAuditBatchCommands({ platform: "dokploy" });
     expect(slowBare.command).toBe(slowCoolify.command);
     expect(slowBare.command).toBe(slowDokploy.command);
   });
@@ -246,92 +246,92 @@ describe("Platform variation — command content differences", () => {
 
 describe("Command content — mutation-killing exact string assertions", () => {
   it("SSH section reads /etc/ssh/sshd_config", () => {
-    const [fast] = buildAuditBatchCommands("bare");
+    const [fast] = buildAuditBatchCommands({ platform: "bare" });
     expect(fast.command).toContain("/etc/ssh/sshd_config");
   });
 
   it("FIREWALL section checks ufw status verbose", () => {
-    const [fast] = buildAuditBatchCommands("bare");
+    const [fast] = buildAuditBatchCommands({ platform: "bare" });
     expect(fast.command).toContain("ufw status verbose");
   });
 
   it("UPDATES section checks for security updates via apt", () => {
-    const [fast] = buildAuditBatchCommands("bare");
+    const [fast] = buildAuditBatchCommands({ platform: "bare" });
     expect(fast.command).toContain("apt list --upgradable");
   });
 
   it("UPDATES section checks for REBOOT_REQUIRED sentinel", () => {
-    const [fast] = buildAuditBatchCommands("bare");
+    const [fast] = buildAuditBatchCommands({ platform: "bare" });
     expect(fast.command).toContain("REBOOT_REQUIRED");
   });
 
   it("AUTH section reads /etc/pam.d/common-auth", () => {
-    const [fast] = buildAuditBatchCommands("bare");
+    const [fast] = buildAuditBatchCommands({ platform: "bare" });
     expect(fast.command).toContain("/etc/pam.d/common-auth");
   });
 
   it("KERNEL section checks randomize_va_space", () => {
-    const [, medium] = buildAuditBatchCommands("bare");
+    const [, medium] = buildAuditBatchCommands({ platform: "bare" });
     expect(medium.command).toContain("randomize_va_space");
   });
 
   it("FILEINTEGRITY section checks for AIDE installation", () => {
-    const [, , slow] = buildAuditBatchCommands("bare");
+    const [, , slow] = buildAuditBatchCommands({ platform: "bare" });
     expect(slow.command).toContain("aide");
   });
 
   it("MALWARE section checks for rkhunter", () => {
-    const [, , slow] = buildAuditBatchCommands("bare");
+    const [, , slow] = buildAuditBatchCommands({ platform: "bare" });
     expect(slow.command).toContain("rkhunter");
   });
 
   it("SECRETS section checks for world-readable .env files", () => {
-    const [, , slow] = buildAuditBatchCommands("bare");
+    const [, , slow] = buildAuditBatchCommands({ platform: "bare" });
     expect(slow.command).toContain(".env");
   });
 
   it("DOCKER section checks daemon.json content", () => {
-    const [, medium] = buildAuditBatchCommands("bare");
+    const [, medium] = buildAuditBatchCommands({ platform: "bare" });
     expect(medium.command).toContain("/etc/docker/daemon.json");
   });
 
   it("DOCKER section uses ---DAEMON_JSON--- sentinel", () => {
-    const [, medium] = buildAuditBatchCommands("bare");
+    const [, medium] = buildAuditBatchCommands({ platform: "bare" });
     expect(medium.command).toContain("---DAEMON_JSON---");
   });
 
   it("DOCKER section uses ---END_DAEMON_JSON--- closing sentinel", () => {
-    const [, medium] = buildAuditBatchCommands("bare");
+    const [, medium] = buildAuditBatchCommands({ platform: "bare" });
     expect(medium.command).toContain("---END_DAEMON_JSON---");
   });
 
   it("LOGGING section checks rsyslog is-active", () => {
-    const [, medium] = buildAuditBatchCommands("bare");
+    const [, medium] = buildAuditBatchCommands({ platform: "bare" });
     expect(medium.command).toContain("rsyslog");
   });
 
   it("BOOT section checks grub.cfg permissions", () => {
-    const [fast] = buildAuditBatchCommands("bare");
+    const [fast] = buildAuditBatchCommands({ platform: "bare" });
     expect(fast.command).toContain("grub.cfg");
   });
 
   it("CRYPTO section checks openssl version", () => {
-    const [, , slow] = buildAuditBatchCommands("bare");
+    const [, , slow] = buildAuditBatchCommands({ platform: "bare" });
     expect(slow.command).toContain("openssl version");
   });
 
   it("SUPPLYCHAIN section checks apt-key list", () => {
-    const [, , slow] = buildAuditBatchCommands("bare");
+    const [, , slow] = buildAuditBatchCommands({ platform: "bare" });
     expect(slow.command).toContain("apt-key list");
   });
 
   it("BACKUP section uses KASTELL_BACKUP_FOUND sentinel", () => {
-    const [, medium] = buildAuditBatchCommands("bare");
+    const [, medium] = buildAuditBatchCommands({ platform: "bare" });
     expect(medium.command).toContain("KASTELL_BACKUP_FOUND");
   });
 
   it("BACKUP section uses KASTELL_BACKUP_MISSING sentinel", () => {
-    const [, medium] = buildAuditBatchCommands("bare");
+    const [, medium] = buildAuditBatchCommands({ platform: "bare" });
     expect(medium.command).toContain("KASTELL_BACKUP_MISSING");
   });
 });
@@ -340,15 +340,15 @@ describe("Command content — mutation-killing exact string assertions", () => {
 
 describe("Idempotency", () => {
   it("calling buildAuditBatchCommands twice with same platform returns identical results", () => {
-    const first = buildAuditBatchCommands("bare");
-    const second = buildAuditBatchCommands("bare");
+    const first = buildAuditBatchCommands({ platform: "bare" });
+    const second = buildAuditBatchCommands({ platform: "bare" });
     expect(first[0].command).toBe(second[0].command);
     expect(first[1].command).toBe(second[1].command);
     expect(first[2].command).toBe(second[2].command);
   });
 
   it("result has exactly 2 keys per BatchDef: tier and command", () => {
-    const batches = buildAuditBatchCommands("bare");
+    const batches = buildAuditBatchCommands({ platform: "bare" });
     for (const b of batches) {
       const keys = Object.keys(b).sort();
       expect(keys).toEqual(["command", "tier"].sort());
@@ -362,7 +362,7 @@ describe("Idempotency", () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe("[MUTATION-KILLER] sshSection — all command strings", () => {
-  const fast = buildAuditBatchCommands("bare")[0];
+  const fast = buildAuditBatchCommands({ platform: "bare" })[0];
 
   it("[MUTATION-KILLER] reads sshd_config with cat", () => {
     expect(fast.command).toContain("cat /etc/ssh/sshd_config 2>/dev/null || echo 'N/A'");
@@ -402,7 +402,7 @@ describe("[MUTATION-KILLER] sshSection — all command strings", () => {
 });
 
 describe("[MUTATION-KILLER] firewallSection — all command strings", () => {
-  const fast = buildAuditBatchCommands("bare")[0];
+  const fast = buildAuditBatchCommands({ platform: "bare" })[0];
 
   it("[MUTATION-KILLER] checks ufw status verbose", () => {
     expect(fast.command).toContain("command -v ufw >/dev/null 2>&1 && ufw status verbose 2>/dev/null || echo 'N/A'");
@@ -474,7 +474,7 @@ describe("[MUTATION-KILLER] firewallSection — all command strings", () => {
 });
 
 describe("[MUTATION-KILLER] updatesSection — all command strings", () => {
-  const fast = buildAuditBatchCommands("bare")[0];
+  const fast = buildAuditBatchCommands({ platform: "bare" })[0];
 
   it("[MUTATION-KILLER] apt list --upgradable with security filter", () => {
     expect(fast.command).toContain("apt list --upgradable 2>/dev/null | grep -i security | wc -l");
@@ -522,7 +522,7 @@ describe("[MUTATION-KILLER] updatesSection — all command strings", () => {
 });
 
 describe("[MUTATION-KILLER] authSection — all command strings", () => {
-  const fast = buildAuditBatchCommands("bare")[0];
+  const fast = buildAuditBatchCommands({ platform: "bare" })[0];
 
   it("[MUTATION-KILLER] reads /etc/pam.d/common-auth", () => {
     expect(fast.command).toContain("cat /etc/pam.d/common-auth 2>/dev/null | head -20");
@@ -594,7 +594,7 @@ describe("[MUTATION-KILLER] authSection — all command strings", () => {
 });
 
 describe("[MUTATION-KILLER] dockerSection — all command strings", () => {
-  const medium = buildAuditBatchCommands("bare")[1];
+  const medium = buildAuditBatchCommands({ platform: "bare" })[1];
 
   it("[MUTATION-KILLER] docker info --format json", () => {
     expect(medium.command).toContain("docker info --format '{{json .}}' 2>/dev/null");
@@ -669,28 +669,28 @@ describe("[MUTATION-KILLER] dockerSection — all command strings", () => {
   });
 
   it("[MUTATION-KILLER] coolify platform checks /data/coolify", () => {
-    const mediumCoolify = buildAuditBatchCommands("coolify")[1];
+    const mediumCoolify = buildAuditBatchCommands({ platform: "coolify" })[1];
     expect(mediumCoolify.command).toContain("test -d /data/coolify && ls -la /data/coolify/ 2>/dev/null");
   });
 
   it("[MUTATION-KILLER] coolify docker inspect restartpolicy", () => {
-    const mediumCoolify = buildAuditBatchCommands("coolify")[1];
+    const mediumCoolify = buildAuditBatchCommands({ platform: "coolify" })[1];
     expect(mediumCoolify.command).toContain("docker inspect coolify 2>/dev/null | grep -i 'restartpolicy'");
   });
 
   it("[MUTATION-KILLER] dokploy platform checks /etc/dokploy", () => {
-    const mediumDokploy = buildAuditBatchCommands("dokploy")[1];
+    const mediumDokploy = buildAuditBatchCommands({ platform: "dokploy" })[1];
     expect(mediumDokploy.command).toContain("test -d /etc/dokploy && ls -la /etc/dokploy/ 2>/dev/null");
   });
 
   it("[MUTATION-KILLER] dokploy docker inspect restartpolicy", () => {
-    const mediumDokploy = buildAuditBatchCommands("dokploy")[1];
+    const mediumDokploy = buildAuditBatchCommands({ platform: "dokploy" })[1];
     expect(mediumDokploy.command).toContain("docker inspect dokploy 2>/dev/null | grep -i 'restartpolicy'");
   });
 });
 
 describe("[MUTATION-KILLER] networkSection — all command strings", () => {
-  const medium = buildAuditBatchCommands("bare")[1];
+  const medium = buildAuditBatchCommands({ platform: "bare" })[1];
 
   it("[MUTATION-KILLER] TCP listeners ss -tlnp", () => {
     expect(medium.command).toContain("ss -tlnp 2>/dev/null || netstat -tlnp 2>/dev/null || echo 'N/A'");
@@ -750,7 +750,7 @@ describe("[MUTATION-KILLER] networkSection — all command strings", () => {
 });
 
 describe("[MUTATION-KILLER] loggingSection — all command strings", () => {
-  const medium = buildAuditBatchCommands("bare")[1];
+  const medium = buildAuditBatchCommands({ platform: "bare" })[1];
 
   it("[MUTATION-KILLER] rsyslog is-active", () => {
     expect(medium.command).toContain("systemctl is-active rsyslog 2>/dev/null");
@@ -810,7 +810,7 @@ describe("[MUTATION-KILLER] loggingSection — all command strings", () => {
 });
 
 describe("[MUTATION-KILLER] kernelSection — all command strings", () => {
-  const medium = buildAuditBatchCommands("bare")[1];
+  const medium = buildAuditBatchCommands({ platform: "bare" })[1];
 
   it("[MUTATION-KILLER] sysctl -a with security parameters", () => {
     expect(medium.command).toContain("randomize_va_space|accept_redirects|accept_source_route|log_martians|syncookies");
@@ -862,7 +862,7 @@ describe("[MUTATION-KILLER] kernelSection — all command strings", () => {
 });
 
 describe("[MUTATION-KILLER] accountsSection — all command strings", () => {
-  const fast = buildAuditBatchCommands("bare")[0];
+  const fast = buildAuditBatchCommands({ platform: "bare" })[0];
 
   it("[MUTATION-KILLER] passwd fields extraction", () => {
     expect(fast.command).toContain("awk -F: '{print $1\":\"$3\":\"$7}' /etc/passwd");
@@ -920,7 +920,7 @@ describe("[MUTATION-KILLER] accountsSection — all command strings", () => {
 });
 
 describe("[MUTATION-KILLER] servicesSection — all command strings", () => {
-  const medium = buildAuditBatchCommands("bare")[1];
+  const medium = buildAuditBatchCommands({ platform: "bare" })[1];
 
   it("[MUTATION-KILLER] checks legacy insecure services", () => {
     expect(medium.command).toContain("systemctl is-active telnet rsh rlogin vsftpd ftp tftpd-hpa");
@@ -960,7 +960,7 @@ describe("[MUTATION-KILLER] servicesSection — all command strings", () => {
 });
 
 describe("[MUTATION-KILLER] bootSection — all command strings", () => {
-  const fast = buildAuditBatchCommands("bare")[0];
+  const fast = buildAuditBatchCommands({ platform: "bare" })[0];
 
   it("[MUTATION-KILLER] grub.cfg permissions stat", () => {
     expect(fast.command).toContain("stat -c '%a %U %G' /boot/grub/grub.cfg /boot/grub2/grub.cfg 2>/dev/null");
@@ -1009,7 +1009,7 @@ describe("[MUTATION-KILLER] bootSection — all command strings", () => {
 });
 
 describe("[MUTATION-KILLER] schedulingSection — all command strings", () => {
-  const fast = buildAuditBatchCommands("bare")[0];
+  const fast = buildAuditBatchCommands({ platform: "bare" })[0];
 
   it("[MUTATION-KILLER] cron.allow existence", () => {
     expect(fast.command).toContain("test -f /etc/cron.allow && echo 'cron.allow EXISTS' || echo 'cron.allow MISSING'");
@@ -1049,7 +1049,7 @@ describe("[MUTATION-KILLER] schedulingSection — all command strings", () => {
 });
 
 describe("[MUTATION-KILLER] timeSection — all command strings", () => {
-  const medium = buildAuditBatchCommands("bare")[1];
+  const medium = buildAuditBatchCommands({ platform: "bare" })[1];
 
   it("[MUTATION-KILLER] timedatectl check", () => {
     expect(medium.command).toContain("timedatectl 2>/dev/null || echo 'N/A'");
@@ -1081,7 +1081,7 @@ describe("[MUTATION-KILLER] timeSection — all command strings", () => {
 });
 
 describe("[MUTATION-KILLER] bannersSection — all command strings", () => {
-  const fast = buildAuditBatchCommands("bare")[0];
+  const fast = buildAuditBatchCommands({ platform: "bare" })[0];
 
   it("[MUTATION-KILLER] /etc/issue check", () => {
     expect(fast.command).toContain("cat /etc/issue 2>/dev/null || echo 'MISSING'");
@@ -1101,7 +1101,7 @@ describe("[MUTATION-KILLER] bannersSection — all command strings", () => {
 });
 
 describe("[MUTATION-KILLER] fileIntegritySection — all command strings", () => {
-  const slow = buildAuditBatchCommands("bare")[2];
+  const slow = buildAuditBatchCommands({ platform: "bare" })[2];
 
   it("[MUTATION-KILLER] AIDE installation check", () => {
     expect(slow.command).toContain("dpkg -l aide 2>/dev/null | grep '^ii' || echo 'NOT_INSTALLED'");
@@ -1137,7 +1137,7 @@ describe("[MUTATION-KILLER] fileIntegritySection — all command strings", () =>
 });
 
 describe("[MUTATION-KILLER] malwareSection — all command strings", () => {
-  const slow = buildAuditBatchCommands("bare")[2];
+  const slow = buildAuditBatchCommands({ platform: "bare" })[2];
 
   it("[MUTATION-KILLER] chkrootkit installation check", () => {
     expect(slow.command).toContain("dpkg -l chkrootkit 2>/dev/null | grep '^ii' || echo 'NOT_INSTALLED'");
@@ -1177,7 +1177,7 @@ describe("[MUTATION-KILLER] malwareSection — all command strings", () => {
 });
 
 describe("[MUTATION-KILLER] macSection — all command strings", () => {
-  const medium = buildAuditBatchCommands("bare")[1];
+  const medium = buildAuditBatchCommands({ platform: "bare" })[1];
 
   it("[MUTATION-KILLER] /sys/kernel/security/lsm", () => {
     expect(medium.command).toContain("cat /sys/kernel/security/lsm 2>/dev/null");
@@ -1213,7 +1213,7 @@ describe("[MUTATION-KILLER] macSection — all command strings", () => {
 });
 
 describe("[MUTATION-KILLER] memorySection — all command strings", () => {
-  const medium = buildAuditBatchCommands("bare")[1];
+  const medium = buildAuditBatchCommands({ platform: "bare" })[1];
 
   it("[MUTATION-KILLER] sysctl vm.overcommit_memory/ratio/oom_kill", () => {
     expect(medium.command).toContain("sysctl vm.overcommit_memory vm.overcommit_ratio vm.oom_kill_allocating_task");
@@ -1253,7 +1253,7 @@ describe("[MUTATION-KILLER] memorySection — all command strings", () => {
 });
 
 describe("[MUTATION-KILLER] cryptoSection — all command strings", () => {
-  const slow = buildAuditBatchCommands("bare")[2];
+  const slow = buildAuditBatchCommands({ platform: "bare" })[2];
 
   it("[MUTATION-KILLER] openssl version", () => {
     expect(slow.command).toContain("openssl version 2>/dev/null || echo 'NOT_INSTALLED'");
@@ -1309,7 +1309,7 @@ describe("[MUTATION-KILLER] cryptoSection — all command strings", () => {
 });
 
 describe("[MUTATION-KILLER] filesystemSection — all command strings", () => {
-  const slow = buildAuditBatchCommands("bare")[2];
+  const slow = buildAuditBatchCommands({ platform: "bare" })[2];
 
   it("[MUTATION-KILLER] world-writable files in /etc /usr", () => {
     expect(slow.command).toContain("find /etc /usr -maxdepth 2 -perm -o+w -type f 2>/dev/null | head -20");
@@ -1357,7 +1357,7 @@ describe("[MUTATION-KILLER] filesystemSection — all command strings", () => {
 });
 
 describe("[MUTATION-KILLER] secretsSection — all command strings", () => {
-  const slow = buildAuditBatchCommands("bare")[2];
+  const slow = buildAuditBatchCommands({ platform: "bare" })[2];
 
   it("[MUTATION-KILLER] world-readable .env sentinel WORLD_READABLE_ENV", () => {
     expect(slow.command).toContain("WORLD_READABLE_ENV");
@@ -1431,7 +1431,7 @@ describe("[MUTATION-KILLER] secretsSection — all command strings", () => {
 });
 
 describe("[MUTATION-KILLER] cloudMetaSection — all command strings", () => {
-  const medium = buildAuditBatchCommands("bare")[1];
+  const medium = buildAuditBatchCommands({ platform: "bare" })[1];
 
   it("[MUTATION-KILLER] VPS detection with systemd-detect-virt", () => {
     expect(medium.command).toContain("systemd-detect-virt 2>/dev/null");
@@ -1491,7 +1491,7 @@ describe("[MUTATION-KILLER] cloudMetaSection — all command strings", () => {
 });
 
 describe("[MUTATION-KILLER] supplyChainSection — all command strings", () => {
-  const slow = buildAuditBatchCommands("bare")[2];
+  const slow = buildAuditBatchCommands({ platform: "bare" })[2];
 
   it("[MUTATION-KILLER] HTTP repos in apt-cache policy", () => {
     expect(slow.command).toContain("apt-cache policy 2>/dev/null | grep -E '^\\s+[0-9]' | grep 'http://' | head -10 || echo 'NO_HTTP_REPOS'");
@@ -1527,7 +1527,7 @@ describe("[MUTATION-KILLER] supplyChainSection — all command strings", () => {
 });
 
 describe("[MUTATION-KILLER] backupSection — all command strings", () => {
-  const medium = buildAuditBatchCommands("bare")[1];
+  const medium = buildAuditBatchCommands({ platform: "bare" })[1];
 
   it("[MUTATION-KILLER] KASTELL_BACKUP_FOUND / KASTELL_BACKUP_MISSING", () => {
     expect(medium.command).toContain("KASTELL_BACKUP_FOUND");
@@ -1572,7 +1572,7 @@ describe("[MUTATION-KILLER] backupSection — all command strings", () => {
 });
 
 describe("[MUTATION-KILLER] resourceLimitsSection — all command strings", () => {
-  const medium = buildAuditBatchCommands("bare")[1];
+  const medium = buildAuditBatchCommands({ platform: "bare" })[1];
 
   it("[MUTATION-KILLER] CGROUPS_V2_ACTIVE / CGROUPS_V2_ABSENT", () => {
     expect(medium.command).toContain("CGROUPS_V2_ACTIVE");
@@ -1619,7 +1619,7 @@ describe("[MUTATION-KILLER] resourceLimitsSection — all command strings", () =
 });
 
 describe("[MUTATION-KILLER] incidentReadySection — all command strings", () => {
-  const medium = buildAuditBatchCommands("bare")[1];
+  const medium = buildAuditBatchCommands({ platform: "bare" })[1];
 
   it("[MUTATION-KILLER] AUDITD_INSTALLED / AUDITD_NOT_INSTALLED", () => {
     expect(medium.command).toContain("AUDITD_INSTALLED");
@@ -1674,7 +1674,7 @@ describe("[MUTATION-KILLER] incidentReadySection — all command strings", () =>
 });
 
 describe("[MUTATION-KILLER] dnsSection — all command strings", () => {
-  const medium = buildAuditBatchCommands("bare")[1];
+  const medium = buildAuditBatchCommands({ platform: "bare" })[1];
 
   it("[MUTATION-KILLER] DNSSEC_ENABLED / DNSSEC_DISABLED", () => {
     expect(medium.command).toContain("DNSSEC_ENABLED");
@@ -1722,7 +1722,7 @@ describe("[MUTATION-KILLER] dnsSection — all command strings", () => {
 });
 
 describe("[MUTATION-KILLER] tlsSection — all command strings", () => {
-  const fast = buildAuditBatchCommands("bare")[0];
+  const fast = buildAuditBatchCommands({ platform: "bare" })[0];
 
   it("[MUTATION-KILLER] TLSHARDENING section separator", () => {
     expect(fast.command).toContain("echo '---SECTION:TLSHARDENING---'");
@@ -1780,7 +1780,7 @@ describe("[MUTATION-KILLER] tlsSection — all command strings", () => {
 });
 
 describe("[MUTATION-KILLER] httpHeadersSection — all command strings", () => {
-  const fast = buildAuditBatchCommands("bare")[0];
+  const fast = buildAuditBatchCommands({ platform: "bare" })[0];
 
   it("[MUTATION-KILLER] HTTPHEADERS section separator", () => {
     expect(fast.command).toContain("echo '---SECTION:HTTPHEADERS---'");
@@ -1804,7 +1804,7 @@ describe("[MUTATION-KILLER] httpHeadersSection — all command strings", () => {
 });
 
 describe("[MUTATION-KILLER] nginxSection — all command strings", () => {
-  const fast = buildAuditBatchCommands("bare")[0];
+  const fast = buildAuditBatchCommands({ platform: "bare" })[0];
 
   it("[MUTATION-KILLER] NGINX section separator", () => {
     expect(fast.command).toContain("echo '---SECTION:NGINX---'");
@@ -1853,7 +1853,7 @@ describe("[MUTATION-KILLER] nginxSection — all command strings", () => {
 });
 
 describe("[MUTATION-KILLER] ddosSection — all command strings", () => {
-  const medium = buildAuditBatchCommands("bare")[1];
+  const medium = buildAuditBatchCommands({ platform: "bare" })[1];
 
   it("[MUTATION-KILLER] DDOS section separator", () => {
     expect(medium.command).toContain("echo '---SECTION:DDOS---'");
@@ -1869,7 +1869,7 @@ describe("[MUTATION-KILLER] ddosSection — all command strings", () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe("[MUTATION-KILLER] ALL section separators — complete list", () => {
-  const batches = buildAuditBatchCommands("bare");
+  const batches = buildAuditBatchCommands({ platform: "bare" });
   const allCommands = batches.map(b => b.command).join("\n");
 
   const expectedSections = [
@@ -1898,7 +1898,7 @@ describe("[MUTATION-KILLER] ALL section separators — complete list", () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe("[MUTATION-KILLER] NAMED_SEP template — exact echo format", () => {
-  const batches = buildAuditBatchCommands("bare");
+  const batches = buildAuditBatchCommands({ platform: "bare" });
   const all = batches.map((b) => b.command).join("\n");
 
   // Each NAMED_SEP call produces: echo '---SECTION:NAME---'
@@ -1955,7 +1955,7 @@ describe("[MUTATION-KILLER] BATCH_TIMEOUTS — exact keys and values", () => {
 });
 
 describe("[MUTATION-KILLER] sshSection — granular substrings", () => {
-  const fast = buildAuditBatchCommands("bare")[0];
+  const fast = buildAuditBatchCommands({ platform: "bare" })[0];
 
   it("[MUTATION-KILLER] sshd -T grep has -iE flag", () => {
     expect(fast.command).toContain("sshd -T 2>/dev/null | grep -iE");
@@ -2031,7 +2031,7 @@ describe("[MUTATION-KILLER] sshSection — granular substrings", () => {
 });
 
 describe("[MUTATION-KILLER] firewallSection — granular substrings", () => {
-  const fast = buildAuditBatchCommands("bare")[0];
+  const fast = buildAuditBatchCommands({ platform: "bare" })[0];
 
   it("[MUTATION-KILLER] checks iptables -L -n", () => {
     expect(fast.command).toContain("iptables -L -n 2>/dev/null");
@@ -2055,7 +2055,7 @@ describe("[MUTATION-KILLER] firewallSection — granular substrings", () => {
 });
 
 describe("[MUTATION-KILLER] updatesSection — granular substrings", () => {
-  const fast = buildAuditBatchCommands("bare")[0];
+  const fast = buildAuditBatchCommands({ platform: "bare" })[0];
 
   it("[MUTATION-KILLER] apt list --upgradable path", () => {
     expect(fast.command).toContain("command -v apt >/dev/null 2>&1 && apt list --upgradable");
@@ -2099,7 +2099,7 @@ describe("[MUTATION-KILLER] updatesSection — granular substrings", () => {
 });
 
 describe("[MUTATION-KILLER] authSection — granular substrings", () => {
-  const fast = buildAuditBatchCommands("bare")[0];
+  const fast = buildAuditBatchCommands({ platform: "bare" })[0];
 
   it("[MUTATION-KILLER] /etc/pam.d/common-auth path", () => {
     expect(fast.command).toContain("/etc/pam.d/common-auth");
@@ -2163,7 +2163,7 @@ describe("[MUTATION-KILLER] authSection — granular substrings", () => {
 });
 
 describe("[MUTATION-KILLER] dockerSection — granular substrings", () => {
-  const medium = buildAuditBatchCommands("bare")[1];
+  const medium = buildAuditBatchCommands({ platform: "bare" })[1];
 
   it("[MUTATION-KILLER] docker ps -q pipe to head -5 and xargs inspect", () => {
     expect(medium.command).toContain("docker ps -q 2>/dev/null | head -5 | xargs -r docker inspect");
@@ -2239,7 +2239,7 @@ describe("[MUTATION-KILLER] dockerSection — granular substrings", () => {
 });
 
 describe("[MUTATION-KILLER] networkSection — granular substrings", () => {
-  const medium = buildAuditBatchCommands("bare")[1];
+  const medium = buildAuditBatchCommands({ platform: "bare" })[1];
 
   it("[MUTATION-KILLER] /etc/resolv.conf path", () => {
     expect(medium.command).toContain("/etc/resolv.conf");
@@ -2335,7 +2335,7 @@ describe("[MUTATION-KILLER] networkSection — granular substrings", () => {
 });
 
 describe("[MUTATION-KILLER] loggingSection — granular substrings", () => {
-  const medium = buildAuditBatchCommands("bare")[1];
+  const medium = buildAuditBatchCommands({ platform: "bare" })[1];
 
   it("[MUTATION-KILLER] /etc/logrotate.conf path", () => {
     expect(medium.command).toContain("/etc/logrotate.conf");
@@ -2423,7 +2423,7 @@ describe("[MUTATION-KILLER] loggingSection — granular substrings", () => {
 });
 
 describe("[MUTATION-KILLER] kernelSection — granular substrings", () => {
-  const medium = buildAuditBatchCommands("bare")[1];
+  const medium = buildAuditBatchCommands({ platform: "bare" })[1];
 
   it("[MUTATION-KILLER] core_uses_pid sysctl key", () => {
     expect(medium.command).toContain("core_uses_pid");
@@ -2475,7 +2475,7 @@ describe("[MUTATION-KILLER] kernelSection — granular substrings", () => {
 });
 
 describe("[MUTATION-KILLER] accountsSection — granular substrings", () => {
-  const fast = buildAuditBatchCommands("bare")[0];
+  const fast = buildAuditBatchCommands({ platform: "bare" })[0];
 
   it("[MUTATION-KILLER] /etc/passwd path", () => {
     expect(fast.command).toContain("/etc/passwd");
@@ -2527,7 +2527,7 @@ describe("[MUTATION-KILLER] accountsSection — granular substrings", () => {
 });
 
 describe("[MUTATION-KILLER] servicesSection — granular substrings", () => {
-  const medium = buildAuditBatchCommands("bare")[1];
+  const medium = buildAuditBatchCommands({ platform: "bare" })[1];
 
   it("[MUTATION-KILLER] telnet service name", () => {
     expect(medium.command).toContain("telnet");
@@ -2627,7 +2627,7 @@ describe("[MUTATION-KILLER] servicesSection — granular substrings", () => {
 });
 
 describe("[MUTATION-KILLER] bootSection — granular substrings", () => {
-  const fast = buildAuditBatchCommands("bare")[0];
+  const fast = buildAuditBatchCommands({ platform: "bare" })[0];
 
   it("[MUTATION-KILLER] /boot/grub/grub.cfg path", () => {
     expect(fast.command).toContain("/boot/grub/grub.cfg");
@@ -2691,7 +2691,7 @@ describe("[MUTATION-KILLER] bootSection — granular substrings", () => {
 });
 
 describe("[MUTATION-KILLER] schedulingSection — granular substrings", () => {
-  const fast = buildAuditBatchCommands("bare")[0];
+  const fast = buildAuditBatchCommands({ platform: "bare" })[0];
 
   it("[MUTATION-KILLER] /etc/cron.allow path", () => {
     expect(fast.command).toContain("/etc/cron.allow");
@@ -2771,7 +2771,7 @@ describe("[MUTATION-KILLER] schedulingSection — granular substrings", () => {
 });
 
 describe("[MUTATION-KILLER] timeSection — granular substrings", () => {
-  const medium = buildAuditBatchCommands("bare")[1];
+  const medium = buildAuditBatchCommands({ platform: "bare" })[1];
 
   it("[MUTATION-KILLER] ntp service name", () => {
     expect(medium.command).toContain("ntp");
@@ -2807,7 +2807,7 @@ describe("[MUTATION-KILLER] timeSection — granular substrings", () => {
 });
 
 describe("[MUTATION-KILLER] bannersSection — granular substrings", () => {
-  const fast = buildAuditBatchCommands("bare")[0];
+  const fast = buildAuditBatchCommands({ platform: "bare" })[0];
 
   it("[MUTATION-KILLER] /etc/issue path", () => {
     expect(fast.command).toContain("/etc/issue");
@@ -2827,7 +2827,7 @@ describe("[MUTATION-KILLER] bannersSection — granular substrings", () => {
 });
 
 describe("[MUTATION-KILLER] memorySection — granular substrings", () => {
-  const medium = buildAuditBatchCommands("bare")[1];
+  const medium = buildAuditBatchCommands({ platform: "bare" })[1];
 
   it("[MUTATION-KILLER] vm.overcommit_memory sysctl key", () => {
     expect(medium.command).toContain("vm.overcommit_memory");
@@ -2875,7 +2875,7 @@ describe("[MUTATION-KILLER] memorySection — granular substrings", () => {
 });
 
 describe("[MUTATION-KILLER] cryptoSection — granular substrings", () => {
-  const slow = buildAuditBatchCommands("bare")[2];
+  const slow = buildAuditBatchCommands({ platform: "bare" })[2];
 
   it("[MUTATION-KILLER] hostkeyalgorithms keyword", () => {
     expect(slow.command).toContain("hostkeyalgorithms");
@@ -2948,7 +2948,7 @@ describe("[MUTATION-KILLER] cryptoSection — granular substrings", () => {
 });
 
 describe("[MUTATION-KILLER] filesystemSection — granular substrings", () => {
-  const slow = buildAuditBatchCommands("bare")[2];
+  const slow = buildAuditBatchCommands({ platform: "bare" })[2];
 
   it("[MUTATION-KILLER] /etc and /usr paths", () => {
     expect(slow.command).toContain("find /etc /usr");
@@ -2996,7 +2996,7 @@ describe("[MUTATION-KILLER] filesystemSection — granular substrings", () => {
 });
 
 describe("[MUTATION-KILLER] secretsSection — granular substrings", () => {
-  const slow = buildAuditBatchCommands("bare")[2];
+  const slow = buildAuditBatchCommands({ platform: "bare" })[2];
 
   it("[MUTATION-KILLER] /root/.ssh/id_rsa path", () => {
     expect(slow.command).toContain("/root/.ssh/id_rsa");
@@ -3091,7 +3091,7 @@ describe("[MUTATION-KILLER] secretsSection — granular substrings", () => {
 });
 
 describe("[MUTATION-KILLER] cloudMetaSection — granular substrings", () => {
-  const medium = buildAuditBatchCommands("bare")[1];
+  const medium = buildAuditBatchCommands({ platform: "bare" })[1];
 
   it("[MUTATION-KILLER] dmidecode -s system-product-name command", () => {
     expect(medium.command).toContain("dmidecode -s system-product-name");
@@ -3151,7 +3151,7 @@ describe("[MUTATION-KILLER] cloudMetaSection — granular substrings", () => {
 });
 
 describe("[MUTATION-KILLER] supplyChainSection — granular substrings", () => {
-  const slow = buildAuditBatchCommands("bare")[2];
+  const slow = buildAuditBatchCommands({ platform: "bare" })[2];
 
   it("[MUTATION-KILLER] http:// protocol in apt policy", () => {
     expect(slow.command).toContain("http://");
@@ -3183,7 +3183,7 @@ describe("[MUTATION-KILLER] supplyChainSection — granular substrings", () => {
 });
 
 describe("[MUTATION-KILLER] backupSection — granular substrings", () => {
-  const medium = buildAuditBatchCommands("bare")[1];
+  const medium = buildAuditBatchCommands({ platform: "bare" })[1];
 
   it("[MUTATION-KILLER] /root/.kastell/backups/ path", () => {
     expect(medium.command).toContain("/root/.kastell/backups/");
@@ -3227,7 +3227,7 @@ describe("[MUTATION-KILLER] backupSection — granular substrings", () => {
 });
 
 describe("[MUTATION-KILLER] resourceLimitsSection — granular substrings", () => {
-  const medium = buildAuditBatchCommands("bare")[1];
+  const medium = buildAuditBatchCommands({ platform: "bare" })[1];
 
   it("[MUTATION-KILLER] /sys/fs/cgroup/cgroup.controllers path", () => {
     expect(medium.command).toContain("/sys/fs/cgroup/cgroup.controllers");
@@ -3275,7 +3275,7 @@ describe("[MUTATION-KILLER] resourceLimitsSection — granular substrings", () =
 });
 
 describe("[MUTATION-KILLER] incidentReadySection — granular substrings", () => {
-  const medium = buildAuditBatchCommands("bare")[1];
+  const medium = buildAuditBatchCommands({ platform: "bare" })[1];
 
   it("[MUTATION-KILLER] dpkg -l auditd check", () => {
     expect(medium.command).toContain("dpkg -l auditd");
@@ -3335,7 +3335,7 @@ describe("[MUTATION-KILLER] incidentReadySection — granular substrings", () =>
 });
 
 describe("[MUTATION-KILLER] dnsSection — granular substrings", () => {
-  const medium = buildAuditBatchCommands("bare")[1];
+  const medium = buildAuditBatchCommands({ platform: "bare" })[1];
 
   it("[MUTATION-KILLER] resolvectl status command", () => {
     expect(medium.command).toContain("resolvectl status");
@@ -3379,7 +3379,7 @@ describe("[MUTATION-KILLER] dnsSection — granular substrings", () => {
 });
 
 describe("[MUTATION-KILLER] tlsSection — granular substrings", () => {
-  const fast = buildAuditBatchCommands("bare")[0];
+  const fast = buildAuditBatchCommands({ platform: "bare" })[0];
 
   it("[MUTATION-KILLER] NGINX_NOT_INSTALLED sentinel", () => {
     expect(fast.command).toContain("NGINX_NOT_INSTALLED");
@@ -3431,7 +3431,7 @@ describe("[MUTATION-KILLER] tlsSection — granular substrings", () => {
 });
 
 describe("[MUTATION-KILLER] httpHeadersSection — granular substrings", () => {
-  const fast = buildAuditBatchCommands("bare")[0];
+  const fast = buildAuditBatchCommands({ platform: "bare" })[0];
 
   it("[MUTATION-KILLER] https://localhost URL", () => {
     expect(fast.command).toContain("https://localhost");
@@ -3455,7 +3455,7 @@ describe("[MUTATION-KILLER] httpHeadersSection — granular substrings", () => {
 });
 
 describe("[MUTATION-KILLER] nginxSection — granular substrings", () => {
-  const fast = buildAuditBatchCommands("bare")[0];
+  const fast = buildAuditBatchCommands({ platform: "bare" })[0];
 
   it("[MUTATION-KILLER] ALT_RP: sentinel prefix", () => {
     expect(fast.command).toContain("ALT_RP:");
@@ -3523,7 +3523,7 @@ describe("[MUTATION-KILLER] nginxSection — granular substrings", () => {
 });
 
 describe("[MUTATION-KILLER] ddosSection — granular substrings", () => {
-  const medium = buildAuditBatchCommands("bare")[1];
+  const medium = buildAuditBatchCommands({ platform: "bare" })[1];
 
   it("[MUTATION-KILLER] net.ipv4.tcp_max_syn_backlog key", () => {
     expect(medium.command).toContain("net.ipv4.tcp_max_syn_backlog");
@@ -3559,7 +3559,7 @@ describe("[MUTATION-KILLER] ddosSection — granular substrings", () => {
 });
 
 describe("[MUTATION-KILLER] macSection — granular substrings", () => {
-  const medium = buildAuditBatchCommands("bare")[1];
+  const medium = buildAuditBatchCommands({ platform: "bare" })[1];
 
   it("[MUTATION-KILLER] /etc/selinux/config path", () => {
     expect(medium.command).toContain("/etc/selinux/config");
@@ -3591,7 +3591,7 @@ describe("[MUTATION-KILLER] macSection — granular substrings", () => {
 });
 
 describe("[MUTATION-KILLER] malwareSection — granular substrings", () => {
-  const slow = buildAuditBatchCommands("bare")[2];
+  const slow = buildAuditBatchCommands({ platform: "bare" })[2];
 
   it("[MUTATION-KILLER] chkrootkit package", () => {
     expect(slow.command).toContain("chkrootkit");

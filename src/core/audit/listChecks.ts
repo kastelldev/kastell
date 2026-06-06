@@ -4,6 +4,7 @@
  */
 
 import chalk from "chalk";
+import { PLUGIN_STATUS_LOADED } from "../../plugin/registry.js";
 import { CHECK_REGISTRY } from "./checks/index.js";
 import { COMPLIANCE_MAP } from "./compliance/mapper.js";
 import type { Severity, ComplianceRef } from "./types.js";
@@ -70,7 +71,7 @@ export function listAllChecks(filter?: ListChecksFilter): CheckCatalogEntry[] {
     : undefined;
 
   for (const [, entry] of getPluginRegistry()) {
-    if (entry.status === "loaded") {
+    if (entry.status === PLUGIN_STATUS_LOADED) {
       for (const check of entry.checks) {
         const pluginEntry: CheckCatalogEntry = {
           id: check.id,

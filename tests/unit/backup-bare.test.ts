@@ -38,6 +38,7 @@ jest.mock("ora", () =>
 );
 
 import ora from "ora";
+import { createConsoleSpy } from "../helpers/consoleSpy.js";
 
 const mockedOra = ora as jest.MockedFunction<typeof ora>;
 const mockedConfig = config as jest.Mocked<typeof config>;
@@ -81,10 +82,12 @@ const bareBackupResult = {
 };
 
 describe("backupCommand — bare mode routing", () => {
-  let consoleSpy: jest.SpyInstance;
+  const spy = createConsoleSpy();
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    spy.setup();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.resetAllMocks();
     mockedCoreBackup.formatTimestamp.mockReturnValue("2026-02-28_08-00-00-000");
     mockedCoreBackup.getBackupDir.mockReturnValue("/home/user/.kastell/backups/bare-test");
@@ -97,7 +100,8 @@ describe("backupCommand — bare mode routing", () => {
   });
 
   afterEach(() => {
-    consoleSpy.mockRestore();
+    spy.restore();
+    stderrSpy?.mockRestore();
   });
 
   it("should call backupServer with bare server", async () => {
@@ -131,7 +135,7 @@ describe("backupCommand — bare mode routing", () => {
 
     await backupCommand("bare-test");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Backup saved");
   });
 
@@ -146,7 +150,7 @@ describe("backupCommand — bare mode routing", () => {
 
     await backupCommand("bare-test");
 
-    const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+    const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Config backup failed");
   });
 

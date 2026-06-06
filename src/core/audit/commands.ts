@@ -5,6 +5,7 @@
  */
 
 import type { PluginRegistryEntry } from "../../plugin/registry.js";
+import { PLUGIN_STATUS_LOADED } from "../../plugin/registry.js";
 
 export type BatchTier = "fast" | "medium" | "slow" | "plugin";
 
@@ -701,7 +702,7 @@ export function buildPluginBatchSection(
 ): string | null {
   const lines: string[] = [];
   for (const [, entry] of registry) {
-    if (entry.status !== "loaded") continue;
+    if (entry.status !== PLUGIN_STATUS_LOADED) continue;
     if (entry.checks.length === 0) continue;
     for (const check of entry.checks) {
       lines.push(NAMED_SEP(`PLUGIN:${entry.manifest.name}:${check.id}`));
@@ -725,9 +726,9 @@ export function buildPluginBatchSection(
  * Parsers route by section name, not integer index.
  */
 export function buildAuditBatchCommands(
-  platform: string,
-  pluginRegistry?: ReadonlyMap<string, PluginRegistryEntry>,
+  options: { platform: string; pluginRegistry?: ReadonlyMap<string, PluginRegistryEntry> },
 ): BatchDef[] {
+  const { platform, pluginRegistry } = options;
   const fast: BatchDef = {
     tier: "fast",
     command: [

@@ -5,7 +5,7 @@
  * detail/summary modes, same-server rejection, server-not-found, and outputSchema.
  *
  * Strategy: mock resolveAuditPair (the entry point to the diff engine) and
- * buildCategorySummary / diffAudits directly — mirroring the unit test pattern.
+ * buildCategorySummary / diffAuditsFlat directly — mirroring the unit test pattern.
  */
 
 jest.mock("../../../src/utils/config.js");
@@ -85,7 +85,7 @@ describe("handleServerCompare — integration", () => {
 
     expect(result.isError).toBeFalsy();
     expect(mockedDiff.resolveAuditPair).toHaveBeenCalledWith(serverA, serverB, true);
-    expect(mockedDiff.diffAudits).not.toHaveBeenCalled();
+    expect(mockedDiff.diffAuditsFlat).not.toHaveBeenCalled();
     expect(mockedDiff.buildCategorySummary).toHaveBeenCalled();
   });
 
@@ -96,12 +96,12 @@ describe("handleServerCompare — integration", () => {
       success: true,
       data: { auditA: makeAudit("web-1", 72), auditB: makeAudit("db-1", 85) },
     } as never);
-    mockedDiff.diffAudits.mockReturnValue({
+    mockedDiff.diffAuditsFlat.mockReturnValue({
       beforeLabel: "web-1", afterLabel: "db-1",
       scoreBefore: 72, scoreAfter: 85, scoreDelta: 13,
-      improvements: [], regressions: [], unchanged: [
-        { id: "SSH-001", name: "SSH check", category: "SSH", severity: "medium" as const, status: "unchanged" as const, before: true, after: true },
-      ], added: [], removed: [],
+      checks: [
+        { id: "SSH-001", name: "SSH check", status: "both_pass" as const, before: true, after: true },
+      ],
     } as never);
 
     const result = await handleServerCompare({ serverA: "web-1", serverB: "db-1", detail: true });
@@ -111,7 +111,7 @@ describe("handleServerCompare — integration", () => {
     expect(body.format).toBe("check");
     expect(body.serverA).toBe("web-1");
     expect(body.serverB).toBe("db-1");
-    expect(mockedDiff.diffAudits).toHaveBeenCalled();
+    expect(mockedDiff.diffAuditsFlat).toHaveBeenCalled();
     expect(mockedDiff.buildCategorySummary).not.toHaveBeenCalled();
   });
 

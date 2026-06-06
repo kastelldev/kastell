@@ -113,14 +113,17 @@ const { findLocalSshKey, generateSshKey } = jest.requireMock("../../src/utils/ss
 
 describe("uploadSshKeyToProvider", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
   });
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
   });
 
   it("should upload existing SSH key and return key ID array", async () => {
@@ -172,9 +175,11 @@ describe("uploadSshKeyToProvider", () => {
 
 describe("deployServer — coolify mode", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
     // Default: Coolify reports ready
     waitForCoolify.mockResolvedValue(true);
@@ -185,6 +190,7 @@ describe("deployServer — coolify mode", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
   });
 
   it("should return success and call waitForCoolify and saveServer with mode:'coolify' (happy path)", async () => {
@@ -243,9 +249,11 @@ describe("deployServer — coolify mode", () => {
 
 describe("deployServer — bare mode", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
     waitForCoolify.mockResolvedValue(true);
     sshExec.mockResolvedValue({ code: 0, stdout: "", stderr: "" });
@@ -255,6 +263,7 @@ describe("deployServer — bare mode", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
   });
 
   it("should NOT call waitForCoolify when mode='bare'", async () => {
@@ -288,7 +297,7 @@ describe("deployServer — bare mode", () => {
 
     await deployServer("hetzner", provider, "nbg1", "cax11", "my-server", false, false, "bare");
 
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toMatch(/ssh root@/i);
   });
 
@@ -355,9 +364,11 @@ describe("deployServer — bare mode", () => {
 
 describe("deployServer — error handling", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
     waitForCoolify.mockResolvedValue(true);
     sshExec.mockResolvedValue({ code: 0, stdout: "", stderr: "" });
@@ -365,6 +376,7 @@ describe("deployServer — error handling", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
   });
 
   it("should return { success: false } when server creation fails with a generic error", async () => {
@@ -396,9 +408,11 @@ describe("deployServer — error handling", () => {
 
 describe("deployServer — IP assignment", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
     waitForCoolify.mockResolvedValue(true);
     sshExec.mockResolvedValue({ code: 0, stdout: "", stderr: "" });
@@ -406,6 +420,7 @@ describe("deployServer — IP assignment", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
   });
 
   it("should save server with resolved IP when createServer returns pending IP", async () => {
@@ -431,9 +446,11 @@ describe("deployServer — IP assignment", () => {
 
 describe("deployServer — KastellResult return type", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
     waitForCoolify.mockResolvedValue(true);
     sshExec.mockResolvedValue({ code: 0, stdout: "", stderr: "" });
@@ -443,6 +460,7 @@ describe("deployServer — KastellResult return type", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
   });
 
   it("should return DeployData with serverId, serverIp, serverName on success", async () => {
@@ -545,7 +563,7 @@ describe("deployServer — KastellResult return type", () => {
 
     await deployServer("hetzner", provider, "nbg1", "cax11", "my-server", false, false, "bare");
 
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("Secure your server");
     expect(output).toContain("kastell firewall setup");
   });
@@ -555,7 +573,7 @@ describe("deployServer — KastellResult return type", () => {
 
     await deployServer("hetzner", provider, "nbg1", "cax11", "my-server", false, false);
 
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("Secure your server");
     expect(output).toContain("kastell backup");
   });
@@ -565,7 +583,7 @@ describe("deployServer — KastellResult return type", () => {
 
     await deployServer("hetzner", provider, "nbg1", "cax11", "my-server", true, false);
 
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("domain");
     expect(output).not.toContain("Secure your server");
   });
@@ -585,7 +603,7 @@ describe("deployServer — KastellResult return type", () => {
 
     await deployServer("hetzner", provider, "nbg1", "cax11", "my-server", false, false);
 
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("did not respond yet");
   });
 
@@ -609,9 +627,11 @@ describe("deployServer — KastellResult return type", () => {
 
 describe("[MUTATION-KILLER] deployServer mode string handling", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
     waitForCoolify.mockResolvedValue(true);
     sshExec.mockResolvedValue({ code: 0, stdout: "", stderr: "" });
@@ -621,6 +641,7 @@ describe("[MUTATION-KILLER] deployServer mode string handling", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
   });
 
   it("mode='bare' results in platform=undefined (not 'coolify')", async () => {
@@ -664,9 +685,11 @@ describe("[MUTATION-KILLER] deployServer mode string handling", () => {
 
 describe("[MUTATION-KILLER] deployServer console output strings", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
     waitForCoolify.mockResolvedValue(true);
     sshExec.mockResolvedValue({ code: 0, stdout: "", stderr: "" });
@@ -676,124 +699,125 @@ describe("[MUTATION-KILLER] deployServer console output strings", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
   });
 
   it("bare mode shows 'ssh root@' connection info", async () => {
     const provider = createMockProvider();
     await deployServer("hetzner", provider, "nbg1", "cax11", "srv", false, false, "bare");
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("ssh root@");
   });
 
   it("bare mode shows 'bare' mode label", async () => {
     const provider = createMockProvider();
     await deployServer("hetzner", provider, "nbg1", "cax11", "srv", false, false, "bare");
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("bare");
   });
 
   it("bare mode shows 'kastell list' hint", async () => {
     const provider = createMockProvider();
     await deployServer("hetzner", provider, "nbg1", "cax11", "srv", false, false, "bare");
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("kastell list");
   });
 
   it("coolify mode shows server IP in output", async () => {
     const provider = createMockProvider();
     await deployServer("hetzner", provider, "nbg1", "cax11", "srv");
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("10.0.0.1");
   });
 
   it("coolify mode shows http:// URL with port 8000", async () => {
     const provider = createMockProvider();
     await deployServer("hetzner", provider, "nbg1", "cax11", "srv");
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("http://10.0.0.1:8000");
   });
 
   it("dokploy mode shows http:// URL with port 3000", async () => {
     const provider = createMockProvider();
     await deployServer("hetzner", provider, "nbg1", "cax11", "srv", false, false, "dokploy");
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("http://10.0.0.1:3000");
   });
 
   it("coolify mode shows 'Coolify' platform name", async () => {
     const provider = createMockProvider();
     await deployServer("hetzner", provider, "nbg1", "cax11", "srv");
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("Coolify");
   });
 
   it("dokploy mode shows 'Dokploy' platform name", async () => {
     const provider = createMockProvider();
     await deployServer("hetzner", provider, "nbg1", "cax11", "srv", false, false, "dokploy");
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("Dokploy");
   });
 
   it("onboarding shows 'kastell firewall setup' command", async () => {
     const provider = createMockProvider();
     await deployServer("hetzner", provider, "nbg1", "cax11", "my-server", false, false);
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("kastell firewall setup my-server");
   });
 
   it("onboarding shows 'kastell secure setup' command", async () => {
     const provider = createMockProvider();
     await deployServer("hetzner", provider, "nbg1", "cax11", "my-server", false, false);
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("kastell secure setup my-server");
   });
 
   it("onboarding shows 'kastell domain add' command", async () => {
     const provider = createMockProvider();
     await deployServer("hetzner", provider, "nbg1", "cax11", "my-server", false, false);
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("kastell domain add my-server");
   });
 
   it("onboarding shows 'example.com' domain placeholder", async () => {
     const provider = createMockProvider();
     await deployServer("hetzner", provider, "nbg1", "cax11", "my-server", false, false);
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("example.com");
   });
 
   it("onboarding shows 'kastell backup' command", async () => {
     const provider = createMockProvider();
     await deployServer("hetzner", provider, "nbg1", "cax11", "my-server", false, false);
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("kastell backup my-server");
   });
 
   it("onboarding shows 'kastell init --full-setup' tip", async () => {
     const provider = createMockProvider();
     await deployServer("hetzner", provider, "nbg1", "cax11", "my-server", false, false);
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("kastell init --full-setup");
   });
 
   it("onboarding shows 'kastell doctor' command", async () => {
     const provider = createMockProvider();
     await deployServer("hetzner", provider, "nbg1", "cax11", "my-server", false, false);
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("kastell doctor");
   });
 
   it("shows GitHub docs URL", async () => {
     const provider = createMockProvider();
     await deployServer("hetzner", provider, "nbg1", "cax11", "my-server", false, false);
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("https://github.com/kastelldev/kastell");
   });
 
   it("shows star CTA with stars emoji", async () => {
     const provider = createMockProvider();
     await deployServer("hetzner", provider, "nbg1", "cax11", "my-server", false, false);
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("Love Kastell?");
   });
 
@@ -801,7 +825,7 @@ describe("[MUTATION-KILLER] deployServer console output strings", () => {
     waitForCoolify.mockResolvedValue(false);
     const provider = createMockProvider();
     await deployServer("hetzner", provider, "nbg1", "cax11", "my-server", false, false);
-    const output = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
     expect(output).toContain("did not respond yet");
   });
 
@@ -816,9 +840,11 @@ describe("[MUTATION-KILLER] deployServer console output strings", () => {
 
 describe("[MUTATION-KILLER] deployServer SSH and cloud-init strings", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
     waitForCoolify.mockResolvedValue(true);
     sshExec.mockResolvedValue({ code: 0, stdout: "", stderr: "" });
@@ -828,6 +854,7 @@ describe("[MUTATION-KILLER] deployServer SSH and cloud-init strings", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
   });
 
   it("checks SSH with 'echo ok' command", async () => {
@@ -900,9 +927,11 @@ describe("[MUTATION-KILLER] deployServer SSH and cloud-init strings", () => {
 
 describe("[MUTATION-KILLER] deployServer IP validation strings", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
     waitForCoolify.mockResolvedValue(true);
     sshExec.mockResolvedValue({ code: 0, stdout: "", stderr: "" });
@@ -912,6 +941,7 @@ describe("[MUTATION-KILLER] deployServer IP validation strings", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
   });
 
   it("IP 0.0.0.0 is treated as invalid (triggers IP polling)", async () => {
@@ -963,9 +993,11 @@ describe("[MUTATION-KILLER] deployServer IP validation strings", () => {
 
 describe("[MUTATION-KILLER] deployServer server status polling string", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
     sshExec.mockResolvedValue({ code: 0, stdout: "", stderr: "" });
     firewallSetup.mockResolvedValue(undefined);
@@ -974,6 +1006,7 @@ describe("[MUTATION-KILLER] deployServer server status polling string", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
   });
 
   it("waits for status 'running' before proceeding", async () => {
@@ -1011,9 +1044,11 @@ describe("[MUTATION-KILLER] deployServer server status polling string", () => {
 
 describe("[MUTATION-KILLER] deployServer createServer retry strings", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
     waitForCoolify.mockResolvedValue(true);
     sshExec.mockResolvedValue({ code: 0, stdout: "", stderr: "" });
@@ -1023,6 +1058,7 @@ describe("[MUTATION-KILLER] deployServer createServer retry strings", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
   });
 
   it("returns error containing 'Server creation failed' on retry exhaustion", async () => {

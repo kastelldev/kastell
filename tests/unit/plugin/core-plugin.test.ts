@@ -1,5 +1,5 @@
 import { listPlugins, validatePlugins } from "../../../src/core/plugin.js";
-import { getPluginRegistry, clearPluginRegistry, registerPlugin, registerFailedPlugin } from "../../../src/plugin/registry.js";
+import { getPluginRegistry, clearPluginRegistry, registerPlugin, registerFailedPlugin, registerDisabledPlugin } from "../../../src/plugin/registry.js";
 import type { PluginManifest, PluginCheck } from "../../../src/plugin/sdk/types.js";
 
 jest.mock("child_process", () => ({
@@ -79,6 +79,38 @@ describe("listPlugins", () => {
       reason: "invalid manifest",
     });
   });
+
+  it("includes disabled plugins without reason", () => {
+    const manifest = makeManifest({ name: "kastell-plugin-off", checkPrefix: "OFF" });
+    registerDisabledPlugin(manifest);
+    const result = listPlugins();
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual({
+      name: "kastell-plugin-off",
+      version: "1.0.0",
+      prefix: "OFF",
+      checks: 0,
+      commands: [],
+      mcpTools: [],
+      status: "disabled",
+    });
+  });
+
+  it("returns mixed loaded/failed/disabled entries in one call", () => {
+    registerPlugin(makeManifest(), [makeCheck("TST-ONE")]);
+    registerFailedPlugin(
+      makeManifest({ name: "kastell-plugin-broken", checkPrefix: "BRK" }),
+      "load error",
+    );
+    registerDisabledPlugin(
+      makeManifest({ name: "kastell-plugin-off", checkPrefix: "OFF" }),
+    );
+    const result = listPlugins();
+    expect(result).toHaveLength(3);
+    expect(result.find(r => r.name === "kastell-plugin-test")?.status).toBe("loaded");
+    expect(result.find(r => r.name === "kastell-plugin-broken")?.status).toBe("failed");
+    expect(result.find(r => r.name === "kastell-plugin-off")?.status).toBe("disabled");
+  });
 });
 
 describe("validatePlugins", () => {
@@ -102,6 +134,17 @@ describe("validatePlugins", () => {
       name: "kastell-plugin-broken",
       valid: false,
       reason: "module does not export checks array",
+    });
+  });
+
+  it("returns invalid for disabled plugin without reason", () => {
+    const manifest = makeManifest({ name: "kastell-plugin-off", checkPrefix: "OFF" });
+    registerDisabledPlugin(manifest);
+    const result = validatePlugins();
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual({
+      name: "kastell-plugin-off",
+      valid: false,
     });
   });
 

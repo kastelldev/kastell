@@ -89,6 +89,7 @@ const doSizesResponse = {
 
 describe("initCommand E2E", () => {
   let consoleSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
   let processExitSpy: jest.SpyInstance;
   const originalSetTimeout = global.setTimeout;
 
@@ -96,6 +97,7 @@ describe("initCommand E2E", () => {
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     processExitSpy = jest.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit);
     jest.clearAllMocks();
     // Prepend wizard "provision" to inquirer mock queue
@@ -120,6 +122,7 @@ describe("initCommand E2E", () => {
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    stderrSpy?.mockRestore();
     processExitSpy.mockRestore();
     global.setTimeout = originalSetTimeout;
     // Restore provider tokens
@@ -165,7 +168,7 @@ describe("initCommand E2E", () => {
       expect(mockedAxios.get).toHaveBeenCalled();
       expect(mockedAxios.post).toHaveBeenCalled();
 
-      const allOutput = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const allOutput = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(allOutput).toContain("1.2.3.4");
       expect(processExitSpy).not.toHaveBeenCalled();
     });
@@ -334,7 +337,7 @@ describe("initCommand E2E", () => {
 
       expect(mockedAxios.post).toHaveBeenCalledTimes(2);
 
-      const allOutput = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const allOutput = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(allOutput).toContain("9.8.7.6");
       expect(processExitSpy).not.toHaveBeenCalled();
     });
@@ -372,7 +375,7 @@ describe("initCommand E2E", () => {
       await initCommand();
 
       expect(mockedAxios.post).toHaveBeenCalledTimes(2);
-      const allOutput = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const allOutput = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(allOutput).toContain("2.3.4.5");
       expect(processExitSpy).not.toHaveBeenCalled();
     });
@@ -413,7 +416,7 @@ describe("initCommand E2E", () => {
       await initCommand();
 
       expect(mockedAxios.post).toHaveBeenCalledTimes(2);
-      const allOutput = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const allOutput = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(allOutput).toContain("3.4.5.6");
       expect(processExitSpy).not.toHaveBeenCalled();
     });
@@ -501,7 +504,7 @@ describe("initCommand E2E", () => {
 
       expect(mockedAxios.post).toHaveBeenCalled();
 
-      const allOutput = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const allOutput = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(allOutput).toContain("10.20.30.40");
       expect(allOutput).toContain("DigitalOcean");
       expect(processExitSpy).not.toHaveBeenCalled();
@@ -552,7 +555,7 @@ describe("initCommand E2E", () => {
       await initCommand({ provider: "aws", token: "test" });
 
       expect(processExitSpy).toHaveBeenCalledWith(1);
-      const allOutput = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const allOutput = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(allOutput).toContain("Invalid provider");
     });
 
@@ -595,7 +598,7 @@ describe("initCommand E2E", () => {
       });
 
       expect(mockedAxios.post).toHaveBeenCalled();
-      const allOutput = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const allOutput = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(allOutput).toContain("5.5.5.5");
       expect(processExitSpy).not.toHaveBeenCalled();
     });

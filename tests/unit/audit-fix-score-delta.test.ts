@@ -133,7 +133,7 @@ describe("runPostFixReAudit", () => {
 
     await fix.runPostFixReAudit("1.2.3.4", "coolify", originalResult, ["SSH"]);
 
-    expect(mockedBuildBatches).toHaveBeenCalledWith("coolify");
+    expect(mockedBuildBatches).toHaveBeenCalledWith({ platform: "coolify" });
   });
 
   it("runs all 3 SSH batches for score re-check", async () => {

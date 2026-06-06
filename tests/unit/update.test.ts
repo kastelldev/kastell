@@ -7,6 +7,7 @@ import * as loggerUtils from "../../src/utils/logger";
 import * as modeGuard from "../../src/utils/modeGuard";
 import * as coreUpdate from "../../src/core/update";
 import { updateCommand } from "../../src/commands/update";
+import { createConsoleSpy } from "../helpers/consoleSpy.js";
 
 jest.mock("../../src/utils/config");
 jest.mock("../../src/utils/ssh");
@@ -65,10 +66,10 @@ const mockAdapter = {
 };
 
 describe("updateCommand", () => {
-  let consoleSpy: jest.SpyInstance;
+  const spy = createConsoleSpy();
 
   beforeEach(() => {
-    consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    spy.setup();
     jest.resetAllMocks();
     // Default: SSH available
     mockedSsh.checkSshAvailable.mockReturnValue(true);
@@ -94,7 +95,7 @@ describe("updateCommand", () => {
   });
 
   afterEach(() => {
-    consoleSpy.mockRestore();
+    spy.restore();
   });
 
   it("should show error when SSH not available", async () => {
@@ -218,7 +219,7 @@ describe("updateCommand", () => {
 
     await updateCommand("1.2.3.4");
 
-    expect(consoleSpy).toHaveBeenCalledWith("Update log output");
+    expect(spy.consoleSpy).toHaveBeenCalledWith("Update log output");
   });
 
   it("should provide SSH install hints when SSH not available", async () => {

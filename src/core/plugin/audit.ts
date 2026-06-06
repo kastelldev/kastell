@@ -1,5 +1,4 @@
 import { chunkConcurrent } from "../../utils/concurrency.js";
-import { sshExec, sshMasterOpen, sshMasterClose } from "../../utils/ssh.js";
 import type { PluginCheck } from "../../plugin/sdk/types.js";
 
 export interface CheckResult {
@@ -9,41 +8,66 @@ export interface CheckResult {
   reason?: string;
 }
 
-const MAX_CONCURRENT_PER_HOST = 4;
-const DEFAULT_AGGREGATE_TIMEOUT_MS = 120_000;
+export interface ExecutePluginChecksResult {
+  results: CheckResult[];
+  aborted?: boolean;
+  completed: number;
+  pending: number;
+}
 
-export async function executePluginChecks(checks: PluginCheck[], host: string): Promise<CheckResult[]> {
-  const aggregateMs = Number(process.env.PLUGIN_AUDIT_TIMEOUT_MS) || DEFAULT_AGGREGATE_TIMEOUT_MS;
-  const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(), aggregateMs);
-  // NOTE: sshMasterOpen returns true if master was already open from another caller.
-  // Closing it in finally would tear down that caller's session. When a production caller
-  // is added, track ownership via isSshMasterOpen(ip) probe or hand the close back to caller.
-  const masterOpened = await sshMasterOpen(host).catch(() => false);
+// Lazy lookup — module-load `parseInt(process.env, …)` traps tests that
+// mutate PLUGIN_AUDIT_PARALLELISM after import. Evaluated per-call so
+// `jest.isolateModules` is no longer required for env variation.
+function getDefaultParallelism(): number {
+  return parseInt(process.env.PLUGIN_AUDIT_PARALLELISM ?? "3", 10);
+}
+
+// Aggregate ceiling — bounds worst-case latency for N slow checks (LESSONS.md
+// "Plugin Parallel Execution" flags this as mandatory: N × per-check = stall risk).
+const AGGREGATE_TIMEOUT_MS = 120_000;
+
+export interface ExecutePluginChecksContext {
+  ssh: (cmd: string, opts?: { timeoutMs?: number; signal?: AbortSignal }) => Promise<{ stdout: string; stderr: string; code: number }>;
+  // C4: manifest accepts both `mutates: true` (preferred) and legacy
+  // `safeToParallel: false`. `mutates` takes precedence.
+  manifest: { mutates?: boolean | null; safeToParallel?: boolean | null; [key: string]: unknown };
+}
+
+export async function executePluginChecks(
+  checks: PluginCheck[],
+  ctx: ExecutePluginChecksContext,
+): Promise<ExecutePluginChecksResult> {
+  // C4: mutates: true forces cap=1. Legacy safeToParallel: false is the
+  // inverted-polarity form of the same intent — both accepted.
+  const isMutating = ctx.manifest.mutates === true || ctx.manifest.safeToParallel === false;
+  const concurrency = isMutating ? 1 : getDefaultParallelism();
+
+  const controller = new AbortController();
+  const aggregateTimer = setTimeout(() => controller.abort(), AGGREGATE_TIMEOUT_MS);
+
+  const runCheck = async (check: PluginCheck): Promise<CheckResult> => {
+    if (controller.signal.aborted) {
+      return { checkId: check.id, status: "timeout" };
+    }
+    try {
+      const ssh = await ctx.ssh(check.checkCommand, { timeoutMs: 15000, signal: controller.signal });
+      if (ssh.code !== 0) {
+        return { checkId: check.id, status: "error", reason: ssh.stderr || `Exit code ${ssh.code}` };
+      }
+      return { checkId: check.id, status: "pass", output: ssh.stdout };
+    } catch (err) {
+      if (controller.signal.aborted) {
+        return { checkId: check.id, status: "timeout" };
+      }
+      return { checkId: check.id, status: "error", reason: err instanceof Error ? err.message : String(err) };
+    }
+  };
 
   try {
-    const results = await chunkConcurrent(checks, MAX_CONCURRENT_PER_HOST, async (check) => {
-      if (ac.signal.aborted) {
-        return { checkId: check.id, status: "timeout" as const, reason: `Aggregate timeout (${aggregateMs}ms)` };
-      }
-      try {
-        const ssh = await sshExec(host, check.checkCommand, { signal: ac.signal });
-        if (ssh.code !== 0) {
-          return { checkId: check.id, status: "error" as const, reason: ssh.stderr || `Exit code ${ssh.code}` };
-        }
-        return { checkId: check.id, status: "pass" as const, output: ssh.stdout };
-      } catch (err) {
-        if (ac.signal.aborted) {
-          return { checkId: check.id, status: "timeout" as const, reason: `Aggregate timeout` };
-        }
-        return { checkId: check.id, status: "error" as const, reason: (err as Error).message };
-      }
-    });
-    return results;
+    const results = await chunkConcurrent(checks, concurrency, runCheck);
+    const completed = results.filter((r) => r.status !== "timeout").length;
+    return { results, completed, pending: checks.length - completed };
   } finally {
-    clearTimeout(timer);
-    if (masterOpened) {
-      try { sshMasterClose(host); } catch { /* best effort */ }
-    }
+    clearTimeout(aggregateTimer);
   }
 }

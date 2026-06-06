@@ -85,15 +85,18 @@ function createMockProcess(code: number = 0, stderrData: string = "") {
 
 import { createMockAdapter } from "../helpers/mockAdapter.js";
 import { MockChildProcess } from "../helpers/ssh-factories.js";
+import { createConsoleSpy } from "../helpers/consoleSpy.js";
 
 const defaultCoolifyAdapter = createMockAdapter({ name: "coolify" });
 const defaultDokployAdapter = createMockAdapter({ name: "dokploy" });
 
 describe("restore", () => {
-  let consoleSpy: jest.SpyInstance;
+  const spy = createConsoleSpy();
+  let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    spy.setup();
+    stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
     process.env.KASTELL_SAFE_MODE = "false";
     mockedSsh.resolveScpPath.mockReturnValue("scp");
@@ -103,7 +106,8 @@ describe("restore", () => {
   });
 
   afterEach(() => {
-    consoleSpy.mockRestore();
+    spy.restore();
+    stderrSpy?.mockRestore();
   });
 
   // Pure function tests
@@ -215,7 +219,7 @@ describe("restore", () => {
     it("should show error when SSH not available", async () => {
       mockedSsh.checkSshAvailable.mockReturnValue(false);
       await restoreCommand();
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("SSH client not found");
     });
 
@@ -223,7 +227,7 @@ describe("restore", () => {
       mockedSsh.checkSshAvailable.mockReturnValue(true);
       mockedConfig.findServers.mockReturnValue([]);
       await restoreCommand("nonexistent");
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Server not found");
     });
 
@@ -234,7 +238,7 @@ describe("restore", () => {
 
       await restoreCommand("1.2.3.4");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("No backups found");
     });
 
@@ -245,7 +249,7 @@ describe("restore", () => {
 
       await restoreCommand("1.2.3.4", { backup: "bad-backup" });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Invalid backup");
     });
 
@@ -262,7 +266,7 @@ describe("restore", () => {
 
       await restoreCommand("1.2.3.4", { backup: "some-backup" });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Missing backup file");
     });
 
@@ -274,7 +278,7 @@ describe("restore", () => {
 
       await restoreCommand("1.2.3.4", { backup: "my-backup", dryRun: true });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Dry Run");
       expect(output).toContain("No changes applied");
       expect(mockedSsh.sshExec).not.toHaveBeenCalled();
@@ -289,7 +293,7 @@ describe("restore", () => {
 
       await restoreCommand("1.2.3.4", { backup: "my-backup" });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("cancelled");
     });
 
@@ -305,7 +309,7 @@ describe("restore", () => {
 
       await restoreCommand("1.2.3.4", { backup: "my-backup" });
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("does not match");
     });
 
@@ -322,7 +326,7 @@ describe("restore", () => {
 
       await restoreCommand("1.2.3.4");
 
-      const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("cancelled");
     });
 
@@ -363,7 +367,7 @@ describe("restore", () => {
 
         await restoreCommand("1.2.3.4", { backup: "my-backup" });
 
-        const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+        const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
         expect(output).toContain("Restore complete");
         expect(output).toContain("Coolify 4.0.0");
         expect(output).toContain(":8000");
@@ -395,7 +399,7 @@ describe("restore", () => {
 
         await restoreCommand("1.2.3.4", { backup: "my-backup" });
 
-        const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+        const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
         expect(output).toContain("Restore complete");
         expect(output).toContain("Dokploy 4.0.0");
         expect(output).toContain(":3000");
@@ -414,7 +418,7 @@ describe("restore", () => {
         await restoreCommand("1.2.3.4", { backup: "my-backup" });
 
         expect(mockedAdapterFactory.getAdapter).toHaveBeenCalledWith("coolify");
-        const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+        const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
         expect(output).toContain(":8000");
       });
 
@@ -433,7 +437,7 @@ describe("restore", () => {
 
         await restoreCommand("1.2.3.4", { backup: "my-backup" });
 
-        const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+        const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
         expect(output).toContain("restore failed");
         expect(output).toContain("psql error");
         expect(output).toContain("Database restore failed");
@@ -451,7 +455,7 @@ describe("restore", () => {
 
         await restoreCommand("1.2.3.4", { backup: "my-backup" });
 
-        const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+        const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
         expect(output).toContain("Upload backup files: failed");
       });
 
@@ -461,7 +465,7 @@ describe("restore", () => {
 
         await restoreCommand("1.2.3.4", { backup: "my-backup" });
 
-        const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+        const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
         expect(output).toContain("SSH timeout");
       });
 
@@ -509,7 +513,7 @@ describe("restore", () => {
 
         await restoreCommand("1.2.3.4", { backup: "my-backup" });
 
-        const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+        const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
         expect(output).toContain("hetzner");
         expect(output).toContain("digitalocean");
         expect(output).toContain("caution");
@@ -525,7 +529,7 @@ describe("restore", () => {
 
         await restoreCommand("1.2.3.4", { backup: "my-backup" });
 
-        const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+        const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
         expect(output).toContain("Mode mismatch");
         // Should not proceed to confirmation
         expect(mockedInquirer.prompt).not.toHaveBeenCalled();
@@ -543,7 +547,7 @@ describe("restore", () => {
 
         await restoreCommand("1.2.3.4", { backup: "my-backup" });
 
-        const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+        const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
         expect(output).toContain("Mode mismatch");
         expect(mockedInquirer.prompt).not.toHaveBeenCalled();
       });
@@ -558,7 +562,7 @@ describe("restore", () => {
 
         await restoreCommand("1.2.3.4", { backup: "my-backup" });
 
-        const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+        const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
         // No mode mismatch, no cross-provider warning
         expect(output).not.toContain("Mode mismatch");
         expect(output).not.toContain("caution");
@@ -581,7 +585,7 @@ describe("restore", () => {
 
         await restoreCommand("1.2.3.4", { backup: "my-backup", dryRun: true });
 
-        const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+        const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
         expect(output).toContain("Dry Run");
         expect(output).toContain("docker service scale");
         expect(output).toContain("dokploy-postgres");
@@ -596,7 +600,7 @@ describe("restore", () => {
 
         await restoreCommand("1.2.3.4", { backup: "my-backup", dryRun: true });
 
-        const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+        const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
         expect(output).toContain("Dry Run");
         expect(output).toContain("docker compose");
         expect(output).not.toContain("docker service scale");
@@ -611,7 +615,7 @@ describe("restore", () => {
 
         await restoreCommand("1.2.3.4", { backup: "../../etc/passwd" });
 
-        const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+        const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
         expect(output).toContain("Invalid backup");
       });
 
@@ -622,7 +626,7 @@ describe("restore", () => {
 
         await restoreCommand("1.2.3.4", { backup: "/tmp/evil/my-backup" });
 
-        const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+        const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
         expect(output).toContain("Invalid backup");
       });
     });

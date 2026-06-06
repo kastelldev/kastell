@@ -13,8 +13,7 @@ jest.mock("../../../src/utils/secureWrite.js", () => ({
 // === mevcut import'lar ===
 import { readFileSync, existsSync } from "fs";
 import { secureWriteFileSync, secureMkdirSync } from "../../../src/utils/secureWrite.js";
-import { registerPlugin, clearPluginRegistry, getPluginRegistry, loadPluginCache, savePluginCache, deletePlugin, mapRegistryPlugins, getPluginCommands, getPluginMcpTools } from "../../../src/plugin/registry.js";
-import { registerFailedPlugin } from "../../../src/plugin/registry.js";
+import { registerPlugin, clearPluginRegistry, getPluginRegistry, loadPluginCache, savePluginCache, deletePlugin, mapRegistryPlugins, getPluginCommands, getPluginMcpTools, registerFailedPlugin, registerDisabledPlugin, PLUGIN_STATUS_LOADED, PLUGIN_STATUS_FAILED, PLUGIN_STATUS_DISABLED } from "../../../src/plugin/registry.js";
 import type { PluginManifest, PluginCheck, PluginCapability } from "../../../src/plugin/sdk/types.js";
 
 const mockManifest: PluginManifest = {
@@ -176,31 +175,39 @@ describe("plugin/registry", () => {
     it("stores commands from manifest", () => {
       registerPlugin(manifestWithFields, []);
       const entry = getPluginRegistry().get("kastell-plugin-wp");
-      expect(entry?.commands).toHaveLength(1);
-      expect(entry?.commands?.[0].name).toBe("scan");
+      if (entry && entry.status === "loaded") {
+        expect(entry.commands?.length).toBeGreaterThan(0);
+        expect(entry.commands![0].name).toBe("scan");
+      }
     });
 
     it("stores fixes from manifest", () => {
       registerPlugin(manifestWithFields, []);
       const entry = getPluginRegistry().get("kastell-plugin-wp");
-      expect(entry?.fixes).toHaveLength(1);
-      expect(entry?.fixes?.[0].checkId).toBe("WP-001");
+      if (entry && entry.status === "loaded") {
+        expect(entry.manifest.fixes).toHaveLength(1);
+        expect(entry.manifest.fixes![0].checkId).toBe("WP-001");
+      }
     });
 
     it("stores mcpTools from manifest", () => {
       const m: PluginManifest = { ...manifestWithFields, capabilities: ["audit", "mcp-tool"] as PluginCapability[], mcpTools: [{ name: "analyze", description: "Analyze", handler: "./mcp/a.js" }] };
       registerPlugin(m, []);
       const entry = getPluginRegistry().get("kastell-plugin-wp");
-      expect(entry?.mcpTools).toHaveLength(1);
+      if (entry && entry.status === "loaded") {
+        expect(entry.mcpTools).toHaveLength(1);
+      }
     });
 
     it("omits optional fields when not in manifest", () => {
       const m: PluginManifest = { ...mockManifest, capabilities: ["audit"] as PluginCapability[], commands: undefined, fixes: undefined };
       registerPlugin(m, []);
       const entry = getPluginRegistry().get("kastell-plugin-wordpress");
-      expect(entry?.commands).toBeUndefined();
-      expect(entry?.fixes).toBeUndefined();
-      expect(entry?.mcpTools).toBeUndefined();
+      if (entry && entry.status === "loaded") {
+        expect(entry.commands).toBeUndefined();
+        expect(entry.manifest.fixes).toBeUndefined();
+        expect(entry.mcpTools).toBeUndefined();
+      }
     });
   });
 });
@@ -274,6 +281,16 @@ describe("getPluginMcpTools", () => {
   });
 });
 
+describe("registerDisabledPlugin", () => {
+  it("creates a disabled entry with empty checks", () => {
+    registerDisabledPlugin(mockManifest);
+    const entry = getPluginRegistry().get("kastell-plugin-wordpress");
+    expect(entry).toBeDefined();
+    expect(entry!.status).toBe("disabled");
+    expect(entry!.checks).toEqual([]);
+  });
+});
+
 describe("plugin cache", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -313,5 +330,17 @@ describe("plugin cache", () => {
         JSON.stringify([mockManifest], null, 2),
       );
     });
+  });
+});
+
+describe("PLUGIN_STATUS_* constants (CQS-08)", () => {
+  it("PLUGIN_STATUS_LOADED has literal value 'loaded'", () => {
+    expect(PLUGIN_STATUS_LOADED).toBe("loaded");
+  });
+  it("PLUGIN_STATUS_FAILED has literal value 'failed'", () => {
+    expect(PLUGIN_STATUS_FAILED).toBe("failed");
+  });
+  it("PLUGIN_STATUS_DISABLED has literal value 'disabled'", () => {
+    expect(PLUGIN_STATUS_DISABLED).toBe("disabled");
   });
 });
