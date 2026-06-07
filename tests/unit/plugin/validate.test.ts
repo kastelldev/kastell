@@ -8,7 +8,7 @@ import { ValidationError } from "../../../src/utils/errors.js";
 const VALID_MANIFEST = {
   name: "kastell-plugin-wordpress",
   version: "1.0.0",
-  apiVersion: "1",
+  apiVersion: "2",
   kastell: ">=2.2.0 <3.0.0",
   capabilities: ["audit"],
   checkPrefix: "WP",
@@ -52,8 +52,13 @@ describe("validateManifest", () => {
   });
 
   describe("apiVersion validation", () => {
-    it("rejects apiVersion 2", () => {
-      expect(() => validateManifest({ ...VALID_MANIFEST, apiVersion: "2" }))
+    it("accepts apiVersion 2 (the only valid value under v2 contract)", () => {
+      const result = validateManifest({ ...VALID_MANIFEST, apiVersion: "2" });
+      expect(result.apiVersion).toBe("2");
+    });
+
+    it("rejects apiVersion 1 (legacy v1 contract)", () => {
+      expect(() => validateManifest({ ...VALID_MANIFEST, apiVersion: "1" }))
         .toThrow(ValidationError);
     });
 
