@@ -148,4 +148,81 @@ describe("runAudit — plugin batch integration", () => {
         .toBe("Not run by kastell audit (mutating kind: mutate-local)");
     }
   });
+
+  // Regression guard for the connectionError heuristic (single-pass form
+  // in src/core/audit/index.ts). Mutating-skip checks are EXCLUDED from the
+  // "all read undetermined" heuristic — they are "not run by kastell audit"
+  // by design, not because of a batch failure. A category composed entirely
+  // of mutating-skip checks must not be flagged as connectionError even if
+  // the plugin batch itself failed.
+  it("all-mutating plugin: connectionError NOT set when batch fails", async () => {
+    const manifest: PluginManifest = {
+      name: "kastell-plugin-mut",
+      version: "1.0.0",
+      apiVersion: "2",
+      kastell: "*",
+      capabilities: ["audit"],
+      checkPrefix: "M",
+      entry: "./index.js",
+    };
+    const checks: PluginCheck[] = [
+      { id: "M-LOCAL", category: "Test", name: "Local", severity: "warning", description: "", checkCommand: { kind: "mutate-local", cmd: "systemctl restart nginx" } },
+      { id: "M-GLOBAL", category: "Test", name: "Global", severity: "warning", description: "", checkCommand: { kind: "mutate-global", cmd: "iptables -F" } },
+    ];
+    registerPlugin(manifest, checks);
+    const spy = jest.spyOn(ssh, "sshExec").mockImplementation(async () => ({ stdout: "", stderr: "", code: 0 }));
+    spy.mockImplementationOnce(async () => ({ stdout: "", stderr: "", code: 0 })); // fast
+    spy.mockImplementationOnce(async () => ({ stdout: "", stderr: "", code: 0 })); // medium
+    spy.mockImplementationOnce(async () => ({ stdout: "", stderr: "", code: 0 })); // slow
+    spy.mockImplementationOnce(async () => { throw new Error("ssh timeout"); }); // plugin batch fails
+
+    const result = await runAudit("1.2.3.4", "test-server", "coolify");
+    expect(result.success).toBe(true);
+    if (result.success && result.data) {
+      const pluginCat = result.data.categories.find((c) => c.name === "Plugin: mut");
+      expect(pluginCat).toBeDefined();
+      // No read checks → hasReadCheck stays false in the heuristic loop
+      // → connectionError must NOT be set even though batch failed.
+      expect(pluginCat!.connectionError).toBeUndefined();
+      // Mutating checks must still surface the skip sentinel.
+      expect(pluginCat!.checks).toHaveLength(2);
+      for (const c of pluginCat!.checks) {
+        expect(c.currentValue).toMatch(/^Not run by kastell audit \(mutating kind: /);
+      }
+    }
+  });
+
+  it("mixed read+mutating plugin: connectionError IS set when batch fails (read check undetermined)", async () => {
+    // Companion test: when the plugin has BOTH read and mutating checks and
+    // the batch fails, the read check is "Unable to determine" and the
+    // mutating check is the skip sentinel. The heuristic excludes mutating
+    // from the undetermined-count and sees 1 read undetermined → connectionError=true.
+    const manifest: PluginManifest = {
+      name: "kastell-plugin-mix",
+      version: "1.0.0",
+      apiVersion: "2",
+      kastell: "*",
+      capabilities: ["audit"],
+      checkPrefix: "X",
+      entry: "./index.js",
+    };
+    const checks: PluginCheck[] = [
+      { id: "X-READ", category: "Test", name: "Read", severity: "warning", description: "", checkCommand: { kind: "read", cmd: "echo ok" }, passPattern: "^ok$" },
+      { id: "X-MUT", category: "Test", name: "Mut", severity: "warning", description: "", checkCommand: { kind: "mutate-local", cmd: "systemctl restart nginx" } },
+    ];
+    registerPlugin(manifest, checks);
+    const spy = jest.spyOn(ssh, "sshExec").mockImplementation(async () => ({ stdout: "", stderr: "", code: 0 }));
+    spy.mockImplementationOnce(async () => ({ stdout: "", stderr: "", code: 0 }));
+    spy.mockImplementationOnce(async () => ({ stdout: "", stderr: "", code: 0 }));
+    spy.mockImplementationOnce(async () => ({ stdout: "", stderr: "", code: 0 }));
+    spy.mockImplementationOnce(async () => { throw new Error("ssh timeout"); });
+
+    const result = await runAudit("1.2.3.4", "test-server", "coolify");
+    expect(result.success).toBe(true);
+    if (result.success && result.data) {
+      const pluginCat = result.data.categories.find((c) => c.name === "Plugin: mix");
+      expect(pluginCat).toBeDefined();
+      expect(pluginCat!.connectionError).toBe(true);
+    }
+  });
 });

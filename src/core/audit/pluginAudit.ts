@@ -122,12 +122,10 @@ function splitSections(stdout: string): ParsedSection[] {
   for (const line of lines) {
     if (line.startsWith(SECTION_PREFIX) && line.endsWith("---")) {
       const header = line.slice(SECTION_PREFIX.length, line.length - 3);
+      // SECTION_PREFIX is "---SECTION:PLUGIN:" — header is guaranteed at
+      // least one colon, so lastIndexOf(":") cannot be -1. No defensive
+      // branch needed; the slice bounds below are safe.
       const colonIdx = header.lastIndexOf(":");
-      if (colonIdx === -1) {
-        flush();
-        current = null;
-        continue;
-      }
       flush();
       current = {
         pluginName: header.slice(0, colonIdx),
