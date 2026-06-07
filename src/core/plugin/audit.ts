@@ -28,19 +28,14 @@ const AGGREGATE_TIMEOUT_MS = 120_000;
 
 export interface ExecutePluginChecksContext {
   ssh: (cmd: string, opts?: { timeoutMs?: number; signal?: AbortSignal }) => Promise<{ stdout: string; stderr: string; code: number }>;
-  // C4: manifest accepts both `mutates: true` (preferred) and legacy
-  // `safeToParallel: false`. `mutates` takes precedence.
-  manifest: { mutates?: boolean | null; safeToParallel?: boolean | null; [key: string]: unknown };
 }
 
 export async function executePluginChecks(
   checks: PluginCheck[],
   ctx: ExecutePluginChecksContext,
 ): Promise<ExecutePluginChecksResult> {
-  // C4: mutates: true forces cap=1. Legacy safeToParallel: false is the
-  // inverted-polarity form of the same intent — both accepted.
-  const isMutating = ctx.manifest.mutates === true || ctx.manifest.safeToParallel === false;
-  const concurrency = isMutating ? 1 : getDefaultParallelism();
+  const hasMutatingCheck = checks.some((check) => check.checkCommand.kind !== "read");
+  const concurrency = hasMutatingCheck ? 1 : getDefaultParallelism();
 
   const controller = new AbortController();
   const aggregateTimer = setTimeout(() => controller.abort(), AGGREGATE_TIMEOUT_MS);
@@ -50,7 +45,7 @@ export async function executePluginChecks(
       return { checkId: check.id, status: "timeout" };
     }
     try {
-      const ssh = await ctx.ssh(check.checkCommand, { timeoutMs: 15000, signal: controller.signal });
+      const ssh = await ctx.ssh(check.checkCommand.cmd, { timeoutMs: 15000, signal: controller.signal });
       if (ssh.code !== 0) {
         return { checkId: check.id, status: "error", reason: ssh.stderr || `Exit code ${ssh.code}` };
       }
