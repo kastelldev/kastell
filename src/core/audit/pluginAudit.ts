@@ -16,6 +16,38 @@ export function mapPluginComplianceRefs(refs?: Array<{ framework: string; ref: s
   }));
 }
 
+export function mutatingPluginAuditCurrentValue(kind: PluginCheck["checkCommand"]["kind"]): string {
+  return `Not run by kastell audit (mutating kind: ${kind})`;
+}
+
+export function isMutatingPluginAuditCurrentValue(value: string): boolean {
+  return value.startsWith("Not run by kastell audit (mutating kind: ");
+}
+
+export function getSkippedMutatingPluginWarnings(
+  registry: ReadonlyMap<string, PluginRegistryEntry>,
+): string[] {
+  const warnings: string[] = [];
+  for (const [pluginName, entry] of registry) {
+    if (entry.status !== PLUGIN_STATUS_LOADED) continue;
+    for (const check of entry.checks) {
+      if (check.checkCommand.kind !== "read") {
+        warnings.push(`Plugin ${pluginName} check ${check.id} is ${check.checkCommand.kind} and is not run by kastell audit`);
+      }
+    }
+  }
+  return warnings;
+}
+
+export function hasLoadedPluginChecks(
+  registry: ReadonlyMap<string, PluginRegistryEntry>,
+): boolean {
+  for (const [, entry] of registry) {
+    if (entry.status === PLUGIN_STATUS_LOADED && entry.checks.length > 0) return true;
+  }
+  return false;
+}
+
 function evaluateCheck(output: string, check: PluginCheck): boolean {
   if (check.failPattern && new RegExp(check.failPattern).test(output)) return false;
   if (check.passPattern) return new RegExp(check.passPattern).test(output);
@@ -135,6 +167,13 @@ export function parsePluginBatchOutput(
       if (section) {
         const passed = evaluateCheck(section.body, checkDef);
         checks.push(buildAuditCheck(checkDef, { passed, currentValue: section.body }, entry));
+      } else if (checkDef.checkCommand.kind !== "read") {
+        checks.push(
+          buildAuditCheck(checkDef, {
+            passed: false,
+            currentValue: mutatingPluginAuditCurrentValue(checkDef.checkCommand.kind),
+          }),
+        );
       } else {
         // Missing section → runAudit's allUndetermined heuristic flags this
         // plugin category as a batch failure.

@@ -705,9 +705,10 @@ export function buildPluginBatchSection(
     if (entry.status !== PLUGIN_STATUS_LOADED) continue;
     if (entry.checks.length === 0) continue;
     for (const check of entry.checks) {
+      if (check.checkCommand.kind !== "read") continue;
       lines.push(NAMED_SEP(`PLUGIN:${entry.manifest.name}:${check.id}`));
       lines.push(`bash <<'KASTELL_PLUGIN_CHECK_EOF' 2>/dev/null`);
-      lines.push(check.checkCommand);
+      lines.push(check.checkCommand.cmd);
       lines.push(`KASTELL_PLUGIN_CHECK_EOF`);
     }
   }

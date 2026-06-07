@@ -16,7 +16,12 @@ import { calculateQuickWins } from "./quickwin.js";
 import { extractVpsType, applyVpsAdjustments } from "./vps.js";
 import { AUDIT_VERSION } from "../../constants.js";
 import { getPluginRegistry } from "../../plugin/registry.js";
-import { parsePluginBatchOutput } from "./pluginAudit.js";
+import {
+  getSkippedMutatingPluginWarnings,
+  hasLoadedPluginChecks,
+  isMutatingPluginAuditCurrentValue,
+  parsePluginBatchOutput,
+} from "./pluginAudit.js";
 
 /**
  * Detect categories where all checks have "not installed" or "N/A" currentValue.
@@ -79,8 +84,8 @@ export async function runAudit(
     const vpsType = extractVpsType(batchOutputs);
     const { categories: adjustedCategories, adjustedCount } = applyVpsAdjustments(categories, vpsType);
 
-    const pluginCategories = batches.length === 4
-      ? parsePluginBatchOutput(batchOutputs[3] ?? "", pluginRegistry)
+    const pluginCategories = hasLoadedPluginChecks(pluginRegistry)
+      ? parsePluginBatchOutput(batches.length === 4 ? batchOutputs[3] ?? "" : "", pluginRegistry)
       : [];
     for (const cat of pluginCategories) {
       adjustedCategories.push(cat);
@@ -93,7 +98,10 @@ export async function runAudit(
     // only triggers when an actual SSH batch failure occurred.
     if (batchErrors.length > 0) {
       for (const cat of adjustedCategories) {
-        const allUndetermined = cat.checks.length > 0 && cat.checks.every(
+        const checksForConnectionError = cat.checks.filter(
+          (c) => !isMutatingPluginAuditCurrentValue(c.currentValue),
+        );
+        const allUndetermined = checksForConnectionError.length > 0 && checksForConnectionError.every(
           (c) => !c.passed && (c.currentValue === "Unable to determine" || c.currentValue === ""),
         );
         if (allUndetermined) {
@@ -116,9 +124,10 @@ export async function runAudit(
     const skippedCategories = detectSkippedCategories(finalCategories);
 
     // Build warnings from batch errors
-    const warnings: string[] = batchErrors.map(
-      (e) => `SSH ${e.tier} batch failed: ${e.error}`,
-    );
+    const warnings: string[] = [
+      ...batchErrors.map((e) => `SSH ${e.tier} batch failed: ${e.error}`),
+      ...getSkippedMutatingPluginWarnings(pluginRegistry),
+    ];
 
     const auditResult: AuditResult = {
       serverName,
