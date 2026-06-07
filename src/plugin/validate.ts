@@ -26,6 +26,22 @@ const PluginFixSchema = z.object({
   backupPaths: z.array(z.string().regex(/^\//, "Backup path must be absolute")).optional(),
 });
 
+const CHECK_COMMAND_KINDS = ["read", "mutate-local", "mutate-global"] as const;
+
+const PluginCheckCommandSchema = z
+  .object({
+    kind: z.enum(CHECK_COMMAND_KINDS, {
+      error: "checkCommand.kind must be 'read', 'mutate-local', or 'mutate-global'",
+    }),
+    cmd: z
+      .string()
+      .min(1)
+      .refine((s) => !s.includes("---SECTION:"), "checkCommand.cmd must not contain '---SECTION:' substring")
+      .refine((s) => !s.includes("KASTELL_PLUGIN_CHECK_EOF"), "checkCommand.cmd must not contain heredoc tag 'KASTELL_PLUGIN_CHECK_EOF'")
+      .refine((s) => !/\r/.test(s), "checkCommand.cmd must not contain CR characters"),
+  })
+  .strict();
+
 const PluginCheckSchema = z.object({
   id: z
     .string()
@@ -34,12 +50,7 @@ const PluginCheckSchema = z.object({
   name: z.string().min(1),
   severity: z.enum(["critical", "warning", "info"]),
   description: z.string().optional(),
-  checkCommand: z
-    .string()
-    .min(1)
-    .refine((s) => !s.includes("---SECTION:"), "checkCommand must not contain '---SECTION:' substring")
-    .refine((s) => !s.includes("KASTELL_PLUGIN_CHECK_EOF"), "checkCommand must not contain heredoc tag 'KASTELL_PLUGIN_CHECK_EOF'")
-    .refine((s) => !/\r/.test(s), "checkCommand must not contain CR characters"),
+  checkCommand: PluginCheckCommandSchema,
   passPattern: z.string().optional(),
   failPattern: z.string().optional(),
   fixCommand: z.string().optional(),
@@ -59,16 +70,11 @@ const PluginManifestSchema = z
   .object({
     name: z.string().regex(PLUGIN_NAME_PATTERN, "Name must match kastell-plugin-<lowercase>"),
     version: z.string().regex(/^\d+\.\d+\.\d+$/, "Version must be semver (X.Y.Z)"),
-    apiVersion: z.literal("1"),
+    apiVersion: z.literal("2"),
     kastell: z.string().min(1, "Kastell version range required"),
     capabilities: z.array(z.enum(["audit", "command", "mcp-tool", "fix"])).min(1),
     checkPrefix: z.string().regex(/^[A-Z]{2,6}$/, "checkPrefix must be 2-6 uppercase letters"),
     entry: z.string().min(1, "Entry point required"),
-    // C4: preferred over safeToParallel — positive polarity (mutates: true)
-    // replaces inverted safeToParallel: false. Both fields accepted; mutates
-    // takes precedence when both are set.
-    mutates: z.boolean().optional(),
-    safeToParallel: z.boolean().optional(),
     commands: z.array(PluginCommandSchema).optional(),
     mcpTools: z.array(PluginMcpToolSchema).optional(),
     fixes: z.array(PluginFixSchema).optional(),

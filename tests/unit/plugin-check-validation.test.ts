@@ -10,7 +10,7 @@ const valid = {
   category: "WordPress",
   name: "Test",
   severity: "warning",
-  checkCommand: "echo ok",
+  checkCommand: { kind: "read", cmd: "echo ok" },
 };
 
 describe("validateChecks", () => {
@@ -47,22 +47,58 @@ describe("validateChecks", () => {
     expect(() => validateChecks([{ ...valid, id: "XX-001" }], "WP")).toThrow(/prefix/);
   });
 
-  it("rejects checkCommand containing ---SECTION:", () => {
+  it("accepts mutate-local command kind", () => {
     expect(() =>
-      validateChecks([{ ...valid, checkCommand: "echo '---SECTION:X---'" }], "WP"),
+      validateChecks([{ ...valid, checkCommand: { kind: "mutate-local", cmd: "systemctl restart nginx" } }], "WP"),
+    ).not.toThrow();
+  });
+
+  it("accepts mutate-global command kind", () => {
+    expect(() =>
+      validateChecks([{ ...valid, checkCommand: { kind: "mutate-global", cmd: "hcloud firewall apply-to-resource" } }], "WP"),
+    ).not.toThrow();
+  });
+
+  it("rejects legacy string checkCommand", () => {
+    expect(() =>
+      validateChecks([{ ...valid, checkCommand: "echo ok" as unknown }], "WP"),
+    ).toThrow(ValidationError);
+  });
+
+  it("rejects unknown checkCommand kind with author-facing message", () => {
+    expect(() =>
+      validateChecks([{ ...valid, checkCommand: { kind: "reads", cmd: "echo ok" } }], "WP"),
+    ).toThrow(/checkCommand\.kind must be 'read', 'mutate-local', or 'mutate-global'/);
+  });
+
+  it("rejects extra fields inside checkCommand", () => {
+    expect(() =>
+      validateChecks([{ ...valid, checkCommand: { kind: "read", cmd: "echo ok", extra: true } }], "WP"),
+    ).toThrow(ValidationError);
+  });
+
+  it("rejects checkCommand cmd containing ---SECTION:", () => {
+    expect(() =>
+      validateChecks([{ ...valid, checkCommand: { kind: "read", cmd: "echo '---SECTION:X---'" } }], "WP"),
     ).toThrow(/---SECTION:/);
   });
 
-  it("rejects checkCommand containing heredoc tag", () => {
+  it("rejects checkCommand cmd containing heredoc tag", () => {
     expect(() =>
-      validateChecks([{ ...valid, checkCommand: "echo KASTELL_PLUGIN_CHECK_EOF" }], "WP"),
+      validateChecks([{ ...valid, checkCommand: { kind: "read", cmd: "echo KASTELL_PLUGIN_CHECK_EOF" } }], "WP"),
     ).toThrow(/heredoc tag/);
   });
 
-  it("rejects checkCommand containing CR", () => {
+  it("rejects checkCommand cmd containing CR", () => {
     expect(() =>
-      validateChecks([{ ...valid, checkCommand: "echo ok\r" }], "WP"),
+      validateChecks([{ ...valid, checkCommand: { kind: "read", cmd: "echo ok\r" } }], "WP"),
     ).toThrow(/CR/);
+  });
+
+  it("rejects empty checkCommand cmd", () => {
+    expect(() =>
+      validateChecks([{ ...valid, checkCommand: { kind: "read", cmd: "" } }], "WP"),
+    ).toThrow(ValidationError);
   });
 
   it("rejects duplicate ids", () => {
@@ -74,12 +110,6 @@ describe("validateChecks", () => {
   it("rejects invalid severity", () => {
     expect(() =>
       validateChecks([{ ...valid, severity: "high" }], "WP"),
-    ).toThrow(ValidationError);
-  });
-
-  it("rejects empty checkCommand", () => {
-    expect(() =>
-      validateChecks([{ ...valid, checkCommand: "" }], "WP"),
     ).toThrow(ValidationError);
   });
 });

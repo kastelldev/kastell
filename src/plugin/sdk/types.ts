@@ -42,31 +42,19 @@ export interface PluginFix {
   backupPaths?: string[];
 }
 
+export type PluginCheckCommand =
+  | { kind: "read"; cmd: string }
+  | { kind: "mutate-local"; cmd: string }
+  | { kind: "mutate-global"; cmd: string };
+
 export interface PluginManifest {
   name: string;
   version: string;
-  apiVersion: string;
+  apiVersion: "2";
   kastell: string;
   capabilities: PluginCapability[];
   checkPrefix: string;
   entry: string;
-  /**
-   * Set to true to declare this plugin's checkCommand mutates system state
-   * (e.g. rm, systemctl restart, > redirection). When true, audit forces
-   * cap=1 (sequential) execution to avoid races. Default false (read-only,
-   * safe to parallelize).
-   *
-   * Preferred over the legacy `safeToParallel: false` flag — see
-   * altitude A9 in CQS-low-clean design. Both fields are accepted;
-   * `mutates` takes precedence when both are set.
-   */
-  mutates?: boolean;
-  /**
-   * @deprecated Use `mutates: true` instead. Inverted polarity was a
-   * frequent footgun (altitude A9). Kept for back-compat with existing
-   * plugin manifests.
-   */
-  safeToParallel?: boolean;
   commands?: PluginCommand[];
   mcpTools?: PluginMcpTool[];
   fixes?: PluginFix[];
@@ -78,7 +66,7 @@ export interface PluginCheck {
   category: string;
   severity: PluginSeverity;
   description: string;
-  checkCommand: string;
+  checkCommand: PluginCheckCommand;
   passPattern?: string;
   failPattern?: string;
   fixCommand?: string;
