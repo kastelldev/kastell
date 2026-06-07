@@ -95,14 +95,18 @@ export async function runAudit(
     // Uses check-content heuristic (all checks "Unable to determine" or empty) rather than
     // tier-to-category mapping because the batch→category relationship is N:M — one batch
     // can produce checks across multiple categories. The batchErrors guard ensures this
-    // only triggers when an actual SSH batch failure occurred.
+    // only triggers when an actual SSH batch failure occurred. Mutating-skip checks
+    // satisfy the predicate (they are "not run by kastell audit", not "undetermined"),
+    // so a category with both read-undetermined and mutating-skipped checks still
+    // counts as connectionError.
     if (batchErrors.length > 0) {
       for (const cat of adjustedCategories) {
-        const checksForConnectionError = cat.checks.filter(
-          (c) => !isMutatingPluginAuditCurrentValue(c.currentValue),
-        );
-        const allUndetermined = checksForConnectionError.length > 0 && checksForConnectionError.every(
-          (c) => !c.passed && (c.currentValue === "Unable to determine" || c.currentValue === ""),
+        const allUndetermined = cat.checks.length > 0 && cat.checks.every(
+          (c) => !c.passed && (
+            isMutatingPluginAuditCurrentValue(c.currentValue)
+            || c.currentValue === "Unable to determine"
+            || c.currentValue === ""
+          ),
         );
         if (allUndetermined) {
           (cat as AuditCategory).connectionError = true;

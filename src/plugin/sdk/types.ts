@@ -1,9 +1,18 @@
 import type { Severity, FixTier } from "../../types/severity.js";
+import type { PluginApiVersion } from "./constants.js";
 
 export type PluginCapability = "audit" | "command" | "mcp-tool" | "fix";
 
 export type PluginSeverity = Severity;
 export type PluginFixTier = FixTier;
+
+/**
+ * Discriminator for PluginCheckCommand. Single source of truth — the Zod
+ * schema in `validate.ts` derives its enum from this tuple so adding a new
+ * kind cannot drift between runtime types and manifest validation.
+ */
+export const PLUGIN_CHECK_COMMAND_KINDS = ["read", "mutate-local", "mutate-global"] as const;
+export type PluginCheckCommandKind = (typeof PLUGIN_CHECK_COMMAND_KINDS)[number];
 
 export interface PluginCommand {
   name: string;
@@ -50,7 +59,7 @@ export type PluginCheckCommand =
 export interface PluginManifest {
   name: string;
   version: string;
-  apiVersion: "2";
+  apiVersion: PluginApiVersion;
   kastell: string;
   capabilities: PluginCapability[];
   checkPrefix: string;

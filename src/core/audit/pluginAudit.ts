@@ -5,6 +5,13 @@ import type { PluginRegistryEntry } from "../../plugin/registry.js";
 import type { PluginCheck } from "../../plugin/sdk/types.js";
 import type { AuditCategory, AuditCheck, Severity, FixTier, ComplianceRef } from "./types.js";
 
+// Single source of truth for the "skipped mutating" sentinel. The producer
+// (`mutatingPluginAuditCurrentValue`) and the consumer
+// (`isMutatingPluginAuditCurrentValue`) must agree on the exact prefix+
+// suffix — drift here would silently break the connectionError heuristic.
+const MUTATING_SKIP_PREFIX = "Not run by kastell audit (mutating kind: ";
+const MUTATING_SKIP_SUFFIX = ")";
+
 export function mapPluginComplianceRefs(refs?: Array<{ framework: string; ref: string }>): ComplianceRef[] {
   if (!refs || refs.length === 0) return [];
   return refs.map((r) => ({
@@ -17,11 +24,11 @@ export function mapPluginComplianceRefs(refs?: Array<{ framework: string; ref: s
 }
 
 export function mutatingPluginAuditCurrentValue(kind: PluginCheck["checkCommand"]["kind"]): string {
-  return `Not run by kastell audit (mutating kind: ${kind})`;
+  return `${MUTATING_SKIP_PREFIX}${kind}${MUTATING_SKIP_SUFFIX}`;
 }
 
 export function isMutatingPluginAuditCurrentValue(value: string): boolean {
-  return value.startsWith("Not run by kastell audit (mutating kind: ");
+  return value.startsWith(MUTATING_SKIP_PREFIX) && value.endsWith(MUTATING_SKIP_SUFFIX);
 }
 
 export function getSkippedMutatingPluginWarnings(
@@ -39,10 +46,16 @@ export function getSkippedMutatingPluginWarnings(
   return warnings;
 }
 
+/**
+ * Does the registry have at least one loaded entry with non-empty checks?
+ * Gates the plugin batch parse — without this, a mutating-only plugin would
+ * produce no batch (buildPluginBatchSection returns null), but parsePluginBatchOutput
+ * should still surface the skipped checks for visibility.
+ */
 export function hasLoadedPluginChecks(
   registry: ReadonlyMap<string, PluginRegistryEntry>,
 ): boolean {
-  for (const [, entry] of registry) {
+  for (const entry of registry.values()) {
     if (entry.status === PLUGIN_STATUS_LOADED && entry.checks.length > 0) return true;
   }
   return false;
@@ -135,9 +148,7 @@ export function parsePluginBatchOutput(
 ): AuditCategory[] {
   const sections = stdout ? splitSections(stdout) : [];
 
-  // Pass 1: index valid sections by `${pluginName}:${checkId}` for O(1) lookup.
-  // Unknown plugins/checks are dropped here with a debugLog, matching the
-  // pre-refactor behavior.
+  // Index known sections by key, drop unknowns (legacy v1 behavior).
   const sectionsByPluginCheck = new Map<string, ParsedSection>();
   for (const section of sections) {
     const entry = registry.get(section.pluginName);
@@ -153,9 +164,8 @@ export function parsePluginBatchOutput(
     sectionsByPluginCheck.set(`${section.pluginName}:${section.checkId}`, section);
   }
 
-  // Pass 2: iterate the registry as the single source of truth — apply the
-  // section's evaluated result if present, or the "Unable to determine"
-  // fallback otherwise. Linear over the registry, no double-mutation of byPlugin.
+  // Registry is the source of truth — missing sections get the "Unable to
+  // determine" fallback, mutating checks get the skip sentinel.
   const byPlugin = new Map<string, AuditCheck[]>();
   for (const [pluginName, entry] of registry) {
     if (entry.status !== PLUGIN_STATUS_LOADED) continue;
@@ -175,8 +185,8 @@ export function parsePluginBatchOutput(
           }),
         );
       } else {
-        // Missing section → runAudit's allUndetermined heuristic flags this
-        // plugin category as a batch failure.
+        // Missing section for a read check — runAudit's allUndetermined
+        // heuristic will flag this plugin category as a batch failure.
         checks.push(
           buildAuditCheck(checkDef, { passed: false, currentValue: "Unable to determine" }),
         );

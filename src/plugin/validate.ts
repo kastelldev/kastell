@@ -3,7 +3,8 @@ import semver from "semver";
 import { ValidationError } from "../utils/errors.js";
 import { KASTELL_VERSION } from "../utils/version.js";
 import type { PluginManifest, PluginCheck } from "./sdk/types.js";
-import { PLUGIN_NAME_PATTERN } from "./sdk/constants.js";
+import { PLUGIN_NAME_PATTERN, PLUGIN_API_VERSION } from "./sdk/constants.js";
+import { PLUGIN_CHECK_COMMAND_KINDS } from "./sdk/types.js";
 
 const HANDLER_PATH_PATTERN = /^\.\/(?!.*\.\.)(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]+\.js$/;
 
@@ -26,12 +27,12 @@ const PluginFixSchema = z.object({
   backupPaths: z.array(z.string().regex(/^\//, "Backup path must be absolute")).optional(),
 });
 
-const CHECK_COMMAND_KINDS = ["read", "mutate-local", "mutate-global"] as const;
+const CHECK_COMMAND_KINDS_ERROR = `checkCommand.kind must be one of: ${PLUGIN_CHECK_COMMAND_KINDS.join(", ")}`;
 
 const PluginCheckCommandSchema = z
   .object({
-    kind: z.enum(CHECK_COMMAND_KINDS, {
-      error: "checkCommand.kind must be 'read', 'mutate-local', or 'mutate-global'",
+    kind: z.enum(PLUGIN_CHECK_COMMAND_KINDS, {
+      error: CHECK_COMMAND_KINDS_ERROR,
     }),
     cmd: z
       .string()
@@ -70,7 +71,7 @@ const PluginManifestSchema = z
   .object({
     name: z.string().regex(PLUGIN_NAME_PATTERN, "Name must match kastell-plugin-<lowercase>"),
     version: z.string().regex(/^\d+\.\d+\.\d+$/, "Version must be semver (X.Y.Z)"),
-    apiVersion: z.literal("2"),
+    apiVersion: z.literal(PLUGIN_API_VERSION),
     kastell: z.string().min(1, "Kastell version range required"),
     capabilities: z.array(z.enum(["audit", "command", "mcp-tool", "fix"])).min(1),
     checkPrefix: z.string().regex(/^[A-Z]{2,6}$/, "checkPrefix must be 2-6 uppercase letters"),

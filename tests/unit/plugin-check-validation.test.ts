@@ -68,7 +68,7 @@ describe("validateChecks", () => {
   it("rejects unknown checkCommand kind with author-facing message", () => {
     expect(() =>
       validateChecks([{ ...valid, checkCommand: { kind: "reads", cmd: "echo ok" } }], "WP"),
-    ).toThrow(/checkCommand\.kind must be 'read', 'mutate-local', or 'mutate-global'/);
+    ).toThrow(/checkCommand\.kind must be one of: read, mutate-local, mutate-global/);
   });
 
   it("rejects extra fields inside checkCommand", () => {
