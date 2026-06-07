@@ -30,7 +30,7 @@ import type { PluginCheck } from "../../../src/plugin/sdk/types.js";
 const mockManifestJson = JSON.stringify({
   name: "kastell-plugin-test",
   version: "1.0.0",
-  apiVersion: "1",
+  apiVersion: "2",
   kastell: ">=2.0.0",
   capabilities: ["audit"],
   checkPrefix: "TST",
@@ -44,7 +44,7 @@ const mockChecks: PluginCheck[] = [
     category: "Test",
     severity: "info",
     description: "Test check",
-    checkCommand: "echo test",
+    checkCommand: { kind: "read", cmd: "echo test" },
   },
 ];
 
@@ -215,7 +215,7 @@ describe("plugin/loader", () => {
     const maliciousManifest = {
       name: "kastell-plugin-evil",
       version: "1.0.0",
-      apiVersion: "1",
+      apiVersion: "2",
       kastell: ">=2.2.0",
       capabilities: ["audit"],
       checkPrefix: "EV",
@@ -233,7 +233,7 @@ describe("plugin/loader", () => {
     const safeManifest = {
       name: "kastell-plugin-evil-fix",
       version: "1.0.0",
-      apiVersion: "1",
+      apiVersion: "2",
       kastell: ">=2.2.0",
       capabilities: ["audit", "fix"],
       checkPrefix: "EV",
@@ -248,7 +248,7 @@ describe("plugin/loader", () => {
 
     const mockImporter = jest.fn<(path: string) => Promise<unknown>>();
     mockImporter.mockResolvedValue({
-      checks: [{ id: "EV-001", name: "Evil", category: "test", severity: "info", description: "x", checkCommand: "echo" }],
+      checks: [{ id: "EV-001", name: "Evil", category: "test", severity: "info", description: "x", checkCommand: { kind: "read", cmd: "echo" } }],
       fixes: [{ checkId: "EV-001", tier: "SAFE", handler: "../../../etc/passwd" }],
     });
 
@@ -262,7 +262,7 @@ describe("plugin/loader", () => {
     const safeManifest = {
       name: "kastell-plugin-evil",
       version: "1.0.0",
-      apiVersion: "1",
+      apiVersion: "2",
       kastell: ">=2.2.0",
       capabilities: ["audit", "command"],
       checkPrefix: "EVL",
@@ -292,7 +292,7 @@ describe("mcpTool handler path traversal guard", () => {
     const safeManifest = {
       name: "kastell-plugin-evil2",
       version: "1.0.0",
-      apiVersion: "1",
+      apiVersion: "2",
       kastell: ">=2.2.0",
       capabilities: ["audit", "mcp-tool"],
       checkPrefix: "EVIL",
@@ -322,7 +322,7 @@ describe("loadPlugins re-entry guard", () => {
     const validManifestJson = {
       name: "kastell-plugin-ok",
       version: "1.0.0",
-      apiVersion: "1",
+      apiVersion: "2",
       kastell: ">=2.2.0",
       capabilities: ["audit"],
       checkPrefix: "OK",
@@ -355,7 +355,7 @@ describe("loader capability expansion", () => {
       const manifestWithCommand = {
         name: "kastell-plugin-wp",
         version: "1.0.0",
-        apiVersion: "1",
+        apiVersion: "2",
         kastell: ">=2.0.0",
         capabilities: ["audit", "command"],
         checkPrefix: "WP",
@@ -384,7 +384,7 @@ describe("loader capability expansion", () => {
       const manifestWithFix = {
         name: "kastell-plugin-wp",
         version: "1.0.0",
-        apiVersion: "1",
+        apiVersion: "2",
         kastell: ">=2.0.0",
         capabilities: ["audit", "fix"],
         checkPrefix: "WP",

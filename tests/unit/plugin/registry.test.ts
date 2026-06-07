@@ -19,7 +19,7 @@ import type { PluginManifest, PluginCheck, PluginCapability } from "../../../src
 const mockManifest: PluginManifest = {
   name: "kastell-plugin-wordpress",
   version: "1.0.0",
-  apiVersion: "1",
+  apiVersion: "2",
   kastell: ">=2.1.0",
   capabilities: ["audit"] as PluginCapability[],
   checkPrefix: "WP",
@@ -33,7 +33,7 @@ const mockChecks: PluginCheck[] = [
     category: "WordPress",
     severity: "warning",
     description: "Check if wp-admin is publicly accessible",
-    checkCommand: "curl -s -o /dev/null -w '%{http_code}' http://localhost/wp-admin",
+    checkCommand: { kind: "read", cmd: "curl -s -o /dev/null -w '%{http_code}' http://localhost/wp-admin" },
   },
 ];
 
@@ -132,7 +132,7 @@ describe("plugin/registry", () => {
       const otherManifest = { ...mockManifest, name: "kastell-plugin-other", checkPrefix: "OT" };
       const otherChecks: PluginCheck[] = [
         { ...mockChecks[0], id: "OT-ADMIN-URL" },
-        { ...mockChecks[0], id: "OT-OTHER-CHECK", name: "Other", checkCommand: "echo test" },
+        { ...mockChecks[0], id: "OT-OTHER-CHECK", name: "Other", checkCommand: { kind: "read", cmd: "echo test" } },
       ];
       registerPlugin(mockManifest, mockChecks);
       registerPlugin(otherManifest, otherChecks);
@@ -161,7 +161,7 @@ describe("plugin/registry", () => {
     const manifestWithFields: PluginManifest = {
       name: "kastell-plugin-wp",
       version: "1.0.0",
-      apiVersion: "1",
+      apiVersion: "2",
       kastell: ">=2.0.0",
       capabilities: ["audit", "command", "fix"] as PluginCapability[],
       checkPrefix: "WP",

@@ -5,7 +5,7 @@ const checks = [
     category: "Mock Category",
     severity: "info",
     description: "A mock check for testing plugin loader",
-    checkCommand: "echo MOCK_PASS",
+    checkCommand: { kind: "read", cmd: "echo MOCK_PASS" },
     passPattern: "MOCK_PASS",
   },
   {
@@ -14,7 +14,7 @@ const checks = [
     category: "Mock Category",
     severity: "warning",
     description: "A second mock check",
-    checkCommand: "echo MOCK_OK",
+    checkCommand: { kind: "read", cmd: "echo MOCK_OK" },
     passPattern: "MOCK_OK",
   },
 ];
