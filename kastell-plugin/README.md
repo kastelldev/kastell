@@ -105,6 +105,12 @@ and `/agent:kastell-auditor` to get prioritized remediation guidance from audit 
 | Vultr | 25+ global locations | |
 | Linode (Akamai) | 11 global locations | |
 
+## Plugin SDK v2
+
+Kastell v2.3.0 introduces the Plugin SDK v2 audit command contract. Plugin manifests use `apiVersion: "2"`, and audit checks declare `checkCommand` as `{ kind, cmd }` instead of a plain string.
+
+See [Plugin SDK v2 Migration Guide](../docs/plugin-sdk-migration-v2.md).
+
 ## Links
 
 - Website: https://kastell.dev

@@ -13,10 +13,13 @@ All notable changes to this project will be documented in this file.
 - Plugin tarball smoke test: MCP boot time measurement + empty dir detection
 
 ### Changed
+- Breaking: Plugin SDK audit checks now require `apiVersion: "2"` and object-shaped `checkCommand: { kind, cmd }`. Manifest-level `mutates` and `safeToParallel` are removed; mutation intent is declared per check.
 - **`chunkConcurrent`** replaces `p-limit` in fleet.ts (p-limit dependency dropped)
 - `serverCompare` outputSchema uses `discriminatedUnion` (dış shape aynı kalır)
 - `PluginRegistryEntry` is now a discriminated union (loaded/error/disabled)
 - CI workflow: build artifact shared between jobs (~30s saving per run)
+
+Release-time version bumps remain owned by `/release minor`; `package.json` and `kastell-plugin/.claude-plugin/plugin.json` must be bumped together.
 
 ### Fixed
 - `serverCompare` detail mode returns flat checks array (was object — CQS-11 #1)
