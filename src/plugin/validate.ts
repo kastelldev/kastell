@@ -27,12 +27,10 @@ const PluginFixSchema = z.object({
   backupPaths: z.array(z.string().regex(/^\//, "Backup path must be absolute")).optional(),
 });
 
-const CHECK_COMMAND_KINDS_ERROR = `checkCommand.kind must be one of: ${PLUGIN_CHECK_COMMAND_KINDS.join(", ")}`;
-
 const PluginCheckCommandSchema = z
   .object({
     kind: z.enum(PLUGIN_CHECK_COMMAND_KINDS, {
-      error: CHECK_COMMAND_KINDS_ERROR,
+      error: `checkCommand.kind must be one of: ${PLUGIN_CHECK_COMMAND_KINDS.join(", ")}`,
     }),
     cmd: z
       .string()

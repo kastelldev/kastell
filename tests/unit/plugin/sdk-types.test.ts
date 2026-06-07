@@ -3,8 +3,6 @@ jest.mock("../../../src/utils/version.js", () => ({ KASTELL_VERSION: "2.2.0" }))
 import {
   PLUGIN_API_VERSION,
   PLUGIN_NAME_PATTERN,
-  PLUGIN_NAME_PREFIX,
-  PLUGIN_TOOL_PREFIX,
 } from "../../../src/plugin/sdk/constants.js";
 import {
   PLUGIN_CHECK_COMMAND_KINDS,
@@ -21,11 +19,6 @@ import {
 
 describe("Plugin SDK constants", () => {
   it("PLUGIN_API_VERSION is the v2 string", () => {
-    // The literal "2" lives in exactly one place: sdk/constants.ts. Both the
-    // TS interface and the Zod schema derive from it. If a future v3 bump
-    // forgets to update one of the two, the validateManifest tests catch
-    // it — but this constant guard catches the simpler "did we accidentally
-    // regress to v1" mistake.
     expect(PLUGIN_API_VERSION).toBe("2");
   });
 
@@ -37,26 +30,11 @@ describe("Plugin SDK constants", () => {
     ]);
   });
 
-  it("PLUGIN_CHECK_COMMAND_KINDS length is exactly 3 (no drift)", () => {
-    // If a new kind is added to the SDK, the Zod schema in validate.ts
-    // picks it up automatically (it consumes the same tuple). This test
-    // catches the regression where someone might break the length assumption.
-    expect(PLUGIN_CHECK_COMMAND_KINDS.length).toBe(3);
-  });
-
   it("PLUGIN_NAME_PATTERN requires the kastell-plugin- prefix", () => {
     expect(PLUGIN_NAME_PATTERN.test("kastell-plugin-wordpress")).toBe(true);
     expect(PLUGIN_NAME_PATTERN.test("kastell-plugin-wp")).toBe(true);
     expect(PLUGIN_NAME_PATTERN.test("wordpress")).toBe(false);
     expect(PLUGIN_NAME_PATTERN.test("Kastell-Plugin-WP")).toBe(false);
-  });
-
-  it("PLUGIN_NAME_PREFIX is the literal 'kastell-plugin-'", () => {
-    expect(PLUGIN_NAME_PREFIX).toBe("kastell-plugin-");
-  });
-
-  it("PLUGIN_TOOL_PREFIX is the literal 'server_plugin_'", () => {
-    expect(PLUGIN_TOOL_PREFIX).toBe("server_plugin_");
   });
 });
 

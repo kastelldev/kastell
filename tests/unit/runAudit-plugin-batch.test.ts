@@ -149,12 +149,9 @@ describe("runAudit — plugin batch integration", () => {
     }
   });
 
-  // Regression guard for the connectionError heuristic (single-pass form
-  // in src/core/audit/index.ts). Mutating-skip checks are EXCLUDED from the
-  // "all read undetermined" heuristic — they are "not run by kastell audit"
-  // by design, not because of a batch failure. A category composed entirely
-  // of mutating-skip checks must not be flagged as connectionError even if
-  // the plugin batch itself failed.
+  // Regression: all-mutating category must not be flagged as connectionError
+  // even when the batch fails — mutating-skip checks are excluded from the
+  // "all read undetermined" heuristic.
   it("all-mutating plugin: connectionError NOT set when batch fails", async () => {
     const manifest: PluginManifest = {
       name: "kastell-plugin-mut",
@@ -181,10 +178,7 @@ describe("runAudit — plugin batch integration", () => {
     if (result.success && result.data) {
       const pluginCat = result.data.categories.find((c) => c.name === "Plugin: mut");
       expect(pluginCat).toBeDefined();
-      // No read checks → hasReadCheck stays false in the heuristic loop
-      // → connectionError must NOT be set even though batch failed.
       expect(pluginCat!.connectionError).toBeUndefined();
-      // Mutating checks must still surface the skip sentinel.
       expect(pluginCat!.checks).toHaveLength(2);
       for (const c of pluginCat!.checks) {
         expect(c.currentValue).toMatch(/^Not run by kastell audit \(mutating kind: /);
@@ -193,10 +187,9 @@ describe("runAudit — plugin batch integration", () => {
   });
 
   it("mixed read+mutating plugin: connectionError IS set when batch fails (read check undetermined)", async () => {
-    // Companion test: when the plugin has BOTH read and mutating checks and
-    // the batch fails, the read check is "Unable to determine" and the
-    // mutating check is the skip sentinel. The heuristic excludes mutating
-    // from the undetermined-count and sees 1 read undetermined → connectionError=true.
+    // Companion: mixed batch failure → read check is "Unable to determine",
+    // mutating check is the skip sentinel. The heuristic sees 1 read
+    // undetermined and flags connectionError=true.
     const manifest: PluginManifest = {
       name: "kastell-plugin-mix",
       version: "1.0.0",

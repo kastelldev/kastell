@@ -79,12 +79,8 @@ describe("plugin/registry", () => {
     });
 
     it("rejects check ID colliding with another plugin (prefix-uniqueness guard)", () => {
-      // Direct duplicate check (B in registerPlugin) is unreachable in
-      // practice: a check must start with its plugin's `prefix-`, but
-      // identical prefixes are blocked by the earlier `checkPrefix`
-      // uniqueness check. So a colliding check id can only happen when
-      // the prefix check fires first. This test documents that the
-      // prefix check is the actual enforcement layer.
+      // A colliding check id can only happen when the prefix check fires
+      // first — the prefix check is the actual enforcement layer.
       registerPlugin(mockManifest, mockChecks);
       const otherManifest = {
         ...mockManifest,
@@ -92,12 +88,11 @@ describe("plugin/registry", () => {
         checkPrefix: "OT",
       };
       const collidingChecks: PluginCheck[] = [
-        { ...mockChecks[0], id: "WP-ADMIN-URL" }, // collides with first plugin's id
+        { ...mockChecks[0], id: "WP-ADMIN-URL" },
       ];
       expect(() => registerPlugin(otherManifest, collidingChecks)).toThrow(
         /must start with "OT-"/,
       );
-      // First plugin still registered; second was rejected on prefix check.
       expect(getPluginRegistry().size).toBe(1);
     });
   });

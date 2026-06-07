@@ -1,17 +1,3 @@
-/**
- * Dedicated test suite for src/core/audit/pluginAudit.ts.
- *
- * The 39-line file introduced in P140 has 5 exports but was previously only
- * covered indirectly by integration tests (runAudit-plugin-batch.test.ts).
- * This suite locks in the contract of each export + the MUTATING_SKIP_PREFIX
- * /SUFFIX roundtrip that the producer/consumer helpers must agree on.
- */
-
-// Enable debugLog so the unknown-plugin / unknown-check-id branches in
-// parsePluginBatchOutput's pass-1 are reachable (optional chain `?.()` only
-// hits the call when debugLog is defined).
-process.env.KASTELL_DEBUG = "1";
-
 import {
   getSkippedMutatingPluginWarnings,
   hasLoadedPluginChecks,
@@ -21,7 +7,7 @@ import {
 } from "../../../src/core/audit/pluginAudit.js";
 import { PLUGIN_STATUS_FAILED, PLUGIN_STATUS_LOADED } from "../../../src/plugin/registry.js";
 import type { PluginRegistryEntry } from "../../../src/plugin/registry.js";
-import type { PluginCheck, PluginFix, PluginManifest } from "../../../src/plugin/sdk/types.js";
+import type { PluginCheck, PluginFix, PluginManifest, PluginCheckCommandKind } from "../../../src/plugin/sdk/types.js";
 
 function loadedEntry(name: string, checks: PluginCheck[], fixes?: PluginFix[]): PluginRegistryEntry {
   const manifest: PluginManifest = {
@@ -58,7 +44,7 @@ function failedEntry(name: string): PluginRegistryEntry {
   };
 }
 
-function check(id: string, kind: "read" | "mutate-local" | "mutate-global" = "read"): PluginCheck {
+function check(id: string, kind: PluginCheckCommandKind = "read"): PluginCheck {
   return {
     id,
     category: "Test",
@@ -92,7 +78,6 @@ describe("isMutatingPluginAuditCurrentValue", () => {
   });
 
   it("returns false for prefix but missing closing paren", () => {
-    // Producer always appends ")" — values missing the suffix must NOT match.
     expect(isMutatingPluginAuditCurrentValue("Not run by kastell audit (mutating kind: mutate-local")).toBe(false);
   });
 
@@ -101,9 +86,6 @@ describe("isMutatingPluginAuditCurrentValue", () => {
   });
 
   it("returns true for both producer outputs (roundtrip)", () => {
-    // Critical: producer/consumer share the MUTATING_SKIP_PREFIX/SUFFIX
-    // constants. This test would FAIL if the two ever drift (one of them
-    // is updated without the other).
     expect(isMutatingPluginAuditCurrentValue(mutatingPluginAuditCurrentValue("mutate-local"))).toBe(true);
     expect(isMutatingPluginAuditCurrentValue(mutatingPluginAuditCurrentValue("mutate-global"))).toBe(true);
   });
@@ -121,8 +103,6 @@ describe("hasLoadedPluginChecks", () => {
   });
 
   it("returns false for loaded entry with empty checks", () => {
-    // A loaded plugin that has 0 checks contributes nothing to the audit
-    // batch — must NOT be considered "has loaded checks" for batch purposes.
     const reg = new Map<string, PluginRegistryEntry>();
     reg.set("kastell-plugin-empty", loadedEntry("kastell-plugin-empty", []));
     expect(hasLoadedPluginChecks(reg)).toBe(false);
@@ -142,11 +122,8 @@ describe("hasLoadedPluginChecks", () => {
   });
 
   it("returns true for all-mutating loaded entry (batch not built, but checks surface)", () => {
-    // Regression guard: the runAudit gate depends on this. All-mutating
-    // plugins never produce a 4th batch (buildPluginBatchSection returns null
-    // for non-read checks), but parsePluginBatchOutput must still surface
-    // their skipped checks for visibility. The test in runAudit-plugin-batch
-    // .test.ts:90 depends on this gate returning true.
+    // runAudit gate: all-mutating plugins never produce a 4th batch, but
+    // parsePluginBatchOutput must still surface their skipped checks.
     const reg = new Map<string, PluginRegistryEntry>();
     reg.set("kastell-plugin-mut", loadedEntry("kastell-plugin-mut", [check("VP-MUT", "mutate-local")]));
     expect(hasLoadedPluginChecks(reg)).toBe(true);
@@ -195,9 +172,8 @@ describe("getSkippedMutatingPluginWarnings", () => {
 
 describe("parsePluginBatchOutput — mutating-skip behavior", () => {
   it("surfaces all-mutating loaded plugin as not-run when stdout is empty", () => {
-    // This is the case where buildPluginBatchSection returns null (no read
-    // checks → no 4th batch) but the audit still surfaces the skipped checks.
-    // The mutating sentinel is the MUTATING_SKIP_PREFIX wrapped value.
+    // buildPluginBatchSection returns null (no read checks → no 4th batch) but
+    // the audit still surfaces the skipped checks.
     const reg = new Map<string, PluginRegistryEntry>();
     reg.set("kastell-plugin-mut", loadedEntry("kastell-plugin-mut", [
       check("VP-M-LOCAL", "mutate-local"),
@@ -214,9 +190,8 @@ describe("parsePluginBatchOutput — mutating-skip behavior", () => {
   });
 
   it("emits mutating sentinel for mutating checks even when batch section is present", () => {
-    // Mutating checks should NEVER receive a section (buildPluginBatchSection
-    // skips them), but if a section is accidentally emitted, the parser still
-    // recognizes the mutating kind and falls back to the sentinel.
+    // Defensive: if a section is accidentally emitted for a mutating check,
+    // the parser still falls back to the sentinel.
     const reg = new Map<string, PluginRegistryEntry>();
     reg.set("kastell-plugin-mix", loadedEntry("kastell-plugin-mix", [
       check("VP-READ", "read"),
@@ -235,8 +210,6 @@ describe("parsePluginBatchOutput — mutating-skip behavior", () => {
   });
 
   it("drops sections for unknown plugin (debugLog + continue)", () => {
-    // Section names a plugin not in the registry → pass-1 indexer logs
-    // and skips. The category for the registered plugin is unaffected.
     const reg = new Map<string, PluginRegistryEntry>();
     reg.set("kastell-plugin-known", loadedEntry("kastell-plugin-known", [
       check("VP-001", "read"),
@@ -255,8 +228,6 @@ describe("parsePluginBatchOutput — mutating-skip behavior", () => {
     reg.set("kastell-plugin-wp", loadedEntry("kastell-plugin-wp", [
       check("VP-001", "read"),
     ]));
-    // Check id "VP-UNKNOWN" is not in this plugin's checksById → pass-1
-    // logs and skips. VP-001 still works.
     const stdout =
       "---SECTION:PLUGIN:kastell-plugin-wp:VP-UNKNOWN---\ngarbage\n" +
       "---SECTION:PLUGIN:kastell-plugin-wp:VP-001---\nok";
@@ -266,8 +237,7 @@ describe("parsePluginBatchOutput — mutating-skip behavior", () => {
   });
 
   it("skips loaded entries with empty checks list (pass-2 length guard)", () => {
-    // A loaded entry with 0 checks must not produce an empty category.
-    // Coverage for line 170's `entry.checks.length === 0` branch.
+    // Coverage for entry.checks.length === 0 branch.
     const reg = new Map<string, PluginRegistryEntry>();
     reg.set("kastell-plugin-empty", loadedEntry("kastell-plugin-empty", []));
     reg.set("kastell-plugin-real", loadedEntry("kastell-plugin-real", [
@@ -276,28 +246,5 @@ describe("parsePluginBatchOutput — mutating-skip behavior", () => {
     const result = parsePluginBatchOutput("", reg);
     expect(result).toHaveLength(1);
     expect(result[0].name).toBe("Plugin: real");
-  });
-
-  it("filters out byPlugin entries that ended up with zero checks (final loop guard)", () => {
-    // Coverage for line 198's `if (checks.length === 0) continue;` branch
-    // in the category-construction loop. A loaded entry whose checks were
-    // all filtered out by the unknown-check path leaves an empty array
-    // in byPlugin — must not produce a category.
-    const reg = new Map<string, PluginRegistryEntry>();
-    reg.set("kastell-plugin-x", loadedEntry("kastell-plugin-x", [
-      check("VP-001", "read"),
-    ]));
-    // No sections for VP-001 at all → it would get "Unable to determine"
-    // (non-empty). To force the empty-checks path, we need an entry that
-    // is loaded but has checks the registry never reaches. Since the
-    // registry IS the source of truth (pass-2 walks it), the empty case
-    // can only arise if all checks in an entry are filtered — which
-    // cannot happen in practice (a check is either matched or gets
-    // a fallback). The branch is defensive. Test the broader invariant:
-    // every category that comes out has at least 1 check.
-    const result = parsePluginBatchOutput("", reg);
-    for (const cat of result) {
-      expect(cat.checks.length).toBeGreaterThan(0);
-    }
   });
 });

@@ -91,13 +91,10 @@ export async function runAudit(
       adjustedCategories.push(cat);
     }
 
-    // Mark categories from failed batches as connectionError.
-    // Uses check-content heuristic (all read checks "Unable to determine" or empty) rather
-    // than tier-to-category mapping because the batch→category relationship is N:M — one
-    // batch can produce checks across multiple categories. Mutating-skip checks are
-    // excluded from the heuristic: they are "not run by kastell audit" by design, not
-    // because of a batch failure, so an all-mutating category should not be flagged
-    // even when the plugin batch itself failed.
+    // Read checks that are "Unable to determine" or empty indicate the batch
+    // never ran. Mutating-skip checks are excluded since they are skipped by
+    // design, not because of a batch failure — an all-mutating category must
+    // not be flagged as connectionError even when the plugin batch failed.
     if (batchErrors.length > 0) {
       for (const cat of adjustedCategories) {
         let hasReadCheck = false;

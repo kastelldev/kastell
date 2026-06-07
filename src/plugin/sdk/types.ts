@@ -6,11 +6,6 @@ export type PluginCapability = "audit" | "command" | "mcp-tool" | "fix";
 export type PluginSeverity = Severity;
 export type PluginFixTier = FixTier;
 
-/**
- * Discriminator for PluginCheckCommand. Single source of truth — the Zod
- * schema in `validate.ts` derives its enum from this tuple so adding a new
- * kind cannot drift between runtime types and manifest validation.
- */
 export const PLUGIN_CHECK_COMMAND_KINDS = ["read", "mutate-local", "mutate-global"] as const;
 export type PluginCheckCommandKind = (typeof PLUGIN_CHECK_COMMAND_KINDS)[number];
 

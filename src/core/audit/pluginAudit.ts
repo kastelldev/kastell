@@ -5,12 +5,10 @@ import type { PluginRegistryEntry } from "../../plugin/registry.js";
 import type { PluginCheck } from "../../plugin/sdk/types.js";
 import type { AuditCategory, AuditCheck, Severity, FixTier, ComplianceRef } from "./types.js";
 
-// Single source of truth for the "skipped mutating" sentinel. The producer
-// (`mutatingPluginAuditCurrentValue`) and the consumer
-// (`isMutatingPluginAuditCurrentValue`) must agree on the exact prefix+
-// suffix — drift here would silently break the connectionError heuristic.
-const MUTATING_SKIP_PREFIX = "Not run by kastell audit (mutating kind: ";
-const MUTATING_SKIP_SUFFIX = ")";
+// Sentinel for mutating plugin checks that audit never runs. Consumer uses the
+// regex below to detect this value; drift between the two helpers silently
+// breaks runAudit's connectionError heuristic.
+const MUTATING_SKIP_PATTERN = /^Not run by kastell audit \(mutating kind: .+\)$/;
 
 export function mapPluginComplianceRefs(refs?: Array<{ framework: string; ref: string }>): ComplianceRef[] {
   if (!refs || refs.length === 0) return [];
@@ -24,11 +22,11 @@ export function mapPluginComplianceRefs(refs?: Array<{ framework: string; ref: s
 }
 
 export function mutatingPluginAuditCurrentValue(kind: PluginCheck["checkCommand"]["kind"]): string {
-  return `${MUTATING_SKIP_PREFIX}${kind}${MUTATING_SKIP_SUFFIX}`;
+  return `Not run by kastell audit (mutating kind: ${kind})`;
 }
 
 export function isMutatingPluginAuditCurrentValue(value: string): boolean {
-  return value.startsWith(MUTATING_SKIP_PREFIX) && value.endsWith(MUTATING_SKIP_SUFFIX);
+  return MUTATING_SKIP_PATTERN.test(value);
 }
 
 export function getSkippedMutatingPluginWarnings(
@@ -47,10 +45,9 @@ export function getSkippedMutatingPluginWarnings(
 }
 
 /**
- * Does the registry have at least one loaded entry with non-empty checks?
- * Gates the plugin batch parse — without this, a mutating-only plugin would
- * produce no batch (buildPluginBatchSection returns null), but parsePluginBatchOutput
- * should still surface the skipped checks for visibility.
+ * Gates runAudit's plugin-batch parse: a mutating-only plugin produces no
+ * batch (buildPluginBatchSection returns null) but parsePluginBatchOutput
+ * must still surface its skipped checks for visibility.
  */
 export function hasLoadedPluginChecks(
   registry: ReadonlyMap<string, PluginRegistryEntry>,
@@ -122,9 +119,7 @@ function splitSections(stdout: string): ParsedSection[] {
   for (const line of lines) {
     if (line.startsWith(SECTION_PREFIX) && line.endsWith("---")) {
       const header = line.slice(SECTION_PREFIX.length, line.length - 3);
-      // SECTION_PREFIX is "---SECTION:PLUGIN:" — header is guaranteed at
-      // least one colon, so lastIndexOf(":") cannot be -1. No defensive
-      // branch needed; the slice bounds below are safe.
+      // SECTION_PREFIX contains ':' so header always has at least one colon.
       const colonIdx = header.lastIndexOf(":");
       flush();
       current = {
@@ -146,7 +141,6 @@ export function parsePluginBatchOutput(
 ): AuditCategory[] {
   const sections = stdout ? splitSections(stdout) : [];
 
-  // Index known sections by key, drop unknowns (legacy v1 behavior).
   const sectionsByPluginCheck = new Map<string, ParsedSection>();
   for (const section of sections) {
     const entry = registry.get(section.pluginName);
@@ -162,8 +156,6 @@ export function parsePluginBatchOutput(
     sectionsByPluginCheck.set(`${section.pluginName}:${section.checkId}`, section);
   }
 
-  // Registry is the source of truth — missing sections get the "Unable to
-  // determine" fallback, mutating checks get the skip sentinel.
   const byPlugin = new Map<string, AuditCheck[]>();
   for (const [pluginName, entry] of registry) {
     if (entry.status !== PLUGIN_STATUS_LOADED) continue;
@@ -183,8 +175,8 @@ export function parsePluginBatchOutput(
           }),
         );
       } else {
-        // Missing section for a read check — runAudit's allUndetermined
-        // heuristic will flag this plugin category as a batch failure.
+        // Missing read section — runAudit's allUndetermined heuristic flags
+        // this plugin category as a batch failure.
         checks.push(
           buildAuditCheck(checkDef, { passed: false, currentValue: "Unable to determine" }),
         );
