@@ -74,6 +74,46 @@ describe("withFileLock", () => {
       // rmSync called once for stale lock removal, once for release
       expect(mockedFs.rmSync).toHaveBeenCalledTimes(2);
     });
+
+    it("should retry stale lock reclaim removal when rmSync throws transient EPERM", async () => {
+      const eexistError = Object.assign(new Error("EEXIST"), { code: "EEXIST" });
+      const epermError = Object.assign(new Error("EPERM"), { code: "EPERM" });
+
+      mockedFs.mkdirSync
+        .mockReturnValueOnce(undefined)
+        .mockImplementationOnce(() => {
+          throw eexistError;
+        })
+        .mockReturnValueOnce(undefined);
+
+      mockedFs.statSync.mockReturnValue({
+        mtimeMs: Date.now() - 35_000,
+      } as unknown as import("fs").Stats);
+      mockedFs.readFileSync.mockReturnValue("");
+      mockedFs.rmSync
+        .mockImplementationOnce(() => {
+          throw epermError;
+        })
+        .mockImplementationOnce(() => {
+          throw epermError;
+        })
+        .mockReturnValueOnce(undefined)
+        .mockReturnValueOnce(undefined)
+        .mockReturnValueOnce(undefined);
+
+      const fn = jest.fn().mockReturnValue("ok");
+      const promise = withFileLock("/path/to/file.json", fn);
+
+      const result = await promise;
+      expect(result).toBe("ok");
+      expect(fn).toHaveBeenCalledTimes(1);
+      expect(mockedFs.mkdirSync).toHaveBeenCalledTimes(3);
+      expect(mockedFs.rmSync).toHaveBeenCalledWith("/path/to/file.json.lock", {
+        recursive: true,
+        force: true,
+      });
+      expect(mockedFs.rmSync).toHaveBeenCalledTimes(4);
+    });
   });
 
   describe("retryOnEEXIST", () => {

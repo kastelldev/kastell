@@ -6,6 +6,42 @@ const STALE_THRESHOLD_MS = 30_000;
 // Reclaim even when probeProcess reports "alive" (guards against clock drift, zombies, PID reuse).
 const HARD_CEILING_MS = 60_000;
 
+// Retry config for transient Windows file-scanner EPERM/EACCES during lock removal.
+const LOCK_REMOVE_ATTEMPTS = 3;
+const LOCK_REMOVE_DELAY_MS = 10;
+const PERMISSION_ERROR_CODES = new Set(["EPERM", "EACCES"]);
+
+function isPermissionError(err: unknown): boolean {
+  return PERMISSION_ERROR_CODES.has((err as NodeJS.ErrnoException).code ?? "");
+}
+
+function sleepSync(ms: number): void {
+  if (ms <= 0) return;
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+/**
+ * Best-effort lock directory removal that retries on transient EPERM/EACCES
+ * (common on Windows when antivirus or file-scanner holds a brief handle).
+ * Returns true if removal eventually succeeded, false otherwise.
+ */
+function removeLockDirBestEffort(lockDir: string): boolean {
+  for (let attempt = 1; attempt <= LOCK_REMOVE_ATTEMPTS; attempt++) {
+    try {
+      rmSync(lockDir, { recursive: true, force: true });
+      return true;
+    } catch (err: unknown) {
+      if (!isPermissionError(err)) {
+        return false;
+      }
+      if (attempt < LOCK_REMOVE_ATTEMPTS) {
+        sleepSync(LOCK_REMOVE_DELAY_MS);
+      }
+    }
+  }
+  return false;
+}
+
 /** Module-local wrapper for testability — DO NOT inline `process.kill`. */
 export function probeProcess(pid: number): "alive" | "dead" | "unknown" {
   try {
@@ -85,7 +121,7 @@ export async function withFileLock<T>(
         return await fn();
       } finally {
         try {
-          rmSync(lockDir, { recursive: true, force: true });
+          removeLockDirBestEffort(lockDir);
         } catch {
           /* best effort */
         }
@@ -93,11 +129,10 @@ export async function withFileLock<T>(
     } catch (err: unknown) {
       if ((err as NodeJS.ErrnoException).code === "EEXIST") {
         if (shouldReclaimStaleLock(lockDir, probe)) {
-          try {
-            rmSync(lockDir, { recursive: true, force: true });
-          } catch {
-            /* best effort, retry */
+          if (removeLockDirBestEffort(lockDir)) {
+            continue;
           }
+          await new Promise((r) => setTimeout(r, retryDelay));
           continue;
         }
         await new Promise((r) => setTimeout(r, retryDelay));
