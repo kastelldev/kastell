@@ -1,4 +1,4 @@
-import { writeFileSync, mkdirSync, chmodSync } from "fs";
+import { writeFileSync, appendFileSync, mkdirSync, chmodSync } from "fs";
 import { isWindows } from "./platform.js";
 
 export interface WriteFileOptions {
@@ -31,6 +31,15 @@ export function secureWriteFileSync(
   options?: WriteFileOptions
 ): void {
   writeFileSync(filePath, data, options);
+  applyPermissions(filePath, 0o600);
+}
+
+export function secureAppendFileSync(
+  filePath: string,
+  data: string,
+  options?: WriteFileOptions
+): void {
+  appendFileSync(filePath, data, options);
   applyPermissions(filePath, 0o600);
 }
 

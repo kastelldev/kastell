@@ -1,6 +1,7 @@
-import { appendFileSync, statSync, renameSync, mkdirSync } from "fs";
+import { statSync, renameSync, mkdirSync } from "fs";
 import { KASTELL_DIR, SECURITY_LOG } from "./paths.js";
 import { debugLog } from "./logger.js";
+import { secureAppendFileSync } from "./secureWrite.js";
 import { DEFAULT_PERMISSION_RETRY_ATTEMPTS, DEFAULT_PERMISSION_RETRY_DELAY_MS, retryOnPermission } from "./fsRetry.js";
 
 export type SecurityLogLevel = "info" | "warn" | "error";
@@ -60,9 +61,8 @@ export function logSecurityEvent(
       ...entry,
     };
 
-    appendFileSync(SECURITY_LOG, JSON.stringify(fullEntry) + "\n", {
+    secureAppendFileSync(SECURITY_LOG, JSON.stringify(fullEntry) + "\n", {
       encoding: "utf8",
-      mode: 0o600,
     });
   } catch (error) {
     // Security log failure MUST NOT crash the main operation — silent fail

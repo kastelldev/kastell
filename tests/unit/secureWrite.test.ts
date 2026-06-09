@@ -3,14 +3,16 @@ jest.mock("fs", () => {
   return {
     ...actual,
     writeFileSync: jest.fn(),
+    appendFileSync: jest.fn(),
     mkdirSync: jest.fn(),
     chmodSync: jest.fn(),
   };
 });
 
-import { writeFileSync, mkdirSync, chmodSync } from "fs";
+import { writeFileSync, appendFileSync, mkdirSync, chmodSync } from "fs";
 
 const mockedWriteFileSync = writeFileSync as jest.MockedFunction<typeof writeFileSync>;
+const mockedAppendFileSync = appendFileSync as jest.MockedFunction<typeof appendFileSync>;
 const mockedMkdirSync = mkdirSync as jest.MockedFunction<typeof mkdirSync>;
 const mockedChmodSync = chmodSync as jest.MockedFunction<typeof chmodSync>;
 
@@ -21,6 +23,7 @@ async function loadModule() {
   jest.clearAllMocks();
   jest.doMock("fs", () => ({
     writeFileSync: mockedWriteFileSync,
+    appendFileSync: mockedAppendFileSync,
     mkdirSync: mockedMkdirSync,
     chmodSync: mockedChmodSync,
   }));
@@ -32,6 +35,7 @@ beforeEach(async () => {
   jest.resetModules();
   jest.clearAllMocks();
   mockedWriteFileSync.mockReturnValue(undefined);
+  mockedAppendFileSync.mockReturnValue(undefined);
   mockedMkdirSync.mockReturnValue(undefined);
   mockedChmodSync.mockReturnValue(undefined);
   const { clearCache } = await import("../../src/utils/secureWrite");
@@ -149,6 +153,68 @@ describe("secureWriteFileSync", () => {
       });
 
       expect(() => secureWriteFileSync("/home/testuser/file.txt", "data")).toThrow("chmod failed");
+    });
+  });
+});
+
+// ─── secureAppendFileSync ─────────────────────────────────────────────────────
+
+describe("secureAppendFileSync", () => {
+  it("should call appendFileSync with correct arguments", async () => {
+    await loadModule();
+    const { secureAppendFileSync } = secureWriteModule;
+
+    secureAppendFileSync("/path/to/file.txt", "appended content");
+
+    expect(mockedAppendFileSync).toHaveBeenCalledWith("/path/to/file.txt", "appended content", undefined);
+  });
+
+  it("should pass options to appendFileSync", async () => {
+    await loadModule();
+    const { secureAppendFileSync } = secureWriteModule;
+    const opts = { encoding: "utf8" as const };
+
+    secureAppendFileSync("/path/to/file.txt", "appended content", opts);
+
+    expect(mockedAppendFileSync).toHaveBeenCalledWith("/path/to/file.txt", "appended content", opts);
+  });
+
+  describe("win32 platform", () => {
+    it("should skip applyPermissions entirely on win32 (no chmod)", async () => {
+      await loadModule();
+      const { secureAppendFileSync } = secureWriteModule;
+
+      Object.defineProperty(process, "platform", { value: "win32", configurable: true });
+      mockedChmodSync.mockClear();
+
+      secureAppendFileSync("C:\\Users\\testuser\\file.log", "appended line");
+
+      expect(mockedChmodSync).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("unix platform", () => {
+    it("should call chmodSync with 0o600", async () => {
+      await loadModule();
+      const { secureAppendFileSync } = secureWriteModule;
+
+      Object.defineProperty(process, "platform", { value: "linux", configurable: true });
+
+      secureAppendFileSync("/var/log/kastell/security.log", "appended line");
+
+      expect(mockedChmodSync).toHaveBeenCalledWith("/var/log/kastell/security.log", 0o600);
+    });
+
+    it("should propagate error when appendFileSync throws", async () => {
+      await loadModule();
+      const { secureAppendFileSync } = secureWriteModule;
+
+      Object.defineProperty(process, "platform", { value: "linux", configurable: true });
+      mockedAppendFileSync.mockImplementationOnce(() => {
+        throw new Error("disk full");
+      });
+
+      expect(() => secureAppendFileSync("/var/log/file.log", "x")).toThrow("disk full");
     });
   });
 });
