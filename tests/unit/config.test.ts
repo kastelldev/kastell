@@ -217,8 +217,9 @@ describe("config", () => {
 
       expect(mockedFs.mkdirSync).toHaveBeenCalled();
       expect(secureWriteFileSync).toHaveBeenCalledWith(
-        expect.stringContaining("servers.json"),
+        expect.stringContaining("servers.json.tmp"),
         expect.stringContaining('"1.2.3.4"'),
+        expect.any(Object),
       );
     });
 
@@ -352,10 +353,49 @@ describe("config", () => {
       expect(secureWriteFileSync).toHaveBeenCalledWith(
         expect.stringContaining("servers.json.tmp"),
         expect.any(String),
+        expect.any(Object),
       );
       expect(mockedFs.renameSync).toHaveBeenCalledWith(
         expect.stringContaining("servers.json.tmp"),
         expect.stringContaining("servers.json"),
+      );
+    });
+
+    it("should fall back to copy and unlink when servers.json rename hits transient EPERM", async () => {
+      const servers = [
+        {
+          id: "1",
+          name: "to-remove",
+          provider: "hetzner",
+          ip: "1.1.1.1",
+          region: "nbg1",
+          size: "cax11",
+          createdAt: "",
+          mode: "coolify",
+        },
+      ];
+      const err = Object.assign(new Error("EPERM"), { code: "EPERM" });
+      mockedFs.existsSync.mockReturnValue(true);
+      mockedFs.readFileSync.mockReturnValue(JSON.stringify(servers));
+      mockedFs.renameSync
+        .mockImplementationOnce(() => {
+          throw err;
+        })
+        .mockImplementationOnce(() => {
+          throw err;
+        })
+        .mockImplementationOnce(() => {
+          throw err;
+        });
+
+      await removeServer("1");
+
+      expect(mockedFs.copyFileSync).toHaveBeenCalledWith(
+        expect.stringContaining("servers.json.tmp"),
+        SERVERS_FILE,
+      );
+      expect(mockedFs.unlinkSync).toHaveBeenCalledWith(
+        expect.stringContaining("servers.json.tmp"),
       );
     });
   });

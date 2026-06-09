@@ -142,6 +142,7 @@ describe("migrateConfigIfNeeded", () => {
     expect(mockSecureWrite.secureWriteFileSync).toHaveBeenCalledWith(
       expect.stringContaining("servers.json.tmp"),
       expect.stringContaining('"mode": "coolify"'),
+      expect.any(Object),
     );
   });
 
