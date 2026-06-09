@@ -39,8 +39,9 @@ export function secureAppendFileSync(
   data: string,
   options?: WriteFileOptions
 ): void {
-  appendFileSync(filePath, data, options);
-  applyPermissions(filePath, 0o600);
+  // mode is applied on create by the kernel; subsequent appends preserve
+  // the existing inode mode. Avoids a chmodSync syscall per log line.
+  appendFileSync(filePath, data, { ...options, mode: 0o600 });
 }
 
 export function secureMkdirSync(

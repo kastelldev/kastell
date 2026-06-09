@@ -160,62 +160,56 @@ describe("secureWriteFileSync", () => {
 // ─── secureAppendFileSync ─────────────────────────────────────────────────────
 
 describe("secureAppendFileSync", () => {
-  it("should call appendFileSync with correct arguments", async () => {
+  it("should call appendFileSync with 0o600 mode set on create", async () => {
     await loadModule();
     const { secureAppendFileSync } = secureWriteModule;
 
     secureAppendFileSync("/path/to/file.txt", "appended content");
 
-    expect(mockedAppendFileSync).toHaveBeenCalledWith("/path/to/file.txt", "appended content", undefined);
+    expect(mockedAppendFileSync).toHaveBeenCalledWith(
+      "/path/to/file.txt",
+      "appended content",
+      { mode: 0o600 },
+    );
+    // Hot path: NO chmodSync syscall — mode is set by the kernel on create
+    expect(mockedChmodSync).not.toHaveBeenCalled();
   });
 
-  it("should pass options to appendFileSync", async () => {
+  it("should merge user options with create-time mode", async () => {
     await loadModule();
     const { secureAppendFileSync } = secureWriteModule;
     const opts = { encoding: "utf8" as const };
 
     secureAppendFileSync("/path/to/file.txt", "appended content", opts);
 
-    expect(mockedAppendFileSync).toHaveBeenCalledWith("/path/to/file.txt", "appended content", opts);
+    expect(mockedAppendFileSync).toHaveBeenCalledWith(
+      "/path/to/file.txt",
+      "appended content",
+      { encoding: "utf8", mode: 0o600 },
+    );
   });
 
-  describe("win32 platform", () => {
-    it("should skip applyPermissions entirely on win32 (no chmod)", async () => {
-      await loadModule();
-      const { secureAppendFileSync } = secureWriteModule;
+  it("should propagate error when appendFileSync throws", async () => {
+    await loadModule();
+    const { secureAppendFileSync } = secureWriteModule;
 
-      Object.defineProperty(process, "platform", { value: "win32", configurable: true });
-      mockedChmodSync.mockClear();
-
-      secureAppendFileSync("C:\\Users\\testuser\\file.log", "appended line");
-
-      expect(mockedChmodSync).not.toHaveBeenCalled();
+    mockedAppendFileSync.mockImplementationOnce(() => {
+      throw new Error("disk full");
     });
+
+    expect(() => secureAppendFileSync("/var/log/file.log", "x")).toThrow("disk full");
   });
 
-  describe("unix platform", () => {
-    it("should call chmodSync with 0o600", async () => {
-      await loadModule();
-      const { secureAppendFileSync } = secureWriteModule;
+  it("should not call chmodSync on win32 (no-op for POSIX perms)", async () => {
+    await loadModule();
+    const { secureAppendFileSync } = secureWriteModule;
 
-      Object.defineProperty(process, "platform", { value: "linux", configurable: true });
+    Object.defineProperty(process, "platform", { value: "win32", configurable: true });
+    mockedChmodSync.mockClear();
 
-      secureAppendFileSync("/var/log/kastell/security.log", "appended line");
+    secureAppendFileSync("C:\\Users\\testuser\\file.log", "appended line");
 
-      expect(mockedChmodSync).toHaveBeenCalledWith("/var/log/kastell/security.log", 0o600);
-    });
-
-    it("should propagate error when appendFileSync throws", async () => {
-      await loadModule();
-      const { secureAppendFileSync } = secureWriteModule;
-
-      Object.defineProperty(process, "platform", { value: "linux", configurable: true });
-      mockedAppendFileSync.mockImplementationOnce(() => {
-        throw new Error("disk full");
-      });
-
-      expect(() => secureAppendFileSync("/var/log/file.log", "x")).toThrow("disk full");
-    });
+    expect(mockedChmodSync).not.toHaveBeenCalled();
   });
 });
 

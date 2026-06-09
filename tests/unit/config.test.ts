@@ -272,70 +272,57 @@ describe("config", () => {
       );
     });
 
-    it("should reject adding a server whose name already exists", async () => {
-      // Covers config.ts L77-80: duplicate-by-name throw path
-      const existing = [
-        {
-          id: "1",
-          name: "dup-name",
-          provider: "hetzner",
-          ip: "1.1.1.1",
-          region: "nbg1",
-          size: "cax11",
-          createdAt: "2026-01-01T00:00:00Z",
-          mode: "coolify",
-        },
-      ];
-      mockedFs.existsSync.mockReturnValue(true);
-      mockedFs.readFileSync.mockReturnValue(JSON.stringify(existing));
+    it.each([
+      {
+        label: "name",
+        existingName: "dup-name",
+        existingIp: "1.1.1.1",
+        conflictName: "dup-name",
+        conflictIp: "9.9.9.9",
+        expected: /name "dup-name"/,
+      },
+      {
+        label: "IP",
+        existingName: "alpha",
+        existingIp: "1.1.1.1",
+        conflictName: "beta",
+        conflictIp: "1.1.1.1",
+        expected: /IP 1\.1\.1\.1/,
+      },
+    ])(
+      "should reject adding a server whose $label already exists (L77-80)",
+      async ({ existingName, existingIp, conflictName, conflictIp, expected }) => {
+        const existing = [
+          {
+            id: "1",
+            name: existingName,
+            provider: "hetzner",
+            ip: existingIp,
+            region: "nbg1",
+            size: "cax11",
+            createdAt: "2026-01-01T00:00:00Z",
+            mode: "coolify",
+          },
+        ];
+        mockedFs.existsSync.mockReturnValue(true);
+        mockedFs.readFileSync.mockReturnValue(JSON.stringify(existing));
 
-      const conflict = {
-        id: "2",
-        name: "dup-name", // same name
-        provider: "digitalocean",
-        ip: "9.9.9.9", // different IP
-        region: "nyc1",
-        size: "s-2vcpu-2gb",
-        createdAt: "2026-02-01T00:00:00Z",
-        mode: "coolify" as const,
-      };
+        const conflict = {
+          id: "2",
+          name: conflictName,
+          provider: "digitalocean",
+          ip: conflictIp,
+          region: "nyc1",
+          size: "s-2vcpu-2gb",
+          createdAt: "2026-02-01T00:00:00Z",
+          mode: "coolify" as const,
+        };
 
-      await expect(saveServer(conflict)).rejects.toThrow(/name "dup-name"/);
-      // The atomic write must not have been called for the rejected record
-      expect(secureWriteFileSync).not.toHaveBeenCalled();
-    });
-
-    it("should reject adding a server whose IP already exists", async () => {
-      // Covers config.ts L77-80: duplicate-by-IP throw path (name differs)
-      const existing = [
-        {
-          id: "1",
-          name: "alpha",
-          provider: "hetzner",
-          ip: "1.1.1.1",
-          region: "nbg1",
-          size: "cax11",
-          createdAt: "2026-01-01T00:00:00Z",
-          mode: "coolify",
-        },
-      ];
-      mockedFs.existsSync.mockReturnValue(true);
-      mockedFs.readFileSync.mockReturnValue(JSON.stringify(existing));
-
-      const conflict = {
-        id: "2",
-        name: "beta", // different name
-        provider: "digitalocean",
-        ip: "1.1.1.1", // same IP
-        region: "nyc1",
-        size: "s-2vcpu-2gb",
-        createdAt: "2026-02-01T00:00:00Z",
-        mode: "coolify" as const,
-      };
-
-      await expect(saveServer(conflict)).rejects.toThrow(/IP 1\.1\.1\.1/);
-      expect(secureWriteFileSync).not.toHaveBeenCalled();
-    });
+        await expect(saveServer(conflict)).rejects.toThrow(expected);
+        // Rejected record must not hit disk
+        expect(secureWriteFileSync).not.toHaveBeenCalled();
+      },
+    );
 
     it("should append to existing servers", async () => {
       const existing = [
