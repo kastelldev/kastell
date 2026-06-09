@@ -1,6 +1,6 @@
-import { readFileSync, existsSync, copyFileSync, readdirSync, unlinkSync, renameSync } from "fs";
+import { readFileSync, existsSync, copyFileSync, readdirSync, unlinkSync } from "fs";
 import { dirname, basename, join } from "path";
-import { secureWriteFileSync } from "../utils/secureWrite.js";
+import { atomicWriteFileSync } from "../utils/atomicWrite.js";
 import { SUPPORTED_PROVIDERS } from "../constants.js";
 
 const REQUIRED_FIELDS = ["id", "name", "provider", "ip", "region", "size", "createdAt"] as const;
@@ -143,9 +143,7 @@ export function repairConfig(filePath: string): RepairResult {
 }
 
 function atomicWrite(filePath: string, content: string): void {
-  const tmpFile = filePath + ".tmp";
-  secureWriteFileSync(tmpFile, content);
-  renameSync(tmpFile, filePath);
+  atomicWriteFileSync(filePath, content);
 }
 
 function pruneBackups(filePath: string): void {

@@ -7,7 +7,6 @@
 import { createHash } from "crypto";
 import {
   existsSync,
-  renameSync,
   rmSync,
 } from "fs";
 import { join, resolve } from "path";
@@ -17,6 +16,7 @@ import { withFileLock } from "../utils/fileLock.js";
 import { KASTELL_DIR } from "../utils/paths.js";
 import { getErrorMessage } from "../utils/errorMapper.js";
 import { secureMkdirSync, secureWriteFileSync } from "../utils/secureWrite.js";
+import { atomicWriteFileSync } from "../utils/atomicWrite.js";
 import { ValidationError } from "../utils/errors.js";
 import {
   buildEvidenceBatchCommand,
@@ -225,12 +225,8 @@ export async function collectEvidence(
 
     // Write manifest and SHA256SUMS atomically under file lock
     await withFileLock(manifestPath, () => {
-      const manifestTmp = manifestPath + ".tmp";
-      const sha256SumsTmp = sha256SumsPath + ".tmp";
-      secureWriteFileSync(manifestTmp, JSON.stringify(manifest, null, 2));
-      renameSync(manifestTmp, manifestPath);
-      secureWriteFileSync(sha256SumsTmp, sha256SumsContent);
-      renameSync(sha256SumsTmp, sha256SumsPath);
+      atomicWriteFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+      atomicWriteFileSync(sha256SumsPath, sha256SumsContent);
     });
   } catch (err: unknown) {
     rmSync(evidenceDir, { recursive: true, force: true });
