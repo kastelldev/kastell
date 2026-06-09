@@ -14,6 +14,8 @@ export interface FsMockOptions {
   existsSync?: jest.Mock;
   statSync?: jest.Mock;
   unlinkSync?: jest.Mock;
+  copyFileSync?: jest.Mock;
+  renameSync?: jest.Mock;
 }
 
 export function createFsMock(overrides: FsMockOptions = {}) {
@@ -25,6 +27,7 @@ export function createFsMock(overrides: FsMockOptions = {}) {
     existsSync: jest.fn().mockReturnValue(false),
     statSync: jest.fn(),
     unlinkSync: jest.fn(),
+    copyFileSync: jest.fn(),
     renameSync: jest.fn(),
     ...overrides,
   };
