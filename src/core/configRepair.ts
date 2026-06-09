@@ -137,13 +137,9 @@ export function repairConfig(filePath: string): RepairResult {
     recovered.push(entry);
   }
 
-  atomicWrite(filePath, JSON.stringify(recovered, null, 2));
+  atomicWriteFileSync(filePath, JSON.stringify(recovered, null, 2));
   pruneBackups(filePath);
   return { backupPath, recoveredCount: recovered.length, droppedCount, autoFixedCount };
-}
-
-function atomicWrite(filePath: string, content: string): void {
-  atomicWriteFileSync(filePath, content);
 }
 
 function pruneBackups(filePath: string): void {

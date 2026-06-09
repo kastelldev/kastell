@@ -1,6 +1,7 @@
 import { mkdirSync, rmSync, statSync, writeFileSync, readFileSync } from "fs";
 import { dirname, join } from "path";
 import { hostname } from "os";
+import { retryOnPermission } from "./fsRetry.js";
 
 const STALE_THRESHOLD_MS = 30_000;
 // Reclaim even when probeProcess reports "alive" (guards against clock drift, zombies, PID reuse).
@@ -9,16 +10,6 @@ const HARD_CEILING_MS = 60_000;
 // Retry config for transient Windows file-scanner EPERM/EACCES during lock removal.
 const LOCK_REMOVE_ATTEMPTS = 3;
 const LOCK_REMOVE_DELAY_MS = 10;
-const PERMISSION_ERROR_CODES = new Set(["EPERM", "EACCES"]);
-
-function isPermissionError(err: unknown): boolean {
-  return PERMISSION_ERROR_CODES.has((err as NodeJS.ErrnoException).code ?? "");
-}
-
-function sleepSync(ms: number): void {
-  if (ms <= 0) return;
-  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
-}
 
 /**
  * Best-effort lock directory removal that retries on transient EPERM/EACCES
@@ -26,20 +17,15 @@ function sleepSync(ms: number): void {
  * Returns true if removal eventually succeeded, false otherwise.
  */
 function removeLockDirBestEffort(lockDir: string): boolean {
-  for (let attempt = 1; attempt <= LOCK_REMOVE_ATTEMPTS; attempt++) {
-    try {
-      rmSync(lockDir, { recursive: true, force: true });
-      return true;
-    } catch (err: unknown) {
-      if (!isPermissionError(err)) {
-        return false;
-      }
-      if (attempt < LOCK_REMOVE_ATTEMPTS) {
-        sleepSync(LOCK_REMOVE_DELAY_MS);
-      }
-    }
+  try {
+    retryOnPermission(() => rmSync(lockDir, { recursive: true, force: true }), {
+      attempts: LOCK_REMOVE_ATTEMPTS,
+      delayMs: LOCK_REMOVE_DELAY_MS,
+    });
+    return true;
+  } catch {
+    return false;
   }
-  return false;
 }
 
 /** Module-local wrapper for testability — DO NOT inline `process.kill`. */

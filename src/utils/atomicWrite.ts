@@ -1,5 +1,6 @@
 import { copyFileSync, renameSync, unlinkSync } from "fs";
 import { secureWriteFileSync, type WriteFileOptions } from "./secureWrite.js";
+import { isPermissionError, retryOnPermission } from "./fsRetry.js";
 
 export interface AtomicWriteOptions extends WriteFileOptions {
   attempts?: number;
@@ -8,24 +9,6 @@ export interface AtomicWriteOptions extends WriteFileOptions {
 
 const DEFAULT_ATTEMPTS = 3;
 const DEFAULT_DELAY_MS = 10;
-const PERMISSION_ERROR_CODES = new Set(["EPERM", "EACCES"]);
-
-function isPermissionError(err: unknown): boolean {
-  return PERMISSION_ERROR_CODES.has((err as NodeJS.ErrnoException).code ?? "");
-}
-
-function sleepSync(ms: number): void {
-  if (ms <= 0) return;
-  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
-}
-
-function unlinkBestEffort(path: string): void {
-  try {
-    unlinkSync(path);
-  } catch {
-    /* best effort */
-  }
-}
 
 /**
  * Write a file through `targetPath + ".tmp"` and rename it into place.
@@ -45,32 +28,32 @@ export function atomicWriteFileSync(
 ): void {
   const tmpFile = `${targetPath}.tmp`;
   const { attempts = DEFAULT_ATTEMPTS, delayMs = DEFAULT_DELAY_MS, ...writeOptions } = options;
-  const maxAttempts = Math.max(1, attempts);
 
   secureWriteFileSync(tmpFile, content, writeOptions);
 
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      renameSync(tmpFile, targetPath);
-      return;
-    } catch (err: unknown) {
-      if (!isPermissionError(err)) {
-        unlinkBestEffort(tmpFile);
-        throw err;
-      }
-      if (attempt < maxAttempts) {
-        sleepSync(delayMs);
-        continue;
-      }
-    }
-  }
-
   try {
-    copyFileSync(tmpFile, targetPath);
-  } catch (err: unknown) {
+    retryOnPermission(() => renameSync(tmpFile, targetPath), { attempts, delayMs });
+  } catch (renameErr) {
+    // Non-permission error → propagate immediately. Permission errors are
+    // exhausted here, so the copy fallback takes over.
+    if (!isPermissionError(renameErr)) {
+      unlinkBestEffort(tmpFile);
+      throw renameErr;
+    }
+    try {
+      copyFileSync(tmpFile, targetPath);
+    } catch (copyErr) {
+      unlinkBestEffort(tmpFile);
+      throw copyErr;
+    }
     unlinkBestEffort(tmpFile);
-    throw err;
   }
+}
 
-  unlinkBestEffort(tmpFile);
+function unlinkBestEffort(path: string): void {
+  try {
+    unlinkSync(path);
+  } catch {
+    /* best effort */
+  }
 }
