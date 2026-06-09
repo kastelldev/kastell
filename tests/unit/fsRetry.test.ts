@@ -1,4 +1,8 @@
-import { isPermissionError, retryOnPermission, sleepSync } from "../../src/utils/fsRetry.js";
+import { unlinkSync } from "fs";
+import { isPermissionError, retryOnPermission, sleepSync, unlinkBestEffort } from "../../src/utils/fsRetry.js";
+
+jest.mock("fs");
+const mockedUnlinkSync = unlinkSync as jest.MockedFunction<typeof unlinkSync>;
 
 function fsError(code: string): NodeJS.ErrnoException {
   const err = new Error(code) as NodeJS.ErrnoException;
@@ -76,5 +80,33 @@ describe("retryOnPermission", () => {
       ),
     ).toThrow("ENOSPC");
     expect(calls).toBe(1);
+  });
+});
+
+describe("unlinkBestEffort", () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+  });
+
+  it("unlinks the path when no error is thrown", () => {
+    mockedUnlinkSync.mockReturnValueOnce(undefined);
+    expect(() => unlinkBestEffort("/tmp/file.tmp")).not.toThrow();
+    expect(mockedUnlinkSync).toHaveBeenCalledWith("/tmp/file.tmp");
+  });
+
+  it("silently swallows ENOENT (file already gone)", () => {
+    mockedUnlinkSync.mockImplementationOnce(() => {
+      throw fsError("ENOENT");
+    });
+    expect(() => unlinkBestEffort("/tmp/missing.tmp")).not.toThrow();
+    expect(mockedUnlinkSync).toHaveBeenCalledWith("/tmp/missing.tmp");
+  });
+
+  it("silently swallows other errors (EPERM/EACCES included)", () => {
+    mockedUnlinkSync.mockImplementationOnce(() => {
+      throw fsError("EPERM");
+    });
+    expect(() => unlinkBestEffort("/tmp/locked.tmp")).not.toThrow();
+    expect(mockedUnlinkSync).toHaveBeenCalledWith("/tmp/locked.tmp");
   });
 });

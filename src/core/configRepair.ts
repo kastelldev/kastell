@@ -1,6 +1,7 @@
-import { readFileSync, existsSync, copyFileSync, readdirSync, unlinkSync } from "fs";
+import { readFileSync, existsSync, copyFileSync, readdirSync } from "fs";
 import { dirname, basename, join } from "path";
 import { atomicWriteFileSync } from "../utils/atomicWrite.js";
+import { unlinkBestEffort } from "../utils/fsRetry.js";
 import { SUPPORTED_PROVIDERS } from "../constants.js";
 
 const REQUIRED_FIELDS = ["id", "name", "provider", "ip", "region", "size", "createdAt"] as const;
@@ -150,6 +151,6 @@ function pruneBackups(filePath: string): void {
     .sort();
   while (backups.length > MAX_BACKUPS) {
     const oldest = backups.shift()!;
-    try { unlinkSync(join(dir, oldest)); } catch { /* best-effort */ }
+    unlinkBestEffort(join(dir, oldest));
   }
 }

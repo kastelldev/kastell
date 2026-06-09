@@ -1,15 +1,11 @@
 import { mkdirSync, rmSync, statSync, writeFileSync, readFileSync } from "fs";
 import { dirname, join } from "path";
 import { hostname } from "os";
-import { retryOnPermission } from "./fsRetry.js";
+import { DEFAULT_PERMISSION_RETRY_ATTEMPTS, DEFAULT_PERMISSION_RETRY_DELAY_MS, retryOnPermission } from "./fsRetry.js";
 
 const STALE_THRESHOLD_MS = 30_000;
 // Reclaim even when probeProcess reports "alive" (guards against clock drift, zombies, PID reuse).
 const HARD_CEILING_MS = 60_000;
-
-// Retry config for transient Windows file-scanner EPERM/EACCES during lock removal.
-const LOCK_REMOVE_ATTEMPTS = 3;
-const LOCK_REMOVE_DELAY_MS = 10;
 
 /**
  * Best-effort lock directory removal that retries on transient EPERM/EACCES
@@ -19,8 +15,8 @@ const LOCK_REMOVE_DELAY_MS = 10;
 function removeLockDirBestEffort(lockDir: string): boolean {
   try {
     retryOnPermission(() => rmSync(lockDir, { recursive: true, force: true }), {
-      attempts: LOCK_REMOVE_ATTEMPTS,
-      delayMs: LOCK_REMOVE_DELAY_MS,
+      attempts: DEFAULT_PERMISSION_RETRY_ATTEMPTS,
+      delayMs: DEFAULT_PERMISSION_RETRY_DELAY_MS,
     });
     return true;
   } catch {

@@ -1,3 +1,5 @@
+import { unlinkSync } from "fs";
+
 /**
  * Shared helpers for transient Windows EPERM/EACCES retries.
  *
@@ -11,6 +13,11 @@
 const PERMISSION_ERROR_CODES = new Set(["EPERM", "EACCES"]);
 const SLEEP_BUFFER = new Int32Array(new SharedArrayBuffer(4));
 
+/** Default retry budget for transient permission errors — used by atomic write, file lock, and security log. */
+export const DEFAULT_PERMISSION_RETRY_ATTEMPTS = 3;
+/** Default sync sleep between retries (10ms is enough to ride out most scanner holds). */
+export const DEFAULT_PERMISSION_RETRY_DELAY_MS = 10;
+
 export function isPermissionError(err: unknown): boolean {
   return PERMISSION_ERROR_CODES.has((err as NodeJS.ErrnoException).code ?? "");
 }
@@ -19,6 +26,15 @@ export function isPermissionError(err: unknown): boolean {
 export function sleepSync(ms: number): void {
   if (ms <= 0) return;
   Atomics.wait(SLEEP_BUFFER, 0, 0, ms);
+}
+
+/** Best-effort `unlinkSync` that silently swallows all errors (file may already be gone). */
+export function unlinkBestEffort(path: string): void {
+  try {
+    unlinkSync(path);
+  } catch {
+    /* best effort */
+  }
 }
 
 export interface RetryOptions {
