@@ -12,6 +12,7 @@ import * as cloudInit from "../../src/utils/cloudInit";
 import * as templates from "../../src/utils/templates";
 import * as adapterFactory from "../../src/adapters/factory";
 import { provisionServer, uploadSshKeyBestEffort } from "../../src/core/provision";
+import { raw } from "../../src/utils/sshCommand";
 import type { CloudProvider } from "../../src/providers/base";
 
 jest.mock("../../src/utils/config");
@@ -62,6 +63,7 @@ beforeEach(() => {
   mockedProviderFactory.createProviderWithToken.mockReturnValue(mockProvider);
   mockedTokens.getProviderToken.mockReturnValue("test-token");
   mockedSsh.assertValidIp.mockImplementation(() => {});
+  mockedSsh.sshExec.mockResolvedValue({ code: 0, stdout: "ok\n", stderr: "" });
   mockedSshKey.findLocalSshKey.mockReturnValue("ssh-ed25519 AAAA test@host");
   mockedSshKey.getSshKeyName.mockReturnValue("kastell-test");
   mockedCloudInit.getBareCloudInit.mockReturnValue("#!/bin/bash\necho bare");
@@ -133,6 +135,22 @@ describe("provisionServer — bare mode saves mode:'bare' to ServerRecord", () =
     );
   });
 
+  it("should wait for SSH before returning a ready bare server with an assigned IP", async () => {
+    mockedSsh.sshExec.mockResolvedValue({ code: 0, stdout: "ok\n", stderr: "" });
+
+    const result = await provisionServer({
+      provider: "hetzner",
+      region: "nbg1",
+      size: "cax11",
+      name: "bare-srv",
+      mode: "bare",
+    });
+
+    expect(result.success).toBe(true);
+    expect(mockedSsh.sshExec).toHaveBeenCalledWith("1.2.3.4", raw("echo ok"));
+    expect(mockedSsh.sshExec).toHaveBeenCalledWith("1.2.3.4", raw("cloud-init status --wait"));
+  });
+
   it("should save ServerRecord with mode:'coolify' when mode is not specified (backward compat)", async () => {
     const result = await provisionServer({
       provider: "hetzner",
@@ -159,6 +177,23 @@ describe("provisionServer — bare mode saves mode:'bare' to ServerRecord", () =
 
     expect(result.success).toBe(true);
     expect(result.server?.mode).toBe("coolify");
+  });
+
+  it("should save ServerRecord with mode:'dokploy' and platform:'dokploy' when mode='dokploy'", async () => {
+    const result = await provisionServer({
+      provider: "hetzner",
+      region: "nbg1",
+      size: "cax11",
+      name: "dokploy-srv",
+      mode: "dokploy",
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.server?.mode).toBe("dokploy");
+    expect(result.server?.platform).toBe("dokploy");
+    expect(mockedConfig.saveServer).toHaveBeenCalledWith(
+      expect.objectContaining({ mode: "dokploy", platform: "dokploy" }),
+    );
   });
 });
 
