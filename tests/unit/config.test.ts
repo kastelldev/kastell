@@ -1,10 +1,12 @@
 import {
   getServers,
+  getServersRaw,
   clearServersCache,
   saveServer,
   updateServer,
   removeServer,
   findServer,
+  findServers,
   SERVERS_FILE,
 } from "../../src/utils/config";
 import { KASTELL_DIR } from "../../src/utils/paths";
@@ -41,6 +43,14 @@ describe("config", () => {
     // continues to drive the cache miss path. Tests that need ENOENT override
     // with mockReturnValueOnce/mockImplementationOnce.
     mockedFs.statSync.mockReturnValue(asStats({ mtimeMs: 1704067200000, dev: 1 }));
+  });
+
+  describe("getServersRaw", () => {
+    it("should throw 'servers.json corrupt' when JSON.parse returns non-array", () => {
+      // Covers config.ts L17-19: parsed !== Array guard
+      mockedFs.readFileSync.mockReturnValue('"not an array"');
+      expect(() => getServersRaw()).toThrow("servers.json corrupt");
+    });
   });
 
   describe("getServers", () => {
@@ -137,6 +147,45 @@ describe("config", () => {
       expect(() => getServers()).toThrow(/corrupt/);
     });
 
+    it("should warn and filter out servers with unknown provider", () => {
+      // Covers config.ts L62-64: unknown provider path → stderr warning + filter
+      const servers = [
+        {
+          id: "1",
+          name: "valid-hetzner",
+          provider: "hetzner",
+          ip: "1.1.1.1",
+          region: "nbg1",
+          size: "cax11",
+          createdAt: "2026-01-01T00:00:00Z",
+        },
+        {
+          id: "2",
+          name: "bogus-cloud",
+          provider: "fake-cloud",
+          ip: "2.2.2.2",
+          region: "nowhere",
+          size: "huge",
+          createdAt: "2026-01-01T00:00:00Z",
+        },
+      ];
+      mockedFs.existsSync.mockReturnValue(true);
+      mockedFs.readFileSync.mockReturnValue(JSON.stringify(servers));
+      const stderrSpy = jest.spyOn(process.stderr, "write").mockImplementation(() => true);
+
+      const result = getServers();
+
+      expect(result).toHaveLength(1);
+      expect(result[0].name).toBe("valid-hetzner");
+      expect(stderrSpy).toHaveBeenCalledWith(
+        expect.stringContaining('skipping server "bogus-cloud"'),
+      );
+      expect(stderrSpy).toHaveBeenCalledWith(
+        expect.stringContaining('unknown provider "fake-cloud"'),
+      );
+      stderrSpy.mockRestore();
+    });
+
     it("should apply mode default in-memory without writing to disk", () => {
       const servers = [
         {
@@ -221,6 +270,71 @@ describe("config", () => {
         expect.stringContaining('"1.2.3.4"'),
         expect.any(Object),
       );
+    });
+
+    it("should reject adding a server whose name already exists", async () => {
+      // Covers config.ts L77-80: duplicate-by-name throw path
+      const existing = [
+        {
+          id: "1",
+          name: "dup-name",
+          provider: "hetzner",
+          ip: "1.1.1.1",
+          region: "nbg1",
+          size: "cax11",
+          createdAt: "2026-01-01T00:00:00Z",
+          mode: "coolify",
+        },
+      ];
+      mockedFs.existsSync.mockReturnValue(true);
+      mockedFs.readFileSync.mockReturnValue(JSON.stringify(existing));
+
+      const conflict = {
+        id: "2",
+        name: "dup-name", // same name
+        provider: "digitalocean",
+        ip: "9.9.9.9", // different IP
+        region: "nyc1",
+        size: "s-2vcpu-2gb",
+        createdAt: "2026-02-01T00:00:00Z",
+        mode: "coolify" as const,
+      };
+
+      await expect(saveServer(conflict)).rejects.toThrow(/name "dup-name"/);
+      // The atomic write must not have been called for the rejected record
+      expect(secureWriteFileSync).not.toHaveBeenCalled();
+    });
+
+    it("should reject adding a server whose IP already exists", async () => {
+      // Covers config.ts L77-80: duplicate-by-IP throw path (name differs)
+      const existing = [
+        {
+          id: "1",
+          name: "alpha",
+          provider: "hetzner",
+          ip: "1.1.1.1",
+          region: "nbg1",
+          size: "cax11",
+          createdAt: "2026-01-01T00:00:00Z",
+          mode: "coolify",
+        },
+      ];
+      mockedFs.existsSync.mockReturnValue(true);
+      mockedFs.readFileSync.mockReturnValue(JSON.stringify(existing));
+
+      const conflict = {
+        id: "2",
+        name: "beta", // different name
+        provider: "digitalocean",
+        ip: "1.1.1.1", // same IP
+        region: "nyc1",
+        size: "s-2vcpu-2gb",
+        createdAt: "2026-02-01T00:00:00Z",
+        mode: "coolify" as const,
+      };
+
+      await expect(saveServer(conflict)).rejects.toThrow(/IP 1\.1\.1\.1/);
+      expect(secureWriteFileSync).not.toHaveBeenCalled();
     });
 
     it("should append to existing servers", async () => {
@@ -446,6 +560,70 @@ describe("config", () => {
       // If somehow an IP is also a name (unlikely), IP takes priority
       const result = findServer("10.0.0.2");
       expect(result?.name).toBe("beta");
+    });
+  });
+
+  describe("findServers", () => {
+    // Covers config.ts L117-122: byIp match branch + name fallback
+    const servers = [
+      {
+        id: "1",
+        name: "alpha",
+        provider: "hetzner",
+        ip: "10.0.0.1",
+        region: "nbg1",
+        size: "cax11",
+        createdAt: "",
+      },
+      {
+        id: "2",
+        name: "beta",
+        provider: "digitalocean",
+        ip: "10.0.0.2",
+        region: "nyc1",
+        size: "s-2vcpu-2gb",
+        createdAt: "",
+      },
+      {
+        id: "3",
+        name: "gamma",
+        provider: "hetzner",
+        ip: "10.0.0.3",
+        region: "fsn1",
+        size: "cx23",
+        createdAt: "",
+      },
+    ];
+
+    beforeEach(() => {
+      mockedFs.existsSync.mockReturnValue(true);
+      mockedFs.readFileSync.mockReturnValue(JSON.stringify(servers));
+    });
+
+    it("should return all servers matching the IP query (L117-120 branch)", () => {
+      // Multiple servers could in theory share an IP (e.g. NAT'd). byIp
+      // branch returns the full filtered set instead of taking the first.
+      const sharedIpServers = [
+        { ...servers[0], ip: "10.0.0.1" },
+        { ...servers[1], ip: "10.0.0.1" },
+        { ...servers[2], ip: "10.0.0.2" },
+      ];
+      mockedFs.readFileSync.mockReturnValue(JSON.stringify(sharedIpServers));
+
+      const result = findServers("10.0.0.1");
+      expect(result).toHaveLength(2);
+      expect(result.map((s) => s.name).sort()).toEqual(["alpha", "beta"]);
+    });
+
+    it("should fall back to name search when no IP match (L121-122 branch)", () => {
+      const result = findServers("beta");
+      expect(result).toHaveLength(1);
+      expect(result[0].ip).toBe("10.0.0.2");
+    });
+
+    it("should return empty array when neither IP nor name matches", () => {
+      const result = findServers("nonexistent");
+      expect(result).toEqual([]);
     });
   });
 
