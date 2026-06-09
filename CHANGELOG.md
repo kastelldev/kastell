@@ -25,6 +25,7 @@ Release-time version bumps remain owned by `/release minor`; `package.json` and 
 - `serverCompare` detail mode returns flat checks array (was object — CQS-11 #1)
 - `ssh-factories.ts` setTimeout leak — worker force-exit (CQS-10 #1)
 - `tests/helpers/fsMock.ts` factory prevents Linux CI chmodSync mock omission
+- **Windows local state writes** — Atomic `*.tmp` rename persistence now retries transient `EPERM`/`EACCES` failures and falls back to copy+unlink safely. Coverage: `servers.json`, audit history, evidence manifests (`MANIFEST.json`, `SHA256SUMS`), audit snapshots, fix history, regression baselines, and metric history. File-lock reclaim and security-log rotation also retry on transient `EPERM`/`EACCES`.
 
 ### Internal
 - 175 `console.log` triage + sweep (5 categories — 0 actionable)
