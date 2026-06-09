@@ -7,11 +7,15 @@ import { findLocalSshKey, generateSshKey, getSshKeyName } from "../utils/sshKey.
 import { saveServer } from "../utils/config.js";
 import { getTemplateDefaults } from "../utils/templates.js";
 import { getErrorMessage, mapProviderError } from "../utils/errorMapper.js";
-import { assertValidIp, clearKnownHostKey } from "../utils/ssh.js";
+import { assertValidIp, clearKnownHostKey, sshExec } from "../utils/ssh.js";
+import { raw } from "../utils/sshCommand.js";
 import { debugLog } from "../utils/logger.js";
 import type { CloudProvider } from "../providers/base.js";
 import type { ServerRecord, Platform } from "../types/index.js";
 import { IP_WAIT, BOOT_WAIT, BOOT_WAIT_DEFAULT, invalidProviderError } from "../constants.js";
+
+const BARE_SSH_WAIT_ATTEMPTS = 60;
+const BARE_SSH_WAIT_INTERVAL_MS = 5000;
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -40,6 +44,29 @@ function sleep(ms: number): Promise<void> {
 
 function isPendingIp(ip: string): boolean {
   return !ip || ip === "pending" || ip === "0.0.0.0";
+}
+
+async function waitForBareServerReady(ip: string): Promise<string | undefined> {
+  for (let attempt = 1; attempt <= BARE_SSH_WAIT_ATTEMPTS; attempt++) {
+    try {
+      const result = await sshExec(ip, raw("echo ok"));
+      if (result.code === 0 || result.stdout.trim() === "ok") {
+        const cloudInit = await sshExec(ip, raw("cloud-init status --wait"));
+        if (cloudInit.code === 0) {
+          return undefined;
+        }
+        return "SSH is reachable, but cloud-init may still be running. Retry server_info health in a minute.";
+      }
+    } catch (error) {
+      debugLog?.("bare SSH readiness check failed", { cause: error, attempt });
+    }
+
+    if (attempt < BARE_SSH_WAIT_ATTEMPTS) {
+      await sleep(BARE_SSH_WAIT_INTERVAL_MS);
+    }
+  }
+
+  return "SSH was not reachable within 5 minutes. The server is saved; retry server_info health shortly.";
 }
 
 export async function uploadSshKeyBestEffort(provider: CloudProvider): Promise<string[]> {
@@ -166,7 +193,7 @@ export async function provisionServer(config: ProvisionConfig): Promise<Provisio
     region,
     size,
     createdAt: new Date().toISOString(),
-    mode: isBare ? ("bare" as const) : ("coolify" as const),
+    mode: isBare ? ("bare" as const) : platform!,
     platform,
   });
 
@@ -230,6 +257,9 @@ export async function provisionServer(config: ProvisionConfig): Promise<Provisio
     clearKnownHostKey(serverIp);
   }
 
+  const bareReadinessHint =
+    isBare && !isPendingIp(serverIp) ? await waitForBareServerReady(serverIp) : undefined;
+
   // 13. Save to config
   const record = buildRecord(serverIp);
   await saveServer(record);
@@ -243,5 +273,9 @@ export async function provisionServer(config: ProvisionConfig): Promise<Provisio
     };
   }
 
-  return { success: true, server: record };
+  return {
+    success: true,
+    server: record,
+    ...(bareReadinessHint ? { hint: bareReadinessHint } : {}),
+  };
 }
