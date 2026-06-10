@@ -68,6 +68,14 @@ Release-time version bumps remain owned by `/release minor`; `package.json` and 
 - `Safety Modes` section in README
 - `kastell provision` alias for `init`
 
+### v2.3 Reliability Contracts
+
+- **Immediate MCP durable registration** — `server_provision` returns as soon as the provider creates the server and Kastell durably persists the record. `readiness.status` may be `pending`; follow with `server_info status` or `server_info health`.
+- **Verified CLI failures return non-zero** — unsupported and failed CLI operations exit with `1`; valid empty results and user cancellation exit with `0`. Mixed `--all` failures exit with `1`.
+- **Parse-clean audit stdout** — `audit --json` and `audit --ci` reserve stdout for a single JSON payload.
+- **Actionable Windows lock diagnostics** — transient `EPERM`/`EACCES` failures on Windows file-lock and atomic-rename paths now surface hint-rich diagnostics.
+- **MCP SDK round-trip coverage** — `server_manage add/remove/destroy` outputSchemas now have full `normalizeObjectSchema` + `safeParseAsync` round-trip tests.
+
 ## [2.2.7] - 2026-05-16
 
 ### Fixed

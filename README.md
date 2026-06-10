@@ -385,6 +385,24 @@ Install via Claude Code plugin manager or use directly with `claude --plugin-dir
 
 Kastell provides [`llms.txt`](llms.txt) for AI crawlers and is listed in the [MCP Registry](https://registry.modelcontextprotocol.io/) as `io.github.kastelldev/kastell`.
 
+## v2.3 Reliability Contracts
+
+These contracts apply to the CLI and the MCP server.
+
+### Provisioning behavior
+
+`server_provision` returns after the provider creates the server and Kastell
+durably registers it. `readiness.status` may be `pending`; follow with
+`server_info status` or `server_info health`. The interactive `kastell init`
+command continues waiting through its existing readiness checks.
+
+### Automation contracts
+
+- Unsupported and failed CLI operations return exit code `1`.
+- Valid empty results and user cancellation return `0`.
+- Mixed `--all` failures return `1`.
+- `audit --json` and `audit --ci` reserve stdout for one JSON payload.
+
 ## CI/CD Integration
 
 Use `kastell audit` in your CI pipeline to enforce security baselines:
