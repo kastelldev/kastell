@@ -71,6 +71,7 @@ beforeEach(() => {
 
   mockedTemplates.getTemplateDefaults.mockReturnValue({ region: "nbg1", size: "cax11" });
   mockedConfig.saveServer.mockImplementation(() => Promise.resolve());
+  mockedConfig.updateServer.mockImplementation(() => Promise.resolve(true));
 });
 
 afterAll(() => {
@@ -722,6 +723,7 @@ describe("handleServerProvision — malformed params", () => {
     mockedSshKey.getSshKeyName.mockReturnValue("kastell-1234567890");
     mockedTemplates.getTemplateDefaults.mockReturnValue({ region: "nbg1", size: "cax11" });
     mockedConfig.saveServer.mockImplementation(() => Promise.resolve());
+    mockedConfig.updateServer.mockImplementation(() => Promise.resolve(true));
   });
 
   it("returns mcpError when provider param is empty string", async () => {
@@ -799,5 +801,185 @@ describe("handleServerProvision — malformed params", () => {
     expect(result.isError).toBe(true);
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.error).toBeTruthy();
+  });
+});
+
+// ─── Task 3: Make Cloud Creation Immediately Recoverable ──────────────────
+
+describe("provisionServer — save-before-readiness ordering", () => {
+  it("saveServer() occurs after createServer() and before getServerStatus()", async () => {
+    // Arrange: default mocks — createServer returns valid IP, getServerStatus "running"
+    await provisionServer({
+      provider: "hetzner",
+      region: "nbg1",
+      size: "cax11",
+      name: "ordering-srv",
+    });
+
+    // Assert: createServer is the first network call, saveServer is the first persistence
+    // call, and getServerStatus comes after saveServer.
+    expect(mockProvider.createServer).toHaveBeenCalled();
+    expect(mockedConfig.saveServer).toHaveBeenCalled();
+    expect(mockProvider.getServerStatus).toHaveBeenCalled();
+
+    expect(mockProvider.createServer.mock.invocationCallOrder[0]).toBeLessThan(
+      mockedConfig.saveServer.mock.invocationCallOrder[0]!,
+    );
+    expect(mockedConfig.saveServer.mock.invocationCallOrder[0]!).toBeLessThan(
+      mockProvider.getServerStatus.mock.invocationCallOrder[0]!,
+    );
+  });
+
+  it("readinessPolicy:'defer' never calls getServerStatus, getServerDetails, sshExec, or destroyServer", async () => {
+    // Arrange: defer policy — readiness polling must be skipped
+    mockProvider.createServer.mockResolvedValueOnce({
+      id: "provider-123",
+      ip: "203.0.113.10",
+      status: "running",
+    });
+
+    // Act
+    const result = await provisionServer(
+      { provider: "hetzner", region: "nbg1", size: "cax11", name: "defer-srv" },
+      { readinessPolicy: "defer" },
+    );
+
+    // Assert
+    expect(result.success).toBe(true);
+    expect(result.readiness?.status).toBe("pending");
+    expect(mockProvider.getServerStatus).not.toHaveBeenCalled();
+    expect(mockProvider.getServerDetails).not.toHaveBeenCalled();
+    expect(mockedSsh.sshExec).not.toHaveBeenCalled();
+    expect(mockProvider.destroyServer).not.toHaveBeenCalled();
+  });
+
+  it("default policy remains 'wait' when no readinessPolicy is provided", async () => {
+    // Act
+    const result = await provisionServer({
+      provider: "hetzner",
+      region: "nbg1",
+      size: "cax11",
+      name: "default-policy-srv",
+    });
+
+    // Assert: getServerStatus called (wait policy polls status)
+    expect(result.success).toBe(true);
+    expect(mockProvider.getServerStatus).toHaveBeenCalled();
+  });
+
+  it("resolved provider IP uses updateServer(name, { ip }) instead of a second saveServer()", async () => {
+    // Arrange: pending IP at create, resolved IP via getServerDetails
+    mockProvider.createServer.mockResolvedValueOnce({
+      id: "srv-123",
+      ip: "pending",
+      status: "running",
+    });
+    mockProvider.getServerDetails.mockResolvedValueOnce({
+      id: "srv-123",
+      ip: "5.6.7.8",
+      status: "running",
+    });
+    mockedConfig.updateServer.mockResolvedValue(true);
+
+    // Act
+    jest.useFakeTimers();
+    const promise = provisionServer({
+      provider: "hetzner",
+      region: "nbg1",
+      size: "cax11",
+      name: "ip-enrich-srv",
+    });
+    await jest.runAllTimersAsync();
+    await promise;
+    jest.useRealTimers();
+
+    // Assert
+    expect(mockedConfig.saveServer).toHaveBeenCalledTimes(1);
+    expect(mockedConfig.updateServer).toHaveBeenCalledWith("ip-enrich-srv", { ip: "5.6.7.8" });
+  });
+
+  it("a pending readiness promise does not keep a config lock open (defer returns before polling)", async () => {
+    // Arrange: defer policy
+    const start = Date.now();
+    const result = await provisionServer(
+      { provider: "hetzner", region: "nbg1", size: "cax11", name: "no-lock-srv" },
+      { readinessPolicy: "defer" },
+    );
+    const elapsed = Date.now() - start;
+
+    // Assert: returns immediately (no polling), saveServer was called once
+    expect(result.success).toBe(true);
+    expect(elapsed).toBeLessThan(500);
+    expect(mockedConfig.saveServer).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("provisionServer — typed persistence failure", () => {
+  it("throws ProvisionPersistenceError when createServer succeeds but saveServer rejects", async () => {
+    // Arrange: createServer returns pending IP, saveServer throws EACCES
+    mockProvider.createServer.mockResolvedValueOnce({
+      id: "provider-123",
+      ip: "pending",
+      status: "running",
+    });
+    const cause = Object.assign(new Error("access denied"), { code: "EACCES" });
+    mockedConfig.saveServer.mockRejectedValue(cause);
+
+    // Act + Assert
+    await expect(
+      provisionServer(
+        { provider: "hetzner", region: "nbg1", size: "cax11", name: "recover-me" },
+        { readinessPolicy: "defer" },
+      ),
+    ).rejects.toMatchObject({
+      name: "ProvisionPersistenceError",
+      provider: "hetzner",
+      serverId: "provider-123",
+      serverName: "recover-me",
+      ip: "pending",
+    });
+
+    // Provider/SSH cloud-init polling must NOT fire — local save failed first
+    expect(mockProvider.getServerStatus).not.toHaveBeenCalled();
+    expect(mockProvider.getServerDetails).not.toHaveBeenCalled();
+    expect(mockProvider.destroyServer).not.toHaveBeenCalled();
+  });
+
+  it("ProvisionPersistenceError carries billable warning and recovery guidance", async () => {
+    // Arrange
+    mockProvider.createServer.mockResolvedValueOnce({
+      id: "provider-123",
+      ip: "pending",
+      status: "running",
+    });
+    const cause = Object.assign(new Error("disk full"), { code: "ENOSPC" });
+    mockedConfig.saveServer.mockRejectedValue(cause);
+
+    // Act
+    let caught: unknown;
+    try {
+      await provisionServer(
+        { provider: "hetzner", region: "nbg1", size: "cax11", name: "guidance-srv" },
+        { readinessPolicy: "defer" },
+      );
+    } catch (e) {
+      caught = e;
+    }
+
+    // Assert
+    expect(caught).toBeDefined();
+    const err = caught as Error & {
+      name: string;
+      warning: string;
+      recovery: string[];
+    };
+    expect(err.name).toBe("ProvisionPersistenceError");
+    expect(err.warning).toMatch(/billable/i);
+    expect(err.recovery).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/dashboard/i),
+        expect.stringMatching(/server_manage add/i),
+      ]),
+    );
   });
 });

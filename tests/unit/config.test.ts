@@ -356,6 +356,182 @@ describe("config", () => {
       expect(writtenData).toHaveLength(2);
       expect(writtenData[1].ip).toBe("2.2.2.2");
     });
+
+    it("should accept multiple servers with sentinel IP 'pending' (not treated as duplicate)", async () => {
+      // First save: file is empty
+      mockedFs.existsSync.mockReturnValue(false);
+      mockedFs.readFileSync.mockReturnValueOnce("[]");
+      await saveServer({
+        id: "1",
+        name: "pending-one",
+        provider: "hetzner",
+        ip: "pending",
+        region: "nbg1",
+        size: "cax11",
+        createdAt: "2026-01-01T00:00:00Z",
+        mode: "coolify" as const,
+      });
+
+      // Second save: cache invalidates (mtime bumped), file now has one entry
+      mockedFs.statSync.mockReturnValueOnce(asStats({ mtimeMs: 1704067300000, dev: 1 }));
+      mockedFs.existsSync.mockReturnValue(true);
+      mockedFs.readFileSync.mockReturnValueOnce(
+        JSON.stringify([
+          {
+            id: "1",
+            name: "pending-one",
+            provider: "hetzner",
+            ip: "pending",
+            region: "nbg1",
+            size: "cax11",
+            createdAt: "2026-01-01T00:00:00Z",
+            mode: "coolify",
+          },
+        ]),
+      );
+      await saveServer({
+        id: "2",
+        name: "pending-two",
+        provider: "hetzner",
+        ip: "pending",
+        region: "nbg1",
+        size: "cax11",
+        createdAt: "2026-01-01T00:00:00Z",
+        mode: "coolify" as const,
+      });
+
+      const writes = (secureWriteFileSync as jest.Mock).mock.calls;
+      const lastWrite = JSON.parse(writes[writes.length - 1][1]);
+      expect(lastWrite).toHaveLength(2);
+      expect(lastWrite.map((r: { name: string }) => r.name).sort()).toEqual([
+        "pending-one",
+        "pending-two",
+      ]);
+    });
+
+    it("should accept multiple servers with sentinel IP '0.0.0.0' (not treated as duplicate)", async () => {
+      mockedFs.existsSync.mockReturnValue(false);
+      mockedFs.readFileSync.mockReturnValueOnce("[]");
+      await saveServer({
+        id: "1",
+        name: "zero-one",
+        provider: "hetzner",
+        ip: "0.0.0.0",
+        region: "nbg1",
+        size: "cax11",
+        createdAt: "2026-01-01T00:00:00Z",
+        mode: "coolify" as const,
+      });
+
+      mockedFs.statSync.mockReturnValueOnce(asStats({ mtimeMs: 1704067300000, dev: 1 }));
+      mockedFs.existsSync.mockReturnValue(true);
+      mockedFs.readFileSync.mockReturnValueOnce(
+        JSON.stringify([
+          {
+            id: "1",
+            name: "zero-one",
+            provider: "hetzner",
+            ip: "0.0.0.0",
+            region: "nbg1",
+            size: "cax11",
+            createdAt: "2026-01-01T00:00:00Z",
+            mode: "coolify",
+          },
+        ]),
+      );
+      await saveServer({
+        id: "2",
+        name: "zero-two",
+        provider: "hetzner",
+        ip: "0.0.0.0",
+        region: "nbg1",
+        size: "cax11",
+        createdAt: "2026-01-01T00:00:00Z",
+        mode: "coolify" as const,
+      });
+
+      const writes = (secureWriteFileSync as jest.Mock).mock.calls;
+      const lastWrite = JSON.parse(writes[writes.length - 1][1]);
+      expect(lastWrite).toHaveLength(2);
+    });
+
+    it("should accept multiple servers with empty sentinel IP '' (not treated as duplicate)", async () => {
+      mockedFs.existsSync.mockReturnValue(false);
+      mockedFs.readFileSync.mockReturnValueOnce("[]");
+      await saveServer({
+        id: "1",
+        name: "empty-one",
+        provider: "hetzner",
+        ip: "",
+        region: "nbg1",
+        size: "cax11",
+        createdAt: "2026-01-01T00:00:00Z",
+        mode: "coolify" as const,
+      });
+
+      mockedFs.statSync.mockReturnValueOnce(asStats({ mtimeMs: 1704067300000, dev: 1 }));
+      mockedFs.existsSync.mockReturnValue(true);
+      mockedFs.readFileSync.mockReturnValueOnce(
+        JSON.stringify([
+          {
+            id: "1",
+            name: "empty-one",
+            provider: "hetzner",
+            ip: "",
+            region: "nbg1",
+            size: "cax11",
+            createdAt: "2026-01-01T00:00:00Z",
+            mode: "coolify",
+          },
+        ]),
+      );
+      await saveServer({
+        id: "2",
+        name: "empty-two",
+        provider: "hetzner",
+        ip: "",
+        region: "nbg1",
+        size: "cax11",
+        createdAt: "2026-01-01T00:00:00Z",
+        mode: "coolify" as const,
+      });
+
+      const writes = (secureWriteFileSync as jest.Mock).mock.calls;
+      const lastWrite = JSON.parse(writes[writes.length - 1][1]);
+      expect(lastWrite).toHaveLength(2);
+    });
+
+    it("should still reject concrete IP collisions (203.0.113.10)", async () => {
+      mockedFs.existsSync.mockReturnValue(true);
+      mockedFs.readFileSync.mockReturnValue(
+        JSON.stringify([
+          {
+            id: "1",
+            name: "one",
+            provider: "hetzner",
+            ip: "203.0.113.10",
+            region: "nbg1",
+            size: "cax11",
+            createdAt: "2026-01-01T00:00:00Z",
+            mode: "coolify",
+          },
+        ]),
+      );
+
+      await expect(
+        saveServer({
+          id: "2",
+          name: "two",
+          provider: "hetzner",
+          ip: "203.0.113.10",
+          region: "nbg1",
+          size: "cax11",
+          createdAt: "2026-01-01T00:00:00Z",
+          mode: "coolify" as const,
+        }),
+      ).rejects.toThrow(/IP 203\.0\.113\.10/);
+      expect(secureWriteFileSync).not.toHaveBeenCalled();
+    });
   });
 
   describe("updateServer", () => {

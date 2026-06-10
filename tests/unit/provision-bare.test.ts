@@ -336,6 +336,7 @@ describe("provisionServer - boot and IP edge cases", () => {
     mockedSsh.assertValidIp.mockImplementationOnce(() => {
       throw new Error("Invalid IP");
     });
+    mockedConfig.updateServer.mockImplementationOnce(() => Promise.resolve(true));
     // Act
     const promise = provisionServer({
       provider: "hetzner",

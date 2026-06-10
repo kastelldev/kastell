@@ -68,11 +68,21 @@ export function getServers(): ServerRecord[] {
   });
 }
 
+function isSentinelIp(ip: string): boolean {
+  return ip === "" || ip === "pending" || ip === "0.0.0.0";
+}
+
 export async function saveServer(record: ServerRecord): Promise<void> {
   await withFileLock(SERVERS_FILE, () => {
     ensureConfigDir();
     const servers = getServers();
-    const duplicate = servers.find((s) => s.name === record.name || s.ip === record.ip);
+    const duplicate = servers.find(
+      (server) =>
+        server.name === record.name ||
+        (!isSentinelIp(record.ip) &&
+          !isSentinelIp(server.ip) &&
+          server.ip === record.ip),
+    );
     if (duplicate) {
       throw new Error(
         `Server already exists: ${duplicate.name === record.name ? `name "${record.name}"` : `IP ${record.ip}`}`,

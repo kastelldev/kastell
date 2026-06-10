@@ -1075,3 +1075,57 @@ describe("[MUTATION-KILLER] deployServer createServer retry strings", () => {
     expect(result.error).toBeDefined();
   });
 });
+
+// ─── Task 3 regression: deployServer bare path still awaits SSH readiness ──
+
+describe("deployServer — Task 3 regression: bare SSH readiness still awaited", () => {
+  // Helper: deferred promise for mocking the SSH read path
+  function createDeferred<T>() {
+    let resolve!: (v: T) => void;
+    let reject!: (e: unknown) => void;
+    const promise = new Promise<T>((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    return { promise, resolve, reject };
+  }
+
+  // Flush microtasks/macrotasks so awaited `.then` chains settle
+  async function flushPromises() {
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+
+  it("bare mode waits for SSH readiness before resolving (deferred SSH promise)", async () => {
+    // Arrange: first sshExec call is the SSH echo probe; defer it
+    const readiness = createDeferred<{ code: number; stdout: string; stderr: string }>();
+    sshExec.mockReturnValueOnce(readiness.promise);
+    const provider = createMockProvider();
+
+    // Act: start deploy, but do not await yet — readiness is pending
+    const deployment = deployServer(
+      "hetzner",
+      provider,
+      "nbg1",
+      "cax11",
+      "bare-wait",
+      false,
+      true,
+      "bare",
+    );
+
+    // Let the in-flight microtask queue settle (awaiters suspended on readiness)
+    await flushPromises();
+
+    // Assert: deployment is still pending (hasn't resolved yet)
+    expect(
+      await Promise.race([
+        deployment.then(() => "done"),
+        Promise.resolve("pending"),
+      ]),
+    ).toBe("pending");
+
+    // Resolve the readiness probe — deployment should now complete
+    readiness.resolve({ code: 0, stdout: "ok", stderr: "" });
+    await expect(deployment).resolves.toMatchObject({ success: true });
+  });
+});
