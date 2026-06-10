@@ -35,6 +35,27 @@ describe.each(Object.values(ALL_MCP_TOOLS))(
           const structured = (response as { structuredContent?: unknown }).structuredContent;
           expect(structured).toBeDefined();
           expect(() => tool.outputSchema.parse(structured)).not.toThrow();
+          if (tool.name === "server_manage") {
+            const result = (structured as {
+              result: {
+                action: string;
+                server: { id?: string };
+                platformStatus?: string | null;
+                cloudDeleted?: boolean;
+                localRemoved?: boolean;
+              };
+            }).result;
+
+            expect(result.action).toBe(actionFixture.action);
+            if (actionFixture.action === "add") {
+              expect(result.server.id).toBe("manual-web-stage-1");
+              expect(result.platformStatus).toBe("skipped");
+            }
+            if (actionFixture.action === "destroy") {
+              expect(result.cloudDeleted).toBe(true);
+              expect(result.localRemoved).toBe(true);
+            }
+          }
         } finally {
           if (typeof teardown === "function") teardown();
         }
