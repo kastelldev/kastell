@@ -280,6 +280,252 @@ describe("withFileLock", () => {
       expect(result).toBe("recovered");
     });
   });
+
+  describe("lock diagnostics", () => {
+    it("throws enriched error with cause=EPERM when lock acquisition exhausts retries (old lock without owner.pid reclaimed)", async () => {
+      const eexistError = Object.assign(new Error("EEXIST"), { code: "EEXIST" });
+      const epermError = Object.assign(new Error("EPERM"), { code: "EPERM" });
+
+      // First call: parent dir (recursive) succeeds. All subsequent calls throw EEXIST.
+      let mkdirCallCount = 0;
+      mockedFs.mkdirSync.mockImplementation(() => {
+        mkdirCallCount++;
+        if (mkdirCallCount === 1) return undefined; // parent dir
+        throw eexistError;
+      });
+      // Lock is old enough to be reclaimed (mtime > 30s) — but no owner.pid file
+      mockedFs.statSync.mockReturnValue({
+        mtimeMs: Date.now() - 35_000,
+      } as unknown as import("fs").Stats);
+      // readFileSync throws ENOENT (no owner.pid) → parsed == null
+      mockedFs.readFileSync.mockImplementation(() => {
+        throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+      });
+      // Every rmSync (stale reclaim + release) throws EPERM persistently
+      mockedFs.rmSync.mockImplementation(() => {
+        throw epermError;
+      });
+
+      const fn = jest.fn();
+      const promise = withFileLock("/path/to/file.json", fn);
+      const caught = promise.catch((e: Error) => e);
+
+      for (let i = 0; i < 10; i++) {
+        await jest.advanceTimersByTimeAsync(250);
+      }
+
+      const error = await caught;
+      expect(error).toBeInstanceOf(Error);
+      expect(error.message).toContain("Could not acquire lock");
+      expect(error.message).toContain("ownerPid=unknown");
+      expect(error.message).toContain("ownerHost=unknown");
+      // No owner.pid file → probe never attempted → processState=not-probed
+      expect(error.message).toContain("processState=not-probed");
+      // statSync readable (35s old), no owner.pid → mtime fallback says stale
+      expect(error.message).toContain("stale=true");
+      expect(error.message).toContain("reclaimAttempted=true");
+      expect(error.message).toContain("reclaimError=EPERM");
+      expect(error.message).toContain("lock=/path/to/file.json.lock");
+      expect(error.message).toContain("ageMs=");
+      expect(error.message).toContain("Close other Kastell processes");
+      expect(error.cause).toMatchObject({ code: "EPERM" });
+      expect(fn).not.toHaveBeenCalled();
+    });
+
+    it("recovers after transient EPERM on stale reclaim (transient EPERM reclaimed after retry)", async () => {
+      const eexistError = Object.assign(new Error("EEXIST"), { code: "EEXIST" });
+      const epermError = Object.assign(new Error("EPERM"), { code: "EPERM" });
+
+      mockedFs.mkdirSync
+        .mockReturnValueOnce(undefined) // parent dir
+        .mockImplementationOnce(() => { throw eexistError; })
+        .mockReturnValueOnce(undefined); // lock acquired after reclaim
+
+      // Old lock (35s) but no owner.pid → mtime fallback says stale
+      mockedFs.statSync.mockReturnValue({
+        mtimeMs: Date.now() - 35_000,
+      } as unknown as import("fs").Stats);
+      mockedFs.readFileSync.mockImplementation(() => {
+        throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+      });
+
+      // rmSync transient: first 2 attempts fail, 3rd succeeds (stale reclaim)
+      // Then release rmSync also succeeds
+      mockedFs.rmSync
+        .mockImplementationOnce(() => { throw epermError; })
+        .mockImplementationOnce(() => { throw epermError; })
+        .mockReturnValue(undefined);
+
+      const fn = jest.fn().mockReturnValue("recovered-after-transient");
+      const result = await withFileLock("/path/to/file.json", fn);
+
+      expect(result).toBe("recovered-after-transient");
+      expect(fn).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not reclaim a live same-host owner before the hard ceiling (live owner remains after retries)", async () => {
+      const eexistError = Object.assign(new Error("EEXIST"), { code: "EEXIST" });
+
+      // parent dir succeeds, then every lock attempt throws EEXIST
+      let mkdirCallCount = 0;
+      mockedFs.mkdirSync.mockImplementation(() => {
+        mkdirCallCount++;
+        if (mkdirCallCount === 1) return undefined; // parent dir
+        throw eexistError;
+      });
+      // Lock is fresh (1s old) and owned by a live PID on same host
+      mockedFs.statSync.mockReturnValue({
+        mtimeMs: Date.now() - 1_000,
+      } as unknown as import("fs").Stats);
+      // owner.pid is the current process (alive) on current hostname
+      mockedFs.readFileSync.mockReturnValue(`${process.pid}@${require("os").hostname()}@${Date.now()}`);
+
+      const fn = jest.fn();
+      const promise = withFileLock("/path/to/file.json", fn);
+      const caught = promise.catch((e: Error) => e);
+
+      for (let i = 0; i < 10; i++) {
+        await jest.advanceTimersByTimeAsync(250);
+      }
+
+      const error = await caught;
+      expect(error).toBeInstanceOf(Error);
+      // Live same-host owner → processState should be "alive", reclaim should NOT be attempted
+      expect(error.message).toContain(`ownerPid=${process.pid}`);
+      expect(error.message).toContain("processState=alive");
+      expect(error.message).toContain("reclaimAttempted=false");
+      expect(error.message).toContain("stale=false");
+      expect(fn).not.toHaveBeenCalled();
+    });
+
+    it("produces unknown fields when lock metadata is unreadable (unreadable metadata → unknown)", async () => {
+      const eexistError = Object.assign(new Error("EEXIST"), { code: "EEXIST" });
+      const epermError = Object.assign(new Error("EPERM"), { code: "EPERM" });
+
+      // parent dir succeeds, then every lock attempt throws EEXIST
+      let mkdirCallCount = 0;
+      mockedFs.mkdirSync.mockImplementation(() => {
+        mkdirCallCount++;
+        if (mkdirCallCount === 1) return undefined; // parent dir
+        throw eexistError;
+      });
+      // statSync throws → age unknown, can't determine stale
+      mockedFs.statSync.mockImplementation(() => {
+        throw Object.assign(new Error("EACCES"), { code: "EACCES" });
+      });
+      // readFileSync throws → owner unknown
+      mockedFs.readFileSync.mockImplementation(() => {
+        throw Object.assign(new Error("EACCES"), { code: "EACCES" });
+      });
+      // rmSync throws EPERM persistently
+      mockedFs.rmSync.mockImplementation(() => {
+        throw epermError;
+      });
+
+      const fn = jest.fn();
+      const promise = withFileLock("/path/to/file.json", fn);
+      const caught = promise.catch((e: Error) => e);
+
+      for (let i = 0; i < 10; i++) {
+        await jest.advanceTimersByTimeAsync(250);
+      }
+
+      const error = await caught;
+      expect(error).toBeInstanceOf(Error);
+      expect(error.message).toContain("ageMs=unknown");
+      expect(error.message).toContain("ownerPid=unknown");
+      expect(error.message).toContain("ownerHost=unknown");
+      expect(error.message).toContain("processState=not-probed");
+      expect(error.message).toContain("stale=unknown");
+      // rmSync never called (statSync failed → shouldReclaimStaleLock returned false)
+      // so no reclaim attempted
+      expect(error.message).toContain("reclaimAttempted=false");
+      expect(error.message).toContain("reclaimError=none");
+      expect(fn).not.toHaveBeenCalled();
+    });
+
+    it("treats cross-host owner as not-probed (cross-host → not-probed, mtime fallback)", async () => {
+      const eexistError = Object.assign(new Error("EEXIST"), { code: "EEXIST" });
+
+      // parent dir succeeds, then every lock attempt throws EEXIST
+      let mkdirCallCount = 0;
+      mockedFs.mkdirSync.mockImplementation(() => {
+        mkdirCallCount++;
+        if (mkdirCallCount === 1) return undefined; // parent dir
+        throw eexistError;
+      });
+      // Lock is fresh (1s) — but cross-host, so mtime fallback says NOT stale
+      mockedFs.statSync.mockReturnValue({
+        mtimeMs: Date.now() - 1_000,
+      } as unknown as import("fs").Stats);
+      // owner.pid is on a different host
+      mockedFs.readFileSync.mockReturnValue(`1234@some-other-host@${Date.now()}`);
+
+      const fn = jest.fn();
+      const promise = withFileLock("/path/to/file.json", fn);
+      const caught = promise.catch((e: Error) => e);
+
+      for (let i = 0; i < 10; i++) {
+        await jest.advanceTimersByTimeAsync(250);
+      }
+
+      const error = await caught;
+      expect(error).toBeInstanceOf(Error);
+      expect(error.message).toContain("ownerPid=1234");
+      expect(error.message).toContain("ownerHost=some-other-host");
+      // Cross-host → probe not attempted → processState=not-probed
+      expect(error.message).toContain("processState=not-probed");
+      // Fresh lock on cross-host → not stale, no reclaim
+      expect(error.message).toContain("stale=false");
+      expect(error.message).toContain("reclaimAttempted=false");
+      expect(fn).not.toHaveBeenCalled();
+    });
+
+    it("keeps processState=unknown when probeProcess returns EPERM (probeProcess EPERM → unknown)", async () => {
+      const eexistError = Object.assign(new Error("EEXIST"), { code: "EEXIST" });
+      const epermError = Object.assign(new Error("EPERM"), { code: "EPERM" });
+
+      // parent dir succeeds, then every lock attempt throws EEXIST
+      let mkdirCallCount = 0;
+      mockedFs.mkdirSync.mockImplementation(() => {
+        mkdirCallCount++;
+        if (mkdirCallCount === 1) return undefined; // parent dir
+        throw eexistError;
+      });
+      // Lock is old (>30s) — mtime fallback stale even if probe returns unknown
+      mockedFs.statSync.mockReturnValue({
+        mtimeMs: Date.now() - 35_000,
+      } as unknown as import("fs").Stats);
+      // owner.pid is a valid positive integer on same host — probe will be called
+      mockedFs.readFileSync.mockReturnValue(`99999@${require("os").hostname()}@${Date.now()}`);
+
+      // rmSync persistently throws EPERM so the loop exhausts and we hit the diagnostic path
+      mockedFs.rmSync.mockImplementation(() => {
+        throw epermError;
+      });
+
+      // Custom probe that returns "unknown" (simulates EPERM from process.kill)
+      const probe = jest.fn().mockReturnValue("unknown" as const);
+
+      const fn = jest.fn();
+      const promise = withFileLock("/path/to/file.json", fn, probe);
+      const caught = promise.catch((e: Error) => e);
+
+      for (let i = 0; i < 10; i++) {
+        await jest.advanceTimersByTimeAsync(250);
+      }
+
+      const error = await caught;
+      expect(error).toBeInstanceOf(Error);
+      expect(error.message).toContain("ownerPid=99999");
+      // probeProcess returned "unknown" (EPERM) → processState=unknown
+      expect(error.message).toContain("processState=unknown");
+      expect(error.message).toContain("reclaimAttempted=true");
+      expect(error.message).toContain("reclaimError=EPERM");
+      expect(probe).toHaveBeenCalledWith(99999);
+      expect(fn).not.toHaveBeenCalled();
+    });
+  });
 });
 
 describe("probeProcess", () => {
