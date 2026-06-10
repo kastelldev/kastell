@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { isSafeMode } from "../../core/manage.js";
 import { logSafeModeBlock } from "../../utils/safeMode.js";
-import { provisionServer } from "../../core/provision.js";
+import { provisionServer, ProvisionPersistenceError } from "../../core/provision.js";
 import { mcpSuccess, mcpError, mcpLog, elicitMissingParams, ELICIT_PROVIDER_SCHEMA, ELICIT_SERVER_NAME_SCHEMA } from "../utils.js";
 import { getErrorMessage, sanitizeStderr } from "../../utils/errorMapper.js";
 import { SUPPORTED_PROVIDERS } from "../../constants.js";
@@ -10,7 +10,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 // ─── Output Schema ───────────────────────────────────────────────────────────
 
- 
+
 export const serverProvisionOutputSchema = z.object({
   result: z.object({
     success: z.boolean(),
@@ -24,6 +24,10 @@ export const serverProvisionOutputSchema = z.object({
       size: z.string(),
       mode: z.string(),
       createdAt: z.string(),
+    }),
+    readiness: z.object({
+      status: z.enum(["pending", "ready", "unknown"]),
+      message: z.string().optional(),
     }),
     hint: z.string().optional(),
     suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
@@ -125,14 +129,17 @@ export async function handleServerProvision(
   await mcpLog(mcpServer, `Provisioning ${provider} server: ${name}`);
 
   try {
-    const result = await provisionServer({
-      provider: provider!,
-      region: params.region,
-      size: params.size,
-      name: name!,
-      template: params.template,
-      mode,
-    });
+    const result = await provisionServer(
+      {
+        provider: provider!,
+        region: params.region,
+        size: params.size,
+        name: name!,
+        template: params.template,
+        mode,
+      },
+      { readinessPolicy: "defer" },
+    );
 
     if (!result.success) {
       return mcpError(result.error ?? "Provision failed", result.hint, [
@@ -193,7 +200,7 @@ export async function handleServerProvision(
 
     const data = {
       success: true,
-      message: `Server "${server.name}" provisioned on ${server.provider}`,
+      message: `Server "${server.name}" cloud creation and local registration completed on ${server.provider}; readiness may remain pending.`,
       server: {
         id: server.id,
         name: server.name,
@@ -204,11 +211,35 @@ export async function handleServerProvision(
         mode,
         createdAt: server.createdAt,
       },
+      readiness: result.readiness ?? { status: "pending" },
       ...(result.hint ? { hint: result.hint } : {}),
       suggested_actions: suggestedActions,
     };
     return mcpSuccess(data);
   } catch (error: unknown) {
+    if (error instanceof ProvisionPersistenceError) {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            error: sanitizeStderr(error.message),
+            provider: error.provider,
+            serverId: error.serverId,
+            serverName: error.serverName,
+            ip: error.ip,
+            warning: error.warning,
+            recovery: error.recovery,
+            suggested_actions: [
+              {
+                command: "server_info { action: 'list' }",
+                reason: "Check whether a local record exists",
+              },
+            ],
+          }),
+        }],
+        isError: true,
+      };
+    }
     return mcpError(sanitizeStderr(getErrorMessage(error)));
   }
 }

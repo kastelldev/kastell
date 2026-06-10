@@ -5,7 +5,7 @@ import * as tokens from "../../src/core/tokens";
 import * as sshKey from "../../src/utils/sshKey";
 import * as cloudInit from "../../src/utils/cloudInit";
 import * as templates from "../../src/utils/templates";
-import { provisionServer, uploadSshKeyBestEffort } from "../../src/core/provision";
+import { provisionServer, uploadSshKeyBestEffort, ProvisionPersistenceError } from "../../src/core/provision";
 import { handleServerProvision } from "../../src/mcp/tools/serverProvision";
 import type { CloudProvider } from "../../src/providers/base";
 
@@ -494,7 +494,7 @@ describe("handleServerProvision — success", () => {
     expect(data.suggested_actions[3].command).toContain("status");
   });
 
-  it("should include hint when IP is pending", async () => {
+  it("returns readiness:pending and server.ip:pending when cloud has not assigned an IP", async () => {
     jest.useFakeTimers();
     mockProvider.createServer.mockResolvedValue({ id: "srv-123", ip: "pending", status: "running" });
     mockProvider.getServerDetails.mockResolvedValue({ id: "srv-123", ip: "pending", status: "running" });
@@ -511,7 +511,8 @@ describe("handleServerProvision — success", () => {
 
     expect(result.isError).toBeUndefined();
     expect(data.success).toBe(true);
-    expect(data.hint).toContain("IP address not yet assigned");
+    expect(data.server.ip).toBe("pending");
+    expect(data.readiness.status).toBe("pending");
     jest.useRealTimers();
   });
 });
@@ -979,6 +980,178 @@ describe("provisionServer — typed persistence failure", () => {
       expect.arrayContaining([
         expect.stringMatching(/dashboard/i),
         expect.stringMatching(/server_manage add/i),
+      ]),
+    );
+  });
+});
+
+// ─── Task 4: MCP handler defers readiness and exposes recovery ───────────────
+
+describe("handleServerProvision — readiness policy contract", () => {
+  // Spy on provisionServer per-test so other describe blocks in this file
+  // continue to use the real implementation.
+  let provisionServerSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    provisionServerSpy = jest
+      .spyOn(require("../../src/core/provision.js"), "provisionServer")
+      .mockReset();
+  });
+
+  afterEach(() => {
+    provisionServerSpy.mockRestore();
+  });
+
+  it("calls provisionServer with readinessPolicy:defer to avoid blocking on cloud readiness", async () => {
+    // Arrange: return a success result
+    provisionServerSpy.mockResolvedValueOnce({
+      success: true,
+      server: {
+        id: "srv-123",
+        name: "staging-server",
+        provider: "hetzner",
+        ip: "5.6.7.8",
+        region: "nbg1",
+        size: "cax11",
+        createdAt: "2026-06-10T00:00:00Z",
+        mode: "coolify",
+      },
+    });
+
+    // Act
+    await handleServerProvision({
+      provider: "hetzner",
+      name: "staging-server",
+      region: "nbg1",
+      size: "cax11",
+    });
+
+    // Assert: defer policy passed as the second argument
+    expect(provisionServerSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ provider: "hetzner", name: "staging-server" }),
+      { readinessPolicy: "defer" },
+    );
+  });
+
+  it("success payload includes readiness:{status:pending} and an explicit cloud-registration message", async () => {
+    // Arrange: default mocks return a normal server with readiness
+    provisionServerSpy.mockResolvedValueOnce({
+      success: true,
+      server: {
+        id: "srv-123",
+        name: "staging-server",
+        provider: "hetzner",
+        ip: "5.6.7.8",
+        region: "nbg1",
+        size: "cax11",
+        createdAt: "2026-06-10T00:00:00Z",
+        mode: "coolify",
+      },
+      readiness: {
+        status: "pending",
+        message: "Cloud creation and local registration completed; readiness checks were deferred.",
+      },
+    });
+
+    // Act
+    const result = await handleServerProvision({
+      provider: "hetzner",
+      name: "staging-server",
+      region: "nbg1",
+      size: "cax11",
+    });
+    const body = JSON.parse(result.content[0].text);
+
+    // Assert
+    expect(body.readiness).toEqual({
+      status: "pending",
+      message: expect.any(String),
+    });
+    expect(body.message).toMatch(/cloud.*registration/i);
+    expect(body.suggested_actions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ command: expect.stringContaining("server_info") }),
+      ]),
+    );
+  });
+});
+
+describe("handleServerProvision — ProvisionPersistenceError recovery branch", () => {
+  let provisionServerSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    provisionServerSpy = jest
+      .spyOn(require("../../src/core/provision.js"), "provisionServer")
+      .mockReset();
+  });
+
+  afterEach(() => {
+    provisionServerSpy.mockRestore();
+  });
+
+  it("preserves provider, serverId, serverName, ip, warning, and recovery in error content", async () => {
+    // Arrange: provisionServer throws ProvisionPersistenceError
+    const persistenceError = new ProvisionPersistenceError(
+      {
+        provider: "hetzner",
+        serverId: "provider-123",
+        serverName: "recover-me",
+        ip: "pending",
+      },
+      Object.assign(new Error("EACCES"), { code: "EACCES" }),
+    );
+    provisionServerSpy.mockRejectedValueOnce(persistenceError);
+
+    // Act
+    const result = await handleServerProvision({
+      provider: "hetzner",
+      name: "recover-me",
+      region: "nbg1",
+      size: "cax11",
+    });
+    const body = JSON.parse(result.content[0].text);
+
+    // Assert
+    expect(result.isError).toBe(true);
+    expect(body).toMatchObject({
+      provider: "hetzner",
+      serverId: "provider-123",
+      serverName: "recover-me",
+      ip: "pending",
+      warning: expect.stringMatching(/billable/i),
+      recovery: expect.arrayContaining([
+        expect.stringMatching(/dashboard/i),
+        expect.stringMatching(/server_manage add/i),
+      ]),
+    });
+  });
+
+  it("includes server_info list suggested_action in the persistence error response", async () => {
+    // Arrange
+    const persistenceError = new ProvisionPersistenceError(
+      {
+        provider: "hetzner",
+        serverId: "provider-123",
+        serverName: "recover-me",
+        ip: "pending",
+      },
+      new Error("EACCES"),
+    );
+    provisionServerSpy.mockRejectedValueOnce(persistenceError);
+
+    // Act
+    const result = await handleServerProvision({
+      provider: "hetzner",
+      name: "recover-me",
+      region: "nbg1",
+      size: "cax11",
+    });
+    const body = JSON.parse(result.content[0].text);
+
+    // Assert
+    expect(body.suggested_actions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ command: expect.stringContaining("server_info") }),
       ]),
     );
   });
