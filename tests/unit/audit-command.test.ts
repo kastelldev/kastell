@@ -1168,3 +1168,168 @@ describe("--ci flag", () => {
     expect(process.exitCode).toBeUndefined();
   });
 });
+
+describe("auditCommand machine-output stdout contract", () => {
+  let stdoutWrites: string[];
+  let stderrWrites: string[];
+  let stdoutSpy: jest.SpyInstance;
+  let stderrStreamSpy: jest.SpyInstance;
+  let consoleLogSpy: jest.SpyInstance;
+  let consoleErrSpy: jest.SpyInstance;
+
+  const captureStdout = (): string =>
+    stdoutWrites.join("");
+
+  beforeEach(() => {
+    stdoutWrites = [];
+    stderrWrites = [];
+    stdoutSpy = jest.spyOn(process.stdout, "write").mockImplementation((chunk: unknown) => {
+      stdoutWrites.push(typeof chunk === "string" ? chunk : (chunk as Buffer).toString());
+      return true;
+    });
+    stderrStreamSpy = jest.spyOn(process.stderr, "write").mockImplementation((chunk: unknown) => {
+      stderrWrites.push(typeof chunk === "string" ? chunk : (chunk as Buffer).toString());
+      return true;
+    });
+    consoleLogSpy = jest.spyOn(console, "log").mockImplementation((...args: unknown[]) => {
+      stdoutWrites.push(args.map((a) => (typeof a === "string" ? a : String(a))).join(" "));
+    });
+    consoleErrSpy = jest.spyOn(console, "error").mockImplementation((...args: unknown[]) => {
+      stderrWrites.push(args.map((a) => (typeof a === "string" ? a : String(a))).join(" "));
+    });
+    process.exitCode = undefined;
+    jest.clearAllMocks();
+
+    mockedServerSelect.resolveServer.mockResolvedValue({
+      id: "srv-1",
+      name: "test-server",
+      provider: "hetzner",
+      ip: "1.2.3.4",
+      region: "fsn1",
+      size: "cx11",
+      createdAt: "2026-01-01",
+      mode: "bare",
+    });
+
+    mockedAuditCore.runAudit.mockResolvedValue({
+      success: true,
+      data: mockAuditResult,
+    });
+
+    mockedHistory.loadAuditHistory.mockReturnValue([]);
+    mockedHistory.detectTrend.mockReturnValue("improving");
+    mockedHistory.saveAuditHistory.mockImplementation(() => Promise.resolve());
+
+    mockedFormatters.selectFormatter.mockResolvedValue(
+      (result) => JSON.stringify({ score: result.overallScore }),
+    );
+
+    mockedFilter.filterAuditResult.mockImplementation((result) => result);
+    mockedFilter.buildFilterAnnotation.mockReturnValue("");
+    mockedFilter.parseSeverity.mockImplementation((raw) => raw as ReturnType<typeof auditFilter.parseSeverity>);
+
+    mockedFix.runFix.mockResolvedValue({ applied: [], skipped: [], errors: [] });
+    mockedFix.runPostFixReAudit.mockResolvedValue(null);
+
+    mockedRegression.saveBaselineSafe.mockResolvedValue();
+    mockedRegression.loadBaseline.mockReturnValue(null);
+    mockedRegression.extractPassedCheckIds.mockReturnValue([]);
+    mockedRegression.checkRegression.mockReturnValue({ regressions: [], newPasses: [], baselineScore: 0, currentScore: 0 });
+    mockedRegression.formatRegressionSummary.mockReturnValue([{ severity: "info", text: "Best score: 0" }]);
+  });
+
+  afterEach(() => {
+    stdoutSpy.mockRestore();
+    stderrStreamSpy.mockRestore();
+    consoleLogSpy.mockRestore();
+    consoleErrSpy.mockRestore();
+    process.exitCode = undefined;
+  });
+
+  it("stdout is parseable JSON when --json is set with regression + trend data", async () => {
+    mockedHistory.detectTrend.mockReturnValue("improving");
+    mockedRegression.loadBaseline.mockReturnValue({
+      version: 1,
+      serverIp: "1.2.3.4",
+      lastUpdated: "2026-04-20T10:00:00Z",
+      bestScore: 80,
+      passedChecks: [CHECK_IDS.FIREWALL.FW_UFW_ACTIVE],
+    });
+    mockedRegression.checkRegression.mockReturnValue({
+      regressions: [CHECK_IDS.SSH.SSH_ROOT_LOGIN],
+      newPasses: [],
+      baselineScore: 80,
+      currentScore: 72,
+    });
+
+    const { auditCommand } = await import("../../src/commands/audit");
+    await auditCommand("test-server", { json: true });
+
+    const stdout = captureStdout();
+    expect(stdout.length).toBeGreaterThan(0);
+    expect(() => JSON.parse(stdout)).not.toThrow();
+    expect(stdout).not.toMatch(/Trend:|Score:|quick win|regression/i);
+  });
+
+  it("stdout is parseable JSON when --ci --threshold 0 --category SSH", async () => {
+    mockedHistory.detectTrend.mockReturnValue("improving");
+    mockedRegression.loadBaseline.mockReturnValue({
+      version: 1,
+      serverIp: "1.2.3.4",
+      lastUpdated: "2026-04-20T10:00:00Z",
+      bestScore: 90,
+      passedChecks: [],
+    });
+    mockedRegression.checkRegression.mockReturnValue({
+      regressions: [CHECK_IDS.SSH.SSH_ROOT_LOGIN],
+      newPasses: [],
+      baselineScore: 90,
+      currentScore: 72,
+    });
+
+    const { auditCommand } = await import("../../src/commands/audit");
+    await auditCommand("test-server", { ci: true, threshold: "0", category: "SSH" });
+
+    const stdout = captureStdout();
+    expect(stdout.length).toBeGreaterThan(0);
+    expect(() => JSON.parse(stdout)).not.toThrow();
+    expect(stdout).not.toMatch(/Trend:|Score:|quick win|regression/i);
+  });
+
+  it("threshold failure in machine mode sets exitCode=1 without threshold prose on stdout", async () => {
+    mockedHistory.detectTrend.mockReturnValue("first audit");
+
+    const { auditCommand } = await import("../../src/commands/audit");
+    await auditCommand("test-server", { ci: true, threshold: "999" });
+
+    expect(process.exitCode).toBe(1);
+    const stdout = captureStdout();
+    expect(() => JSON.parse(stdout)).not.toThrow();
+    expect(stdout).not.toMatch(/below threshold/i);
+  });
+
+  it("diagnostics may appear on stderr in machine mode without polluting stdout", async () => {
+    mockedAuditCore.runAudit.mockResolvedValue({
+      success: false,
+      error: "Audit failed: SSH connection refused",
+      hint: "Check SSH config",
+    });
+
+    const { auditCommand } = await import("../../src/commands/audit");
+    await auditCommand("test-server", { ci: true, threshold: "70" });
+
+    const stdout = captureStdout();
+    expect(() => JSON.parse(stdout.length === 0 ? "null" : stdout)).not.toThrow();
+    expect(stdout).not.toMatch(/Check SSH config/i);
+  });
+
+  it("normal terminal audit still emits human trend/score output (not suppressed)", async () => {
+    mockedHistory.detectTrend.mockReturnValue("improving");
+
+    const { auditCommand } = await import("../../src/commands/audit");
+    await auditCommand("test-server", {});
+
+    const stdout = captureStdout();
+    expect(stdout).toMatch(/Trend: improving/);
+  });
+});
