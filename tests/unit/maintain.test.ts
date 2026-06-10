@@ -45,6 +45,7 @@ describe("maintainCommand", () => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
     consoleErrorSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
+    process.exitCode = undefined;
     // Make setTimeout instant for tests
     global.setTimeout = ((fn: () => void) => {
       fn();
@@ -56,6 +57,7 @@ describe("maintainCommand", () => {
     consoleSpy.mockRestore();
     consoleErrorSpy.mockRestore();
     global.setTimeout = originalSetTimeout;
+    process.exitCode = undefined;
   });
 
   it("should show error when SSH not available", async () => {
@@ -613,6 +615,178 @@ describe("maintainCommand", () => {
     // Core handles the error — report shows update FAIL
     expect(output).toContain("update FAIL");
     expect(output).toContain("Maintenance Report");
+  });
+
+  // ---- Exit-code policy: single-server failures ----
+
+  it("should set process.exitCode to 1 when single bare server is rejected", async () => {
+    const bareServer = {
+      id: "bare-123",
+      name: "bare-test",
+      provider: "hetzner",
+      ip: "9.9.9.9",
+      region: "nbg1",
+      size: "cax11",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      mode: "bare" as const,
+    };
+    mockedSsh.checkSshAvailable.mockReturnValue(true);
+    mockedConfig.findServers.mockReturnValue([bareServer]);
+
+    await maintainCommand("9.9.9.9");
+
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("should set process.exitCode to 1 when single server status check fails (not running)", async () => {
+    mockedSsh.checkSshAvailable.mockReturnValue(true);
+    mockedConfig.findServers.mockReturnValue([sampleServer]);
+
+    const inquirer = await import("inquirer");
+    (inquirer.default as { prompt: unknown }).prompt = jest.fn().mockResolvedValueOnce({ apiToken: "test-token" });
+
+    mockedAxios.get.mockRejectedValueOnce(new Error("snapshot cost"));
+    mockedAxios.get.mockResolvedValueOnce({ data: { server: { id: 123, status: "off" } } });
+
+    await maintainCommand("1.2.3.4");
+
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("should set process.exitCode to 1 when single server update throws", async () => {
+    mockedSsh.checkSshAvailable.mockReturnValue(true);
+    mockedConfig.findServers.mockReturnValue([sampleServer]);
+
+    const inquirer = await import("inquirer");
+    (inquirer.default as { prompt: unknown }).prompt = jest.fn().mockResolvedValueOnce({ apiToken: "test-token" });
+
+    mockedAxios.get.mockRejectedValueOnce(new Error("snapshot cost"));
+    mockedAxios.get.mockResolvedValueOnce({ data: { server: { id: 123, status: "running" } } });
+    mockedSsh.sshExec.mockRejectedValueOnce(new Error("SSH connection lost"));
+
+    await maintainCommand("1.2.3.4");
+
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("should set process.exitCode to 1 when single server reboot fails", async () => {
+    mockedSsh.checkSshAvailable.mockReturnValue(true);
+    mockedConfig.findServers.mockReturnValue([sampleServer]);
+
+    const inquirer = await import("inquirer");
+    (inquirer.default as { prompt: unknown }).prompt = jest.fn().mockResolvedValueOnce({ apiToken: "test-token" });
+
+    mockedAxios.get.mockRejectedValueOnce(new Error("snapshot cost"));
+    mockedAxios.get.mockResolvedValueOnce({ data: { server: { id: 123, status: "running" } } });
+    mockedSsh.sshExec.mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" });
+    mockedAxios.get.mockResolvedValueOnce({ status: 200 });
+    mockedAxios.post.mockRejectedValueOnce(new Error("Reboot API error"));
+
+    await maintainCommand("1.2.3.4");
+
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("should set process.exitCode to 1 when SSH not available", async () => {
+    mockedSsh.checkSshAvailable.mockReturnValue(false);
+
+    await maintainCommand();
+
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("should leave process.exitCode unset when single server maintenance completes successfully", async () => {
+    mockedSsh.checkSshAvailable.mockReturnValue(true);
+    mockedConfig.findServers.mockReturnValue([sampleServer]);
+
+    const inquirer = await import("inquirer");
+    (inquirer.default as { prompt: unknown }).prompt = jest.fn().mockResolvedValueOnce({ apiToken: "test-token" });
+
+    mockedAxios.get.mockRejectedValueOnce(new Error("snapshot cost"));
+    mockedAxios.get.mockResolvedValueOnce({ data: { server: { id: 123, status: "running" } } });
+    mockedSsh.sshExec.mockResolvedValueOnce({ code: 0, stdout: "ok", stderr: "" });
+    mockedAxios.get.mockResolvedValueOnce({ status: 200 });
+    mockedAxios.post.mockResolvedValueOnce({ data: { action: { id: 1 } } });
+    mockedAxios.get.mockResolvedValueOnce({ data: { server: { id: 123, status: "running" } } });
+    mockedAxios.get.mockResolvedValueOnce({ status: 200 });
+
+    await maintainCommand("1.2.3.4");
+
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it("should leave process.exitCode unset when no server found (informational)", async () => {
+    mockedSsh.checkSshAvailable.mockReturnValue(true);
+    mockedConfig.findServers.mockReturnValue([]);
+
+    await maintainCommand("nonexistent");
+
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  // ---- Exit-code policy: --all aggregation ----
+
+  it("should set process.exitCode to 1 when --all has at least one bare target", async () => {
+    const bareServer = {
+      id: "bare-123",
+      name: "bare-test",
+      provider: "hetzner",
+      ip: "9.9.9.9",
+      region: "nbg1",
+      size: "cax11",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      mode: "bare" as const,
+    };
+    mockedSsh.checkSshAvailable.mockReturnValue(true);
+    mockedConfig.getServers.mockReturnValue([sampleServer, bareServer]);
+
+    await maintainCommand(undefined, { all: true });
+
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("should set process.exitCode to 1 when --all has a target missing a provider token", async () => {
+    mockedSsh.checkSshAvailable.mockReturnValue(true);
+    mockedConfig.getServers.mockReturnValue([sampleServer]);
+    const inquirer = await import("inquirer");
+    (inquirer.default as { prompt: unknown }).prompt = jest
+      .fn()
+      .mockResolvedValueOnce({ apiToken: "h-token" })
+      .mockResolvedValueOnce({ apiToken: "" });
+
+    await maintainCommand(undefined, { all: true });
+
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("should leave process.exitCode unset when --all completes successfully for all managed targets", async () => {
+    mockedSsh.checkSshAvailable.mockReturnValue(true);
+    mockedConfig.getServers.mockReturnValue([sampleServer]);
+
+    const inquirer = await import("inquirer");
+    (inquirer.default as { prompt: unknown }).prompt = jest
+      .fn()
+      .mockResolvedValueOnce({ apiToken: "test-token" });
+
+    mockedAxios.get.mockResolvedValueOnce({ data: { server: { id: 123, status: "running" } } });
+    mockedSsh.sshExec.mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" });
+    mockedAxios.get.mockResolvedValueOnce({ status: 200 });
+    mockedAxios.post.mockResolvedValueOnce({ data: { action: { id: 1 } } });
+    mockedAxios.get.mockResolvedValueOnce({ data: { server: { id: 123, status: "running" } } });
+    mockedAxios.get.mockResolvedValueOnce({ status: 200 });
+
+    await maintainCommand(undefined, { all: true });
+
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it("should leave process.exitCode unset when --all has no servers (informational)", async () => {
+    mockedSsh.checkSshAvailable.mockReturnValue(true);
+    mockedConfig.getServers.mockReturnValue([]);
+
+    await maintainCommand(undefined, { all: true });
+
+    expect(process.exitCode).toBeUndefined();
   });
 });
 

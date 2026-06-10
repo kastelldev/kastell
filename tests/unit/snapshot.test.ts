@@ -69,6 +69,7 @@ describe("snapshotCommand", () => {
     spy.setup();
     stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
+    process.exitCode = undefined;
     process.env.KASTELL_SAFE_MODE = "false";
     mockedProviderFactory.createProviderWithToken.mockReturnValue(mockProvider);
     mockedServerSelect.promptApiToken.mockResolvedValue("test-token");
@@ -77,6 +78,7 @@ describe("snapshotCommand", () => {
   afterEach(() => {
     spy.restore();
     stderrSpy?.mockRestore();
+    process.exitCode = undefined;
   });
 
   it("should default to list subcommand", async () => {
@@ -306,6 +308,222 @@ describe("snapshotCommand", () => {
       expect(mockProvider.deleteSnapshot).not.toHaveBeenCalled();
     });
   });
+
+  // ---- Exit-code policy ----
+
+  it("should set process.exitCode to 1 for invalid subcommand", async () => {
+    await snapshotCommand("invalid");
+
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("should set process.exitCode to 1 when SAFE_MODE blocks create", async () => {
+    process.env.KASTELL_SAFE_MODE = "true";
+    mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+
+    await snapshotCommand("create", "test");
+
+    expect(process.exitCode).toBe(1);
+    process.env.KASTELL_SAFE_MODE = "false";
+  });
+
+  it("should set process.exitCode to 1 when create core fails", async () => {
+    mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+    mockProvider.getSnapshotCostEstimate.mockResolvedValue("€0.24/mo");
+    mockProvider.createSnapshot.mockRejectedValue(new Error("API error"));
+    mockedInquirer.prompt.mockResolvedValue({ confirm: true });
+
+    await snapshotCommand("create", "test");
+
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("should leave process.exitCode unset when create user declines", async () => {
+    mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+    mockProvider.getSnapshotCostEstimate.mockResolvedValue("€0.24/mo");
+    mockedInquirer.prompt.mockResolvedValue({ confirm: false });
+
+    await snapshotCommand("create", "test");
+
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it("should leave process.exitCode unset when create succeeds", async () => {
+    mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+    mockProvider.getSnapshotCostEstimate.mockResolvedValue("€0.24/mo");
+    mockProvider.createSnapshot.mockResolvedValue(sampleSnapshot);
+    mockedInquirer.prompt.mockResolvedValue({ confirm: true });
+
+    await snapshotCommand("create", "test");
+
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it("should set process.exitCode to 1 when list core fails", async () => {
+    mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+    mockProvider.listSnapshots.mockRejectedValue(new Error("API error"));
+
+    await snapshotCommand("list", "test");
+
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("should leave process.exitCode unset when list is empty (informational)", async () => {
+    mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+    mockProvider.listSnapshots.mockResolvedValue([]);
+
+    await snapshotCommand("list", "test");
+
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it("should leave process.exitCode unset when list --all has no servers (informational)", async () => {
+    mockedConfig.getServers.mockReturnValue([]);
+
+    await snapshotCommand("list", undefined, { all: true });
+
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it("should set process.exitCode to 1 when list --all has per-server error", async () => {
+    mockedConfig.getServers.mockReturnValue([sampleServer]);
+    mockedServerSelect.collectProviderTokens.mockResolvedValue(
+      new Map([["hetzner", "token"]]),
+    );
+    mockProvider.listSnapshots.mockRejectedValue(new Error("fail"));
+
+    await snapshotCommand("list", undefined, { all: true });
+
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("should set process.exitCode to 1 when list --all has a target missing a provider token", async () => {
+    mockedConfig.getServers.mockReturnValue([sampleServer]);
+    mockedServerSelect.collectProviderTokens.mockResolvedValue(new Map());
+
+    await snapshotCommand("list", undefined, { all: true });
+
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("should set process.exitCode to 1 when delete core fails", async () => {
+    mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+    mockProvider.listSnapshots.mockResolvedValue([sampleSnapshot]);
+    mockedInquirer.prompt
+      .mockResolvedValueOnce({ selectedId: "snap-123" })
+      .mockResolvedValueOnce({ confirm: true });
+    mockProvider.deleteSnapshot.mockRejectedValue(new Error("API error"));
+
+    await snapshotCommand("delete", "test");
+
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("should set process.exitCode to 1 when delete list core fails", async () => {
+    mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+    mockProvider.listSnapshots.mockRejectedValue(new Error("list fail"));
+
+    await snapshotCommand("delete", "test");
+
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("should leave process.exitCode unset when delete user declines", async () => {
+    mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+    mockProvider.listSnapshots.mockResolvedValue([sampleSnapshot]);
+    mockedInquirer.prompt
+      .mockResolvedValueOnce({ selectedId: "snap-123" })
+      .mockResolvedValueOnce({ confirm: false });
+
+    await snapshotCommand("delete", "test");
+
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it("should leave process.exitCode unset when delete has no snapshots (informational)", async () => {
+    mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+    mockProvider.listSnapshots.mockResolvedValue([]);
+
+    await snapshotCommand("delete", "test");
+
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it("should leave process.exitCode unset when delete succeeds", async () => {
+    mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+    mockProvider.listSnapshots.mockResolvedValue([sampleSnapshot]);
+    mockedInquirer.prompt
+      .mockResolvedValueOnce({ selectedId: "snap-123" })
+      .mockResolvedValueOnce({ confirm: true });
+    mockProvider.deleteSnapshot.mockResolvedValue({ success: true });
+
+    await snapshotCommand("delete", "test");
+
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it("should set process.exitCode to 1 when SAFE_MODE blocks restore", async () => {
+    process.env.KASTELL_SAFE_MODE = "true";
+    mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+
+    await snapshotCommand("restore", "test");
+
+    expect(process.exitCode).toBe(1);
+    process.env.KASTELL_SAFE_MODE = "false";
+  });
+
+  it("should set process.exitCode to 1 when restore server-name confirmation does not match", async () => {
+    process.env.KASTELL_SAFE_MODE = "false";
+    mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+    mockProvider.listSnapshots.mockResolvedValue([sampleSnapshot]);
+    mockedInquirer.prompt
+      .mockResolvedValueOnce({ selectedId: "snap-123" })
+      .mockResolvedValueOnce({ confirm: true })
+      .mockResolvedValueOnce({ confirmName: "wrong-name" });
+
+    await snapshotCommand("restore", "test");
+
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("should set process.exitCode to 1 when restore core fails", async () => {
+    process.env.KASTELL_SAFE_MODE = "false";
+    mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+    mockProvider.listSnapshots.mockResolvedValue([sampleSnapshot]);
+    mockedInquirer.prompt
+      .mockResolvedValueOnce({ selectedId: "snap-123" })
+      .mockResolvedValueOnce({ confirm: true })
+      .mockResolvedValueOnce({ confirmName: "coolify-test" });
+    mockProvider.restoreSnapshot.mockRejectedValue(new Error("API error"));
+
+    await snapshotCommand("restore", "test");
+
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("should leave process.exitCode unset when restore user declines", async () => {
+    process.env.KASTELL_SAFE_MODE = "false";
+    mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+    mockProvider.listSnapshots.mockResolvedValue([sampleSnapshot]);
+    mockedInquirer.prompt
+      .mockResolvedValueOnce({ selectedId: "snap-123" })
+      .mockResolvedValueOnce({ confirm: false });
+
+    await snapshotCommand("restore", "test");
+
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it("should leave process.exitCode unset when restore has no snapshots (informational)", async () => {
+    process.env.KASTELL_SAFE_MODE = "false";
+    mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+    mockProvider.listSnapshots.mockResolvedValue([]);
+
+    await snapshotCommand("restore", "test");
+
+    expect(process.exitCode).toBeUndefined();
+  });
+
 
   // ---- Bare server regression tests ----
 

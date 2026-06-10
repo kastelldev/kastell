@@ -2,6 +2,7 @@ import inquirer from "inquirer";
 import { getServers } from "../utils/config.js";
 import { resolveServer, promptApiToken, collectProviderTokens } from "../utils/serverSelect.js";
 import { logger, createSpinner } from "../utils/logger.js";
+import { markCommandFailed } from "../utils/exitCode.js";
 import { createSnapshot, listSnapshots, deleteSnapshot, restoreSnapshot } from "../core/snapshot.js";
 import { isSafeMode } from "../core/manage.js";
 import { logSafeModeBlock } from "../utils/safeMode.js";
@@ -20,6 +21,7 @@ async function snapshotCreate(
   if (isSafeMode()) {
     logSafeModeBlock("snapshot-create", { category: "destructive" });
     logger.error("Snapshot creation is blocked in SAFE_MODE (billable operation). Set KASTELL_SAFE_MODE=false to allow.");
+    markCommandFailed();
     return;
   }
 
@@ -77,6 +79,7 @@ async function snapshotCreate(
     spinner.fail("Failed to create snapshot");
     if (result.error) logger.error(result.error);
     if (result.hint) logger.info(result.hint);
+    markCommandFailed();
   }
 }
 
@@ -94,6 +97,7 @@ async function snapshotList(query?: string): Promise<void> {
     spinner.fail("Failed to list snapshots");
     logger.error(result.error);
     if (result.hint) logger.info(result.hint);
+    markCommandFailed();
     return;
   }
 
@@ -120,12 +124,14 @@ async function snapshotListAll(): Promise<void> {
   }
 
   const tokenMap = await collectProviderTokens(servers);
+  let failed = 0;
 
   for (const server of servers) {
     const token = tokenMap.get(server.provider);
     if (!token) {
       logger.warning(`${server.name}: No API token for ${server.provider}, skipped`);
       console.log();
+      failed += 1;
       continue;
     }
 
@@ -137,6 +143,7 @@ async function snapshotListAll(): Promise<void> {
       spinner.fail(`${server.name}: Failed to list snapshots`);
       logger.error(result.error);
       if (result.hint) logger.info(result.hint);
+      failed += 1;
     } else if (result.snapshots.length === 0) {
       spinner.succeed(`${server.name}: No snapshots`);
     } else {
@@ -149,6 +156,8 @@ async function snapshotListAll(): Promise<void> {
     }
     console.log();
   }
+
+  if (failed > 0) markCommandFailed();
 }
 
 async function snapshotDelete(
@@ -169,6 +178,7 @@ async function snapshotDelete(
     listSpinner.fail("Failed to list snapshots");
     logger.error(listResult.error);
     if (listResult.hint) logger.info(listResult.hint);
+    markCommandFailed();
     return;
   }
 
@@ -217,6 +227,7 @@ async function snapshotDelete(
     deleteSpinner.fail("Failed to delete snapshot");
     if (deleteResult.error) logger.error(deleteResult.error);
     if (deleteResult.hint) logger.info(deleteResult.hint);
+    markCommandFailed();
   }
 }
 
@@ -229,6 +240,7 @@ async function snapshotRestore(
     logger.error(
       "Snapshot restore is blocked by SAFE_MODE. Set KASTELL_SAFE_MODE=false to allow restore operations.",
     );
+    markCommandFailed();
     return;
   }
 
@@ -245,6 +257,7 @@ async function snapshotRestore(
     listSpinner.fail("Failed to list snapshots");
     logger.error(listResult.error);
     if (listResult.hint) logger.info(listResult.hint);
+    markCommandFailed();
     return;
   }
 
@@ -291,6 +304,7 @@ async function snapshotRestore(
     ]);
     if (confirmName.trim() !== server.name) {
       logger.error("Server name does not match. Restore cancelled.");
+      markCommandFailed();
       return;
     }
   }
@@ -307,6 +321,7 @@ async function snapshotRestore(
     spinner.fail("Failed to restore from snapshot");
     if (result.error) logger.error(result.error);
     if (result.hint) logger.info(result.hint);
+    markCommandFailed();
   }
 }
 
@@ -322,6 +337,7 @@ export async function snapshotCommand(
     logger.error(
       `Invalid subcommand: ${sub}. Choose from: ${validSubcommands.join(", ")}`,
     );
+    markCommandFailed();
     return;
   }
 

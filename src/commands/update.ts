@@ -4,6 +4,7 @@ import { resolveServer, promptApiToken, collectProviderTokens } from "../utils/s
 import { checkSshAvailable } from "../utils/ssh.js";
 import { logger, createSpinner } from "../utils/logger.js";
 import { isBareServer, requireManagedMode } from "../utils/modeGuard.js";
+import { markCommandFailed } from "../utils/exitCode.js";
 import { getAdapter, resolvePlatform } from "../adapters/factory.js";
 import { adapterDisplayName } from "../adapters/shared.js";
 import { updateServer } from "../core/update.js";
@@ -54,6 +55,7 @@ async function updateSingleServer(
 async function updateAll(options?: UpdateOptions): Promise<void> {
   if (!checkSshAvailable()) {
     logger.error("SSH client not found. Required for platform update.");
+    markCommandFailed();
     return;
   }
 
@@ -64,18 +66,21 @@ async function updateAll(options?: UpdateOptions): Promise<void> {
   }
 
   if (options?.dryRun) {
+    let failed = 0;
     for (const server of servers) {
       if (isBareServer(server)) {
         logger.warning(
           `Skipping ${server.name}: update command is not available for bare servers.`,
         );
         console.log();
+        failed += 1;
         continue;
       }
       const serverPlatform = resolvePlatform(server);
       if (!serverPlatform) {
         logger.warning(`Skipping ${server.name}: no platform detected.`);
         console.log();
+        failed += 1;
         continue;
       }
       const adapter = getAdapter(serverPlatform);
@@ -83,6 +88,7 @@ async function updateAll(options?: UpdateOptions): Promise<void> {
       showDryRun(server, displayName);
       console.log();
     }
+    if (failed > 0) markCommandFailed();
     return;
   }
 
@@ -113,12 +119,14 @@ async function updateAll(options?: UpdateOptions): Promise<void> {
         `Skipping ${server.name}: update command is not available for bare servers.`,
       );
       console.log();
+      failed += 1;
       continue;
     }
     const serverPlatform = resolvePlatform(server);
     if (!serverPlatform) {
       logger.warning(`Skipping ${server.name}: no platform detected.`);
       console.log();
+      failed += 1;
       continue;
     }
     const token = tokenMap.get(server.provider)!;
@@ -132,6 +140,7 @@ async function updateAll(options?: UpdateOptions): Promise<void> {
     logger.success(`All ${succeeded} server(s) updated successfully!`);
   } else {
     logger.warning(`${succeeded} succeeded, ${failed} failed`);
+    markCommandFailed();
   }
 }
 
@@ -144,6 +153,7 @@ export async function updateCommand(query?: string, options?: UpdateOptions): Pr
     logger.error("SSH client not found. Required for platform update.");
     logger.info("Windows: Settings > Apps > Optional Features > OpenSSH Client");
     logger.info("Linux/macOS: SSH is usually pre-installed.");
+    markCommandFailed();
     return;
   }
 
@@ -153,12 +163,14 @@ export async function updateCommand(query?: string, options?: UpdateOptions): Pr
   const modeError = requireManagedMode(server, "update");
   if (modeError) {
     logger.error(modeError);
+    markCommandFailed();
     return;
   }
 
   const platform = resolvePlatform(server);
   if (!platform) {
     logger.error("No platform detected for this server.");
+    markCommandFailed();
     return;
   }
 
@@ -201,15 +213,21 @@ export async function updateCommand(query?: string, options?: UpdateOptions): Pr
   logger.info("This may take several minutes. Please wait.");
   console.log();
 
-  const result = await updateServer(server, apiToken, platform);
+  try {
+    const result = await updateServer(server, apiToken, platform);
 
-  if (result.output) console.log(result.output);
+    if (result.output) console.log(result.output);
 
-  if (result.success) {
-    logger.success(`${displayName} update completed successfully!`);
-  } else {
-    logger.error(`Update failed${result.error ? `: ${result.error}` : ""}`);
-    if (result.hint) logger.info(result.hint);
-    logger.info("Check the output above for details.");
+    if (result.success) {
+      logger.success(`${displayName} update completed successfully!`);
+    } else {
+      logger.error(`Update failed${result.error ? `: ${result.error}` : ""}`);
+      if (result.hint) logger.info(result.hint);
+      logger.info("Check the output above for details.");
+      markCommandFailed();
+    }
+  } catch (error: unknown) {
+    logger.error(`Update failed: ${(error as Error).message ?? "Unknown error"}`);
+    markCommandFailed();
   }
 }

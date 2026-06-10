@@ -6,6 +6,7 @@ import { logger, createSpinner } from "../utils/logger.js";
 import { mapProviderError, classifyError } from "../utils/errorMapper.js";
 import { createProviderWithToken } from "../utils/providerFactory.js";
 import { isBareServer, requireManagedMode } from "../utils/modeGuard.js";
+import { markCommandFailed } from "../utils/exitCode.js";
 import type { ServerRecord } from "../types/index.js";
 import {
   maintainServer,
@@ -176,6 +177,7 @@ async function runMaintain(
 async function maintainAll(options: MaintainOptions): Promise<void> {
   if (!checkSshAvailable()) {
     logger.error("SSH client not found. Required for maintenance.");
+    markCommandFailed();
     return;
   }
 
@@ -187,6 +189,7 @@ async function maintainAll(options: MaintainOptions): Promise<void> {
 
   const tokenMap = await collectProviderTokens(servers);
   const results: MaintainResult[] = [];
+  let failed = 0;
 
   for (const server of servers) {
     if (isBareServer(server)) {
@@ -200,6 +203,7 @@ async function maintainAll(options: MaintainOptions): Promise<void> {
         "  To apply security hardening: kastell fix --safe --server " + server.name,
       );
       console.log();
+      failed += 1;
       continue;
     }
 
@@ -207,6 +211,7 @@ async function maintainAll(options: MaintainOptions): Promise<void> {
     if (!token) {
       logger.warning(`Skipping ${server.name}: no API token available for provider "${server.provider}".`);
       console.log();
+      failed += 1;
       continue;
     }
 
@@ -217,12 +222,15 @@ async function maintainAll(options: MaintainOptions): Promise<void> {
 
     const result = await runMaintain(server, token, { ...options, skipSnapshot: true });
     results.push(result);
+    if (!result.success) failed += 1;
     console.log();
   }
 
   if (!options.dryRun && results.length > 0) {
     showReport(results);
   }
+
+  if (failed > 0) markCommandFailed();
 }
 
 export async function maintainCommand(query?: string, options?: MaintainOptions): Promise<void> {
@@ -234,6 +242,7 @@ export async function maintainCommand(query?: string, options?: MaintainOptions)
     logger.error("SSH client not found. Required for maintenance.");
     logger.info("Windows: Settings > Apps > Optional Features > OpenSSH Client");
     logger.info("Linux/macOS: SSH is usually pre-installed.");
+    markCommandFailed();
     return;
   }
 
@@ -243,6 +252,7 @@ export async function maintainCommand(query?: string, options?: MaintainOptions)
   const modeError = requireManagedMode(server, "maintain");
   if (modeError) {
     logger.error(modeError);
+    markCommandFailed();
     return;
   }
 
@@ -254,4 +264,5 @@ export async function maintainCommand(query?: string, options?: MaintainOptions)
   const apiToken = await promptApiToken(server.provider);
   const result = await runMaintain(server, apiToken, options ?? {});
   showReport([result]);
+  if (!result.success) markCommandFailed();
 }
