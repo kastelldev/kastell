@@ -181,3 +181,7 @@ security-audit-report.sarif
 
 # CQS-02 console.log triage report (one-shot, not part of source)
 docs/audits/console-log-triage.json
+
+# Local /simplify investigation scratch space (e.g. tmp/p140-diff.patch).
+# Never commit; this dir is a sandbox for diff/e2e artifacts.
+tmp/

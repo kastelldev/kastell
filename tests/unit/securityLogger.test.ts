@@ -1,4 +1,8 @@
-import {
+import * as fs from "fs";
+import { join } from "path";
+import { tmpdir } from "os";
+
+const {
   mkdtempSync,
   writeFileSync,
   readFileSync,
@@ -6,9 +10,7 @@ import {
   unlinkSync,
   rmdirSync,
   mkdirSync,
-} from "fs";
-import { join } from "path";
-import { tmpdir } from "os";
+} = fs;
 
 // Mock paths module before importing securityLogger
 let mockKastellDir: string;
@@ -212,6 +214,31 @@ describe("securityLogger", () => {
       const content = readFileSync(logPath, "utf8");
       const lines = content.trim().split("\n").filter(Boolean);
       expect(lines).toHaveLength(2); // "small" + new entry
+    });
+
+    it("should retry rotation without throwing when renameSync throws transient EPERM", () => {
+      const logPath = join(mockKastellDir, "security.log");
+      writeFileSync(logPath, "x".repeat(60) + "\n");
+
+      let capturedRename: jest.Mock;
+      let isolatedLogSecurityEvent: typeof logSecurityEvent;
+
+      jest.isolateModules(() => {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports -- isolateModules needs require() for CJS interop
+        const isolatedFs = require("fs") as typeof fs;
+        // eslint-disable-next-line @typescript-eslint/no-require-imports -- isolateModules needs require() for CJS interop
+        const mod = require("../../src/utils/securityLogger.js") as typeof import("../../src/utils/securityLogger.js");
+        capturedRename = jest
+          .spyOn(isolatedFs, "renameSync")
+          .mockImplementation(() => {
+            const err = Object.assign(new Error("EPERM"), { code: "EPERM" }) as NodeJS.ErrnoException;
+            throw err;
+          }) as unknown as jest.Mock;
+        isolatedLogSecurityEvent = mod.logSecurityEvent;
+      });
+
+      expect(() => isolatedLogSecurityEvent!(baseEntry, { maxBytes: 50 })).not.toThrow();
+      expect(capturedRename!).toHaveBeenCalledTimes(3);
     });
   });
 

@@ -5,6 +5,11 @@ import type { PluginRegistryEntry } from "../../plugin/registry.js";
 import type { PluginCheck } from "../../plugin/sdk/types.js";
 import type { AuditCategory, AuditCheck, Severity, FixTier, ComplianceRef } from "./types.js";
 
+// Sentinel for mutating plugin checks that audit never runs. Consumer uses the
+// regex below to detect this value; drift between the two helpers silently
+// breaks runAudit's connectionError heuristic.
+const MUTATING_SKIP_PATTERN = /^Not run by kastell audit \(mutating kind: .+\)$/;
+
 export function mapPluginComplianceRefs(refs?: Array<{ framework: string; ref: string }>): ComplianceRef[] {
   if (!refs || refs.length === 0) return [];
   return refs.map((r) => ({
@@ -14,6 +19,43 @@ export function mapPluginComplianceRefs(refs?: Array<{ framework: string; ref: s
     description: r.ref,
     coverage: "partial" as const,
   }));
+}
+
+export function mutatingPluginAuditCurrentValue(kind: PluginCheck["checkCommand"]["kind"]): string {
+  return `Not run by kastell audit (mutating kind: ${kind})`;
+}
+
+export function isMutatingPluginAuditCurrentValue(value: string): boolean {
+  return MUTATING_SKIP_PATTERN.test(value);
+}
+
+export function getSkippedMutatingPluginWarnings(
+  registry: ReadonlyMap<string, PluginRegistryEntry>,
+): string[] {
+  const warnings: string[] = [];
+  for (const [pluginName, entry] of registry) {
+    if (entry.status !== PLUGIN_STATUS_LOADED) continue;
+    for (const check of entry.checks) {
+      if (check.checkCommand.kind !== "read") {
+        warnings.push(`Plugin ${pluginName} check ${check.id} is ${check.checkCommand.kind} and is not run by kastell audit`);
+      }
+    }
+  }
+  return warnings;
+}
+
+/**
+ * Gates runAudit's plugin-batch parse: a mutating-only plugin produces no
+ * batch (buildPluginBatchSection returns null) but parsePluginBatchOutput
+ * must still surface its skipped checks for visibility.
+ */
+export function hasLoadedPluginChecks(
+  registry: ReadonlyMap<string, PluginRegistryEntry>,
+): boolean {
+  for (const entry of registry.values()) {
+    if (entry.status === PLUGIN_STATUS_LOADED && entry.checks.length > 0) return true;
+  }
+  return false;
 }
 
 function evaluateCheck(output: string, check: PluginCheck): boolean {
@@ -77,12 +119,8 @@ function splitSections(stdout: string): ParsedSection[] {
   for (const line of lines) {
     if (line.startsWith(SECTION_PREFIX) && line.endsWith("---")) {
       const header = line.slice(SECTION_PREFIX.length, line.length - 3);
+      // SECTION_PREFIX contains ':' so header always has at least one colon.
       const colonIdx = header.lastIndexOf(":");
-      if (colonIdx === -1) {
-        flush();
-        current = null;
-        continue;
-      }
       flush();
       current = {
         pluginName: header.slice(0, colonIdx),
@@ -103,9 +141,6 @@ export function parsePluginBatchOutput(
 ): AuditCategory[] {
   const sections = stdout ? splitSections(stdout) : [];
 
-  // Pass 1: index valid sections by `${pluginName}:${checkId}` for O(1) lookup.
-  // Unknown plugins/checks are dropped here with a debugLog, matching the
-  // pre-refactor behavior.
   const sectionsByPluginCheck = new Map<string, ParsedSection>();
   for (const section of sections) {
     const entry = registry.get(section.pluginName);
@@ -121,9 +156,6 @@ export function parsePluginBatchOutput(
     sectionsByPluginCheck.set(`${section.pluginName}:${section.checkId}`, section);
   }
 
-  // Pass 2: iterate the registry as the single source of truth — apply the
-  // section's evaluated result if present, or the "Unable to determine"
-  // fallback otherwise. Linear over the registry, no double-mutation of byPlugin.
   const byPlugin = new Map<string, AuditCheck[]>();
   for (const [pluginName, entry] of registry) {
     if (entry.status !== PLUGIN_STATUS_LOADED) continue;
@@ -135,9 +167,16 @@ export function parsePluginBatchOutput(
       if (section) {
         const passed = evaluateCheck(section.body, checkDef);
         checks.push(buildAuditCheck(checkDef, { passed, currentValue: section.body }, entry));
+      } else if (checkDef.checkCommand.kind !== "read") {
+        checks.push(
+          buildAuditCheck(checkDef, {
+            passed: false,
+            currentValue: mutatingPluginAuditCurrentValue(checkDef.checkCommand.kind),
+          }),
+        );
       } else {
-        // Missing section → runAudit's allUndetermined heuristic flags this
-        // plugin category as a batch failure.
+        // Missing read section — runAudit's allUndetermined heuristic flags
+        // this plugin category as a batch failure.
         checks.push(
           buildAuditCheck(checkDef, { passed: false, currentValue: "Unable to determine" }),
         );

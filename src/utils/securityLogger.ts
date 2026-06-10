@@ -1,6 +1,8 @@
-import { appendFileSync, statSync, renameSync, mkdirSync } from "fs";
+import { statSync, renameSync, mkdirSync } from "fs";
 import { KASTELL_DIR, SECURITY_LOG } from "./paths.js";
 import { debugLog } from "./logger.js";
+import { secureAppendFileSync } from "./secureWrite.js";
+import { DEFAULT_PERMISSION_RETRY_ATTEMPTS, DEFAULT_PERMISSION_RETRY_DELAY_MS, retryOnPermission } from "./fsRetry.js";
 
 export type SecurityLogLevel = "info" | "warn" | "error";
 export type SecurityLogCategory = "destructive" | "auth" | "ssh" | "mcp" | "config";
@@ -22,11 +24,22 @@ export interface SecurityLogEntry {
 
 const DEFAULT_MAX_BYTES = 10 * 1024 * 1024; // 10MB
 
+function rotateSecurityLogBestEffort(): void {
+  try {
+    retryOnPermission(() => renameSync(SECURITY_LOG, SECURITY_LOG + ".1"), {
+      attempts: DEFAULT_PERMISSION_RETRY_ATTEMPTS,
+      delayMs: DEFAULT_PERMISSION_RETRY_DELAY_MS,
+    });
+  } catch (err) {
+    debugLog?.("security log rotation failed", { cause: err });
+  }
+}
+
 function rotateIfNeeded(maxBytes: number): void {
   try {
     const stat = statSync(SECURITY_LOG);
     if (stat.size >= maxBytes) {
-      renameSync(SECURITY_LOG, SECURITY_LOG + ".1");
+      rotateSecurityLogBestEffort();
     }
   } catch (error) {
     // File doesn't exist yet — no rotation needed
@@ -48,9 +61,8 @@ export function logSecurityEvent(
       ...entry,
     };
 
-    appendFileSync(SECURITY_LOG, JSON.stringify(fullEntry) + "\n", {
+    secureAppendFileSync(SECURITY_LOG, JSON.stringify(fullEntry) + "\n", {
       encoding: "utf8",
-      mode: 0o600,
     });
   } catch (error) {
     // Security log failure MUST NOT crash the main operation — silent fail

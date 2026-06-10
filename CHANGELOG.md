@@ -13,15 +13,19 @@ All notable changes to this project will be documented in this file.
 - Plugin tarball smoke test: MCP boot time measurement + empty dir detection
 
 ### Changed
+- Breaking: Plugin SDK audit checks now require `apiVersion: "2"` and object-shaped `checkCommand: { kind, cmd }`. Manifest-level `mutates` and `safeToParallel` are removed; mutation intent is declared per check.
 - **`chunkConcurrent`** replaces `p-limit` in fleet.ts (p-limit dependency dropped)
 - `serverCompare` outputSchema uses `discriminatedUnion` (dış shape aynı kalır)
 - `PluginRegistryEntry` is now a discriminated union (loaded/error/disabled)
 - CI workflow: build artifact shared between jobs (~30s saving per run)
 
+Release-time version bumps remain owned by `/release minor`; `package.json` and `kastell-plugin/.claude-plugin/plugin.json` must be bumped together.
+
 ### Fixed
 - `serverCompare` detail mode returns flat checks array (was object — CQS-11 #1)
 - `ssh-factories.ts` setTimeout leak — worker force-exit (CQS-10 #1)
 - `tests/helpers/fsMock.ts` factory prevents Linux CI chmodSync mock omission
+- **Windows local state writes** — Atomic `*.tmp` rename persistence now retries transient `EPERM`/`EACCES` failures and falls back to copy+unlink safely. Coverage: `servers.json`, audit history, evidence manifests (`MANIFEST.json`, `SHA256SUMS`), audit snapshots, fix history, regression baselines, and metric history. File-lock reclaim and security-log rotation also retry on transient `EPERM`/`EACCES`.
 
 ### Internal
 - 175 `console.log` triage + sweep (5 categories — 0 actionable)

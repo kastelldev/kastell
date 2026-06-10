@@ -6,7 +6,7 @@ function makeEntry(name: string, checks: PluginCheck[], s: "loaded" | "failed" =
   const manifest: PluginManifest = {
     name,
     version: "1.0.0",
-    apiVersion: "1",
+    apiVersion: "2",
     kastell: "*",
     capabilities: ["audit"],
     checkPrefix: name.split("-").pop()!.toUpperCase().slice(0, 6),
@@ -26,8 +26,19 @@ function makeEntry(name: string, checks: PluginCheck[], s: "loaded" | "failed" =
   return { manifest, checks, status: "loaded", checksById, fixesByCheckId: new Map() } as unknown as PluginRegistryEntry;
 }
 
-function check(id: string, cmd = "echo ok"): PluginCheck {
-  return { id, category: "X", name: id, severity: "info", description: "", checkCommand: cmd };
+function check(
+  id: string,
+  cmd = "echo ok",
+  kind: PluginCheck["checkCommand"]["kind"] = "read",
+): PluginCheck {
+  return {
+    id,
+    category: "X",
+    name: id,
+    severity: "info",
+    description: "",
+    checkCommand: { kind, cmd },
+  };
 }
 
 describe("buildPluginBatchSection", () => {
@@ -77,6 +88,34 @@ describe("buildPluginBatchSection", () => {
     expect(out).toMatch(/\necho body\nKASTELL_PLUGIN_CHECK_EOF/);
     // no indented closing tag
     expect(out).not.toMatch(/[ \t]+KASTELL_PLUGIN_CHECK_EOF/);
+  });
+
+  it("excludes mutating checks from plugin batch heredoc", () => {
+    const reg = new Map<string, PluginRegistryEntry>();
+    reg.set(
+      "kastell-plugin-wp",
+      makeEntry("kastell-plugin-wp", [
+        check("WP-READ", "echo read"),
+        check("WP-LOCAL", "systemctl restart nginx", "mutate-local"),
+        check("WP-GLOBAL", "hcloud firewall apply-to-resource", "mutate-global"),
+      ]),
+    );
+
+    const out = buildPluginBatchSection(reg)!;
+    expect(out).toContain("PLUGIN:kastell-plugin-wp:WP-READ");
+    expect(out).toContain("echo read");
+    expect(out).not.toContain("WP-LOCAL");
+    expect(out).not.toContain("WP-GLOBAL");
+    expect(out).not.toContain("systemctl restart nginx");
+  });
+
+  it("returns null when loaded plugins only have mutating checks", () => {
+    const reg = new Map<string, PluginRegistryEntry>();
+    reg.set("kastell-plugin-wp", makeEntry("kastell-plugin-wp", [
+      check("WP-LOCAL", "systemctl restart nginx", "mutate-local"),
+    ]));
+
+    expect(buildPluginBatchSection(reg)).toBeNull();
   });
 });
 

@@ -19,7 +19,7 @@ jest.mock("fs", () => {
 const makeManifest = (overrides?: Partial<PluginManifest>): PluginManifest => ({
   name: "kastell-plugin-test",
   version: "1.0.0",
-  apiVersion: "1",
+  apiVersion: "2",
   kastell: ">=2.0.0",
   capabilities: ["audit"],
   checkPrefix: "TST",
@@ -33,7 +33,7 @@ const makeCheck = (id: string): PluginCheck => ({
   category: "Test",
   severity: "warning",
   description: `Test check ${id}`,
-  checkCommand: "echo ok",
+  checkCommand: { kind: "read", cmd: "echo ok" },
 });
 
 beforeEach(() => {

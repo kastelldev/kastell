@@ -1,8 +1,9 @@
 import { spawnSync } from "child_process";
-import { appendFileSync, mkdirSync, readdirSync, statSync, unlinkSync } from "fs";
+import { appendFileSync, mkdirSync, readdirSync, statSync } from "fs";
 import { join } from "path";
 import { isWindows } from "../utils/platform.js";
 import { secureWriteFileSync } from "../utils/secureWrite.js";
+import { unlinkBestEffort } from "../utils/fsRetry.js";
 import {
   validateCronExpr,
   saveSchedule,
@@ -35,7 +36,7 @@ function updateCrontab(marker: string, newEntry?: string): { success: boolean; e
     }
     return { success: true };
   } finally {
-    try { unlinkSync(CRONTAB_TMP); } catch { /* already cleaned */ }
+    unlinkBestEffort(CRONTAB_TMP);
   }
 }
 
@@ -211,7 +212,7 @@ export function cleanOldScheduleLogs(): void {
       const filePath = join(SCHEDULE_LOGS_DIR, file);
       const { mtime } = statSync(filePath);
       if (mtime.getTime() < cutoff) {
-        unlinkSync(filePath);
+        unlinkBestEffort(filePath);
       }
     } catch (error) {
       // Skip files we can't stat/unlink

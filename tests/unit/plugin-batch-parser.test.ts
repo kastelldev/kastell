@@ -1,4 +1,7 @@
-import { parsePluginBatchOutput } from "../../src/core/audit/pluginAudit.js";
+import {
+  isMutatingPluginAuditCurrentValue,
+  parsePluginBatchOutput,
+} from "../../src/core/audit/pluginAudit.js";
 import type { PluginRegistryEntry } from "../../src/plugin/registry.js";
 import type { PluginManifest, PluginCheck, PluginFix } from "../../src/plugin/sdk/types.js";
 
@@ -10,7 +13,7 @@ function entry(
   const manifest: PluginManifest = {
     name,
     version: "1.0.0",
-    apiVersion: "1",
+    apiVersion: "2",
     kastell: "*",
     capabilities: fixes ? ["audit", "fix"] : ["audit"],
     checkPrefix: "WP",
@@ -29,7 +32,7 @@ function check(id: string, opts: Partial<PluginCheck> = {}): PluginCheck {
     name: id,
     severity: "warning",
     description: "",
-    checkCommand: "echo x",
+    checkCommand: { kind: "read", cmd: "echo x" },
     ...opts,
   };
 }
@@ -184,6 +187,32 @@ describe("parsePluginBatchOutput", () => {
     const stdout = "---SECTION:PLUGIN:kastell-plugin-wp:WP-001---\nok\n\n";
     const result = parsePluginBatchOutput(stdout, reg);
     expect(result[0].checks[0].currentValue).toBe("ok");
+  });
+
+  it("marks missing mutating check as not run by audit", () => {
+    const reg = new Map<string, PluginRegistryEntry>();
+    reg.set("kastell-plugin-wp", entry("kastell-plugin-wp", [
+      check("WP-READ", { passPattern: "^ok$" }),
+      check("WP-LOCAL", { checkCommand: { kind: "mutate-local", cmd: "systemctl restart nginx" } }),
+      check("WP-GLOBAL", { checkCommand: { kind: "mutate-global", cmd: "hcloud firewall apply-to-resource" } }),
+    ]));
+
+    const stdout = "---SECTION:PLUGIN:kastell-plugin-wp:WP-READ---\nok";
+    const result = parsePluginBatchOutput(stdout, reg);
+
+    expect(result[0].checks.find((c) => c.id === "WP-READ")?.passed).toBe(true);
+    expect(result[0].checks.find((c) => c.id === "WP-LOCAL")?.currentValue)
+      .toBe("Not run by kastell audit (mutating kind: mutate-local)");
+    expect(result[0].checks.find((c) => c.id === "WP-GLOBAL")?.currentValue)
+      .toBe("Not run by kastell audit (mutating kind: mutate-global)");
+  });
+
+  it("identifies mutating plugin audit not-run markers", () => {
+    expect(isMutatingPluginAuditCurrentValue("Not run by kastell audit (mutating kind: mutate-local)")).toBe(true);
+    expect(isMutatingPluginAuditCurrentValue("Not run by kastell audit (mutating kind: mutate-global)")).toBe(true);
+    expect(isMutatingPluginAuditCurrentValue("Unable to determine")).toBe(false);
+    expect(isMutatingPluginAuditCurrentValue("")).toBe(false);
+    expect(isMutatingPluginAuditCurrentValue("ok")).toBe(false);
   });
 
   // CQS-08 #6d: malformed header edge cases. Per spec skip rule — if these

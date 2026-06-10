@@ -1,6 +1,7 @@
-import { readFileSync, existsSync, copyFileSync, readdirSync, unlinkSync, renameSync } from "fs";
+import { readFileSync, existsSync, copyFileSync, readdirSync } from "fs";
 import { dirname, basename, join } from "path";
-import { secureWriteFileSync } from "../utils/secureWrite.js";
+import { atomicWriteFileSync } from "../utils/atomicWrite.js";
+import { unlinkBestEffort } from "../utils/fsRetry.js";
 import { SUPPORTED_PROVIDERS } from "../constants.js";
 
 const REQUIRED_FIELDS = ["id", "name", "provider", "ip", "region", "size", "createdAt"] as const;
@@ -137,15 +138,9 @@ export function repairConfig(filePath: string): RepairResult {
     recovered.push(entry);
   }
 
-  atomicWrite(filePath, JSON.stringify(recovered, null, 2));
+  atomicWriteFileSync(filePath, JSON.stringify(recovered, null, 2));
   pruneBackups(filePath);
   return { backupPath, recoveredCount: recovered.length, droppedCount, autoFixedCount };
-}
-
-function atomicWrite(filePath: string, content: string): void {
-  const tmpFile = filePath + ".tmp";
-  secureWriteFileSync(tmpFile, content);
-  renameSync(tmpFile, filePath);
 }
 
 function pruneBackups(filePath: string): void {
@@ -156,6 +151,6 @@ function pruneBackups(filePath: string): void {
     .sort();
   while (backups.length > MAX_BACKUPS) {
     const oldest = backups.shift()!;
-    try { unlinkSync(join(dir, oldest)); } catch { /* best-effort */ }
+    unlinkBestEffort(join(dir, oldest));
   }
 }

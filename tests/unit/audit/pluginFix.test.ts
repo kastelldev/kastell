@@ -35,7 +35,7 @@ function makeLoadedPlugin(
   const manifest: PluginManifest = {
     name,
     version: "1.0.0",
-    apiVersion: "1",
+    apiVersion: "2",
     kastell: "1",
     capabilities: ["audit"],
     checkPrefix: name.replace("kastell-plugin-", "").toUpperCase(),
@@ -48,7 +48,7 @@ function makeLoadedPlugin(
     category: "SSH",
     severity: "info" as const,
     description: "test",
-    checkCommand: `echo ${id}`,
+    checkCommand: { kind: "read", cmd: `echo ${id}` },
   }));
   return { manifest, checks };
 }

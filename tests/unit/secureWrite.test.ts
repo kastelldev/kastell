@@ -3,14 +3,16 @@ jest.mock("fs", () => {
   return {
     ...actual,
     writeFileSync: jest.fn(),
+    appendFileSync: jest.fn(),
     mkdirSync: jest.fn(),
     chmodSync: jest.fn(),
   };
 });
 
-import { writeFileSync, mkdirSync, chmodSync } from "fs";
+import { writeFileSync, appendFileSync, mkdirSync, chmodSync } from "fs";
 
 const mockedWriteFileSync = writeFileSync as jest.MockedFunction<typeof writeFileSync>;
+const mockedAppendFileSync = appendFileSync as jest.MockedFunction<typeof appendFileSync>;
 const mockedMkdirSync = mkdirSync as jest.MockedFunction<typeof mkdirSync>;
 const mockedChmodSync = chmodSync as jest.MockedFunction<typeof chmodSync>;
 
@@ -21,6 +23,7 @@ async function loadModule() {
   jest.clearAllMocks();
   jest.doMock("fs", () => ({
     writeFileSync: mockedWriteFileSync,
+    appendFileSync: mockedAppendFileSync,
     mkdirSync: mockedMkdirSync,
     chmodSync: mockedChmodSync,
   }));
@@ -32,6 +35,7 @@ beforeEach(async () => {
   jest.resetModules();
   jest.clearAllMocks();
   mockedWriteFileSync.mockReturnValue(undefined);
+  mockedAppendFileSync.mockReturnValue(undefined);
   mockedMkdirSync.mockReturnValue(undefined);
   mockedChmodSync.mockReturnValue(undefined);
   const { clearCache } = await import("../../src/utils/secureWrite");
@@ -150,6 +154,62 @@ describe("secureWriteFileSync", () => {
 
       expect(() => secureWriteFileSync("/home/testuser/file.txt", "data")).toThrow("chmod failed");
     });
+  });
+});
+
+// ─── secureAppendFileSync ─────────────────────────────────────────────────────
+
+describe("secureAppendFileSync", () => {
+  it("should call appendFileSync with 0o600 mode set on create", async () => {
+    await loadModule();
+    const { secureAppendFileSync } = secureWriteModule;
+
+    secureAppendFileSync("/path/to/file.txt", "appended content");
+
+    expect(mockedAppendFileSync).toHaveBeenCalledWith(
+      "/path/to/file.txt",
+      "appended content",
+      { mode: 0o600 },
+    );
+    // Hot path: NO chmodSync syscall — mode is set by the kernel on create
+    expect(mockedChmodSync).not.toHaveBeenCalled();
+  });
+
+  it("should merge user options with create-time mode", async () => {
+    await loadModule();
+    const { secureAppendFileSync } = secureWriteModule;
+    const opts = { encoding: "utf8" as const };
+
+    secureAppendFileSync("/path/to/file.txt", "appended content", opts);
+
+    expect(mockedAppendFileSync).toHaveBeenCalledWith(
+      "/path/to/file.txt",
+      "appended content",
+      { encoding: "utf8", mode: 0o600 },
+    );
+  });
+
+  it("should propagate error when appendFileSync throws", async () => {
+    await loadModule();
+    const { secureAppendFileSync } = secureWriteModule;
+
+    mockedAppendFileSync.mockImplementationOnce(() => {
+      throw new Error("disk full");
+    });
+
+    expect(() => secureAppendFileSync("/var/log/file.log", "x")).toThrow("disk full");
+  });
+
+  it("should not call chmodSync on win32 (no-op for POSIX perms)", async () => {
+    await loadModule();
+    const { secureAppendFileSync } = secureWriteModule;
+
+    Object.defineProperty(process, "platform", { value: "win32", configurable: true });
+    mockedChmodSync.mockClear();
+
+    secureAppendFileSync("C:\\Users\\testuser\\file.log", "appended line");
+
+    expect(mockedChmodSync).not.toHaveBeenCalled();
   });
 });
 

@@ -1,6 +1,7 @@
-import { readFileSync, existsSync, renameSync, readdirSync, unlinkSync } from "fs";
+import { readFileSync, existsSync, readdirSync, unlinkSync } from "fs";
 import { join } from "path";
-import { secureMkdirSync, secureWriteFileSync } from "../../utils/secureWrite.js";
+import { secureMkdirSync } from "../../utils/secureWrite.js";
+import { atomicWriteFileSync } from "../../utils/atomicWrite.js";
 import { KASTELL_DIR } from "../../utils/paths.js";
 import { withFileLock } from "../../utils/fileLock.js";
 import { formatRelativeTime } from "../../utils/dates.js";
@@ -62,9 +63,7 @@ export async function saveBaseline(
     };
 
     secureMkdirSync(REGRESSION_DIR, { recursive: true });
-    const tmpFile = filePath + ".tmp";
-    secureWriteFileSync(tmpFile, JSON.stringify(baseline, null, 2), { encoding: "utf-8" });
-    renameSync(tmpFile, filePath);
+    atomicWriteFileSync(filePath, JSON.stringify(baseline, null, 2), { encoding: "utf-8" });
   });
 }
 

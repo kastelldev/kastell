@@ -15,76 +15,74 @@ describe("executePluginChecks concurrency", () => {
 
   afterEach(() => {
     delete process.env.PLUGIN_AUDIT_TIMEOUT_MS;
-    jest.restoreAllMocks();
+    jest.resetAllMocks();
   });
 
-  test("runs max 3 checks concurrently by default", async () => {
+  test("read checks use default cap", async () => {
     let capturedConcurrency = 0;
     const checks = Array.from({ length: 6 }, (_, i) => ({
-      id: `c${i}`, name: `check${i}`, category: "test", severity: "info" as const,
-      description: "test", checkCommand: "echo",
+      id: `c${i}`,
+      name: `check${i}`,
+      category: "test",
+      severity: "info" as const,
+      description: "test",
+      checkCommand: { kind: "read" as const, cmd: "echo" },
     }));
-
-    const ssh = jest.fn(async () => {
-      await new Promise(r => setTimeout(r, 10));
-      return { stdout: "ok", stderr: "", code: 0 };
-    });
+    const ssh = jest.fn(async () => ({ stdout: "ok", stderr: "", code: 0 }));
 
     mockChunkConcurrent.mockImplementation(async (items: unknown[], concurrency: number) => {
       capturedConcurrency = concurrency;
       return items.map(() => ({ checkId: "x", status: "pass" as const }));
     });
 
-    const result = await executePluginChecks(checks, { ssh, manifest: {} });
+    const result = await executePluginChecks(checks, { ssh });
 
     expect(capturedConcurrency).toBe(3);
     expect(result.results).toHaveLength(6);
   });
 
-  test("safeToParallel: false → cap=1", async () => {
-    const checks = [{ id: "c0", name: "check0", category: "test", severity: "info" as const, description: "test", checkCommand: "echo" }];
+  test("mutate-local check forces cap=1", async () => {
+    const checks = [
+      { id: "c0", name: "check0", category: "test", severity: "info" as const, description: "test", checkCommand: { kind: "mutate-local" as const, cmd: "systemctl restart nginx" } },
+    ];
     const ssh = jest.fn(async () => ({ stdout: "ok", stderr: "", code: 0 }));
-
     mockChunkConcurrent.mockImplementation(async () => []);
 
-    await executePluginChecks(checks, { ssh, manifest: { safeToParallel: false } });
+    await executePluginChecks(checks, { ssh });
 
     expect(mockChunkConcurrent).toHaveBeenCalledWith(expect.any(Array), 1, expect.any(Function));
   });
 
-  // C4: mutates: true is the preferred positive-polarity form, replacing
-  // the inverted safeToParallel: false. Both fields are accepted; mutates
-  // takes precedence when both are set.
-  test("mutates: true → cap=1 (C4 preferred form)", async () => {
-    const checks = [{ id: "c0", name: "check0", category: "test", severity: "info" as const, description: "test", checkCommand: "echo" }];
+  test("mutate-global check forces cap=1", async () => {
+    const checks = [
+      { id: "c0", name: "check0", category: "test", severity: "info" as const, description: "test", checkCommand: { kind: "mutate-global" as const, cmd: "hcloud firewall apply-to-resource" } },
+    ];
     const ssh = jest.fn(async () => ({ stdout: "ok", stderr: "", code: 0 }));
-
     mockChunkConcurrent.mockImplementation(async () => []);
 
-    await executePluginChecks(checks, { ssh, manifest: { mutates: true } });
+    await executePluginChecks(checks, { ssh });
 
     expect(mockChunkConcurrent).toHaveBeenCalledWith(expect.any(Array), 1, expect.any(Function));
   });
 
-  test("mutates: false → default cap (read-only, safe to parallelize)", async () => {
-    let capturedConcurrency = 0;
-    const checks = [{ id: "c0", name: "check0", category: "test", severity: "info" as const, description: "test", checkCommand: "echo" }];
-    const ssh = jest.fn(async () => ({ stdout: "ok", stderr: "", code: 0 }));
+  test("passes checkCommand.cmd to ssh", async () => {
+    const checks = [
+      { id: "c0", name: "check0", category: "test", severity: "info" as const, description: "test", checkCommand: { kind: "read" as const, cmd: "echo exact" } },
+    ];
+    const ssh: jest.Mock = jest.fn(async () => ({ stdout: "ok", stderr: "", code: 0 }));
+    mockChunkConcurrent.mockImplementation(async (items: unknown[], _concurrency: number, worker: (item: unknown) => Promise<unknown>) =>
+      Promise.all(items.map(worker)),
+    );
 
-    mockChunkConcurrent.mockImplementation(async (items: unknown[], concurrency: number) => {
-      capturedConcurrency = concurrency;
-      return items.map(() => ({ checkId: "x", status: "pass" as const }));
-    });
+    await executePluginChecks(checks, { ssh });
 
-    await executePluginChecks(checks, { ssh, manifest: { mutates: false } });
-
-    expect(capturedConcurrency).toBeGreaterThan(1);
+    expect(ssh).toHaveBeenCalledWith("echo exact", expect.objectContaining({ timeoutMs: 15000 }));
   });
 
   test("partial failure — error results returned with error status", async () => {
     const checks = [
-      { id: "ok-1", name: "ok", category: "test", severity: "info" as const, description: "test", checkCommand: "echo" },
-      { id: "fail-1", name: "fail", category: "test", severity: "info" as const, description: "test", checkCommand: "false" },
+      { id: "ok-1", name: "ok", category: "test", severity: "info" as const, description: "test", checkCommand: { kind: "read" as const, cmd: "echo" } },
+      { id: "fail-1", name: "fail", category: "test", severity: "info" as const, description: "test", checkCommand: { kind: "read" as const, cmd: "false" } },
     ];
     const ssh = jest.fn(async (_cmd: string) => {
       if (_cmd.includes("false")) return { stdout: "", stderr: "command failed", code: 1 };
@@ -92,13 +90,13 @@ describe("executePluginChecks concurrency", () => {
     });
 
     mockChunkConcurrent.mockImplementation(async (items: unknown[]) => {
-      return (items as Array<{ id: string; checkCommand: string }>).map((item) => ({
+      return (items as Array<{ id: string; checkCommand: { cmd: string } }>).map((item) => ({
         checkId: item.id,
-        status: item.checkCommand.includes("false") ? "error" as const : "pass" as const,
+        status: item.checkCommand.cmd.includes("false") ? "error" as const : "pass" as const,
       }));
     });
 
-    const result = await executePluginChecks(checks, { ssh, manifest: {} });
+    const result = await executePluginChecks(checks, { ssh });
 
     expect(result.results.find(r => r.checkId === "ok-1")?.status).toBe("pass");
     expect(result.results.find(r => r.checkId === "fail-1")?.status).toBe("error");
@@ -106,14 +104,14 @@ describe("executePluginChecks concurrency", () => {
 
   test("clearTimeout called on success (no leaked timer handle)", async () => {
     const clearTimeoutSpy = jest.spyOn(global, "clearTimeout");
-    const checks = [{ id: "c0", name: "check0", category: "test", severity: "info" as const, description: "test", checkCommand: "echo" }];
+    const checks = [{ id: "c0", name: "check0", category: "test", severity: "info" as const, description: "test", checkCommand: { kind: "read" as const, cmd: "echo" } }];
     const ssh = jest.fn(async () => ({ stdout: "ok", stderr: "", code: 0 }));
 
     mockChunkConcurrent.mockImplementation(async () => [
       { checkId: "c0", status: "pass" as const },
     ]);
 
-    await executePluginChecks(checks, { ssh, manifest: {} });
+    await executePluginChecks(checks, { ssh });
 
     expect(clearTimeoutSpy).toHaveBeenCalled();
     clearTimeoutSpy.mockRestore();
@@ -123,10 +121,9 @@ describe("executePluginChecks concurrency", () => {
     jest.useFakeTimers();
     try {
       const checks = [
-        { id: "slow-1", name: "slow", category: "test", severity: "info" as const, description: "test", checkCommand: "sleep 999" },
-        { id: "slow-2", name: "slow", category: "test", severity: "info" as const, description: "test", checkCommand: "sleep 999" },
+        { id: "slow-1", name: "slow", category: "test", severity: "info" as const, description: "test", checkCommand: { kind: "read" as const, cmd: "sleep 999" } },
+        { id: "slow-2", name: "slow", category: "test", severity: "info" as const, description: "test", checkCommand: { kind: "read" as const, cmd: "sleep 999" } },
       ];
-      // ssh is signal-aware: rejects when AbortController fires
       const capturedSignals: AbortSignal[] = [];
       const wrappedSsh = (_cmd: string, opts?: { signal?: AbortSignal }): Promise<{ stdout: string; stderr: string; code: number }> => {
         const signal = opts?.signal;
@@ -146,19 +143,16 @@ describe("executePluginChecks concurrency", () => {
         return out;
       });
 
-      const promise = executePluginChecks(checks, { ssh: wrappedSsh, manifest: {} });
-      // Yield so runCheck captures signal before timers fire
+      const promise = executePluginChecks(checks, { ssh: wrappedSsh });
       await Promise.resolve();
       await Promise.resolve();
 
-      // Fire all pending timers (LESSONS: use runAllTimersAsync, not advanceTimersByTime)
       await jest.runAllTimersAsync();
 
       const result = await promise;
 
       expect(capturedSignals.length).toBeGreaterThan(0);
       expect(capturedSignals[0].aborted).toBe(true);
-      // All checks should be marked as timeout once signal aborts
       expect(result.results.every(r => r.status === "timeout")).toBe(true);
     } finally {
       jest.useRealTimers();

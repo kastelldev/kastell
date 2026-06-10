@@ -20,15 +20,15 @@ describe("server_plugin list", () => {
       {
         name: "kastell-plugin-auditor",
         version: "1.0.0",
-        apiVersion: "1",
+        apiVersion: "2",
         kastell: "*",
         capabilities: ["audit"],
         checkPrefix: "AUD",
         entry: "./index.js",
       },
       [
-        { id: "AUD-001", name: "Check One", description: "Test", severity: "info" as const, category: "test", checkCommand: "echo test" },
-        { id: "AUD-002", name: "Check Two", description: "Test", severity: "warning" as const, category: "test", checkCommand: "echo test" },
+        { id: "AUD-001", name: "Check One", description: "Test", severity: "info" as const, category: "test", checkCommand: { kind: "read", cmd: "echo test" } },
+        { id: "AUD-002", name: "Check Two", description: "Test", severity: "warning" as const, category: "test", checkCommand: { kind: "read", cmd: "echo test" } },
       ],
     );
 
@@ -56,13 +56,13 @@ describe("server_plugin list", () => {
       {
         name: "kastell-plugin-wordpress",
         version: "2.0.0",
-        apiVersion: "1",
+        apiVersion: "2",
         kastell: "*",
         capabilities: ["audit"],
         checkPrefix: "WP",
         entry: "./index.js",
       },
-      [{ id: "WP-001", name: "WordPress Check", description: "Test", severity: "info" as const, category: "test", checkCommand: "echo test" }],
+      [{ id: "WP-001", name: "WordPress Check", description: "Test", severity: "info" as const, category: "test", checkCommand: { kind: "read", cmd: "echo test" } }],
     );
 
     const result = await handleServerPlugin({ action: "list" });

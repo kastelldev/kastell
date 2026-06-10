@@ -1,10 +1,28 @@
 import { mkdirSync, rmSync, statSync, writeFileSync, readFileSync } from "fs";
 import { dirname, join } from "path";
 import { hostname } from "os";
+import { DEFAULT_PERMISSION_RETRY_ATTEMPTS, DEFAULT_PERMISSION_RETRY_DELAY_MS, retryOnPermission } from "./fsRetry.js";
 
 const STALE_THRESHOLD_MS = 30_000;
 // Reclaim even when probeProcess reports "alive" (guards against clock drift, zombies, PID reuse).
 const HARD_CEILING_MS = 60_000;
+
+/**
+ * Best-effort lock directory removal that retries on transient EPERM/EACCES
+ * (common on Windows when antivirus or file-scanner holds a brief handle).
+ * Returns true if removal eventually succeeded, false otherwise.
+ */
+function removeLockDirBestEffort(lockDir: string): boolean {
+  try {
+    retryOnPermission(() => rmSync(lockDir, { recursive: true, force: true }), {
+      attempts: DEFAULT_PERMISSION_RETRY_ATTEMPTS,
+      delayMs: DEFAULT_PERMISSION_RETRY_DELAY_MS,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /** Module-local wrapper for testability — DO NOT inline `process.kill`. */
 export function probeProcess(pid: number): "alive" | "dead" | "unknown" {
@@ -85,7 +103,7 @@ export async function withFileLock<T>(
         return await fn();
       } finally {
         try {
-          rmSync(lockDir, { recursive: true, force: true });
+          removeLockDirBestEffort(lockDir);
         } catch {
           /* best effort */
         }
@@ -93,11 +111,10 @@ export async function withFileLock<T>(
     } catch (err: unknown) {
       if ((err as NodeJS.ErrnoException).code === "EEXIST") {
         if (shouldReclaimStaleLock(lockDir, probe)) {
-          try {
-            rmSync(lockDir, { recursive: true, force: true });
-          } catch {
-            /* best effort, retry */
+          if (removeLockDirBestEffort(lockDir)) {
+            continue;
           }
+          await new Promise((r) => setTimeout(r, retryDelay));
           continue;
         }
         await new Promise((r) => setTimeout(r, retryDelay));

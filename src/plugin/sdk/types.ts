@@ -1,9 +1,13 @@
 import type { Severity, FixTier } from "../../types/severity.js";
+import type { PluginApiVersion } from "./constants.js";
 
 export type PluginCapability = "audit" | "command" | "mcp-tool" | "fix";
 
 export type PluginSeverity = Severity;
 export type PluginFixTier = FixTier;
+
+export const PLUGIN_CHECK_COMMAND_KINDS = ["read", "mutate-local", "mutate-global"] as const;
+export type PluginCheckCommandKind = (typeof PLUGIN_CHECK_COMMAND_KINDS)[number];
 
 export interface PluginCommand {
   name: string;
@@ -42,31 +46,19 @@ export interface PluginFix {
   backupPaths?: string[];
 }
 
+export type PluginCheckCommand =
+  | { kind: "read"; cmd: string }
+  | { kind: "mutate-local"; cmd: string }
+  | { kind: "mutate-global"; cmd: string };
+
 export interface PluginManifest {
   name: string;
   version: string;
-  apiVersion: string;
+  apiVersion: PluginApiVersion;
   kastell: string;
   capabilities: PluginCapability[];
   checkPrefix: string;
   entry: string;
-  /**
-   * Set to true to declare this plugin's checkCommand mutates system state
-   * (e.g. rm, systemctl restart, > redirection). When true, audit forces
-   * cap=1 (sequential) execution to avoid races. Default false (read-only,
-   * safe to parallelize).
-   *
-   * Preferred over the legacy `safeToParallel: false` flag — see
-   * altitude A9 in CQS-low-clean design. Both fields are accepted;
-   * `mutates` takes precedence when both are set.
-   */
-  mutates?: boolean;
-  /**
-   * @deprecated Use `mutates: true` instead. Inverted polarity was a
-   * frequent footgun (altitude A9). Kept for back-compat with existing
-   * plugin manifests.
-   */
-  safeToParallel?: boolean;
   commands?: PluginCommand[];
   mcpTools?: PluginMcpTool[];
   fixes?: PluginFix[];
@@ -78,7 +70,7 @@ export interface PluginCheck {
   category: string;
   severity: PluginSeverity;
   description: string;
-  checkCommand: string;
+  checkCommand: PluginCheckCommand;
   passPattern?: string;
   failPattern?: string;
   fixCommand?: string;

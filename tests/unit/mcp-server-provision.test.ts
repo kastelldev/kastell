@@ -65,6 +65,7 @@ beforeEach(() => {
   mockedProviderFactory.createProviderWithToken.mockReturnValue(mockProvider);
   mockedTokens.getProviderToken.mockReturnValue("test-token-123");
   mockedSsh.assertValidIp.mockImplementation(() => {});
+  mockedSsh.sshExec.mockResolvedValue({ code: 0, stdout: "ok\n", stderr: "" });
   mockedSshKey.findLocalSshKey.mockReturnValue("ssh-ed25519 AAAA test@kastell");
   mockedSshKey.getSshKeyName.mockReturnValue("kastell-1234567890");
 

@@ -6,13 +6,18 @@ import type { PluginSeverity } from "../../src/plugin/sdk/types.js";
 describe("executePluginChecks parallel", () => {
   afterEach(() => {
     delete process.env.PLUGIN_AUDIT_PARALLELISM;
-    jest.restoreAllMocks();
+    jest.resetAllMocks();
   });
 
-  function makeCheck(i: number) {
+  function makeCheck(i: number, kind: "read" | "mutate-local" | "mutate-global" = "read") {
     return {
-      id: `c${i}`, checkCommand: `cmd${i}`, name: `c${i}`, severity: "warning" as PluginSeverity,
-      fixCommand: "", category: "test", description: "test",
+      id: `c${i}`,
+      checkCommand: { kind, cmd: `cmd${i}` },
+      name: `c${i}`,
+      severity: "warning" as PluginSeverity,
+      fixCommand: "",
+      category: "test",
+      description: "test",
     };
   }
 
@@ -28,7 +33,7 @@ describe("executePluginChecks parallel", () => {
 
     const checks = Array.from({ length: 10 }, (_, i) => makeCheck(i));
 
-    const result = await executePluginChecks(checks, { ssh, manifest: { name: "test", version: "1.0.0" } });
+    const result = await executePluginChecks(checks, { ssh });
 
     expect(peak).toBeLessThanOrEqual(3);
     expect(ssh).toHaveBeenCalledTimes(10);
@@ -44,13 +49,13 @@ describe("executePluginChecks parallel", () => {
 
     const checks = [makeCheck(0), makeCheck(1), makeCheck(2)];
 
-    const result = await executePluginChecks(checks, { ssh, manifest: { name: "test", version: "1.0.0" } });
+    const result = await executePluginChecks(checks, { ssh });
 
     expect(result.results.filter((r: CheckResult) => r.status === "pass")).toHaveLength(2);
     expect(result.results.filter((r: CheckResult) => r.status === "error")).toHaveLength(1);
   });
 
-  it("safeToParallel: false → sequential (cap=1)", async () => {
+  it("mutating check → sequential (cap=1)", async () => {
     let active = 0, peak = 0;
     const ssh = jest.fn(async () => {
       active++;
@@ -60,10 +65,10 @@ describe("executePluginChecks parallel", () => {
       return { stdout: "ok", stderr: "", code: 0 };
     });
 
-    const checks = Array.from({ length: 5 }, (_, i) => makeCheck(i));
+    const checks = [makeCheck(0), makeCheck(1, "mutate-local"), makeCheck(2), makeCheck(3), makeCheck(4)];
 
-    await executePluginChecks(checks, { ssh, manifest: { name: "test", version: "1.0.0", safeToParallel: false } });
+    await executePluginChecks(checks, { ssh });
 
-    expect(peak).toBe(1); // sequential
+    expect(peak).toBe(1);
   });
 });

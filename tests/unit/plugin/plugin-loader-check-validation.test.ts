@@ -52,9 +52,9 @@ describe("loadPlugins — check validation", () => {
     mockReadFileSync.mockImplementation((p) => {
       const s = String(p);
       if (s.includes("kastell-plugin.json")) {
-        return JSON.stringify({ name: "kastell-plugin-badid", version: "1.0.0", apiVersion: "1", kastell: "*", capabilities: ["audit"], checkPrefix: "BAD", entry: "./index.js" });
+        return JSON.stringify({ name: "kastell-plugin-badid", version: "1.0.0", apiVersion: "2", kastell: "*", capabilities: ["audit"], checkPrefix: "BAD", entry: "./index.js" });
       }
-      return `module.exports = { checks: ${JSON.stringify([{ id: "BAD;rm", category: "X", name: "n", severity: "info", checkCommand: "echo x" }])} };`;
+      return `module.exports = { checks: ${JSON.stringify([{ id: "BAD;rm", category: "X", name: "n", severity: "info", checkCommand: { kind: "read", cmd: "echo x" } }])} };`;
     });
 
     const { loadPlugins } = await import("../../../src/plugin/loader.js");
@@ -97,7 +97,7 @@ describe("loadPlugins — check validation", () => {
     mockReadFileSync.mockImplementation((p) => {
       const s = String(p);
       if (s.includes("kastell-plugin.json")) {
-        return JSON.stringify({ name: "kastell-plugin-noarray", version: "1.0.0", apiVersion: "1", kastell: "*", capabilities: ["audit"], checkPrefix: "NA", entry: "./index.js" });
+        return JSON.stringify({ name: "kastell-plugin-noarray", version: "1.0.0", apiVersion: "2", kastell: "*", capabilities: ["audit"], checkPrefix: "NA", entry: "./index.js" });
       }
       return `module.exports = { checks: "not-an-array" };`;
     });

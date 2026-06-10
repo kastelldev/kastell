@@ -1,10 +1,11 @@
-import { readFileSync, renameSync } from "fs";
+import { readFileSync } from "fs";
 import { join } from "path";
 import type { ServerRecord } from "../types/index.js";
 import { withFileLock } from "./fileLock.js";
 import { KASTELL_DIR } from "./paths.js";
 import { SUPPORTED_PROVIDERS } from "../constants.js";
-import { secureMkdirSync, secureWriteFileSync } from "./secureWrite.js";
+import { secureMkdirSync } from "./secureWrite.js";
+import { atomicWriteFileSync } from "./atomicWrite.js";
 import { memoizeOnStat, type MemoizedEntry } from "./fsMtime.js";
 
 const SERVERS_FILE = join(KASTELL_DIR, "servers.json");
@@ -26,9 +27,7 @@ function ensureConfigDir(): void {
 
 /** Atomic write: write to tmp file, then rename to prevent corruption on crash */
 export function atomicWriteServers(servers: ServerRecord[]): void {
-  const tmpFile = SERVERS_FILE + ".tmp";
-  secureWriteFileSync(tmpFile, JSON.stringify(servers, null, 2));
-  renameSync(tmpFile, SERVERS_FILE);
+  atomicWriteFileSync(SERVERS_FILE, JSON.stringify(servers, null, 2));
 }
 
 const serversCache: Map<string, MemoizedEntry<ServerRecord[]>> = new Map();

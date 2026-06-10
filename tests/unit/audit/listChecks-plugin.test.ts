@@ -7,7 +7,7 @@ describe("listAllChecks with plugins", () => {
   const manifest: PluginManifest = {
     name: "kastell-plugin-wp",
     version: "1.0.0",
-    apiVersion: "1",
+    apiVersion: "2",
     kastell: ">=2.0.0",
     capabilities: ["audit"] as PluginCapability[],
     checkPrefix: "WP",
@@ -21,7 +21,7 @@ describe("listAllChecks with plugins", () => {
       category: "WordPress",
       severity: "warning",
       description: "Check WP core updates",
-      checkCommand: "wp core check-update",
+      checkCommand: { kind: "read", cmd: "wp core check-update" },
       passPattern: "^$",
       explain: "WordPress core should be up to date",
     },

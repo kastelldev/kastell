@@ -8,13 +8,13 @@
 import {
   readFileSync,
   existsSync,
-  renameSync,
 } from "fs";
 import { join } from "path";
 import { z } from "zod";
 import { KASTELL_DIR } from "../../utils/paths.js";
 import { withFileLock } from "../../utils/fileLock.js";
-import { secureWriteFileSync, secureMkdirSync } from "../../utils/secureWrite.js";
+import { secureMkdirSync } from "../../utils/secureWrite.js";
+import { atomicWriteFileSync } from "../../utils/atomicWrite.js";
 import { MS_PER_DAY } from "../../utils/dates.js";
 import { memoizeOnStat, type MemoizedEntry } from "../../utils/fsMtime.js";
 import type {
@@ -216,9 +216,7 @@ export async function saveAuditHistory(result: AuditResult): Promise<void> {
     }
 
     // Write atomically via temp file + rename
-    const tmpFile = historyFile + ".tmp";
-    secureWriteFileSync(tmpFile, JSON.stringify(entries, null, 2), { encoding: "utf-8" });
-    renameSync(tmpFile, historyFile);
+    atomicWriteFileSync(historyFile, JSON.stringify(entries, null, 2), { encoding: "utf-8" });
   });
 }
 

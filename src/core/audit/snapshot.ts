@@ -8,11 +8,11 @@
 import {
   readFileSync,
   existsSync,
-  renameSync,
   readdirSync,
 } from "fs";
 import { join, resolve, sep } from "path";
 import { secureMkdirSync, secureWriteFileSync } from "../../utils/secureWrite.js";
+import { atomicWriteFileSync } from "../../utils/atomicWrite.js";
 import { z } from "zod";
 import { KASTELL_DIR } from "../../utils/paths.js";
 import { withFileLock } from "../../utils/fileLock.js";
@@ -236,9 +236,7 @@ export async function saveSnapshot(
       snapshotFile.name = sanitizedName;
     }
 
-    const tmpFile = filePath + ".tmp";
-    secureWriteFileSync(tmpFile, JSON.stringify(snapshotFile, null, 2), { encoding: "utf-8" });
-    renameSync(tmpFile, filePath);
+    atomicWriteFileSync(filePath, JSON.stringify(snapshotFile, null, 2), { encoding: "utf-8" });
 
     // Update index (locked to prevent concurrent audit race)
     await withIndexLock(result.serverIp, () => {

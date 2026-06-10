@@ -6,7 +6,7 @@ import type { PluginManifest, PluginCheck } from "../../src/plugin/sdk/types.js"
 describe("runAudit — plugin batch integration", () => {
   beforeEach(() => {
     clearPluginRegistry();
-    jest.restoreAllMocks();
+    jest.resetAllMocks();
   });
 
   afterEach(() => {
@@ -17,15 +17,15 @@ describe("runAudit — plugin batch integration", () => {
     const manifest: PluginManifest = {
       name: "kastell-plugin-test",
       version: "1.0.0",
-      apiVersion: "1",
+      apiVersion: "2",
       kastell: "*",
       capabilities: ["audit"],
       checkPrefix: "T",
       entry: "./index.js",
     };
     const checks: PluginCheck[] = [
-      { id: "T-001", category: "Test", name: "T1", severity: "warning", description: "", checkCommand: "echo ok", passPattern: "^ok$" },
-      { id: "T-002", category: "Test", name: "T2", severity: "info", description: "", checkCommand: "echo bad", passPattern: "^ok$" },
+      { id: "T-001", category: "Test", name: "T1", severity: "warning", description: "", checkCommand: { kind: "read", cmd: "echo ok" }, passPattern: "^ok$" },
+      { id: "T-002", category: "Test", name: "T2", severity: "info", description: "", checkCommand: { kind: "read", cmd: "echo bad" }, passPattern: "^ok$" },
     ];
     registerPlugin(manifest, checks);
   }
@@ -84,6 +84,138 @@ describe("runAudit — plugin batch integration", () => {
       expect(pluginCat!.checks.every((c) => c.currentValue === "Unable to determine")).toBe(true);
       // Warning still surfaces the failure reason
       expect(result.data.warnings && result.data.warnings.some((w: string) => w.includes("plugin batch"))).toBe(true);
+    }
+  });
+
+  it("surfaces mutating plugin checks as not run without executing plugin batch", async () => {
+    const manifest: PluginManifest = {
+      name: "kastell-plugin-test",
+      version: "1.0.0",
+      apiVersion: "2",
+      kastell: "*",
+      capabilities: ["audit"],
+      checkPrefix: "T",
+      entry: "./index.js",
+    };
+    const checks: PluginCheck[] = [
+      { id: "T-MUT", category: "Test", name: "Mutating", severity: "warning", description: "", checkCommand: { kind: "mutate-local", cmd: "systemctl restart nginx" } },
+    ];
+    registerPlugin(manifest, checks);
+    const spy = jest.spyOn(ssh, "sshExec").mockImplementation(async () => ({ stdout: "", stderr: "", code: 0 }));
+
+    const result = await runAudit("1.2.3.4", "test-server", "coolify");
+
+    expect(spy).toHaveBeenCalledTimes(3);
+    expect(result.success).toBe(true);
+    if (result.success && result.data) {
+      const pluginCat = result.data.categories.find((c) => c.name === "Plugin: test");
+      expect(pluginCat).toBeDefined();
+      expect(pluginCat!.connectionError).toBeUndefined();
+      expect(pluginCat!.checks[0].currentValue).toBe("Not run by kastell audit (mutating kind: mutate-local)");
+      expect(result.data.warnings).toContain("Plugin kastell-plugin-test check T-MUT is mutate-local and is not run by kastell audit");
+    }
+  });
+
+  it("plugin batch failure marks read checks connectionError while ignoring mutating not-run checks", async () => {
+    const manifest: PluginManifest = {
+      name: "kastell-plugin-test",
+      version: "1.0.0",
+      apiVersion: "2",
+      kastell: "*",
+      capabilities: ["audit"],
+      checkPrefix: "T",
+      entry: "./index.js",
+    };
+    const checks: PluginCheck[] = [
+      { id: "T-READ", category: "Test", name: "Read", severity: "warning", description: "", checkCommand: { kind: "read", cmd: "echo ok" }, passPattern: "^ok$" },
+      { id: "T-MUT", category: "Test", name: "Mutating", severity: "warning", description: "", checkCommand: { kind: "mutate-local", cmd: "systemctl restart nginx" } },
+    ];
+    registerPlugin(manifest, checks);
+    const spy = jest.spyOn(ssh, "sshExec").mockImplementation(async () => ({ stdout: "", stderr: "", code: 0 }));
+    spy.mockImplementationOnce(async () => ({ stdout: "", stderr: "", code: 0 }));
+    spy.mockImplementationOnce(async () => ({ stdout: "", stderr: "", code: 0 }));
+    spy.mockImplementationOnce(async () => ({ stdout: "", stderr: "", code: 0 }));
+    spy.mockImplementationOnce(async () => { throw new Error("ssh timeout"); });
+
+    const result = await runAudit("1.2.3.4", "test-server", "coolify");
+
+    expect(result.success).toBe(true);
+    if (result.success && result.data) {
+      const pluginCat = result.data.categories.find((c) => c.name === "Plugin: test");
+      expect(pluginCat).toBeDefined();
+      expect(pluginCat!.connectionError).toBe(true);
+      expect(pluginCat!.checks.find((c) => c.id === "T-MUT")?.currentValue)
+        .toBe("Not run by kastell audit (mutating kind: mutate-local)");
+    }
+  });
+
+  // Regression: all-mutating category must not be flagged as connectionError
+  // even when the batch fails — mutating-skip checks are excluded from the
+  // "all read undetermined" heuristic.
+  it("all-mutating plugin: connectionError NOT set when batch fails", async () => {
+    const manifest: PluginManifest = {
+      name: "kastell-plugin-mut",
+      version: "1.0.0",
+      apiVersion: "2",
+      kastell: "*",
+      capabilities: ["audit"],
+      checkPrefix: "M",
+      entry: "./index.js",
+    };
+    const checks: PluginCheck[] = [
+      { id: "M-LOCAL", category: "Test", name: "Local", severity: "warning", description: "", checkCommand: { kind: "mutate-local", cmd: "systemctl restart nginx" } },
+      { id: "M-GLOBAL", category: "Test", name: "Global", severity: "warning", description: "", checkCommand: { kind: "mutate-global", cmd: "iptables -F" } },
+    ];
+    registerPlugin(manifest, checks);
+    const spy = jest.spyOn(ssh, "sshExec").mockImplementation(async () => ({ stdout: "", stderr: "", code: 0 }));
+    spy.mockImplementationOnce(async () => ({ stdout: "", stderr: "", code: 0 })); // fast
+    spy.mockImplementationOnce(async () => ({ stdout: "", stderr: "", code: 0 })); // medium
+    spy.mockImplementationOnce(async () => ({ stdout: "", stderr: "", code: 0 })); // slow
+    spy.mockImplementationOnce(async () => { throw new Error("ssh timeout"); }); // plugin batch fails
+
+    const result = await runAudit("1.2.3.4", "test-server", "coolify");
+    expect(result.success).toBe(true);
+    if (result.success && result.data) {
+      const pluginCat = result.data.categories.find((c) => c.name === "Plugin: mut");
+      expect(pluginCat).toBeDefined();
+      expect(pluginCat!.connectionError).toBeUndefined();
+      expect(pluginCat!.checks).toHaveLength(2);
+      for (const c of pluginCat!.checks) {
+        expect(c.currentValue).toMatch(/^Not run by kastell audit \(mutating kind: /);
+      }
+    }
+  });
+
+  it("mixed read+mutating plugin: connectionError IS set when batch fails (read check undetermined)", async () => {
+    // Companion: mixed batch failure → read check is "Unable to determine",
+    // mutating check is the skip sentinel. The heuristic sees 1 read
+    // undetermined and flags connectionError=true.
+    const manifest: PluginManifest = {
+      name: "kastell-plugin-mix",
+      version: "1.0.0",
+      apiVersion: "2",
+      kastell: "*",
+      capabilities: ["audit"],
+      checkPrefix: "X",
+      entry: "./index.js",
+    };
+    const checks: PluginCheck[] = [
+      { id: "X-READ", category: "Test", name: "Read", severity: "warning", description: "", checkCommand: { kind: "read", cmd: "echo ok" }, passPattern: "^ok$" },
+      { id: "X-MUT", category: "Test", name: "Mut", severity: "warning", description: "", checkCommand: { kind: "mutate-local", cmd: "systemctl restart nginx" } },
+    ];
+    registerPlugin(manifest, checks);
+    const spy = jest.spyOn(ssh, "sshExec").mockImplementation(async () => ({ stdout: "", stderr: "", code: 0 }));
+    spy.mockImplementationOnce(async () => ({ stdout: "", stderr: "", code: 0 }));
+    spy.mockImplementationOnce(async () => ({ stdout: "", stderr: "", code: 0 }));
+    spy.mockImplementationOnce(async () => ({ stdout: "", stderr: "", code: 0 }));
+    spy.mockImplementationOnce(async () => { throw new Error("ssh timeout"); });
+
+    const result = await runAudit("1.2.3.4", "test-server", "coolify");
+    expect(result.success).toBe(true);
+    if (result.success && result.data) {
+      const pluginCat = result.data.categories.find((c) => c.name === "Plugin: mix");
+      expect(pluginCat).toBeDefined();
+      expect(pluginCat!.connectionError).toBe(true);
     }
   });
 });

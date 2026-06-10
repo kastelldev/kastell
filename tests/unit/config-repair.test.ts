@@ -1,5 +1,5 @@
 import { diagnoseConfig, repairConfig } from "../../src/core/configRepair.js";
-import { readFileSync, writeFileSync, mkdirSync, rmSync, readdirSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, rmSync, readdirSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 
@@ -106,6 +106,19 @@ describe("configRepair", () => {
 
       const repaired = JSON.parse(readFileSync(serversFile, "utf-8"));
       expect(repaired[0].mode).toBe("coolify");
+    });
+
+    it("should remove tmp file when repair writes through the atomic path", () => {
+      writeFileSync(serversFile, JSON.stringify([
+        { id: "s1", name: "legacy", provider: "hetzner", ip: "1.2.3.4", region: "nbg1", size: "cax11", createdAt: "2026-01-01" },
+      ]));
+
+      const result = repairConfig(serversFile);
+      const repaired = JSON.parse(readFileSync(serversFile, "utf-8"));
+
+      expect(result.recoveredCount).toBe(1);
+      expect(repaired[0].mode).toBe("coolify");
+      expect(existsSync(`${serversFile}.tmp`)).toBe(false);
     });
 
     it("drops entries with unknown provider", () => {

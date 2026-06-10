@@ -1,22 +1,49 @@
 jest.mock("../../../src/utils/version.js", () => ({ KASTELL_VERSION: "2.2.0" }));
 
-import type {
-  PluginManifest,
-  PluginCheck,
-  PluginSeverity,
-  PluginFixTier,
-  PluginContext,
-  PluginCommandHandler,
-  PluginMcpToolHandler,
-  PluginMcpTool,
+import {
+  PLUGIN_API_VERSION,
+  PLUGIN_NAME_PATTERN,
+} from "../../../src/plugin/sdk/constants.js";
+import {
+  PLUGIN_CHECK_COMMAND_KINDS,
+  type PluginManifest,
+  type PluginCheck,
+  type PluginCheckCommand,
+  type PluginSeverity,
+  type PluginFixTier,
+  type PluginContext,
+  type PluginCommandHandler,
+  type PluginMcpToolHandler,
+  type PluginMcpTool,
 } from "../../../src/plugin/sdk/types.js";
+
+describe("Plugin SDK constants", () => {
+  it("PLUGIN_API_VERSION is the v2 string", () => {
+    expect(PLUGIN_API_VERSION).toBe("2");
+  });
+
+  it("PLUGIN_CHECK_COMMAND_KINDS lists all 3 v2 kinds in declaration order", () => {
+    expect([...PLUGIN_CHECK_COMMAND_KINDS]).toEqual([
+      "read",
+      "mutate-local",
+      "mutate-global",
+    ]);
+  });
+
+  it("PLUGIN_NAME_PATTERN requires the kastell-plugin- prefix", () => {
+    expect(PLUGIN_NAME_PATTERN.test("kastell-plugin-wordpress")).toBe(true);
+    expect(PLUGIN_NAME_PATTERN.test("kastell-plugin-wp")).toBe(true);
+    expect(PLUGIN_NAME_PATTERN.test("wordpress")).toBe(false);
+    expect(PLUGIN_NAME_PATTERN.test("Kastell-Plugin-WP")).toBe(false);
+  });
+});
 
 describe("Plugin SDK Types", () => {
   it("PluginManifest accepts valid manifest with all 7 fields", () => {
     const manifest: PluginManifest = {
       name: "kastell-plugin-wordpress",
       version: "1.0.0",
-      apiVersion: "1",
+      apiVersion: "2",
       kastell: ">=2.2.0 <3.0.0",
       capabilities: ["audit"],
       checkPrefix: "WP",
@@ -33,7 +60,7 @@ describe("Plugin SDK Types", () => {
       category: "WordPress",
       severity: "warning",
       description: "WordPress core files should not be world-writable",
-      checkCommand: "find /var/www/html -type f -perm -002 | wc -l",
+      checkCommand: { kind: "read", cmd: "find /var/www/html -type f -perm -002 | wc -l" },
       passPattern: "^0$",
       failPattern: undefined,
       fixCommand: "find /var/www/html -type f -exec chmod 644 {} \\;",
@@ -43,6 +70,13 @@ describe("Plugin SDK Types", () => {
     };
     expect(check.id).toBe("WP-FILE-PERMS");
     expect(check.severity).toBe("warning");
+  });
+
+  it("PluginCheckCommand accepts all v2 command variants", () => {
+    const read: PluginCheckCommand = { kind: "read", cmd: "cat /etc/os-release" };
+    const local: PluginCheckCommand = { kind: "mutate-local", cmd: "systemctl restart nginx" };
+    const global: PluginCheckCommand = { kind: "mutate-global", cmd: "hcloud firewall apply-to-resource" };
+    expect([read.kind, local.kind, global.kind]).toEqual(["read", "mutate-local", "mutate-global"]);
   });
 
   it("PluginSeverity only allows critical | warning | info", () => {
@@ -66,7 +100,7 @@ describe("Plugin SDK Types", () => {
       category: "Auditor",
       severity: "info",
       description: "A minimal check",
-      checkCommand: "echo ok",
+      checkCommand: { kind: "read", cmd: "echo ok" },
     };
     expect(check.fixCommand).toBeUndefined();
     expect(check.explain).toBeUndefined();

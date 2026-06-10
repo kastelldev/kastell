@@ -5,10 +5,11 @@
  * handles I/O (SSH, file cache) and delegates to the pure functions.
  */
 
-import { readFileSync, existsSync, renameSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { KASTELL_DIR } from "../utils/paths.js";
-import { secureWriteFileSync, secureMkdirSync } from "../utils/secureWrite.js";
+import { secureMkdirSync } from "../utils/secureWrite.js";
+import { atomicWriteFileSync } from "../utils/atomicWrite.js";
 import { assertValidIp, sshExec } from "../utils/ssh.js";
 import { raw } from "../utils/sshCommand.js";
 import { MS_PER_DAY } from "../utils/dates.js";
@@ -82,9 +83,7 @@ export function saveMetricsHistory(serverIp: string, snapshots: MetricSnapshot[]
   if (!existsSync(dir)) {
     secureMkdirSync(dir);
   }
-  const tmpFile = filePath + ".tmp";
-  secureWriteFileSync(tmpFile, JSON.stringify(snapshots, null, 2), { encoding: "utf-8" });
-  renameSync(tmpFile, filePath);
+  atomicWriteFileSync(filePath, JSON.stringify(snapshots, null, 2), { encoding: "utf-8" });
 }
 
 // ─── Pure check functions ─────────────────────────────────────────────────────

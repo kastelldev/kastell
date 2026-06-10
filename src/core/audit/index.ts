@@ -16,7 +16,12 @@ import { calculateQuickWins } from "./quickwin.js";
 import { extractVpsType, applyVpsAdjustments } from "./vps.js";
 import { AUDIT_VERSION } from "../../constants.js";
 import { getPluginRegistry } from "../../plugin/registry.js";
-import { parsePluginBatchOutput } from "./pluginAudit.js";
+import {
+  getSkippedMutatingPluginWarnings,
+  hasLoadedPluginChecks,
+  isMutatingPluginAuditCurrentValue,
+  parsePluginBatchOutput,
+} from "./pluginAudit.js";
 
 /**
  * Detect categories where all checks have "not installed" or "N/A" currentValue.
@@ -79,24 +84,30 @@ export async function runAudit(
     const vpsType = extractVpsType(batchOutputs);
     const { categories: adjustedCategories, adjustedCount } = applyVpsAdjustments(categories, vpsType);
 
-    const pluginCategories = batches.length === 4
-      ? parsePluginBatchOutput(batchOutputs[3] ?? "", pluginRegistry)
+    const pluginCategories = hasLoadedPluginChecks(pluginRegistry)
+      ? parsePluginBatchOutput(batches.length === 4 ? batchOutputs[3] ?? "" : "", pluginRegistry)
       : [];
     for (const cat of pluginCategories) {
       adjustedCategories.push(cat);
     }
 
-    // Mark categories from failed batches as connectionError.
-    // Uses check-content heuristic (all checks "Unable to determine" or empty) rather than
-    // tier-to-category mapping because the batch→category relationship is N:M — one batch
-    // can produce checks across multiple categories. The batchErrors guard ensures this
-    // only triggers when an actual SSH batch failure occurred.
+    // Read checks that are "Unable to determine" or empty indicate the batch
+    // never ran. Mutating-skip checks are excluded since they are skipped by
+    // design, not because of a batch failure — an all-mutating category must
+    // not be flagged as connectionError even when the plugin batch failed.
     if (batchErrors.length > 0) {
       for (const cat of adjustedCategories) {
-        const allUndetermined = cat.checks.length > 0 && cat.checks.every(
-          (c) => !c.passed && (c.currentValue === "Unable to determine" || c.currentValue === ""),
-        );
-        if (allUndetermined) {
+        let hasReadCheck = false;
+        let allReadUndetermined = true;
+        for (const c of cat.checks) {
+          if (isMutatingPluginAuditCurrentValue(c.currentValue)) continue;
+          hasReadCheck = true;
+          if (c.passed || (c.currentValue !== "Unable to determine" && c.currentValue !== "")) {
+            allReadUndetermined = false;
+            break;
+          }
+        }
+        if (hasReadCheck && allReadUndetermined) {
           (cat as AuditCategory).connectionError = true;
         }
       }
@@ -116,9 +127,10 @@ export async function runAudit(
     const skippedCategories = detectSkippedCategories(finalCategories);
 
     // Build warnings from batch errors
-    const warnings: string[] = batchErrors.map(
-      (e) => `SSH ${e.tier} batch failed: ${e.error}`,
-    );
+    const warnings: string[] = [
+      ...batchErrors.map((e) => `SSH ${e.tier} batch failed: ${e.error}`),
+      ...getSkippedMutatingPluginWarnings(pluginRegistry),
+    ];
 
     const auditResult: AuditResult = {
       serverName,
