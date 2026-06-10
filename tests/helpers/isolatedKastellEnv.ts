@@ -1,6 +1,7 @@
-import { mkdtempSync, rmSync, writeFileSync } from "fs";
-import { tmpdir } from "os";
-import { join, resolve } from "path";
+import { spawnSync, type SpawnSyncReturns } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 
 import type { ServerRecord } from "../../src/types/index.js";
 
@@ -55,4 +56,14 @@ export async function importWithIsolatedKastellDir<T>(
       process.env.KASTELL_DIR = previous;
     }
   }
+}
+
+export function spawnKastell(
+  isolated: IsolatedKastellEnv,
+  args: string[],
+): SpawnSyncReturns<string> {
+  return spawnSync("node", [join(process.cwd(), "dist/index.js"), ...args], {
+    encoding: "utf8",
+    env: isolated.env,
+  });
 }
