@@ -29,11 +29,12 @@ import type { AuditFilter } from "../core/audit/filter.js";
 import { saveBaselineSafe, loadBaseline, checkRegression, formatRegressionSummary, extractPassedCheckIds, shouldUpdateBaseline } from "../core/audit/regression.js";
 import { loadDefaults } from "../core/defaults.js";
 import { AuditError } from "../core/audit/errors.js";
+import { markCommandFailed } from "../utils/exitCode.js";
 
-function printDiff(diff: AuditDiffResult, json?: boolean): void {
+function printDiff(diff: AuditDiffResult, json: boolean, machineOutput: boolean): void {
   console.log(json ? formatDiffJson(diff) : formatDiffTerminal(diff));
-  if (diff.regressions.length > 0) {
-    process.exitCode = 1;
+  if (diff.regressions.length > 0 && machineOutput) {
+    markCommandFailed();
   }
 }
 
@@ -73,7 +74,7 @@ export async function auditCommand(
   } catch (err) {
     if (err instanceof AuditError) {
       logger.error(err.message);
-      process.exitCode = 1;
+      markCommandFailed();
       return;
     }
     throw err;
@@ -92,8 +93,16 @@ async function auditCommandImpl(
     options.json = true;
   }
   const machineOutput = options.json === true || options.ci === true;
-  const machineDiagnostic = (message: string): void => {
-    process.stderr.write(`${message}\n`);
+  const logDiagnostic = (severity: "info" | "warning" | "success", message: string): void => {
+    if (machineOutput) {
+      process.stderr.write(`${message}\n`);
+    } else if (severity === "warning") {
+      logger.warning(message);
+    } else if (severity === "success") {
+      logger.success(message);
+    } else {
+      logger.info(message);
+    }
   };
 
   // --list-checks: static catalog display — no SSH connection needed
@@ -203,7 +212,7 @@ async function auditCommandImpl(
       before: beforeSnap.name ?? beforeRef,
       after: afterSnap.name ?? afterRef,
     });
-    printDiff(diff, options.json);
+    printDiff(diff, options.json ?? false, machineOutput);
     return;
   }
 
@@ -260,11 +269,7 @@ async function auditCommandImpl(
   if (!result.success || !result.data) {
     spinner?.fail(result.error ?? "Audit failed");
     if (result.hint) {
-      if (machineOutput) {
-        machineDiagnostic(result.hint);
-      } else {
-        logger.info(result.hint);
-      }
+      logDiagnostic("info", result.hint);
     }
     return;
   }
@@ -280,17 +285,9 @@ async function auditCommandImpl(
   // Save to history (after trend detection)
   await saveAuditHistory(auditResult);
   if (trend === "methodology-change") {
-    if (machineOutput) {
-      machineDiagnostic("Score methodology updated. New baseline established.");
-    } else {
-      logger.warning("Score methodology updated. New baseline established.");
-    }
+    logDiagnostic("warning", "Score methodology updated. New baseline established.");
   } else if (trend !== "first audit") {
-    if (machineOutput) {
-      machineDiagnostic(`Trend: ${trend}`);
-    } else {
-      logger.info(`Trend: ${trend}`);
-    }
+    logDiagnostic("info", `Trend: ${trend}`);
   }
 
   const baseline = loadBaseline(auditResult.serverIp);
@@ -307,13 +304,7 @@ async function auditCommandImpl(
 
   if (regression) {
     for (const line of formatRegressionSummary(regression)) {
-      if (machineOutput) {
-        machineDiagnostic(line.text);
-      } else if (line.severity === "warning") {
-        logger.warning(line.text);
-      } else {
-        logger.info(line.text);
-      }
+      logDiagnostic(line.severity, line.text);
     }
   }
 
@@ -378,15 +369,8 @@ async function auditCommandImpl(
     const detail = calculateComplianceDetail(auditResult.categories);
     const profileScore = detail.find((d) => d.framework === profileFramework);
     if (profileScore) {
-      if (machineOutput) {
-        machineDiagnostic(
-          `Profile ${options.profile}: ${profileScore.passedControls}/${profileScore.totalControls} controls (${profileScore.passRate}%)`,
-        );
-      } else {
-        logger.info(
-          `Profile ${options.profile}: ${profileScore.passedControls}/${profileScore.totalControls} controls (${profileScore.passRate}%)`,
-        );
-      }
+      const profileLine = `Profile ${options.profile}: ${profileScore.passedControls}/${profileScore.totalControls} controls (${profileScore.passRate}%)`;
+      logDiagnostic("info", profileLine);
     }
     return;
   }
@@ -395,11 +379,7 @@ async function auditCommandImpl(
   if (options.snapshot !== undefined) {
     const snapshotName = typeof options.snapshot === "string" ? options.snapshot : undefined;
     await saveSnapshot(auditResult, snapshotName);
-    if (machineOutput) {
-      machineDiagnostic(`Snapshot saved for ${name}`);
-    } else {
-      logger.success(`Snapshot saved for ${name}`);
-    }
+    logDiagnostic("success", `Snapshot saved for ${name}`);
   }
 
   // Apply display-only filter (AUX-01, AUX-02, AUX-03)
@@ -468,7 +448,7 @@ async function auditCommandImpl(
         throw new AuditError("--threshold must be a number");
       }
       if (auditResult.overallScore < threshold) {
-        process.exitCode = 1;
+        markCommandFailed();
         return;
       }
     }
@@ -500,7 +480,7 @@ async function auditCommandImpl(
       throw new AuditError("--threshold must be a number");
     }
     if (auditResult.overallScore < threshold) {
-      process.exitCode = 1;
+      markCommandFailed();
       return;
     }
   }

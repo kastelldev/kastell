@@ -1,4 +1,3 @@
-export function markCommandFailed(): false {
+export function markCommandFailed(): void {
   process.exitCode = 1;
-  return false;
 }

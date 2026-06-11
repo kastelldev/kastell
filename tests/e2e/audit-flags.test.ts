@@ -332,7 +332,11 @@ describe("audit machine-output stdout contract", () => {
 
     expect(process.exitCode).toBe(1);
     const stdout = captureStdout();
+    const stderr = stderrWrites.join("");
     expect(() => JSON.parse(stdout)).not.toThrow();
     expect(stdout).not.toMatch(/below threshold/i);
+    // Regression guard: a future change that re-introduces the threshold prose
+    // via stderr (e.g. machineDiagnostic) would be caught here.
+    expect(stderr).not.toMatch(/below threshold/i);
   });
 });

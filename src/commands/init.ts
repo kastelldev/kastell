@@ -15,6 +15,7 @@ import { mergeConfig } from "../utils/configMerge.js";
 import { getTemplate, getTemplateDefaults, VALID_TEMPLATE_NAMES } from "../utils/templates.js";
 import { SUPPORTED_PROVIDERS, PROVIDER_ENV_KEYS, invalidProviderError, PROVIDER_DISPLAY_NAMES } from "../constants.js";
 import { deployServer } from "../core/deploy.js";
+import { markCommandFailed } from "../utils/exitCode.js";
 import inquirer from "inquirer";
 import type { DefaultsConfig } from "../types/index.js";
 import { addServerRecord, validateIpAddress, validateServerName } from "../core/manage.js";
@@ -283,7 +284,7 @@ export async function initCommand(options: InitOptions = {}): Promise<void> {
     apiToken = Buffer.concat(chunks).toString().trim();
     if (!apiToken) {
       logger.error("No token received from stdin");
-      process.exitCode = 1;
+      markCommandFailed();
       return;
     }
     tokenSource = "stdin";

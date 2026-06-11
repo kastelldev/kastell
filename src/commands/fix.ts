@@ -5,6 +5,7 @@ import { severityChalk } from "../core/audit/formatters/shared.js";
 import { checkSshAvailable, sshExec } from "../utils/ssh.js";
 import { raw } from "../utils/sshCommand.js";
 import { logger, createSpinner } from "../utils/logger.js";
+import { markCommandFailed } from "../utils/exitCode.js";
 import { runAudit } from "../core/audit/index.js";
 import {
   previewSafeFixes,
@@ -108,7 +109,7 @@ export async function fixSafeCommand(
   // --dry-run requires --safe (F-012)
   if (options.dryRun && !options.safe) {
     logger.error("--dry-run requires --safe flag (e.g., 'kastell fix --safe --dry-run')");
-    process.exitCode = 1;
+    markCommandFailed();
     return;
   }
   // ── Rollback mutual exclusion (FIX-01, FIX-02) ───────────────────────────

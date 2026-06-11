@@ -13,10 +13,10 @@ describe("markCommandFailed", () => {
     exit.mockRestore();
   });
 
-  it("returns false for inline use in return statements", () => {
+  it("returns undefined (no value consumed by callers)", () => {
     const exit = jest.spyOn(process, "exit").mockImplementation((() => undefined) as never);
     const result = markCommandFailed();
-    expect(result).toBe(false);
+    expect(result).toBeUndefined();
     exit.mockRestore();
   });
 });
