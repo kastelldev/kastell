@@ -3,7 +3,6 @@ jest.mock("../../../src/utils/version.js", () => ({
 }));
 
 import { describe, it, expect, beforeEach, afterEach, jest } from "@jest/globals";
-import { clearPluginRegistry, getPluginRegistry } from "../../../src/plugin/registry.js";
 import { mkdtempSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
@@ -16,13 +15,14 @@ describe("loadPlugins — check validation", () => {
     tmpDir = mkdtempSync(join(tmpdir(), "kastell-plugin-test-"));
     originalEnv = process.env.KASTELL_DIR;
     process.env.KASTELL_DIR = tmpDir;
-    clearPluginRegistry();
+    jest.resetModules();
   });
 
   afterEach(() => {
     if (originalEnv === undefined) delete process.env.KASTELL_DIR;
     else process.env.KASTELL_DIR = originalEnv;
     jest.resetModules();
+    jest.dontMock("fs");
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
@@ -31,15 +31,27 @@ describe("loadPlugins — check validation", () => {
     const mockExistsSync = jest.fn();
     const mockReaddirSync = jest.fn();
     const mockReadFileSync = jest.fn();
+    const mockMkdirSync = jest.fn();
+    const mockWriteFileSync = jest.fn();
+    const mockRmSync = jest.fn();
+    const mockChmodSync = jest.fn();
 
     jest.doMock("fs", () => ({
       existsSync: mockExistsSync,
       readdirSync: mockReaddirSync,
       readFileSync: mockReadFileSync,
+      mkdirSync: mockMkdirSync,
+      writeFileSync: mockWriteFileSync,
+      rmSync: mockRmSync,
+      chmodSync: mockChmodSync,
       default: {
         existsSync: mockExistsSync,
         readdirSync: mockReaddirSync,
         readFileSync: mockReadFileSync,
+        mkdirSync: mockMkdirSync,
+        writeFileSync: mockWriteFileSync,
+        rmSync: mockRmSync,
+        chmodSync: mockChmodSync,
       },
     }));
 
@@ -58,6 +70,7 @@ describe("loadPlugins — check validation", () => {
     });
 
     const { loadPlugins } = await import("../../../src/plugin/loader.js");
+    const { getPluginRegistry } = await import("../../../src/plugin/registry.js");
     const result = await loadPlugins();
     expect(result.errors.length).toBe(1);
     const reg = getPluginRegistry();

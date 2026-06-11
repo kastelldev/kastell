@@ -289,6 +289,41 @@ describe("withFileLock", () => {
   });
 
   describe("lock diagnostics", () => {
+    it("acquires the lock when the final stale-lock reclaim succeeds", async () => {
+      const eexistError = Object.assign(new Error("EEXIST"), { code: "EEXIST" });
+      const epermError = Object.assign(new Error("EPERM"), { code: "EPERM" });
+      let mkdirCallCount = 0;
+      mockedFs.mkdirSync.mockImplementation(() => {
+        mkdirCallCount++;
+        if (mkdirCallCount === 1) return undefined;
+        if (mkdirCallCount <= 11) throw eexistError;
+        return undefined;
+      });
+      mockedFs.statSync.mockReturnValue({
+        mtimeMs: Date.now() - 35_000,
+      } as unknown as import("fs").Stats);
+      mockedFs.readFileSync.mockImplementation(() => {
+        throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+      });
+
+      let removalAttempt = 0;
+      mockedFs.rmSync.mockImplementation(() => {
+        removalAttempt++;
+        if (removalAttempt <= 30) throw epermError;
+        return undefined;
+      });
+
+      const fn = jest.fn().mockReturnValue("recovered");
+      const promise = withFileLock("/path/to/file.json", fn);
+
+      for (let i = 0; i < 10; i++) {
+        await jest.advanceTimersByTimeAsync(250);
+      }
+
+      await expect(promise).resolves.toBe("recovered");
+      expect(fn).toHaveBeenCalledTimes(1);
+    });
+
     it("throws enriched error with cause=EPERM when lock acquisition exhausts retries (old lock without owner.pid reclaimed)", async () => {
       const eexistError = Object.assign(new Error("EEXIST"), { code: "EEXIST" });
       const epermError = Object.assign(new Error("EPERM"), { code: "EPERM" });

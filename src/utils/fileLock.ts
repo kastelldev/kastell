@@ -221,27 +221,27 @@ export async function withFileLock<T>(
   // re-running statSync / readPidFile / probe (Reuse-F7, Efficiency-F2).
   let lastAssessment: LockAssessment | null = null;
 
+  const runWithAcquiredLock = async (): Promise<T> => {
+    try {
+      try {
+        writeFileSync(
+          join(lockDir, "owner.pid"),
+          `${process.pid}@${hostname()}@${Date.now()}`,
+          { encoding: "utf-8" },
+        );
+      } catch {
+        /* best effort — if PID write fails, mtime fallback still protects */
+      }
+      return await fn();
+    } finally {
+      removeLockDirBestEffort(lockDir);
+    }
+  };
+
   for (let i = 0; i < maxRetries; i++) {
     try {
       mkdirSync(lockDir);
-      try {
-        try {
-          writeFileSync(
-            join(lockDir, "owner.pid"),
-            `${process.pid}@${hostname()}@${Date.now()}`,
-            { encoding: "utf-8" },
-          );
-        } catch {
-          /* best effort — if PID write fails, mtime fallback still protects */
-        }
-        return await fn();
-      } finally {
-        try {
-          removeLockDirBestEffort(lockDir);
-        } catch {
-          /* best effort */
-        }
-      }
+      return await runWithAcquiredLock();
     } catch (err: unknown) {
       if ((err as NodeJS.ErrnoException).code === "EEXIST") {
         const assessment = assessLockState(lockDir, probe);
@@ -271,7 +271,17 @@ export async function withFileLock<T>(
   if (lastAssessment?.reclaimable) {
     reclaimAttempted = true;
     const removal = removeLockDirBestEffort(lockDir);
-    if (!removal.removed) {
+    if (removal.removed) {
+      try {
+        mkdirSync(lockDir);
+        return await runWithAcquiredLock();
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "EEXIST") {
+          throw error;
+        }
+        lastAssessment = assessLockState(lockDir, probe);
+      }
+    } else {
       lastReclaimError = removal.error;
       lastReclaimErrorCode = removal.errorCode;
     }

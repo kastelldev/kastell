@@ -283,4 +283,19 @@ describe("MCP SDK round-trip verification", () => {
     const parseResult = await safeParseAsync(normalized!, sc);
     expect(parseResult.success).toBe(true);
   });
+
+  it("should validate single bare serverInfo health through SDK safeParseAsync", async () => {
+    const response = mcpSuccess({
+      action: "health",
+      server: "bare-node",
+      ip: "9.10.11.12",
+      mode: "bare",
+      sshReachable: true,
+      suggested_actions: [{ command: "ssh root@9.10.11.12", reason: "Connect to your bare server" }],
+    });
+    const normalized = normalizeObjectSchema(serverInfoOutputSchema);
+    expect(normalized).toBeDefined();
+    const parseResult = await safeParseAsync(normalized!, response.structuredContent);
+    expect(parseResult.success).toBe(true);
+  });
 });
