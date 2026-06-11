@@ -29,11 +29,12 @@ import type { AuditFilter } from "../core/audit/filter.js";
 import { saveBaselineSafe, loadBaseline, checkRegression, formatRegressionSummary, extractPassedCheckIds, shouldUpdateBaseline } from "../core/audit/regression.js";
 import { loadDefaults } from "../core/defaults.js";
 import { AuditError } from "../core/audit/errors.js";
+import { markCommandFailed } from "../utils/exitCode.js";
 
 function printDiff(diff: AuditDiffResult, json?: boolean): void {
   console.log(json ? formatDiffJson(diff) : formatDiffTerminal(diff));
   if (diff.regressions.length > 0) {
-    process.exitCode = 1;
+    markCommandFailed();
   }
 }
 
@@ -73,7 +74,7 @@ export async function auditCommand(
   } catch (err) {
     if (err instanceof AuditError) {
       logger.error(err.message);
-      process.exitCode = 1;
+      markCommandFailed();
       return;
     }
     throw err;
@@ -88,6 +89,22 @@ async function auditCommandImpl(
   serverName?: string,
   options: AuditCommandOptions = {},
 ): Promise<void> {
+  if (options.ci) {
+    options.json = true;
+  }
+  const machineOutput = options.json === true || options.ci === true;
+  const logDiagnostic = (severity: "info" | "warning" | "success", message: string): void => {
+    if (machineOutput) {
+      process.stderr.write(`${message}\n`);
+    } else if (severity === "warning") {
+      logger.warning(message);
+    } else if (severity === "success") {
+      logger.success(message);
+    } else {
+      logger.info(message);
+    }
+  };
+
   // --list-checks: static catalog display — no SSH connection needed
   if (options.listChecks) {
     const filter: { category?: string; severity?: Severity } = {};
@@ -116,11 +133,8 @@ async function auditCommandImpl(
   }
 
   // --ci mode: validate threshold requirement early (before server resolution)
-  if (options.ci) {
-    if (options.threshold === undefined) {
-      throw new AuditError("--ci requires --threshold (e.g. --ci --threshold 70)");
-    }
-    options.json = true;
+  if (options.ci && options.threshold === undefined) {
+    throw new AuditError("--ci requires --threshold (e.g. --ci --threshold 70)");
   }
 
   let ip: string;
@@ -247,7 +261,7 @@ async function auditCommandImpl(
     return;
   }
 
-  const spinner = options.ci ? null : createSpinner(`Running security audit on ${name}...`);
+  const spinner = machineOutput ? null : createSpinner(`Running security audit on ${name}...`);
   spinner?.start();
 
   const result = await runAudit(ip, name, platform);
@@ -255,7 +269,7 @@ async function auditCommandImpl(
   if (!result.success || !result.data) {
     spinner?.fail(result.error ?? "Audit failed");
     if (result.hint) {
-      logger.info(result.hint);
+      logDiagnostic("info", result.hint);
     }
     return;
   }
@@ -271,9 +285,9 @@ async function auditCommandImpl(
   // Save to history (after trend detection)
   await saveAuditHistory(auditResult);
   if (trend === "methodology-change") {
-    logger.warning("Score methodology updated. New baseline established.");
+    logDiagnostic("warning", "Score methodology updated. New baseline established.");
   } else if (trend !== "first audit") {
-    logger.info(`Trend: ${trend}`);
+    logDiagnostic("info", `Trend: ${trend}`);
   }
 
   const baseline = loadBaseline(auditResult.serverIp);
@@ -290,8 +304,7 @@ async function auditCommandImpl(
 
   if (regression) {
     for (const line of formatRegressionSummary(regression)) {
-      if (line.severity === "warning") logger.warning(line.text);
-      else logger.info(line.text);
+      logDiagnostic(line.severity, line.text);
     }
   }
 
@@ -356,9 +369,8 @@ async function auditCommandImpl(
     const detail = calculateComplianceDetail(auditResult.categories);
     const profileScore = detail.find((d) => d.framework === profileFramework);
     if (profileScore) {
-      logger.info(
-        `Profile ${options.profile}: ${profileScore.passedControls}/${profileScore.totalControls} controls (${profileScore.passRate}%)`,
-      );
+      const profileLine = `Profile ${options.profile}: ${profileScore.passedControls}/${profileScore.totalControls} controls (${profileScore.passRate}%)`;
+      logDiagnostic("info", profileLine);
     }
     return;
   }
@@ -367,7 +379,7 @@ async function auditCommandImpl(
   if (options.snapshot !== undefined) {
     const snapshotName = typeof options.snapshot === "string" ? options.snapshot : undefined;
     await saveSnapshot(auditResult, snapshotName);
-    logger.success(`Snapshot saved for ${name}`);
+    logDiagnostic("success", `Snapshot saved for ${name}`);
   }
 
   // Apply display-only filter (AUX-01, AUX-02, AUX-03)
@@ -436,7 +448,7 @@ async function auditCommandImpl(
         throw new AuditError("--threshold must be a number");
       }
       if (auditResult.overallScore < threshold) {
-        process.exitCode = 1;
+        markCommandFailed();
         return;
       }
     }
@@ -449,12 +461,12 @@ async function auditCommandImpl(
   console.log(output);
 
   // Show filter annotation when active
-  if (filterAnnotation) {
+  if (filterAnnotation && !machineOutput) {
     logger.info(`Score: ${auditResult.overallScore}/100${filterAnnotation}`);
   }
 
   // Show quick wins in terminal output
-  if (auditResult.quickWins.length > 0 && !options.json && !options.badge && !options.report) {
+  if (auditResult.quickWins.length > 0 && !machineOutput && !options.badge && !options.report) {
     const lastWin = auditResult.quickWins[auditResult.quickWins.length - 1];
     logger.info(
       `Quick wins: ${auditResult.quickWins.length} fix(es) to reach ${lastWin.projectedScore}/100`,
@@ -468,8 +480,7 @@ async function auditCommandImpl(
       throw new AuditError("--threshold must be a number");
     }
     if (auditResult.overallScore < threshold) {
-      logger.error(`Score ${auditResult.overallScore} is below threshold ${threshold}`);
-      process.exitCode = 1;
+      markCommandFailed();
       return;
     }
   }

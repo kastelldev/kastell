@@ -11,6 +11,7 @@ import {
 import { isBareServer, getServerModeLabel } from "../utils/modeGuard.js";
 import { getAdapter, resolvePlatform } from "../adapters/factory.js";
 import { adapterDisplayName } from "../adapters/shared.js";
+import { markCommandFailed } from "../utils/exitCode.js";
 import type { ServerRecord } from "../types/index.js";
 import type { StatusResult } from "../core/status.js";
 
@@ -161,5 +162,6 @@ export async function statusCommand(query?: string, options?: StatusOptions): Pr
       const hint = mapProviderError(error, server.provider);
       if (hint) logger.info(hint);
     }
+    markCommandFailed();
   }
 }

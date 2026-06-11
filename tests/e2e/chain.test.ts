@@ -77,6 +77,7 @@ describe("Command→Core Chain Tests", () => {
   let consoleSpy: jest.SpyInstance;
 
   beforeEach(() => {
+    process.exitCode = undefined;
     jest.clearAllMocks();
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
     jest.spyOn(console, "error").mockImplementation();
@@ -104,7 +105,8 @@ describe("Command→Core Chain Tests", () => {
   });
 
   afterEach(() => {
-    consoleSpy.mockRestore();
+    process.exitCode = undefined;
+    jest.restoreAllMocks();
   });
 
   // ─── 1. audit command chain ────────────────────────────────────────────────

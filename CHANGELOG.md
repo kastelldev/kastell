@@ -25,6 +25,8 @@ Release-time version bumps remain owned by `/release minor`; `package.json` and 
 - `serverCompare` detail mode returns flat checks array (was object — CQS-11 #1)
 - `ssh-factories.ts` setTimeout leak — worker force-exit (CQS-10 #1)
 - `tests/helpers/fsMock.ts` factory prevents Linux CI chmodSync mock omission
+- Explicit provider token environment variables now override buffered and keychain credentials, preventing stale desktop keychain entries from breaking MCP/container calls.
+- Single-server `server_info health` responses now validate against the registered MCP output schema.
 - **Windows local state writes** — Atomic `*.tmp` rename persistence now retries transient `EPERM`/`EACCES` failures and falls back to copy+unlink safely. Coverage: `servers.json`, audit history, evidence manifests (`MANIFEST.json`, `SHA256SUMS`), audit snapshots, fix history, regression baselines, and metric history. File-lock reclaim and security-log rotation also retry on transient `EPERM`/`EACCES`.
 
 ### Internal
@@ -67,6 +69,14 @@ Release-time version bumps remain owned by `/release minor`; `package.json` and 
 - `PluginSeverity` / `FixTier` shared types
 - `Safety Modes` section in README
 - `kastell provision` alias for `init`
+
+### v2.3 Reliability Contracts
+
+- **Immediate MCP durable registration** — `server_provision` returns as soon as the provider creates the server and Kastell durably persists the record. `readiness.status` may be `pending`; follow with `server_info status` or `server_info health`.
+- **Verified CLI failures return non-zero** — unsupported and failed CLI operations exit with `1`; valid empty results and user cancellation exit with `0`. Mixed `--all` failures exit with `1`.
+- **Parse-clean audit stdout** — `audit --json` and `audit --ci` reserve stdout for a single JSON payload.
+- **Actionable Windows lock diagnostics** — persistent `EPERM`/`EACCES` failures on Windows file-lock paths now surface hint-rich diagnostics.
+- **MCP SDK round-trip coverage** — `server_manage add/remove/destroy` outputSchemas now have full `normalizeObjectSchema` + `safeParseAsync` round-trip tests.
 
 ## [2.2.7] - 2026-05-16
 

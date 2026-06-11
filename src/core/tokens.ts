@@ -7,18 +7,8 @@ import { storeToken, readToken, registerCleanupHandlers } from "./tokenBuffer.js
 registerCleanupHandlers();
 
 export function getProviderToken(provider: string): string | undefined {
-  // 1. Check buffer cache (memory-safe storage)
-  const buffered = readToken(provider);
-  if (buffered) return buffered;
-
-  // 2. Try OS Keychain
-  const keychainToken = getToken(provider);
-  if (keychainToken) {
-    storeToken(provider, keychainToken);
-    return keychainToken;
-  }
-
-  // 3. Fall back to env var
+  // 1. Explicit process configuration overrides persisted credentials.
+  // This keeps CLI/MCP/container behavior deterministic when a keychain entry is stale.
   const envKey = PROVIDER_ENV_KEYS[provider as keyof typeof PROVIDER_ENV_KEYS];
   const raw = envKey ? process.env[envKey] : undefined;
   const trimmed = raw?.trim();
@@ -26,12 +16,24 @@ export function getProviderToken(provider: string): string | undefined {
     storeToken(provider, trimmed);
     return trimmed;
   }
+
+  // 2. Check buffer cache (memory-safe storage)
+  const buffered = readToken(provider);
+  if (buffered) return buffered;
+
+  // 3. Try OS Keychain
+  const keychainToken = getToken(provider);
+  if (keychainToken) {
+    storeToken(provider, keychainToken);
+    return keychainToken;
+  }
+
   return undefined;
 }
 
 /**
  * Collect tokens for all unique providers in the server list.
- * Checks keychain first, then environment variables.
+ * Uses explicit environment variables before buffered or keychain credentials.
  */
 export function collectProviderTokensFromEnv(
   servers: ServerRecord[],

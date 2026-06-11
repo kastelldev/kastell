@@ -1,26 +1,32 @@
 import { mkdirSync, rmSync, statSync, writeFileSync, readFileSync } from "fs";
 import { dirname, join } from "path";
 import { hostname } from "os";
+import { createHash } from "crypto";
 import { DEFAULT_PERMISSION_RETRY_ATTEMPTS, DEFAULT_PERMISSION_RETRY_DELAY_MS, retryOnPermission } from "./fsRetry.js";
 
 const STALE_THRESHOLD_MS = 30_000;
 // Reclaim even when probeProcess reports "alive" (guards against clock drift, zombies, PID reuse).
 const HARD_CEILING_MS = 60_000;
 
-/**
- * Best-effort lock directory removal that retries on transient EPERM/EACCES
- * (common on Windows when antivirus or file-scanner holds a brief handle).
- * Returns true if removal eventually succeeded, false otherwise.
- */
-function removeLockDirBestEffort(lockDir: string): boolean {
+interface LockRemovalResult {
+  removed: boolean;
+  error?: unknown;
+  errorCode?: string;
+}
+
+function removeLockDirBestEffort(lockDir: string): LockRemovalResult {
   try {
     retryOnPermission(() => rmSync(lockDir, { recursive: true, force: true }), {
       attempts: DEFAULT_PERMISSION_RETRY_ATTEMPTS,
       delayMs: DEFAULT_PERMISSION_RETRY_DELAY_MS,
     });
-    return true;
-  } catch {
-    return false;
+    return { removed: true };
+  } catch (error) {
+    return {
+      removed: false,
+      error,
+      errorCode: (error as NodeJS.ErrnoException).code,
+    };
   }
 }
 
@@ -56,24 +62,148 @@ function readPidFile(lockDir: string): ParsedPidFile | null {
 
 type ProbeFn = (pid: number) => "alive" | "dead" | "unknown";
 
-function shouldReclaimStaleLock(lockDir: string, probe: ProbeFn): boolean {
+type ProcessState = "alive" | "dead" | "unknown" | "not-probed";
+
+interface LockDiagnostic {
+  lockDir: string;
+  ageMs: number | "unknown";
+  ownerPid: string | "unknown";
+  ownerHost: string | "unknown";
+  processState: ProcessState;
+  stale: boolean | "unknown";
+  reclaimAttempted: boolean;
+  reclaimErrorCode?: string;
+  retries: number;
+  totalWaitMs: number;
+}
+
+interface CollectLockDiagnosticOptions {
+  reclaimAttempted: boolean;
+  lastReclaimErrorCode?: string;
+  retries: number;
+  totalWaitMs: number;
+  preAssessed?: LockAssessment;
+}
+
+interface LockAssessment {
+  mtimeMs: number;
+  parsed: ParsedPidFile | null;
+  reclaimable: boolean;
+}
+
+function assessLockState(lockDir: string, probe: ProbeFn): LockAssessment | null {
   let mtimeMs: number;
   try {
     mtimeMs = statSync(lockDir).mtimeMs;
   } catch {
-    return false; // lock disappeared between checks
+    return null; // lock disappeared between checks
   }
   const age = Date.now() - mtimeMs;
   const parsed = readPidFile(lockDir);
 
+  let reclaimable: boolean;
   if (parsed && parsed.host === hostname()) {
     const liveness = probe(parsed.pid);
-    if (liveness === "dead") return true;
-    if (liveness === "alive") return age > HARD_CEILING_MS;
+    if (liveness === "dead") reclaimable = true;
+    else if (liveness === "alive") reclaimable = age > HARD_CEILING_MS;
     // "unknown" → mtime fallback (aggressive: STALE_THRESHOLD_MS)
+    else reclaimable = age > STALE_THRESHOLD_MS;
+  } else {
+    // farklı hostname, parse fail, veya PID file yok → mtime fallback
+    reclaimable = age > STALE_THRESHOLD_MS;
   }
-  // farklı hostname, parse fail, PID file yok, veya "unknown" → mtime fallback
-  return age > STALE_THRESHOLD_MS;
+  return { mtimeMs, parsed, reclaimable };
+}
+
+function deriveProcessState(assessment: LockAssessment, probe: ProbeFn): ProcessState {
+  if (!assessment.parsed) return "not-probed";
+  if (assessment.parsed.host !== hostname()) return "not-probed";
+  return probe(assessment.parsed.pid);
+}
+
+function hashPid(pid: number): string {
+  return `hash:${createHash("sha256").update(String(pid)).digest("hex").slice(0, 8)}`;
+}
+
+function collectLockDiagnostic(
+  lockDir: string,
+  probe: ProbeFn,
+  options: CollectLockDiagnosticOptions,
+): LockDiagnostic {
+  const result: LockDiagnostic = {
+    lockDir,
+    ageMs: "unknown",
+    ownerPid: "unknown",
+    ownerHost: "unknown",
+    processState: "not-probed",
+    stale: "unknown",
+    reclaimAttempted: options.reclaimAttempted,
+    reclaimErrorCode: options.lastReclaimErrorCode,
+    retries: options.retries,
+    totalWaitMs: options.totalWaitMs,
+  };
+
+  // If caller pre-assessed, reuse — avoid re-statSync / re-readFileSync / re-probe.
+  const assessment = options.preAssessed;
+  let age: number;
+  let parsed: ParsedPidFile | null;
+  if (assessment) {
+    age = Date.now() - assessment.mtimeMs;
+    result.ageMs = age;
+    parsed = assessment.parsed;
+    if (parsed) {
+      result.ownerPid = hashPid(parsed.pid);
+      result.ownerHost = "internal";
+    }
+    result.processState = deriveProcessState(assessment, probe);
+  } else {
+    let mtimeMs: number;
+    try {
+      mtimeMs = statSync(lockDir).mtimeMs;
+    } catch {
+      // statSync failed — keep age/stale unknown
+      return result;
+    }
+    age = Date.now() - mtimeMs;
+    result.ageMs = age;
+    parsed = readPidFile(lockDir);
+    if (parsed) {
+      result.ownerPid = hashPid(parsed.pid);
+      result.ownerHost = "internal";
+    }
+    result.processState = deriveProcessState(
+      { mtimeMs, parsed, reclaimable: false },
+      probe,
+    );
+  }
+
+  // staleness — mirrors assessLockState's reclaimable decision.
+  if (parsed && parsed.host === hostname()) {
+    if (result.processState === "dead") result.stale = true;
+    else if (result.processState === "alive") result.stale = age > HARD_CEILING_MS;
+    else result.stale = age > STALE_THRESHOLD_MS;
+  } else {
+    result.stale = age > STALE_THRESHOLD_MS;
+  }
+
+  return result;
+}
+
+function formatLockDiagnostic(filePath: string, diagnostic: LockDiagnostic): string {
+  const reclaimError = diagnostic.reclaimErrorCode ?? "none";
+  return [
+    `Could not acquire lock on ${filePath} after ${diagnostic.retries} retries ` +
+      `(${diagnostic.totalWaitMs}ms).`,
+    `lock=${diagnostic.lockDir}`,
+    `ageMs=${diagnostic.ageMs}`,
+    `ownerPid=${diagnostic.ownerPid}`,
+    `ownerHost=${diagnostic.ownerHost}`,
+    `processState=${diagnostic.processState}`,
+    `stale=${diagnostic.stale}`,
+    `reclaimAttempted=${diagnostic.reclaimAttempted}`,
+    `reclaimError=${reclaimError}`,
+    "Close other Kastell processes, then remove the stale lock only after verifying no writer is active.",
+  ].join(" ");
 }
 
 export async function withFileLock<T>(
@@ -87,33 +217,42 @@ export async function withFileLock<T>(
 
   mkdirSync(dirname(lockDir), { recursive: true });
 
+  // Track the last assessment so the exhaust path can reuse it instead of
+  // re-running statSync / readPidFile / probe (Reuse-F7, Efficiency-F2).
+  let lastAssessment: LockAssessment | null = null;
+
+  const runWithAcquiredLock = async (): Promise<T> => {
+    try {
+      try {
+        writeFileSync(
+          join(lockDir, "owner.pid"),
+          `${process.pid}@${hostname()}@${Date.now()}`,
+          { encoding: "utf-8" },
+        );
+      } catch {
+        /* best effort — if PID write fails, mtime fallback still protects */
+      }
+      return await fn();
+    } finally {
+      removeLockDirBestEffort(lockDir);
+    }
+  };
+
   for (let i = 0; i < maxRetries; i++) {
     try {
       mkdirSync(lockDir);
-      try {
-        try {
-          writeFileSync(
-            join(lockDir, "owner.pid"),
-            `${process.pid}@${hostname()}@${Date.now()}`,
-            { encoding: "utf-8" },
-          );
-        } catch {
-          /* best effort — if PID write fails, mtime fallback still protects */
-        }
-        return await fn();
-      } finally {
-        try {
-          removeLockDirBestEffort(lockDir);
-        } catch {
-          /* best effort */
-        }
-      }
+      return await runWithAcquiredLock();
     } catch (err: unknown) {
       if ((err as NodeJS.ErrnoException).code === "EEXIST") {
-        if (shouldReclaimStaleLock(lockDir, probe)) {
-          if (removeLockDirBestEffort(lockDir)) {
+        const assessment = assessLockState(lockDir, probe);
+        lastAssessment = assessment;
+        if (assessment?.reclaimable) {
+          const removal = removeLockDirBestEffort(lockDir);
+          if (removal.removed) {
             continue;
           }
+          // Stale and tried to reclaim, but failed — keep looping so next iteration
+          // can collect a richer diagnostic if retries also exhaust.
           await new Promise((r) => setTimeout(r, retryDelay));
           continue;
         }
@@ -123,9 +262,41 @@ export async function withFileLock<T>(
       throw err;
     }
   }
-  throw new Error(
-    `Could not acquire lock on ${filePath} after ${maxRetries} retries`,
-  );
+
+  // Exhausted: reuse the last assessment and attempt a final best-effort reclaim
+  // to surface the rmSync error code in the diagnostic.
+  let reclaimAttempted = false;
+  let lastReclaimError: unknown;
+  let lastReclaimErrorCode: string | undefined;
+  if (lastAssessment?.reclaimable) {
+    reclaimAttempted = true;
+    const removal = removeLockDirBestEffort(lockDir);
+    if (removal.removed) {
+      try {
+        mkdirSync(lockDir);
+        return await runWithAcquiredLock();
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "EEXIST") {
+          throw error;
+        }
+        lastAssessment = assessLockState(lockDir, probe);
+      }
+    } else {
+      lastReclaimError = removal.error;
+      lastReclaimErrorCode = removal.errorCode;
+    }
+  }
+
+  const diagnostic = collectLockDiagnostic(lockDir, probe, {
+    reclaimAttempted,
+    lastReclaimErrorCode,
+    retries: maxRetries,
+    totalWaitMs: maxRetries * retryDelay,
+    preAssessed: lastAssessment ?? undefined,
+  });
+  throw new Error(formatLockDiagnostic(filePath, diagnostic), {
+    cause: lastReclaimError,
+  });
 }
 
 /** Warn on stderr if a caught error is a permission issue. Returns true if it was a permission error. */

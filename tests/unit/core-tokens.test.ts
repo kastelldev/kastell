@@ -1,6 +1,6 @@
 import { getToken } from "../../src/core/auth";
 import { getProviderToken, collectProviderTokensFromEnv } from "../../src/core/tokens";
-import { clearAllTokens } from "../../src/core/tokenBuffer";
+import { clearAllTokens, readToken } from "../../src/core/tokenBuffer";
 
 jest.mock("../../src/core/auth");
 jest.mock("../../src/core/tokenBuffer", () => ({
@@ -10,13 +10,19 @@ jest.mock("../../src/core/tokenBuffer", () => ({
   registerCleanupHandlers: jest.fn(),
 }));
 const mockGetToken = getToken as jest.MockedFunction<typeof getToken>;
+const mockReadToken = readToken as jest.MockedFunction<typeof readToken>;
 
 describe("getProviderToken", () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
     process.env = { ...originalEnv };
+    delete process.env.HETZNER_TOKEN;
+    delete process.env.DIGITALOCEAN_TOKEN;
+    delete process.env.VULTR_TOKEN;
+    delete process.env.LINODE_TOKEN;
     mockGetToken.mockReturnValue(undefined);
+    mockReadToken.mockReturnValue(undefined);
   });
 
   afterAll(() => {
@@ -158,7 +164,12 @@ describe("keychain resolution", () => {
 
   beforeEach(() => {
     process.env = { ...originalEnv };
+    delete process.env.HETZNER_TOKEN;
+    delete process.env.DIGITALOCEAN_TOKEN;
+    delete process.env.VULTR_TOKEN;
+    delete process.env.LINODE_TOKEN;
     mockGetToken.mockReturnValue(undefined);
+    mockReadToken.mockReturnValue(undefined);
   });
 
   afterAll(() => {
@@ -176,10 +187,16 @@ describe("keychain resolution", () => {
     expect(getProviderToken("hetzner")).toBe("env-token");
   });
 
-  it("should prefer keychain over env var when both exist", () => {
+  it("should prefer explicit env var over a stale keychain token", () => {
     mockGetToken.mockReturnValue("keychain-token");
     process.env.HETZNER_TOKEN = "env-token";
-    expect(getProviderToken("hetzner")).toBe("keychain-token");
+    expect(getProviderToken("hetzner")).toBe("env-token");
+  });
+
+  it("should prefer explicit env var over a stale buffered token", () => {
+    mockReadToken.mockReturnValue("buffered-token");
+    process.env.HETZNER_TOKEN = "env-token";
+    expect(getProviderToken("hetzner")).toBe("env-token");
   });
 
   it("should return undefined when neither keychain nor env var has token", () => {

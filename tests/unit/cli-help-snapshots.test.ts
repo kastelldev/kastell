@@ -9,7 +9,7 @@
 
 import { spawnSync } from "child_process";
 import { join } from "path";
-import { mkdtempSync } from "fs";
+import { mkdtempSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { stripAnsi } from "../helpers/stripAnsi";
 
@@ -28,10 +28,22 @@ function getHelp(args: string[]): string {
 
 describe("CLI help text snapshots", () => {
   beforeAll(() => {
-    const result = spawnSync("node", [CLI_PATH, "--version"], { encoding: "utf-8" });
+    const result = spawnSync("node", [CLI_PATH, "--version"], {
+      encoding: "utf-8",
+      env: {
+        ...process.env,
+        NO_COLOR: "1",
+        FORCE_COLOR: "0",
+        KASTELL_DIR: ISOLATED_KASTELL_DIR,
+      },
+    });
     if (result.status !== 0) {
       throw new Error("dist/index.js not found. Run npm run build first.");
     }
+  });
+
+  afterAll(() => {
+    rmSync(ISOLATED_KASTELL_DIR, { recursive: true, force: true });
   });
 
   it("kastell --help matches snapshot", () => {

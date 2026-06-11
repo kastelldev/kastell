@@ -15,7 +15,13 @@ jest.mock("../../src/utils/config.js");
 jest.mock("../../src/core/audit/index.js");
 jest.mock("../../src/core/lock/index.js");
 jest.mock("../../src/core/manage.js");
-jest.mock("../../src/core/provision.js");
+jest.mock("../../src/core/provision.js", () => {
+  const actual = jest.requireActual("../../src/core/provision.js");
+  return {
+    ...actual,
+    provisionServer: jest.fn(),
+  };
+});
 jest.mock("../../src/core/status.js");
 jest.mock("../../src/adapters/factory.js");
 jest.mock("../../src/core/tokens.js");
@@ -172,6 +178,10 @@ describe("MCP→Core Integration", () => {
           createdAt: new Date().toISOString(),
           mode: "coolify",
         },
+        readiness: {
+          status: "pending",
+          message: "Cloud creation and local registration completed; readiness checks were deferred.",
+        },
       });
 
       const response = await handleServerProvision({
@@ -190,12 +200,53 @@ describe("MCP→Core Integration", () => {
           size: "cax11",
           mode: "coolify",
         }),
+        { readinessPolicy: "defer" },
       );
       expect(response.isError).toBeFalsy();
       const body = JSON.parse(response.content[0].text);
       expect(body.success).toBe(true);
       expect(body.server.name).toBe("staging-server");
       expect(body.server.provider).toBe("hetzner");
+      expect(body.readiness).toEqual({
+        status: "pending",
+        message: expect.any(String),
+      });
+    });
+
+    it("should preserve typed recovery on ProvisionPersistenceError", async () => {
+      const { ProvisionPersistenceError } = jest.requireActual("../../src/core/provision.js");
+      const persistenceError = new ProvisionPersistenceError(
+        {
+          provider: "hetzner",
+          serverId: "provider-123",
+          serverName: "recover-me",
+          ip: "pending",
+        },
+        Object.assign(new Error("EACCES"), { code: "EACCES" }),
+      );
+      mockedCoreProvision.provisionServer.mockRejectedValueOnce(persistenceError);
+
+      const response = await handleServerProvision({
+        provider: "hetzner",
+        name: "recover-me",
+        region: "nbg1",
+        size: "cax11",
+        mode: "coolify",
+      });
+
+      expect(response.isError).toBe(true);
+      const body = JSON.parse(response.content[0].text);
+      expect(body).toMatchObject({
+        provider: "hetzner",
+        serverId: "provider-123",
+        serverName: "recover-me",
+        ip: "pending",
+        warning: expect.stringMatching(/billable/i),
+        recovery: expect.arrayContaining([
+          expect.stringMatching(/dashboard/i),
+          expect.stringMatching(/server_manage add/i),
+        ]),
+      });
     });
 
     it("should return error when SAFE_MODE is enabled", async () => {

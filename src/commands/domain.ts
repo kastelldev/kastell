@@ -2,6 +2,7 @@ import { resolveServer } from "../utils/serverSelect.js";
 import { checkSshAvailable } from "../utils/ssh.js";
 import { logger, createSpinner } from "../utils/logger.js";
 import { requireManagedMode } from "../utils/modeGuard.js";
+import { markCommandFailed } from "../utils/exitCode.js";
 import { updateServer } from "../utils/config.js";
 import { resolvePlatform } from "../adapters/factory.js";
 import {
@@ -23,6 +24,7 @@ export async function domainCommand(
 ): Promise<void> {
   if (!checkSshAvailable()) {
     logger.error("SSH client not found. Please install OpenSSH.");
+    markCommandFailed();
     return;
   }
 
@@ -31,15 +33,20 @@ export async function domainCommand(
 
   if (!validSubcommands.includes(sub)) {
     logger.error(`Invalid subcommand: ${sub}. Choose from: ${validSubcommands.join(", ")}`);
+    markCommandFailed();
     return;
   }
 
   const server = await resolveServer(query, "Select a server for domain management:");
-  if (!server) return;
+  if (!server) {
+    markCommandFailed();
+    return;
+  }
 
   const modeError = requireManagedMode(server, "domain");
   if (modeError) {
     logger.error(modeError);
+    markCommandFailed();
     return;
   }
 
@@ -74,12 +81,14 @@ async function domainAdd(
 ): Promise<void> {
   if (!options?.domain) {
     logger.error("Missing --domain. Usage: kastell domain add <server> --domain example.com");
+    markCommandFailed();
     return;
   }
 
   const domain = sanitizeDomain(options.domain);
   if (!isValidDomain(domain)) {
     logger.error(`Invalid domain: ${domain}`);
+    markCommandFailed();
     return;
   }
 
@@ -112,6 +121,7 @@ async function domainAdd(
     spinner.fail("Failed to set domain");
     logger.error(result.error ?? "Unknown error");
     if (result.hint) logger.info(result.hint);
+    markCommandFailed();
     return;
   }
 
@@ -149,6 +159,7 @@ async function domainRemove(ip: string, name: string, platform: Platform, dryRun
     spinner.fail("Failed to remove domain");
     logger.error(result.error ?? "Unknown error");
     if (result.hint) logger.info(result.hint);
+    markCommandFailed();
     return;
   }
 
@@ -160,12 +171,14 @@ async function domainRemove(ip: string, name: string, platform: Platform, dryRun
 async function domainCheck(ip: string, options?: { domain?: string }): Promise<void> {
   if (!options?.domain) {
     logger.error("Missing --domain. Usage: kastell domain check <server> --domain example.com");
+    markCommandFailed();
     return;
   }
 
   const domain = sanitizeDomain(options.domain);
   if (!isValidDomain(domain)) {
     logger.error(`Invalid domain: ${domain}`);
+    markCommandFailed();
     return;
   }
 
@@ -178,12 +191,14 @@ async function domainCheck(ip: string, options?: { domain?: string }): Promise<v
     spinner.fail("Failed to check DNS");
     logger.error(result.error);
     if (result.hint) logger.info(result.hint);
+    markCommandFailed();
     return;
   }
 
   if (!result.resolvedIp) {
     spinner.fail(`No A record found for ${domain}`);
     logger.info("Add an A record pointing to " + ip);
+    markCommandFailed();
     return;
   }
 
@@ -192,6 +207,7 @@ async function domainCheck(ip: string, options?: { domain?: string }): Promise<v
   } else {
     spinner.warn(`DNS mismatch: ${domain} → ${result.resolvedIp} (expected ${ip})`);
     logger.info("Update your A record to point to " + ip);
+    markCommandFailed();
   }
 }
 
@@ -206,6 +222,7 @@ async function domainList(ip: string, name: string, platform: Platform): Promise
     spinner.fail("Failed to fetch domain");
     logger.error(result.error);
     if (result.hint) logger.info(result.hint);
+    markCommandFailed();
     return;
   }
 
@@ -229,6 +246,7 @@ async function domainInfo(ip: string, name: string, platform: Platform): Promise
     spinner.fail("Failed to fetch domain info");
     logger.error(result.error);
     if (result.hint) logger.info(result.hint);
+    markCommandFailed();
     return;
   }
 

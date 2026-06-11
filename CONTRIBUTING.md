@@ -31,6 +31,14 @@ npm run test:watch      # Watch mode
 npm run test:coverage   # Coverage report
 ```
 
+### Isolated Kastell state
+
+Tests must set `KASTELL_DIR` before importing `src/utils/paths.ts`,
+`src/utils/config.ts`, or commands that import them. Spawned CLI tests should
+use `createIsolatedKastellEnv().env`. In-process tests must call
+`jest.resetModules()` and dynamically import the target after setting the
+environment variable.
+
 5. **Build**
 
 ```bash

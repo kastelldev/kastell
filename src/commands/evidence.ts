@@ -6,6 +6,7 @@
 import { readFileSync } from "fs";
 import { resolveServer } from "../utils/serverSelect.js";
 import { logger, createSpinner } from "../utils/logger.js";
+import { markCommandFailed } from "../utils/exitCode.js";
 import { collectEvidence } from "../core/evidence.js";
 import type { EvidenceOptions } from "../core/evidence.js";
 
@@ -56,7 +57,7 @@ export async function evidenceCommand(
 
   if (!result.success || !result.data) {
     spinner?.fail(result.error ?? "Evidence collection failed");
-    process.exitCode = 1;
+    markCommandFailed();
     return;
   }
 

@@ -16,6 +16,23 @@ function findPackageJson(): string | null {
   return null;
 }
 
+interface KastellPackageJson {
+  version: string;
+  dependencies?: Record<string, string>;
+}
+
+function readKastellPackageJson(): KastellPackageJson | null {
+  try {
+    const pkgPath = findPackageJson();
+    if (!pkgPath) return null;
+    return JSON.parse(readFileSync(pkgPath, "utf-8")) as KastellPackageJson;
+  } catch {
+    return null;
+  }
+}
+
+let cachedPackageMetadata: ReturnType<typeof readKastellPackageJson> | null | undefined;
+
 export function getKastellVersion(): string {
   if (cachedVersion !== null) return cachedVersion;
   try {
@@ -33,4 +50,23 @@ export const KASTELL_VERSION = getKastellVersion();
 
 export function clearVersionCache(): void {
   cachedVersion = null;
+  cachedPackageMetadata = undefined;
+}
+
+export function getPackageMetadata(): {
+  version: string;
+  mcpSdkVersion: string;
+  buildIdentity?: string;
+} {
+  if (cachedPackageMetadata === undefined) {
+    cachedPackageMetadata = readKastellPackageJson();
+  }
+  const pkg = cachedPackageMetadata;
+  return {
+    version: pkg?.version ?? "0.0.0",
+    mcpSdkVersion: pkg?.dependencies?.["@modelcontextprotocol/sdk"] ?? "unknown",
+    ...(process.env.KASTELL_BUILD_ID
+      ? { buildIdentity: process.env.KASTELL_BUILD_ID }
+      : {}),
+  };
 }

@@ -19,6 +19,10 @@ export const serverProvisionFixtures: ToolFixture = {
         const provisionSpy = jest.spyOn(provisionCore, "provisionServer").mockResolvedValue({
           success: true,
           server: { id: "hcloud-1", name: "web-1", provider: "hetzner", ip: "10.0.0.1", region: "fsn1", size: "cx22", createdAt: "2026-05-01T00:00:00Z", mode: "bare" as const },
+          readiness: {
+            status: "pending",
+            message: "Cloud creation and local registration completed; readiness checks were deferred.",
+          },
         });
         return () => { safeModeSpy.mockRestore(); sshSpy.mockRestore(); configSpy.mockRestore(); provisionSpy.mockRestore(); };
       },

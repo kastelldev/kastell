@@ -28,11 +28,13 @@ describe("statusCommand E2E", () => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
     stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
+    process.exitCode = undefined;
   });
 
   afterEach(() => {
     consoleSpy.mockRestore();
     stderrSpy?.mockRestore();
+    process.exitCode = undefined;
   });
 
   it("should show Coolify running status with access URL", async () => {
@@ -128,6 +130,7 @@ describe("statusCommand E2E", () => {
 
     const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("Failed to get server status");
+    expect(process.exitCode).toBe(1);
   });
 
   it("should handle non-Error exception in outer catch", async () => {

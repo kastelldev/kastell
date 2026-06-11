@@ -4,9 +4,10 @@ import { createProviderWithToken } from "../utils/providerFactory.js";
 import { getBareCloudInit } from "../utils/cloudInit.js";
 import { getAdapter } from "../adapters/factory.js";
 import { findLocalSshKey, generateSshKey, getSshKeyName } from "../utils/sshKey.js";
-import { saveServer } from "../utils/config.js";
+import { saveServer, updateServer } from "../utils/config.js";
 import { getTemplateDefaults } from "../utils/templates.js";
 import { getErrorMessage, mapProviderError } from "../utils/errorMapper.js";
+import { KastellError } from "../utils/errors.js";
 import { assertValidIp, clearKnownHostKey, sshExec } from "../utils/ssh.js";
 import { raw } from "../utils/sshCommand.js";
 import { debugLog } from "../utils/logger.js";
@@ -29,11 +30,60 @@ export interface ProvisionConfig {
   mode?: string;
 }
 
+export type ReadinessPolicy = "wait" | "defer";
+
+export interface ProvisionOptions {
+  readinessPolicy?: ReadinessPolicy;
+}
+
+export interface ProvisionReadiness {
+  status: "pending" | "ready" | "unknown";
+  message?: string;
+}
+
 export interface ProvisionResult {
   success: boolean;
   server?: ServerRecord;
+  readiness?: ProvisionReadiness;
   error?: string;
   hint?: string;
+}
+
+// ─── Errors ──────────────────────────────────────────────────────────────────
+
+export class ProvisionPersistenceError extends KastellError {
+  readonly provider: string;
+  readonly serverId: string;
+  readonly serverName: string;
+  readonly ip: string;
+  readonly warning: string;
+  readonly recovery: string[];
+
+  constructor(
+    details: {
+      provider: string;
+      serverId: string;
+      serverName: string;
+      ip: string;
+    },
+    cause: unknown,
+  ) {
+    super(
+      `Cloud server "${details.serverName}" was created but could not be saved locally.`,
+      { cause, code: "PROVISION_PERSISTENCE" },
+    );
+    this.provider = details.provider;
+    this.serverId = details.serverId;
+    this.serverName = details.serverName;
+    this.ip = details.ip;
+    this.warning = "The cloud resource may still be running and billable.";
+    this.recovery = [
+      `Check the ${details.provider} dashboard for server ID ${details.serverId}.`,
+      "Delete the resource through the provider dashboard or provider CLI if it is unwanted.",
+      "Optionally use server_manage add for local visibility; manual registration does not preserve the original provider server ID.",
+    ];
+    Object.setPrototypeOf(this, ProvisionPersistenceError.prototype);
+  }
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -46,16 +96,23 @@ function isPendingIp(ip: string): boolean {
   return !ip || ip === "pending" || ip === "0.0.0.0";
 }
 
-async function waitForBareServerReady(ip: string): Promise<string | undefined> {
+function normalizeProvisionIp(ip: string): string {
+  return isPendingIp(ip) ? "pending" : ip;
+}
+
+async function waitForBareServerReady(ip: string): Promise<ProvisionReadiness> {
   for (let attempt = 1; attempt <= BARE_SSH_WAIT_ATTEMPTS; attempt++) {
     try {
       const result = await sshExec(ip, raw("echo ok"));
       if (result.code === 0 || result.stdout.trim() === "ok") {
         const cloudInit = await sshExec(ip, raw("cloud-init status --wait"));
         if (cloudInit.code === 0) {
-          return undefined;
+          return { status: "ready" };
         }
-        return "SSH is reachable, but cloud-init may still be running. Retry server_info health in a minute.";
+        return {
+          status: "unknown",
+          message: "SSH is reachable, but cloud-init readiness is unknown. Retry status shortly.",
+        };
       }
     } catch (error) {
       debugLog?.("bare SSH readiness check failed", { cause: error, attempt });
@@ -66,7 +123,10 @@ async function waitForBareServerReady(ip: string): Promise<string | undefined> {
     }
   }
 
-  return "SSH was not reachable within 5 minutes. The server is saved; retry server_info health shortly.";
+  return {
+    status: "unknown",
+    message: "SSH was not reachable within 5 minutes. The server is saved; retry server_info health shortly.",
+  };
 }
 
 export async function uploadSshKeyBestEffort(provider: CloudProvider): Promise<string[]> {
@@ -94,7 +154,12 @@ export async function uploadSshKeyBestEffort(provider: CloudProvider): Promise<s
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 
-export async function provisionServer(config: ProvisionConfig): Promise<ProvisionResult> {
+export async function provisionServer(
+  config: ProvisionConfig,
+  options: ProvisionOptions = {},
+): Promise<ProvisionResult> {
+  const readinessPolicy = options.readinessPolicy ?? "wait";
+
   // 1. Validate provider
   if (!isValidProvider(config.provider)) {
     return {
@@ -197,7 +262,40 @@ export async function provisionServer(config: ProvisionConfig): Promise<Provisio
     platform,
   });
 
-  // 10. Wait for running status (provider-specific timing)
+  // 10. Save once IMMEDIATELY after createServer (recoverable core flow)
+  // Local persistence happens BEFORE any network polling so a transient
+  // disk/config failure never leaves a billable cloud server unmanaged.
+  const initialIp = normalizeProvisionIp(serverIp);
+  let record = buildRecord(initialIp);
+
+  try {
+    await saveServer(record);
+  } catch (error) {
+    throw new ProvisionPersistenceError(
+      {
+        provider: config.provider,
+        serverId,
+        serverName: config.name,
+        ip: initialIp,
+      },
+      error,
+    );
+  }
+
+  // Defer policy: skip ALL provider/IP/SSH polling. Caller will get the
+  // saved record and a "pending" readiness marker. Do NOT call destroyServer.
+  if (readinessPolicy === "defer") {
+    return {
+      success: true,
+      server: record,
+      readiness: {
+        status: "pending",
+        message: "Cloud creation and local registration completed; readiness checks were deferred.",
+      },
+    };
+  }
+
+  // 11. Wait for running status (provider-specific timing)
   const bootConfig = BOOT_WAIT[config.provider] || BOOT_WAIT_DEFAULT;
   for (let i = 0; i < bootConfig.attempts; i++) {
     try {
@@ -209,7 +307,6 @@ export async function provisionServer(config: ProvisionConfig): Promise<Provisio
     }
     if (i === bootConfig.attempts - 1) {
       const totalSec = Math.round((bootConfig.attempts * bootConfig.interval) / 1000);
-      await saveServer(buildRecord(isPendingIp(serverIp) ? "pending" : serverIp));
       return {
         success: false,
         error: `Server did not reach running state within ${totalSec}s`,
@@ -219,7 +316,7 @@ export async function provisionServer(config: ProvisionConfig): Promise<Provisio
     await sleep(bootConfig.interval);
   }
 
-  // 11. Wait for IP assignment (provider-specific timing)
+  // 12. Wait for IP assignment (provider-specific timing)
   if (isPendingIp(serverIp)) {
     const ipConfig = IP_WAIT[config.provider] || { attempts: 20, interval: 3000 };
     for (let i = 0; i < ipConfig.attempts; i++) {
@@ -252,30 +349,60 @@ export async function provisionServer(config: ProvisionConfig): Promise<Provisio
     }
   }
 
-  // 12. Clear stale known_hosts entry (IP reuse across provision/destroy cycles)
+  // Enrich the saved record with the resolved IP via updateServer (no second saveServer)
+  if (serverIp !== record.ip) {
+    let updated: boolean;
+    try {
+      updated = await updateServer(record.name, { ip: serverIp });
+    } catch (error) {
+      throw new ProvisionPersistenceError(
+        {
+          provider: config.provider,
+          serverId,
+          serverName: config.name,
+          ip: serverIp,
+        },
+        error,
+      );
+    }
+    if (!updated) {
+      throw new ProvisionPersistenceError(
+        {
+          provider: config.provider,
+          serverId,
+          serverName: config.name,
+          ip: serverIp,
+        },
+        new Error(`Saved server "${record.name}" disappeared before enrichment`),
+      );
+    }
+    record = { ...record, ip: serverIp };
+  }
+
+  // 13. Clear stale known_hosts entry (IP reuse across provision/destroy cycles)
   if (!isPendingIp(serverIp)) {
     clearKnownHostKey(serverIp);
   }
 
-  const bareReadinessHint =
+  const bareReadiness: ProvisionReadiness | undefined =
     isBare && !isPendingIp(serverIp) ? await waitForBareServerReady(serverIp) : undefined;
-
-  // 13. Save to config
-  const record = buildRecord(serverIp);
-  await saveServer(record);
 
   // 14. Return result
   if (isPendingIp(serverIp)) {
     return {
       success: true,
       server: record,
+      readiness: { status: "pending" },
       hint: `IP address not yet assigned. Check status with: server_info { action: 'status', server: '${config.name}' }`,
     };
   }
 
+  // Bare path returns explicit readiness; managed-platform path stays "pending"
+  // because this core layer does not verify platform installation.
   return {
     success: true,
     server: record,
-    ...(bareReadinessHint ? { hint: bareReadinessHint } : {}),
+    readiness: bareReadiness ?? { status: "pending" },
+    ...(bareReadiness?.message ? { hint: bareReadiness.message } : {}),
   };
 }

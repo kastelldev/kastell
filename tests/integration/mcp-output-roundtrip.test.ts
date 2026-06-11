@@ -5,6 +5,10 @@ jest.mock("../../src/utils/version.js", () => ({
 
 import { ALL_MCP_TOOLS } from "../../src/mcp/server.js";
 import { FIXTURES, assertCoverage } from "./__fixtures__/index.js";
+import {
+  normalizeObjectSchema,
+  safeParseAsync,
+} from "@modelcontextprotocol/sdk/server/zod-compat.js";
 
 // Re-export types needed by consumers (avoid circular import in __fixtures__/index.ts)
 export type ActionFixture = {
@@ -34,7 +38,31 @@ describe.each(Object.values(ALL_MCP_TOOLS))(
           const response = await tool.handler(actionFixture.input);
           const structured = (response as { structuredContent?: unknown }).structuredContent;
           expect(structured).toBeDefined();
-          expect(() => tool.outputSchema.parse(structured)).not.toThrow();
+          const normalizedSchema = normalizeObjectSchema(tool.outputSchema);
+          expect(normalizedSchema).toBeDefined();
+          const parsed = await safeParseAsync(normalizedSchema!, structured);
+          expect(parsed.success).toBe(true);
+          if (tool.name === "server_manage") {
+            const result = (structured as {
+              result: {
+                action: string;
+                server: { id?: string };
+                platformStatus?: string | null;
+                cloudDeleted?: boolean;
+                localRemoved?: boolean;
+              };
+            }).result;
+
+            expect(result.action).toBe(actionFixture.action);
+            if (actionFixture.action === "add") {
+              expect(result.server.id).toBe("manual-web-stage-1");
+              expect(result.platformStatus).toBe("skipped");
+            }
+            if (actionFixture.action === "destroy") {
+              expect(result.cloudDeleted).toBe(true);
+              expect(result.localRemoved).toBe(true);
+            }
+          }
         } finally {
           if (typeof teardown === "function") teardown();
         }

@@ -265,3 +265,78 @@ describe("audit --ci --threshold --json combination", () => {
     expect(safeParse(jsonCall![0] as string)).not.toBeNull();
   });
 });
+
+describe("audit machine-output stdout contract", () => {
+  let stdoutWrites: string[];
+  let stderrWrites: string[];
+  let stdoutSpy: jest.SpyInstance;
+  let stderrStreamSpy: jest.SpyInstance;
+  let consoleLogSpy: jest.SpyInstance;
+  let consoleErrSpy: jest.SpyInstance;
+
+  const captureStdout = (): string => stdoutWrites.join("");
+
+  beforeEach(() => {
+    stdoutWrites = [];
+    stderrWrites = [];
+    stdoutSpy = jest.spyOn(process.stdout, "write").mockImplementation((chunk: unknown) => {
+      stdoutWrites.push(typeof chunk === "string" ? chunk : (chunk as Buffer).toString());
+      return true;
+    });
+    stderrStreamSpy = jest.spyOn(process.stderr, "write").mockImplementation((chunk: unknown) => {
+      stderrWrites.push(typeof chunk === "string" ? chunk : (chunk as Buffer).toString());
+      return true;
+    });
+    consoleLogSpy = jest.spyOn(console, "log").mockImplementation((...args: unknown[]) => {
+      stdoutWrites.push(args.map((a) => (typeof a === "string" ? a : String(a))).join(" "));
+    });
+    consoleErrSpy = jest.spyOn(console, "error").mockImplementation((...args: unknown[]) => {
+      stderrWrites.push(args.map((a) => (typeof a === "string" ? a : String(a))).join(" "));
+    });
+    process.exitCode = 0;
+    jest.clearAllMocks();
+    mockedConfig.findServers.mockReturnValue([]);
+  });
+
+  afterEach(() => {
+    stdoutSpy.mockRestore();
+    stderrStreamSpy.mockRestore();
+    consoleLogSpy.mockRestore();
+    consoleErrSpy.mockRestore();
+    process.exitCode = 0;
+  });
+
+  it("stdout is parseable JSON when --json is set", async () => {
+    mockAuditSuccess(makeSampleResult({ overallScore: 80 }), (r: AuditResult) => JSON.stringify(r));
+    await auditCommand("test-server", { json: true });
+
+    const stdout = captureStdout();
+    expect(stdout.length).toBeGreaterThan(0);
+    expect(() => JSON.parse(stdout)).not.toThrow();
+    expect(stdout).not.toMatch(/Trend:|Score:|quick win|regression/i);
+  });
+
+  it("stdout is parseable JSON when --ci --threshold 0 --category SSH", async () => {
+    mockAuditSuccess(makeSampleResult({ overallScore: 70 }), (r: AuditResult) => JSON.stringify(r));
+    await auditCommand("test-server", { ci: true, threshold: "0", category: "SSH" });
+
+    const stdout = captureStdout();
+    expect(stdout.length).toBeGreaterThan(0);
+    expect(() => JSON.parse(stdout)).not.toThrow();
+    expect(stdout).not.toMatch(/Trend:|Score:|quick win|regression/i);
+  });
+
+  it("threshold failure in machine mode sets exitCode=1 without threshold prose on stdout", async () => {
+    mockAuditSuccess(makeSampleResult({ overallScore: 50 }), (r: AuditResult) => JSON.stringify(r));
+    await auditCommand("test-server", { ci: true, threshold: "999" });
+
+    expect(process.exitCode).toBe(1);
+    const stdout = captureStdout();
+    const stderr = stderrWrites.join("");
+    expect(() => JSON.parse(stdout)).not.toThrow();
+    expect(stdout).not.toMatch(/below threshold/i);
+    // Regression guard: a future change that re-introduces the threshold prose
+    // via stderr (e.g. machineDiagnostic) would be caught here.
+    expect(stderr).not.toMatch(/below threshold/i);
+  });
+});

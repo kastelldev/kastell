@@ -71,6 +71,7 @@ describe("updateCommand", () => {
   beforeEach(() => {
     spy.setup();
     jest.resetAllMocks();
+    process.exitCode = undefined;
     // Default: SSH available
     mockedSsh.checkSshAvailable.mockReturnValue(true);
     // Default: spinner mock
@@ -96,6 +97,7 @@ describe("updateCommand", () => {
 
   afterEach(() => {
     spy.restore();
+    process.exitCode = undefined;
   });
 
   it("should show error when SSH not available", async () => {
@@ -543,5 +545,178 @@ describe("updateCommand", () => {
         expect.stringContaining("bare"),
       );
     });
+
+    it("should set process.exitCode to 1 when one or more --all targets are bare (live)", async () => {
+      const bareServer = {
+        ...sampleServer,
+        id: "bare-123",
+        name: "bare-test",
+        ip: "9.9.9.9",
+        mode: "bare" as const,
+      };
+      mockedConfig.getServers.mockReturnValue([bareServer]);
+      mockedModeGuard.isBareServer.mockReturnValue(true);
+      mockedInquirer.prompt.mockResolvedValueOnce({ confirm: true });
+
+      await updateCommand(undefined, { all: true });
+
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("should set process.exitCode to 1 when one or more --all targets lack a platform (live)", async () => {
+      mockedConfig.getServers.mockReturnValue([sampleServer]);
+      mockedModeGuard.isBareServer.mockReturnValue(false);
+      mockedAdapterFactory.resolvePlatform.mockReturnValue(undefined);
+      mockedInquirer.prompt.mockResolvedValueOnce({ confirm: true });
+
+      await updateCommand(undefined, { all: true });
+
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("should set process.exitCode to 1 when a managed --all target updateServer fails", async () => {
+      mockedConfig.getServers.mockReturnValue([sampleServer]);
+      mockedModeGuard.isBareServer.mockReturnValue(false);
+      mockedInquirer.prompt.mockResolvedValueOnce({ confirm: true });
+      mockedServerSelect.collectProviderTokens.mockResolvedValue(
+        new Map([["hetzner", "h-token"]]),
+      );
+      mockedCoreUpdate.updateServer.mockResolvedValue({ success: false, error: "boom" });
+
+      await updateCommand(undefined, { all: true });
+
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("should leave process.exitCode unset when --all targets are fully successful", async () => {
+      mockedConfig.getServers.mockReturnValue([sampleServer]);
+      mockedModeGuard.isBareServer.mockReturnValue(false);
+      mockedInquirer.prompt.mockResolvedValueOnce({ confirm: true });
+      mockedServerSelect.collectProviderTokens.mockResolvedValue(
+        new Map([["hetzner", "h-token"]]),
+      );
+      mockedCoreUpdate.updateServer.mockResolvedValue({ success: true, output: "OK" });
+
+      await updateCommand(undefined, { all: true });
+
+      expect(process.exitCode).toBeUndefined();
+    });
+
+    it("should set process.exitCode to 1 when --all --dryRun has a bare target (dry-run does not weaken policy)", async () => {
+      const bareServer = {
+        ...sampleServer,
+        id: "bare-123",
+        name: "bare-test",
+        ip: "9.9.9.9",
+        mode: "bare" as const,
+      };
+      mockedConfig.getServers.mockReturnValue([bareServer]);
+      mockedModeGuard.isBareServer.mockReturnValue(true);
+
+      await updateCommand(undefined, { all: true, dryRun: true });
+
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("should set process.exitCode to 1 when --all --dryRun lacks a platform for a target", async () => {
+      mockedConfig.getServers.mockReturnValue([sampleServer]);
+      mockedModeGuard.isBareServer.mockReturnValue(false);
+      mockedAdapterFactory.resolvePlatform.mockReturnValue(undefined);
+
+      await updateCommand(undefined, { all: true, dryRun: true });
+
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("should leave process.exitCode unset when no servers are configured (informational)", async () => {
+      mockedConfig.getServers.mockReturnValue([]);
+
+      await updateCommand(undefined, { all: true });
+
+      expect(process.exitCode).toBeUndefined();
+    });
+
+    it("should leave process.exitCode unset when user cancels --all confirmation", async () => {
+      mockedConfig.getServers.mockReturnValue([sampleServer]);
+      mockedInquirer.prompt.mockResolvedValueOnce({ confirm: false });
+
+      await updateCommand(undefined, { all: true });
+
+      expect(process.exitCode).toBeUndefined();
+    });
+  });
+
+  // ---- Exit-code policy: single-server failures ----
+
+  it("should set process.exitCode to 1 when single bare server is rejected (mode guard)", async () => {
+    const bareServer = {
+      ...sampleServer,
+      id: "bare-123",
+      name: "bare-test",
+      ip: "9.9.9.9",
+      mode: "bare" as const,
+    };
+    mockedServerSelect.resolveServer.mockResolvedValue(bareServer);
+    mockedModeGuard.requireManagedMode.mockReturnValue(
+      'The "update" command is not available for bare servers.',
+    );
+
+    await updateCommand("9.9.9.9");
+
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("should set process.exitCode to 1 when single server has no platform detected", async () => {
+    mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+    mockedAdapterFactory.resolvePlatform.mockReturnValue(undefined);
+
+    await updateCommand("1.2.3.4");
+
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("should set process.exitCode to 1 when single server updateServer fails", async () => {
+    mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+    mockedInquirer.prompt.mockResolvedValueOnce({ confirm: true });
+    mockedServerSelect.promptApiToken.mockResolvedValue("test-token");
+    mockedCoreUpdate.updateServer.mockResolvedValue({
+      success: false,
+      error: "SSH connection refused",
+    });
+
+    await updateCommand("1.2.3.4");
+
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("should set process.exitCode to 1 when single server update throws", async () => {
+    mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+    mockedInquirer.prompt.mockResolvedValueOnce({ confirm: true });
+    mockedServerSelect.promptApiToken.mockResolvedValue("test-token");
+    mockedCoreUpdate.updateServer.mockRejectedValue(new Error("catastrophic"));
+
+    await updateCommand("1.2.3.4");
+
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("should leave process.exitCode unset when single server update succeeds", async () => {
+    mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+    mockedInquirer.prompt.mockResolvedValueOnce({ confirm: true });
+    mockedServerSelect.promptApiToken.mockResolvedValue("test-token");
+    mockedCoreUpdate.updateServer.mockResolvedValue({ success: true, output: "OK" });
+
+    await updateCommand("1.2.3.4");
+
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it("should leave process.exitCode unset when user cancels single server confirmation", async () => {
+    mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+    mockedInquirer.prompt.mockResolvedValueOnce({ confirm: false });
+
+    await updateCommand("1.2.3.4");
+
+    expect(process.exitCode).toBeUndefined();
   });
 });

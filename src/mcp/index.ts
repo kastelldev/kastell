@@ -5,7 +5,7 @@
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createMcpServer } from "./server.js";
 import { migrateConfigIfNeeded } from "../utils/migration.js";
-import { KASTELL_VERSION } from "../utils/version.js";
+import { formatMcpStartupDiagnostic } from "./startupDiagnostic.js";
 import { extractReason } from "../utils/errors.js";
 
 // Graceful handling of unhandled rejections (security audit MEDIUM-007)
@@ -29,7 +29,7 @@ async function main(): Promise<void> {
   await server.connect(transport);
   // Server is now listening on stdin/stdout via JSON-RPC
   // All logging must go to stderr (stdout is reserved for MCP protocol)
-  process.stderr.write(`kastell-mcp v${KASTELL_VERSION} started (SAFE_MODE=${process.env.KASTELL_SAFE_MODE ?? "unset"})\n`);
+  process.stderr.write(`${formatMcpStartupDiagnostic(process.env.KASTELL_SAFE_MODE ?? "unset")}\n`);
 }
 
 main().catch((error: unknown) => {

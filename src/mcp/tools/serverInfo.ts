@@ -77,13 +77,21 @@ const serverInfoStatusOutputSchema = z.object({
 });
 
 const serverInfoHealthOutputSchema = z.object({
-  results: z.array(z.record(z.string(), z.unknown())),
+  results: z.array(z.record(z.string(), z.unknown())).optional(),
   summary: z.object({
     total: z.number(),
     running: z.number(),
     notReachable: z.number(),
     bare: z.number(),
-  }),
+  }).optional(),
+  server: z.string().optional(),
+  ip: z.string().optional(),
+  mode: z.string().optional(),
+  sshReachable: z.boolean().optional(),
+  hostKeyMismatch: z.boolean().optional(),
+  platformStatus: z.string().optional(),
+  coolifyUrl: z.string().nullable().optional(),
+  dokployUrl: z.string().nullable().optional(),
   suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
 });
 

@@ -38,11 +38,13 @@ describe("domain", () => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
     stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
+    process.exitCode = undefined;
   });
 
   afterEach(() => {
     consoleSpy.mockRestore();
     stderrSpy?.mockRestore();
+    process.exitCode = undefined;
   });
 
   // Pure function tests
@@ -629,6 +631,176 @@ describe("domain", () => {
       expect(mockedSsh.sshExec).not.toHaveBeenCalled();
       const output = [...consoleSpy.mock.calls, ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("domain");
+    });
+
+    // ---- Exit-code policy ----
+
+    it("should set process.exitCode to 1 when SSH not available", async () => {
+      mockedSsh.checkSshAvailable.mockReturnValue(false);
+
+      await domainCommand();
+
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("should set process.exitCode to 1 for invalid subcommand", async () => {
+      mockedSsh.checkSshAvailable.mockReturnValue(true);
+
+      await domainCommand("invalid");
+
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("should set process.exitCode to 1 when server not found", async () => {
+      mockedSsh.checkSshAvailable.mockReturnValue(true);
+      mockedConfig.findServers.mockReturnValue([]);
+
+      await domainCommand("list", "nonexistent");
+
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("should set process.exitCode to 1 when bare server is rejected", async () => {
+      const bareServer = { ...sampleServer, mode: "bare" as const };
+      mockedSsh.checkSshAvailable.mockReturnValue(true);
+      mockedConfig.findServers.mockReturnValue([bareServer]);
+
+      await domainCommand("list", "1.2.3.4");
+
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("should set process.exitCode to 1 when --domain is missing for add", async () => {
+      mockedSsh.checkSshAvailable.mockReturnValue(true);
+      mockedConfig.findServers.mockReturnValue([sampleServer]);
+
+      await domainCommand("add", "1.2.3.4", {});
+
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("should set process.exitCode to 1 when domain is invalid", async () => {
+      mockedSsh.checkSshAvailable.mockReturnValue(true);
+      mockedConfig.findServers.mockReturnValue([sampleServer]);
+
+      await domainCommand("add", "1.2.3.4", { domain: "-invalid" });
+
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("should set process.exitCode to 1 when add core result fails", async () => {
+      mockedSsh.checkSshAvailable.mockReturnValue(true);
+      mockedConfig.findServers.mockReturnValue([sampleServer]);
+      mockedSsh.sshExec
+        .mockResolvedValueOnce({ code: 0, stdout: "coolify-db", stderr: "" })
+        .mockResolvedValueOnce({ code: 1, stdout: "", stderr: "error" });
+
+      await domainCommand("add", "1.2.3.4", { domain: "example.com" });
+
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("should set process.exitCode to 1 when remove core result fails", async () => {
+      mockedSsh.checkSshAvailable.mockReturnValue(true);
+      mockedConfig.findServers.mockReturnValue([sampleServer]);
+      mockedSsh.sshExec
+        .mockResolvedValueOnce({ code: 0, stdout: "coolify-db", stderr: "" })
+        .mockResolvedValueOnce({ code: 1, stdout: "", stderr: "error" });
+
+      await domainCommand("remove", "1.2.3.4");
+
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("should set process.exitCode to 1 when --domain is missing for check", async () => {
+      mockedSsh.checkSshAvailable.mockReturnValue(true);
+      mockedConfig.findServers.mockReturnValue([sampleServer]);
+
+      await domainCommand("check", "1.2.3.4", {});
+
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("should set process.exitCode to 1 when check has no A record", async () => {
+      mockedSsh.checkSshAvailable.mockReturnValue(true);
+      mockedConfig.findServers.mockReturnValue([sampleServer]);
+      mockedSsh.sshExec.mockResolvedValue({ code: 0, stdout: "", stderr: "" });
+
+      await domainCommand("check", "1.2.3.4", { domain: "example.com" });
+
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("should set process.exitCode to 1 when check has DNS mismatch", async () => {
+      mockedSsh.checkSshAvailable.mockReturnValue(true);
+      mockedConfig.findServers.mockReturnValue([sampleServer]);
+      mockedSsh.sshExec.mockResolvedValue({ code: 0, stdout: "5.6.7.8\n", stderr: "" });
+
+      await domainCommand("check", "1.2.3.4", { domain: "example.com" });
+
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("should set process.exitCode to 1 when list core result fails", async () => {
+      mockedSsh.checkSshAvailable.mockReturnValue(true);
+      mockedConfig.findServers.mockReturnValue([sampleServer]);
+      mockedSsh.sshExec.mockResolvedValueOnce({ code: 1, stdout: "", stderr: "error" });
+
+      await domainCommand("list", "1.2.3.4");
+
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("should set process.exitCode to 1 when info core result fails", async () => {
+      mockedSsh.checkSshAvailable.mockReturnValue(true);
+      mockedConfig.findServers.mockReturnValue([sampleServer]);
+      mockedSsh.sshExec.mockResolvedValueOnce({ code: 1, stdout: "", stderr: "error" });
+
+      await domainCommand("info", "1.2.3.4");
+
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("should leave process.exitCode unset when add succeeds", async () => {
+      mockedSsh.checkSshAvailable.mockReturnValue(true);
+      mockedConfig.findServers.mockReturnValue([sampleServer]);
+      mockedSsh.sshExec
+        .mockResolvedValueOnce({ code: 0, stdout: "coolify-db", stderr: "" })
+        .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" });
+
+      await domainCommand("add", "1.2.3.4", { domain: "example.com" });
+
+      expect(process.exitCode).toBeUndefined();
+    });
+
+    it("should leave process.exitCode unset when check matches DNS", async () => {
+      mockedSsh.checkSshAvailable.mockReturnValue(true);
+      mockedConfig.findServers.mockReturnValue([sampleServer]);
+      mockedSsh.sshExec.mockResolvedValue({ code: 0, stdout: "1.2.3.4\n", stderr: "" });
+
+      await domainCommand("check", "1.2.3.4", { domain: "example.com" });
+
+      expect(process.exitCode).toBeUndefined();
+    });
+
+    it("should leave process.exitCode unset when list returns no custom domain (informational)", async () => {
+      mockedSsh.checkSshAvailable.mockReturnValue(true);
+      mockedConfig.findServers.mockReturnValue([sampleServer]);
+      mockedSsh.sshExec.mockResolvedValueOnce({ code: 0, stdout: "  \n", stderr: "" });
+
+      await domainCommand("list", "1.2.3.4");
+
+      expect(process.exitCode).toBeUndefined();
+    });
+
+    it("should leave process.exitCode unset when info has no FQDN (informational default)", async () => {
+      mockedSsh.checkSshAvailable.mockReturnValue(true);
+      mockedConfig.findServers.mockReturnValue([sampleServer]);
+      mockedSsh.sshExec.mockResolvedValueOnce({ code: 0, stdout: "   \n", stderr: "" });
+
+      await domainCommand("info", "1.2.3.4");
+
+      expect(process.exitCode).toBeUndefined();
     });
   });
 });
