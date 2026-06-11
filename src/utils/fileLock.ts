@@ -1,6 +1,7 @@
 import { mkdirSync, rmSync, statSync, writeFileSync, readFileSync } from "fs";
 import { dirname, join } from "path";
 import { hostname } from "os";
+import { createHash } from "crypto";
 import { DEFAULT_PERMISSION_RETRY_ATTEMPTS, DEFAULT_PERMISSION_RETRY_DELAY_MS, retryOnPermission } from "./fsRetry.js";
 
 const STALE_THRESHOLD_MS = 30_000;
@@ -66,7 +67,7 @@ type ProcessState = "alive" | "dead" | "unknown" | "not-probed";
 interface LockDiagnostic {
   lockDir: string;
   ageMs: number | "unknown";
-  ownerPid: number | "unknown";
+  ownerPid: string | "unknown";
   ownerHost: string | "unknown";
   processState: ProcessState;
   stale: boolean | "unknown";
@@ -81,6 +82,47 @@ interface CollectLockDiagnosticOptions {
   lastReclaimErrorCode?: string;
   retries: number;
   totalWaitMs: number;
+  preAssessed?: LockAssessment;
+}
+
+interface LockAssessment {
+  mtimeMs: number;
+  parsed: ParsedPidFile | null;
+  reclaimable: boolean;
+}
+
+function assessLockState(lockDir: string, probe: ProbeFn): LockAssessment | null {
+  let mtimeMs: number;
+  try {
+    mtimeMs = statSync(lockDir).mtimeMs;
+  } catch {
+    return null; // lock disappeared between checks
+  }
+  const age = Date.now() - mtimeMs;
+  const parsed = readPidFile(lockDir);
+
+  let reclaimable: boolean;
+  if (parsed && parsed.host === hostname()) {
+    const liveness = probe(parsed.pid);
+    if (liveness === "dead") reclaimable = true;
+    else if (liveness === "alive") reclaimable = age > HARD_CEILING_MS;
+    // "unknown" → mtime fallback (aggressive: STALE_THRESHOLD_MS)
+    else reclaimable = age > STALE_THRESHOLD_MS;
+  } else {
+    // farklı hostname, parse fail, veya PID file yok → mtime fallback
+    reclaimable = age > STALE_THRESHOLD_MS;
+  }
+  return { mtimeMs, parsed, reclaimable };
+}
+
+function deriveProcessState(assessment: LockAssessment, probe: ProbeFn): ProcessState {
+  if (!assessment.parsed) return "not-probed";
+  if (assessment.parsed.host !== hostname()) return "not-probed";
+  return probe(assessment.parsed.pid);
+}
+
+function hashPid(pid: number): string {
+  return `hash:${createHash("sha256").update(String(pid)).digest("hex").slice(0, 8)}`;
 }
 
 function collectLockDiagnostic(
@@ -101,34 +143,48 @@ function collectLockDiagnostic(
     totalWaitMs: options.totalWaitMs,
   };
 
-  let mtimeMs: number;
-  try {
-    mtimeMs = statSync(lockDir).mtimeMs;
-  } catch {
-    // statSync failed — keep age/stale unknown
-    return result;
-  }
-  const age = Date.now() - mtimeMs;
-  result.ageMs = age;
-
-  const parsed = readPidFile(lockDir);
-  if (parsed) {
-    result.ownerPid = parsed.pid;
-    result.ownerHost = parsed.host;
-  }
-
-  let stale: boolean;
-  if (parsed && parsed.host === hostname()) {
-    const liveness = probe(parsed.pid);
-    result.processState = liveness;
-    if (liveness === "dead") stale = true;
-    else if (liveness === "alive") stale = age > HARD_CEILING_MS;
-    else stale = age > STALE_THRESHOLD_MS;
+  // If caller pre-assessed, reuse — avoid re-statSync / re-readFileSync / re-probe.
+  const assessment = options.preAssessed;
+  let age: number;
+  let parsed: ParsedPidFile | null;
+  if (assessment) {
+    age = Date.now() - assessment.mtimeMs;
+    result.ageMs = age;
+    parsed = assessment.parsed;
+    if (parsed) {
+      result.ownerPid = hashPid(parsed.pid);
+      result.ownerHost = "internal";
+    }
+    result.processState = deriveProcessState(assessment, probe);
   } else {
-    // cross-host, parse fail, or no PID file → mtime fallback
-    stale = age > STALE_THRESHOLD_MS;
+    let mtimeMs: number;
+    try {
+      mtimeMs = statSync(lockDir).mtimeMs;
+    } catch {
+      // statSync failed — keep age/stale unknown
+      return result;
+    }
+    age = Date.now() - mtimeMs;
+    result.ageMs = age;
+    parsed = readPidFile(lockDir);
+    if (parsed) {
+      result.ownerPid = hashPid(parsed.pid);
+      result.ownerHost = "internal";
+    }
+    result.processState = deriveProcessState(
+      { mtimeMs, parsed, reclaimable: false },
+      probe,
+    );
   }
-  result.stale = stale;
+
+  // staleness — mirrors assessLockState's reclaimable decision.
+  if (parsed && parsed.host === hostname()) {
+    if (result.processState === "dead") result.stale = true;
+    else if (result.processState === "alive") result.stale = age > HARD_CEILING_MS;
+    else result.stale = age > STALE_THRESHOLD_MS;
+  } else {
+    result.stale = age > STALE_THRESHOLD_MS;
+  }
 
   return result;
 }
@@ -150,26 +206,6 @@ function formatLockDiagnostic(filePath: string, diagnostic: LockDiagnostic): str
   ].join(" ");
 }
 
-function shouldReclaimStaleLock(lockDir: string, probe: ProbeFn): boolean {
-  let mtimeMs: number;
-  try {
-    mtimeMs = statSync(lockDir).mtimeMs;
-  } catch {
-    return false; // lock disappeared between checks
-  }
-  const age = Date.now() - mtimeMs;
-  const parsed = readPidFile(lockDir);
-
-  if (parsed && parsed.host === hostname()) {
-    const liveness = probe(parsed.pid);
-    if (liveness === "dead") return true;
-    if (liveness === "alive") return age > HARD_CEILING_MS;
-    // "unknown" → mtime fallback (aggressive: STALE_THRESHOLD_MS)
-  }
-  // farklı hostname, parse fail, PID file yok, veya "unknown" → mtime fallback
-  return age > STALE_THRESHOLD_MS;
-}
-
 export async function withFileLock<T>(
   filePath: string,
   fn: () => Promise<T> | T,
@@ -180,6 +216,10 @@ export async function withFileLock<T>(
   const retryDelay = 200;
 
   mkdirSync(dirname(lockDir), { recursive: true });
+
+  // Track the last assessment so the exhaust path can reuse it instead of
+  // re-running statSync / readPidFile / probe (Reuse-F7, Efficiency-F2).
+  let lastAssessment: LockAssessment | null = null;
 
   for (let i = 0; i < maxRetries; i++) {
     try {
@@ -204,7 +244,9 @@ export async function withFileLock<T>(
       }
     } catch (err: unknown) {
       if ((err as NodeJS.ErrnoException).code === "EEXIST") {
-        if (shouldReclaimStaleLock(lockDir, probe)) {
+        const assessment = assessLockState(lockDir, probe);
+        lastAssessment = assessment;
+        if (assessment?.reclaimable) {
           const removal = removeLockDirBestEffort(lockDir);
           if (removal.removed) {
             continue;
@@ -221,40 +263,17 @@ export async function withFileLock<T>(
     }
   }
 
-  // Exhausted: collect best-effort diagnostic and throw with cause.
-  // We re-probe through collectLockDiagnostic which mirrors the shouldReclaimStaleLock
-  // path but tolerates statSync/readFileSync failures (returns "unknown" fields).
+  // Exhausted: reuse the last assessment and attempt a final best-effort reclaim
+  // to surface the rmSync error code in the diagnostic.
   let reclaimAttempted = false;
   let lastReclaimError: unknown;
   let lastReclaimErrorCode: string | undefined;
-  // Best effort — re-attempt stale reclaim to surface its final error code.
-  const probeForDiag: ProbeFn = probe;
-  const lockForDiag = lockDir;
-  let mtimeMs: number;
-  try {
-    mtimeMs = statSync(lockForDiag).mtimeMs;
-  } catch {
-    mtimeMs = -1;
-  }
-  if (mtimeMs >= 0) {
-    const age = Date.now() - mtimeMs;
-    const parsed = readPidFile(lockForDiag);
-    let reclaimable: boolean;
-    if (parsed && parsed.host === hostname()) {
-      const liveness = probeForDiag(parsed.pid);
-      if (liveness === "dead") reclaimable = true;
-      else if (liveness === "alive") reclaimable = age > HARD_CEILING_MS;
-      else reclaimable = age > STALE_THRESHOLD_MS;
-    } else {
-      reclaimable = age > STALE_THRESHOLD_MS;
-    }
-    if (reclaimable) {
-      reclaimAttempted = true;
-      const removal = removeLockDirBestEffort(lockForDiag);
-      if (!removal.removed) {
-        lastReclaimError = removal.error;
-        lastReclaimErrorCode = removal.errorCode;
-      }
+  if (lastAssessment?.reclaimable) {
+    reclaimAttempted = true;
+    const removal = removeLockDirBestEffort(lockDir);
+    if (!removal.removed) {
+      lastReclaimError = removal.error;
+      lastReclaimErrorCode = removal.errorCode;
     }
   }
 
@@ -263,6 +282,7 @@ export async function withFileLock<T>(
     lastReclaimErrorCode,
     retries: maxRetries,
     totalWaitMs: maxRetries * retryDelay,
+    preAssessed: lastAssessment ?? undefined,
   });
   throw new Error(formatLockDiagnostic(filePath, diagnostic), {
     cause: lastReclaimError,

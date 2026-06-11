@@ -2,6 +2,13 @@ import { withFileLock, probeProcess } from "../../src/utils/fileLock.js";
 import { mkdirSync, existsSync, rmSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
+import { createHash } from "crypto";
+
+// Lock diagnostic now redacts ownerPid (8-char SHA256 prefix) and replaces
+// ownerHost with "internal" — to match production sanitization.
+function hashedPid(pid: number): string {
+  return `hash:${createHash("sha256").update(String(pid)).digest("hex").slice(0, 8)}`;
+}
 
 // Existing mocked tests — rmdirSync → rmSync in assertions to match new implementation
 jest.mock("fs");
@@ -391,7 +398,7 @@ describe("withFileLock", () => {
       const error = await caught;
       expect(error).toBeInstanceOf(Error);
       // Live same-host owner → processState should be "alive", reclaim should NOT be attempted
-      expect(error.message).toContain(`ownerPid=${process.pid}`);
+      expect(error.message).toContain(`ownerPid=${hashedPid(process.pid)}`);
       expect(error.message).toContain("processState=alive");
       expect(error.message).toContain("reclaimAttempted=false");
       expect(error.message).toContain("stale=false");
@@ -471,8 +478,9 @@ describe("withFileLock", () => {
 
       const error = await caught;
       expect(error).toBeInstanceOf(Error);
-      expect(error.message).toContain("ownerPid=1234");
-      expect(error.message).toContain("ownerHost=some-other-host");
+      expect(error.message).toContain(`ownerPid=${hashedPid(1234)}`);
+      // ownerHost is sanitized to "internal" — actual hostname is never exposed
+      expect(error.message).toContain("ownerHost=internal");
       // Cross-host → probe not attempted → processState=not-probed
       expect(error.message).toContain("processState=not-probed");
       // Fresh lock on cross-host → not stale, no reclaim
@@ -517,7 +525,7 @@ describe("withFileLock", () => {
 
       const error = await caught;
       expect(error).toBeInstanceOf(Error);
-      expect(error.message).toContain("ownerPid=99999");
+      expect(error.message).toContain(`ownerPid=${hashedPid(99999)}`);
       // probeProcess returned "unknown" (EPERM) → processState=unknown
       expect(error.message).toContain("processState=unknown");
       expect(error.message).toContain("reclaimAttempted=true");
