@@ -2,10 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [2.3.0] - 2026-06-11
 
 ### Added
-- **Plugin checks now run in parallel** (cap=3, configurable via `PLUGIN_AUDIT_PARALLELISM`)
+- **`markCommandFailed()` exit code helper** — `src/utils/exitCode.ts` centralizes `process.exitCode = 1` signaling; adopted across `snapshot`, `domain`, `maintain`, `update`, `audit`, `evidence`, `fix`, `init` commands (P141)
+- **`isolatedKastellEnv` Jest helper** — `tests/helpers/isolatedKastellEnv.ts` provides per-test `KASTELL_DIR` isolation with self-registering `afterEach` cleanup (P141)
+- **Atomic `*.tmp` rename helpers** — `atomicWriteFileSync`, `fsRetry`, `secureAppendFileSync` for Windows-safe persistence with `EPERM`/`EACCES` retry + copy+unlink fallback (P140)
+- **MCP `startupDiagnostic` helper** — `src/mcp/startupDiagnostic.ts` reports SDK + build identity at MCP boot (P141)
+- **`fileLock` structured return** — `assessLockState` returns owner PID hash + `ownerHost="internal"` for safe diagnostic surfacing; stale-lock reclaim now re-acquires the lock and runs `fn()` when removal succeeds (P141)
+- Plugin checks now run in parallel (cap=3, configurable via `PLUGIN_AUDIT_PARALLELISM`)
 - Aggregate timeout for plugin audit (`PLUGIN_AUDIT_TOTAL_TIMEOUT_MS`, default 120s)
 - `safeToParallel: false` opt-out in plugin manifest for plugins with intentional mutating checkCommands
 - File-mtime cache for `getServers()` and `loadLatestAudit(ip)` with network FS guard
@@ -18,6 +23,9 @@ All notable changes to this project will be documented in this file.
 - `serverCompare` outputSchema uses `discriminatedUnion` (dış shape aynı kalır)
 - `PluginRegistryEntry` is now a discriminated union (loaded/error/disabled)
 - CI workflow: build artifact shared between jobs (~30s saving per run)
+- **`fileLock` reclaim now re-acquires the lock and runs `fn()` when stale removal succeeds** — previously only recorded the reclaim error and gave up (P141 Codex gap)
+- **Explicit `process.env[PROVIDER_TOKEN]` overrides buffered/keychain tokens** — prevents stale desktop keychain entries from breaking MCP/container calls (P141 Codex gap)
+- **`server_info` health outputSchema** — single-server fields (`server`, `ip`, `mode`, `sshReachable`, `hostKeyMismatch`, `platformStatus`, `coolifyUrl`, `dokployUrl`) now part of the schema; `results`/`summary` optional for per-server response (P141 Codex gap)
 
 Release-time version bumps remain owned by `/release minor`; `package.json` and `kastell-plugin/.claude-plugin/plugin.json` must be bumped together.
 
@@ -28,6 +36,10 @@ Release-time version bumps remain owned by `/release minor`; `package.json` and 
 - Explicit provider token environment variables now override buffered and keychain credentials, preventing stale desktop keychain entries from breaking MCP/container calls.
 - Single-server `server_info health` responses now validate against the registered MCP output schema.
 - **Windows local state writes** — Atomic `*.tmp` rename persistence now retries transient `EPERM`/`EACCES` failures and falls back to copy+unlink safely. Coverage: `servers.json`, audit history, evidence manifests (`MANIFEST.json`, `SHA256SUMS`), audit snapshots, fix history, regression baselines, and metric history. File-lock reclaim and security-log rotation also retry on transient `EPERM`/`EACCES`.
+- **Status command error path exits 1** via `markCommandFailed()` — partial failures now propagate non-zero exit code matching other reliability contracts (P141)
+- **Audit `--json` and `--ci` stdout parse-clean** — no log pollution; reserved for a single JSON payload (P141)
+- **Windows file-lock diagnostics** for persistent `EPERM`/`EACCES` — hint-rich surface, replaces "transient" claim (P141)
+- **`printDiff` regression path** unconditionally marks `process.exitCode = 1` (P141 `/simplify`)
 
 ### Internal
 - 175 `console.log` triage + sweep (5 categories — 0 actionable)
@@ -77,6 +89,18 @@ Release-time version bumps remain owned by `/release minor`; `package.json` and 
 - **Parse-clean audit stdout** — `audit --json` and `audit --ci` reserve stdout for a single JSON payload.
 - **Actionable Windows lock diagnostics** — persistent `EPERM`/`EACCES` failures on Windows file-lock paths now surface hint-rich diagnostics.
 - **MCP SDK round-trip coverage** — `server_manage add/remove/destroy` outputSchemas now have full `normalizeObjectSchema` + `safeParseAsync` round-trip tests.
+
+### Security
+
+- **Known issues deferred to v2.4.0 (P142 backlog) — 6 findings from pre-release security + insecure-defaults scan (2026-06-11):**
+  - **HIGH-001** — Notify Webhook SSRF: `assertSafeWebhookUrl` hostname literal match; DNS rebinding + axios default `maxRedirects: 21` can reach loopback / `169.254.169.254` (IMDS). Fix: DNS resolve + IP private range check + `maxRedirects: 0` + per-send re-resolve.
+  - **HIGH-002** — `debugLog` redaction inverted: substring match `/token|secret|password|.../i` lets literal JWT / `Bearer …` / `ghp_…` / `xoxb-…` tokens pass to stderr when `KASTELL_DEBUG=1`. Fix: shape-based (JWT regex, `Bearer`/`Basic` prefix, long hex/base64) + recursive key-name redaction.
+  - **CRITICAL-1** — `starter` template unhardened: `kastell init` / `server_provision` MCP default deploys stock Ubuntu 24.04 sshd_config (no fail2ban, no UFW, no SSH hardening). Fix: flip `starter.fullSetup: true` or rename to `unhardened` with explicit warning.
+  - **HIGH-1** — SSH `StrictHostKeyChecking` defaults to `accept-new` (TOFU/MITM): first-connection MITM silently accepted unless `KASTELL_STRICT_HOST_KEY=true`. Fix: default `"yes"` for `kastell ssh` command path; one-time stderr warning.
+  - **HIGH-2** — `KASTELL_SAFE_MODE` defaults to `false` for CLI: `kastell destroy --force` and CI/automation bypass safety gate. MCP default is `true` (asymmetry undocumented). Fix: `isSafeMode()` → `true` when `!process.stdout.isTTY` or `--force`; document CLI/MCP asymmetry.
+  - **HIGH-3** — All providers hardcode Ubuntu 24.04 (contradicts LESSONS.md): `src/providers/{digitalocean,hetzner,linode}.ts` ignore documented DO+24.04 SSH lockout incident. Fix: pin DO to `ubuntu-22-04-x64`; add CI matrix; document policy.
+
+## [Unreleased]
 
 ## [2.2.7] - 2026-05-16
 
