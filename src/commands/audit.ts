@@ -31,9 +31,9 @@ import { loadDefaults } from "../core/defaults.js";
 import { AuditError } from "../core/audit/errors.js";
 import { markCommandFailed } from "../utils/exitCode.js";
 
-function printDiff(diff: AuditDiffResult, json: boolean, machineOutput: boolean): void {
+function printDiff(diff: AuditDiffResult, json?: boolean): void {
   console.log(json ? formatDiffJson(diff) : formatDiffTerminal(diff));
-  if (diff.regressions.length > 0 && machineOutput) {
+  if (diff.regressions.length > 0) {
     markCommandFailed();
   }
 }
@@ -212,7 +212,7 @@ async function auditCommandImpl(
       before: beforeSnap.name ?? beforeRef,
       after: afterSnap.name ?? afterRef,
     });
-    printDiff(diff, options.json ?? false, machineOutput);
+    printDiff(diff, options.json);
     return;
   }
 
