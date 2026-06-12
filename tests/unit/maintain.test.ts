@@ -739,6 +739,10 @@ describe("maintainCommand", () => {
     };
     mockedSsh.checkSshAvailable.mockReturnValue(true);
     mockedConfig.getServers.mockReturnValue([sampleServer, bareServer]);
+    const inquirer = await import("inquirer");
+    (inquirer.default as { prompt: unknown }).prompt = jest
+      .fn()
+      .mockResolvedValueOnce({ apiToken: "test-token" });
 
     await maintainCommand(undefined, { all: true });
 
