@@ -46,7 +46,7 @@ npx kastell
  ██║  ██╗  ██║  ██║ ███████║   ██║   ███████╗███████╗███████╗
  ╚═╝  ╚═╝  ╚═╝  ╚═╝ ╚══════╝   ╚═╝   ╚══════╝╚══════╝╚══════╝
 
-  KASTELL  v2.2.7  ·  Your infrastructure, fortified.
+  KASTELL  v2.3.0  ·  Your infrastructure, fortified.
 
   $ kastell init --template production  → deploy a new server
   $ kastell status --all                → check all servers
@@ -95,9 +95,9 @@ Kastell sunucu oluşturma, SSH anahtar kurulumu, güvenlik duvarı yapılandırm
 |---------|---------|-------|----------|
 | Kurulum | `npm i -g kastell` | Paket yoneticisi | Paket yoneticisi |
 | Dil | TypeScript | Shell | C/Python |
-| Guvenlik Kontrolleri | 457+ | 300+ | Profile gore degisir |
+| Guvenlik Kontrolleri | 470+ | 300+ | Profile gore degisir |
 | Otomatik Duzeltme | Guvenli katman | Sadece oneri | Sadece oneri |
-| MCP (AI Ajan) | 14 arac | -- | -- |
+| MCP (AI Ajan) | 17 arac | -- | -- |
 | Uyumluluk | CIS, PCI-DSS, HIPAA | CIS, HIPAA | CIS, STIG, PCI-DSS |
 | Bulut Saglama | 4 saglayici | -- | -- |
 | Siklastirma (Lock) | 24 adim | -- | -- |
@@ -170,7 +170,7 @@ kastell domain add sunucum --domain ornek.com  # Domain + SSL ayarla
 
 ### Güvenlik Denetimi
 ```bash
-kastell audit sunucum                    # Tam güvenlik denetimi (31 kategori, 468+ kontrol)
+kastell audit sunucum                    # Tam güvenlik denetimi (32 kategori, 470+ kontrol)
 kastell audit sunucum --json             # Otomasyon için JSON çıktısı
 kastell audit sunucum --threshold 70     # Skor eşiğin altındaysa exit code 1
 kastell audit sunucum --fix              # İnteraktif düzeltme modu (önem derecesine göre)
@@ -263,7 +263,7 @@ kastell init --template production --provider hetzner
 
 ## Güvenlik
 
-Kastell güvenlik öncelikli olarak geliştirilmektedir -- 219 test suite'inde **9.871 test**, özel güvenlik test suite'leri dahil.
+Kastell güvenlik öncelikli olarak geliştirilmektedir -- 344 test suite'inde **11.206 test**, özel güvenlik test suite'leri dahil.
 
 - API token'ları asla diske kaydedilmez -- çalışma zamanında sorulur veya ortam değişkenlerinden alınır
 - SSH anahtarları gerekirse otomatik oluşturulur (Ed25519)
@@ -306,7 +306,7 @@ Platform durumunu kontrol edip gerekirse otomatik yeniden başlatmak için `kast
 
 Geliştirme ortamı kurulumu, test ve katkı rehberi için [CONTRIBUTING.md](CONTRIBUTING.md) dosyasına bakın.
 
-Kastell, 207 suite'te **6.441 test** kullanmaktadır. PR göndermeden önce `npm test` çalıştırın.
+Kastell, 344 suite'te **11.206 test** kullanmaktadır. PR göndermeden önce `npm test` çalıştırın.
 
 ## MCP Sunucusu (Yapay Zeka Entegrasyonu)
 

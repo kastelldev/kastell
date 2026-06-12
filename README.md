@@ -46,7 +46,7 @@ Running `kastell` without any arguments launches an **interactive search menu** 
  ██║  ██╗  ██║  ██║ ███████║   ██║   ███████╗███████╗███████╗
  ╚═╝  ╚═╝  ╚═╝  ╚═╝ ╚══════╝   ╚═╝   ╚══════╝╚══════╝╚══════╝
 
-  KASTELL  v2.2.7  ·  Your infrastructure, fortified.
+  KASTELL  v2.3.0  ·  Your infrastructure, fortified.
 
   $ kastell init --template production  → deploy a new server
   $ kastell status --all                → check all servers
@@ -95,9 +95,9 @@ Kastell handles server provisioning, SSH key setup, firewall configuration, and 
 |---------|---------|-------|----------|
 | Installation | `npm i -g kastell` | Package manager | Package manager |
 | Language | TypeScript | Shell | C/Python |
-| Security Checks | 457+ | 300+ | Varies by profile |
+| Security Checks | 470+ | 300+ | Varies by profile |
 | Auto-Fix | Safe tier | Suggest only | Suggest only |
-| MCP (AI Agent) | 14 tools | -- | -- |
+| MCP (AI Agent) | 17 tools | -- | -- |
 | Compliance | CIS, PCI-DSS, HIPAA | CIS, HIPAA | CIS, STIG, PCI-DSS |
 | Cloud Provision | 4 providers | -- | -- |
 | Hardening (Lock) | 24-step | -- | -- |
@@ -170,7 +170,7 @@ kastell domain add my-server --domain example.com  # Set domain + SSL
 
 ### Security Audit
 ```bash
-kastell audit my-server                  # Full security audit (31 categories, 468+ checks)
+kastell audit my-server                  # Full security audit (32 categories, 470+ checks)
 kastell audit my-server --json           # JSON output for automation
 kastell audit my-server --threshold 70   # Exit code 1 if score below threshold
 kastell audit my-server --fix            # Interactive fix mode (prompts per severity)
@@ -263,7 +263,7 @@ kastell init --template production --provider hetzner
 
 ## Security
 
-Kastell is built with security as a priority -- **9,871 tests** across 219 suites, including dedicated security test suites.
+Kastell is built with security as a priority -- **11,206 tests** across 344 suites, including dedicated security test suites.
 
 - API tokens are never stored on disk -- prompted at runtime or via environment variables
 - SSH keys are auto-generated if needed (Ed25519)
@@ -316,7 +316,7 @@ Use `kastell status my-server --autostart` to check platform status and auto-res
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing, and contribution guidelines.
 
-Kastell uses **9,871 tests** across 219 suites. Run `npm test` before submitting PRs.
+Kastell uses **11,206 tests** across 344 suites. Run `npm test` before submitting PRs.
 
 ## MCP Server (AI Integration)
 

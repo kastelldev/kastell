@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [2.3.0] - 2026-06-11
+## [2.3.0] - 2026-06-12
 
 ### Added
 - **`markCommandFailed()` exit code helper** — `src/utils/exitCode.ts` centralizes `process.exitCode = 1` signaling; adopted across `snapshot`, `domain`, `maintain`, `update`, `audit`, `evidence`, `fix`, `init` commands (P141)
