@@ -1,43 +1,24 @@
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { z } from "zod";
-import axios from "axios";
+import axios, { type AxiosRequestConfig } from "axios";
 import chalk from "chalk";
 import inquirer from "inquirer";
 import { KASTELL_DIR } from "../utils/paths.js";
-import { ValidationError } from "../utils/errors.js";
 import { createSpinner } from "../utils/logger.js";
 import { loadNotifyChannels, saveNotifyChannel, removeNotifyChannel } from "./notifyStore.js";
 import { secureWriteFileSync, secureMkdirSync } from "../utils/secureWrite.js";
 import { extractReason } from "../utils/errors.js";
+import {
+  assertSafeWebhookUrl,
+  createSafeWebhookAgent,
+} from "../utils/webhookSecurity.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const COOLDOWN_FILE = join(KASTELL_DIR, "notify-cooldown.json");
 const COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
 const NOTIFY_TIMEOUT_MS = 10_000;
-
-// ─── SSRF Protection ─────────────────────────────────────────────────────────
-
-const PRIVATE_IP_PATTERNS = [
-  /^127\./,
-  /^10\./,
-  /^192\.168\./,
-  /^172\.(1[6-9]|2\d|3[01])\./,
-  /^169\.254\./,
-  /^0\./,
-  /^localhost$/i,
-];
-
-function assertSafeWebhookUrl(url: string): void {
-  const parsed = new URL(url);
-  if (PRIVATE_IP_PATTERNS.some((p) => p.test(parsed.hostname))) {
-    throw new ValidationError("Webhook URL points to a private/reserved address", { hint: "Use a public webhook URL" });
-  }
-  if (parsed.protocol !== "https:") {
-    throw new ValidationError("Webhook URL must use HTTPS", { hint: "Webhook URL must start with https://" });
-  }
-}
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 
@@ -79,9 +60,10 @@ export function loadNotifyConfig(): NotifyConfig {
 async function sendHttp(
   url: string,
   body: Record<string, unknown>,
+  options: AxiosRequestConfig = {},
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await axios.post(url, body, { timeout: NOTIFY_TIMEOUT_MS });
+    await axios.post(url, body, { timeout: NOTIFY_TIMEOUT_MS, ...options });
     return { success: true };
   } catch (err) {
     return { success: false, error: extractReason(err) };
@@ -105,7 +87,15 @@ export async function sendDiscord(
   content: string,
 ): Promise<{ success: boolean; error?: string }> {
   assertSafeWebhookUrl(webhookUrl);
-  return sendHttp(webhookUrl, { content });
+  return sendHttp(
+    webhookUrl,
+    { content },
+    {
+      maxRedirects: 0,
+      proxy: false,
+      httpsAgent: createSafeWebhookAgent(),
+    },
+  );
 }
 
 export async function sendSlack(
@@ -113,7 +103,15 @@ export async function sendSlack(
   text: string,
 ): Promise<{ success: boolean; error?: string }> {
   assertSafeWebhookUrl(webhookUrl);
-  return sendHttp(webhookUrl, { text });
+  return sendHttp(
+    webhookUrl,
+    { text },
+    {
+      maxRedirects: 0,
+      proxy: false,
+      httpsAgent: createSafeWebhookAgent(),
+    },
+  );
 }
 
 // ─── Fan-out ──────────────────────────────────────────────────────────────────

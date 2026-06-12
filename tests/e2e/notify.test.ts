@@ -148,7 +148,12 @@ describe("notify command", () => {
       expect(mockedAxios.post).toHaveBeenCalledWith(
         "https://discord.com/api/webhooks/123/abc",
         { content: "[Kastell] Test notification - your discord integration is working!" },
-        { timeout: 10000 },
+        expect.objectContaining({
+          timeout: 10000,
+          maxRedirects: 0,
+          proxy: false,
+          httpsAgent: expect.any(Object),
+        }),
       );
     });
 
@@ -163,7 +168,12 @@ describe("notify command", () => {
       expect(mockedAxios.post).toHaveBeenCalledWith(
         "https://hooks.slack.com/services/T00/B00/XX",
         { text: "[Kastell] Test notification - your slack integration is working!" },
-        { timeout: 10000 },
+        expect.objectContaining({
+          timeout: 10000,
+          maxRedirects: 0,
+          proxy: false,
+          httpsAgent: expect.any(Object),
+        }),
       );
     });
 

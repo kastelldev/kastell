@@ -145,7 +145,12 @@ describe("sendDiscord / sendSlack", () => {
     expect(mockedAxiosPost).toHaveBeenCalledWith(
       "https://discord.com/api/webhooks/1/tok",
       { content: "Hello discord" },
-      { timeout: 10_000 },
+      expect.objectContaining({
+        timeout: 10_000,
+        maxRedirects: 0,
+        proxy: false,
+        httpsAgent: expect.any(Object),
+      }),
     );
   });
 
@@ -174,7 +179,12 @@ describe("sendDiscord / sendSlack", () => {
     expect(mockedAxiosPost).toHaveBeenCalledWith(
       "https://hooks.slack.com/services/T/B/secret",
       { text: "Hello slack" },
-      { timeout: 10_000 },
+      expect.objectContaining({
+        timeout: 10_000,
+        maxRedirects: 0,
+        proxy: false,
+        httpsAgent: expect.any(Object),
+      }),
     );
   });
 

@@ -92,13 +92,13 @@ Release-time version bumps remain owned by `/release minor`; `package.json` and 
 
 ### Security
 
-- **Known issues deferred to v2.4.0 (P142 backlog) — 6 findings from pre-release security + insecure-defaults scan (2026-06-11):**
-  - **HIGH-001** — Notify Webhook SSRF: `assertSafeWebhookUrl` hostname literal match; DNS rebinding + axios default `maxRedirects: 21` can reach loopback / `169.254.169.254` (IMDS). Fix: DNS resolve + IP private range check + `maxRedirects: 0` + per-send re-resolve.
-  - **HIGH-002** — `debugLog` redaction inverted: substring match `/token|secret|password|.../i` lets literal JWT / `Bearer …` / `ghp_…` / `xoxb-…` tokens pass to stderr when `KASTELL_DEBUG=1`. Fix: shape-based (JWT regex, `Bearer`/`Basic` prefix, long hex/base64) + recursive key-name redaction.
-  - **CRITICAL-1** — `starter` template unhardened: `kastell init` / `server_provision` MCP default deploys stock Ubuntu 24.04 sshd_config (no fail2ban, no UFW, no SSH hardening). Fix: flip `starter.fullSetup: true` or rename to `unhardened` with explicit warning.
-  - **HIGH-1** — SSH `StrictHostKeyChecking` defaults to `accept-new` (TOFU/MITM): first-connection MITM silently accepted unless `KASTELL_STRICT_HOST_KEY=true`. Fix: default `"yes"` for `kastell ssh` command path; one-time stderr warning.
-  - **HIGH-2** — `KASTELL_SAFE_MODE` defaults to `false` for CLI: `kastell destroy --force` and CI/automation bypass safety gate. MCP default is `true` (asymmetry undocumented). Fix: `isSafeMode()` → `true` when `!process.stdout.isTTY` or `--force`; document CLI/MCP asymmetry.
-  - **HIGH-3** — All providers hardcode Ubuntu 24.04 (contradicts LESSONS.md): `src/providers/{digitalocean,hetzner,linode}.ts` ignore documented DO+24.04 SSH lockout incident. Fix: pin DO to `ubuntu-22-04-x64`; add CI matrix; document policy.
+- **Notify webhook SSRF hardening (HIGH-001)** — Discord/Slack webhook connections now reject private/reserved IPv4 and IPv6 targets during the actual socket DNS lookup, pin connections to validated public answers, and disable redirects and environment proxies.
+- **Reclassified P142 security follow-ups (reviewed 2026-06-12):**
+  - **MEDIUM** — `starter` CLI template skips the optional extra SSH hardening step. Platform cloud-init still configures firewall rules; bare mode also installs fail2ban and unattended-upgrades.
+  - **MEDIUM** — SSH `StrictHostKeyChecking=accept-new` carries first-connection TOFU risk; strict host-key handling needs separate policies for interactive SSH and newly provisioned servers.
+  - **LOW** — `debugLog` does not detect raw secret-shaped strings, though current core error-object call sites are collapsed to `[object]`.
+  - **LOW / operational** — CLI safe mode defaults off for trusted local operation; non-TTY automation can still benefit from safer defaults or warnings.
+- **Removed from the security backlog** — Ubuntu 24.04 provider pinning is a provisioning reliability policy, not a security vulnerability; the previously documented DigitalOcean SSH issue has dedicated cloud-init mitigations.
 
 ## [Unreleased]
 
