@@ -140,6 +140,7 @@ vite.config.ts.timestamp-*
 
 # Claude Code settings
 CLAUDE.md
+AGENTS.md
 .claude/
 
 # Git worktrees
