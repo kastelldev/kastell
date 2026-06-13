@@ -82,6 +82,8 @@ describe("updateCommand", () => {
   }
 
   beforeEach(() => {
+    // P142: deterministic reset to prevent cross-suite process.exitCode pollution
+    process.exitCode = 0;
     spy.setup();
     jest.resetAllMocks();
     // Re-apply inquirer prompts mock after resetAllMocks
