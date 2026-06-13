@@ -76,6 +76,35 @@ describe("calculateCategoryScore", () => {
     expect(result.maxScore).toBe(100);
     expect(result.score).toBe(60); // 3/5 * 100 = 60
   });
+
+  // P142 Task 2: skip-aware scoring
+  it("P142 Task 2: all-skipped category returns { score: 0, maxScore: 0 }", () => {
+    // All checks are v2 mutating-skip (passed=false, skip metadata present).
+    // Skipped checks are excluded from scoring — neither pass nor fail weight.
+    // Returns { 0, 0 } to signal "no scoring info available" and keep
+    // detectSkippedCategories separate (it inspects currentValue only).
+    const checks: AuditCheck[] = [
+      makeCheck({ id: "S-01", severity: "critical", passed: false, currentValue: "", skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-local" } }),
+      makeCheck({ id: "S-02", severity: "warning", passed: false, currentValue: "", skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-global" } }),
+    ];
+    const result = calculateCategoryScore(checks);
+    expect(result.score).toBe(0);
+    expect(result.maxScore).toBe(0);
+  });
+
+  it("P142 Task 2: mixed category excludes skipped check severity weight from denominator", () => {
+    // Two checks: a passed read check (warning, weight 2) and a skipped
+    // mutating check (critical, weight 3). Without skip-aware logic, total
+    // weight would be 5 with 2/5 = 40. With skip-aware logic, skipped is
+    // excluded, so the only counted check passes, score = 100.
+    const checks: AuditCheck[] = [
+      makeCheck({ id: "M-01", severity: "warning", passed: true, currentValue: "ok" }),
+      makeCheck({ id: "M-02", severity: "critical", passed: false, currentValue: "", skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-local" } }),
+    ];
+    const result = calculateCategoryScore(checks);
+    expect(result.maxScore).toBe(100);
+    expect(result.score).toBe(100);
+  });
 });
 
 describe("calculateOverallScore", () => {
