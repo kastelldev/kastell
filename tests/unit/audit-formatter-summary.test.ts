@@ -29,6 +29,8 @@ const mockResult: AuditResult = {
   overallScore: 67,
   quickWins: [
     {
+      id: "FW-UFW-ACTIVE",
+      severity: "critical",
       commands: ["ufw enable"],
       currentScore: 67,
       projectedScore: 85,
