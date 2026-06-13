@@ -1,4 +1,6 @@
 import type { AuditResult } from "../../src/core/audit/types";
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
+import { calculateQuickWins } from "../../src/core/audit/quickwin.js";
 
 const mockResult: AuditResult = {
   serverName: "test-server",
@@ -55,5 +57,63 @@ describe("formatJson", () => {
     // Pretty-printed JSON has newlines
     expect(output).toContain("\n");
     expect(output.split("\n").length).toBeGreaterThan(1);
+  });
+
+  it("should include id and severity on each quickWins entry (P142 contract)", async () => {
+    // Build a result with a failing SSH check that calculateQuickWins will pick up
+    const resultWithFixable: AuditResult = {
+      ...mockResult,
+      overallScore: 50,
+      categories: [
+        {
+          name: "SSH",
+          checks: [
+            {
+              id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH,
+              category: "SSH",
+              name: "Password Authentication",
+              severity: "critical",
+              passed: false,
+              currentValue: "yes",
+              expectedValue: "no",
+              fixCommand: "sed -i 's/PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config",
+            },
+          ],
+          score: 0,
+          maxScore: 100,
+        },
+      ],
+      quickWins: calculateQuickWins({
+        ...mockResult,
+        overallScore: 50,
+        categories: [
+          {
+            name: "SSH",
+            checks: [
+              {
+                id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH,
+                category: "SSH",
+                name: "Password Authentication",
+                severity: "critical",
+                passed: false,
+                currentValue: "yes",
+                expectedValue: "no",
+                fixCommand: "sed -i 's/PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config",
+              },
+            ],
+            score: 0,
+            maxScore: 100,
+          },
+        ],
+      }),
+    };
+    expect(resultWithFixable.quickWins.length).toBeGreaterThan(0);
+
+    const { formatJson } = await import("../../src/core/audit/formatters/json");
+    const output = formatJson(resultWithFixable);
+    const parsed = JSON.parse(output) as { quickWins: Array<{ id?: string; severity?: string }> };
+
+    expect(parsed.quickWins[0].id).toBe(CHECK_IDS.SSH.SSH_PASSWORD_AUTH);
+    expect(parsed.quickWins[0].severity).toBe("critical");
   });
 });
