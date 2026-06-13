@@ -240,6 +240,38 @@ describe("calculateComplianceDetail", () => {
     expect(scores[0].totalControls).toBe(2);
     expect(scores[0].controls).toHaveLength(2);
   });
+
+  it("excludes skipped mapping from control pass/fail aggregation (failing skipped check is not a fail)", () => {
+    const cat = makeCategory("Auth", [
+      makeCheck("AUTH-A", true, [
+        { framework: "CIS", controlId: "5.3.1", version: "CIS", description: "Auth", coverage: "full" },
+      ]),
+      makeCheck("AUTH-B-SKIPPED", false, [
+        { framework: "CIS", controlId: "5.3.1", version: "CIS", description: "Auth", coverage: "full" },
+      ]),
+    ]);
+    // Force the second check to be skipped via the structured skip field
+    cat.checks[1].skip = { code: "legacy-mutating", apiVersion: "2", kind: "mutate-global" };
+
+    const scores = calculateComplianceScores([cat]);
+    // AUTH-B-SKIPPED is skipped → control 5.3.1 has only AUTH-A which passes
+    expect(scores[0].passedControls).toBe(1);
+    expect(scores[0].totalControls).toBe(1);
+  });
+
+  it("omits control that has only skipped checks from its denominator", () => {
+    const cat = makeCategory("Auth", [
+      makeCheck("AUTH-SKIPPED-A", false, [
+        { framework: "CIS", controlId: "5.3.2", version: "CIS", description: "Auth2", coverage: "full" },
+      ]),
+    ]);
+    cat.checks[0].skip = { code: "legacy-mutating", apiVersion: "2", kind: "mutate-global" };
+
+    const scores = calculateComplianceScores([cat]);
+    // Control 5.3.2 had only skipped checks → must not enter the total/denominator
+    expect(scores[0].totalControls).toBe(0);
+    expect(scores[0].passedControls).toBe(0);
+  });
 });
 
 describe("filterByProfile", () => {
