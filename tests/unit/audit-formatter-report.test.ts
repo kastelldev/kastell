@@ -1,4 +1,4 @@
-import type { AuditResult } from "../../src/core/audit/types";
+import type { AuditResult, AuditCheck } from "../../src/core/audit/types";
 
 const mockResult: AuditResult = {
   serverName: "test-server",
@@ -141,5 +141,51 @@ describe("formatMdReport", () => {
     const output = formatMdReport(mockResult);
 
     expect(output).toContain("Quick");
+  });
+});
+
+describe("P142: structured skip rendering in HTML+MD report", () => {
+  const skipCheck: AuditCheck = {
+    id: "PLUGIN-MUTATE-LOCAL",
+    category: "Plugin",
+    name: "Mutate Local",
+    severity: "info",
+    passed: false,
+    currentValue: "n/a",
+    expectedValue: "n/a",
+    skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-local" },
+  };
+
+  const resultWithSkip: AuditResult = {
+    ...mockResult,
+    categories: [
+      {
+        name: "Plugin",
+        checks: [skipCheck],
+        score: 100,
+        maxScore: 100,
+      },
+    ],
+    quickWins: [],
+  };
+
+  it("HTML report uses neutral Skipped state for skipped checks", async () => {
+    const { formatHtmlReport } = await import("../../src/core/audit/formatters/report");
+    const output = formatHtmlReport(resultWithSkip);
+
+    // Skipped state should be neutral — not a red X (FAIL icon) or checkmark (PASS)
+    // We use a "Skipped" class or text. Acceptable: text contains "Skipped" or class contains skipped
+    expect(output.toLowerCase()).toMatch(/skipped/);
+  });
+
+  it("MD report uses neutral Skipped state for skipped checks", async () => {
+    const { formatMdReport } = await import("../../src/core/audit/formatters/report");
+    const output = formatMdReport(resultWithSkip);
+
+    // Status column for skipped check should be "Skipped" — not "Pass" or "FAIL"
+    expect(output).toContain("Skipped");
+    // Should NOT mark the skipped check as PASS or FAIL
+    expect(output).not.toMatch(/\|\s*Pass\s*\|.*PLUGIN-MUTATE-LOCAL/);
+    expect(output).not.toMatch(/\|\s*FAIL\s*\|.*PLUGIN-MUTATE-LOCAL/);
   });
 });
