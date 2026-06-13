@@ -86,6 +86,8 @@ describe("Audit types", () => {
 
   it("should enforce QuickWin shape", () => {
     const qw: QuickWin = {
+      id: "FW-UFW-ACTIVE",
+      severity: "critical",
       commands: ["ufw enable"],
       currentScore: 30,
       projectedScore: 60,
