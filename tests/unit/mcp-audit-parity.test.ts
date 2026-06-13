@@ -1,4 +1,10 @@
 import { handleServerAudit } from "../../src/mcp/tools/serverAudit.js";
+import { serverAuditOutputSchema } from "../../src/mcp/tools/serverAudit.js";
+import {
+  normalizeObjectSchema,
+  safeParseAsync,
+} from "@modelcontextprotocol/sdk/server/zod-compat.js";
+import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
 
 // Mock core dependencies
 jest.mock("../../src/utils/config.js", () => ({
@@ -55,6 +61,72 @@ jest.mock("../../src/core/audit/diff.js", () => ({
 describe("MCP server_audit parity", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  describe("QuickWin SDK round-trip (P142 contract)", () => {
+    it("preserves id and severity on quickWins entries through MCP SDK validation", async () => {
+      // Build a fresh audit result with a quickWins entry that includes id + severity
+      const { runAudit } = await import("../../src/core/audit/index.js");
+      (runAudit as jest.Mock).mockResolvedValueOnce({
+        success: true,
+        data: {
+          serverName: "test-srv",
+          serverIp: "1.2.3.4",
+          platform: "bare",
+          overallScore: 50,
+          timestamp: "2026-04-19T10:00:00Z",
+          categories: [
+            {
+              name: "SSH",
+              score: 0,
+              maxScore: 100,
+              checks: [
+                {
+                  id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH,
+                  name: "Password Authentication",
+                  passed: false,
+                  severity: "critical",
+                  category: "SSH",
+                  fixCommand: "sed -i 's/PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config",
+                },
+              ],
+            },
+          ],
+          quickWins: [
+            {
+              id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH,
+              severity: "critical",
+              commands: ["sed -i 's/PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config"],
+              currentScore: 50,
+              projectedScore: 75,
+              description: "Fix Password Authentication (SSH)",
+            },
+          ],
+        },
+      });
+
+      const result = await handleServerAudit({ format: "json" });
+      expect(result.isError).toBeFalsy();
+
+      // Run the structured output through the FULL MCP SDK chain
+      // (normalizeObjectSchema + safeParseAsync) — not just a manual Zod parse.
+      const structured = (result as { structuredContent?: unknown }).structuredContent;
+      expect(structured).toBeDefined();
+      const normalizedSchema = normalizeObjectSchema(serverAuditOutputSchema);
+      expect(normalizedSchema).toBeDefined();
+      const parsed = await safeParseAsync(normalizedSchema!, structured);
+      expect(parsed.success).toBe(true);
+
+      // The structured payload must include a quickWins entry with id and severity.
+      const resultData = (structured as {
+        result: {
+          quickWins?: Array<{ id?: string; severity?: string }>;
+        };
+      }).result;
+      expect(resultData.quickWins).toBeDefined();
+      expect(resultData.quickWins?.[0]?.id).toBe(CHECK_IDS.SSH.SSH_PASSWORD_AUTH);
+      expect(resultData.quickWins?.[0]?.severity).toBe("critical");
+    });
   });
 
   describe("category filter", () => {
