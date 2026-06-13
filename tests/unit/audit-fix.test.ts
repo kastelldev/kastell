@@ -388,6 +388,53 @@ describe("previewFixes — edge cases", () => {
     expect(allCheckIds).not.toContain("TEST-PASS");
     expect(allCheckIds).toContain("TEST-FAIL");
   });
+
+  // P142 Task 2: skip-aware fix selection
+  it("P142 Task 2: skipped checks are excluded from previewFixes", () => {
+    // A v2 mutating-skip check has passed=false and fixCommand but its skip
+    // metadata signals "audit never runs this". previewFixes must not surface
+    // it as a fixable check.
+    const result = makeResult([
+      makeCategory("Test", [
+        makeCheck({ id: "FX-REAL", severity: "warning", passed: false, fixCommand: "chmod 600 /etc/test" }),
+        makeCheck({
+          id: "FX-SKIP",
+          severity: "critical",
+          passed: false,
+          fixCommand: "chmod 600 /etc/skip",
+          currentValue: "",
+          skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-local" },
+        }),
+      ]),
+    ]);
+    const plan = previewFixes(result);
+    const allCheckIds = plan.groups.flatMap((g) => g.checks.map((c) => c.id));
+    expect(allCheckIds).toContain("FX-REAL");
+    expect(allCheckIds).not.toContain("FX-SKIP");
+  });
+
+  it("P142 Task 2: skipped checks are excluded from previewSafeFixes", () => {
+    const result = makeResult([
+      makeCategory("Test", [
+        makeCheck({ id: "SF-REAL", severity: "warning", passed: false, fixCommand: "chmod 600 /test", safeToAutoFix: "SAFE" }),
+        makeCheck({
+          id: "SF-SKIP",
+          severity: "critical",
+          passed: false,
+          fixCommand: "chmod 600 /skip",
+          safeToAutoFix: "SAFE",
+          currentValue: "",
+          skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-local" },
+        }),
+      ]),
+    ]);
+    const { safePlan, guardedCount, forbiddenCount } = previewSafeFixes(result);
+    const allIds = safePlan.groups.flatMap((g) => g.checks.map((c) => c.id));
+    expect(allIds).toContain("SF-REAL");
+    expect(allIds).not.toContain("SF-SKIP");
+    expect(guardedCount).toBe(0);
+    expect(forbiddenCount).toBe(0);
+  });
 });
 
 // ─── Mutation-Killer: isFixCommandAllowed ────────────────────────────────────
