@@ -316,4 +316,26 @@ describe("getMachineKey", () => {
     expect(path).toContain(".encryption-salt");
     expect(typeof data).toBe("string");
   });
+
+  it("marks encryption material writes with sensitivity=secret (P142 Task 6)", async () => {
+    mockedPlatform.mockReturnValue("win32" as NodeJS.Platform);
+    mockedSpawnSync.mockReturnValue({
+      stdout: "\r\nHKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\r\n    MachineGuid    REG_SZ    TEST-GUID-1234\r\n\r\n",
+      stderr: "",
+      status: 0,
+      pid: 1,
+      output: [],
+      signal: null,
+    } as unknown as ReturnType<typeof spawnSync>);
+
+    const { getMachineKey } = await loadModule();
+    getMachineKey();
+
+    // The salt write must include sensitivity=secret
+    const saltWrite = mockedWriteFileSync.mock.calls.find(
+      (c) => typeof c[0] === "string" && (c[0] as string).includes(".encryption-salt"),
+    );
+    expect(saltWrite).toBeDefined();
+    expect(saltWrite![2]).toEqual(expect.objectContaining({ sensitivity: "secret" }));
+  });
 });
