@@ -64,7 +64,7 @@ const FIXED_AUDIT_RESULT: AuditResult = {
       currentScore: 42,
       projectedScore: 75,
       description: "Disable SSH password authentication",
-    },
+    } as unknown as import("../../src/core/audit/types.js").QuickWin,
   ],
 };
 
