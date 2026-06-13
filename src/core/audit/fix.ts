@@ -133,6 +133,7 @@ export interface FixPreview {
   checkId: string;
   command: string;
   tier: FixTier;
+  forbiddenReason?: string;  // Human-readable explanation when tier === "FORBIDDEN" (P142 Task 10)
 }
 
 /** Result of running fixes */
@@ -249,7 +250,12 @@ export function previewSafeFixes(result: AuditResult, options?: { includeForbidd
         } else {
           forbiddenCount++;
           if (options?.includeForbidden) {
-            forbiddenFixes.push({ checkId: check.id, command: check.fixCommand, tier: "FORBIDDEN" });
+            forbiddenFixes.push({
+              checkId: check.id,
+              command: check.fixCommand,
+              tier: "FORBIDDEN",
+              ...(check.forbiddenReason ? { forbiddenReason: check.forbiddenReason } : {}),
+            });
           }
         }
       }
