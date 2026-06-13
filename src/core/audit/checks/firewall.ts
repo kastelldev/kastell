@@ -146,7 +146,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
     expectedValue: "fail2ban running with at least one jail",
     fixCommand: "apt install -y fail2ban && systemctl enable --now fail2ban",
     safeToAutoFix: "FORBIDDEN",
-    forbiddenReason: "Enabling fail2ban without jail configuration bans nobody — needs custom jail.local with sane thresholds; manual review of ban policy required.",
+    forbiddenReason: "Enabling fail2ban with default jails may cause lockout for operators behind NAT'd corporate IPs; requires manual jail tuning to avoid false-positive bans.",
     explain: "fail2ban blocks brute-force attacks by banning IPs with repeated failed logins.",
   };
 
@@ -196,7 +196,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
     expectedValue: "REJECT preferred for user-facing services",
     fixCommand: "iptables -A INPUT -j REJECT --reject-with icmp-port-unreachable",
     safeToAutoFix: "FORBIDDEN",
-    forbiddenReason: "Adding REJECT rules after a DROP-default policy doesn't change behavior — REJECT must be in a chain ordered before final DROP — manual chain review needed.",
+    forbiddenReason: "Adding REJECT rules after a DROP-default policy doesn't change firewall behavior — REJECT must be in a chain ordered before final DROP — manual chain review needed to avoid filter logic interruption.",
     explain: "REJECT informs the client the port is closed, which is preferable for user-facing services.",
   };
 
@@ -229,7 +229,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
     expectedValue: "iptables rate limiting rules configured",
     fixCommand: "iptables -A INPUT -p tcp --dport 22 -m limit --limit 3/minute --limit-burst 3 -j ACCEPT",
     safeToAutoFix: "FORBIDDEN",
-    forbiddenReason: "Rate-limit rule position matters — appending after final DROP/REJECT rule is a no-op; rules must be ordered before terminal target — manual chain ordering required.",
+    forbiddenReason: "Rate-limit rule position matters in firewall chain — appending after final DROP/REJECT rule is a no-op; rules must be ordered before terminal target — manual chain ordering required.",
     explain: "Rate limiting rules protect against brute-force and DoS attacks by throttling connection attempts.",
   };
 
@@ -313,7 +313,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
     expectedValue: "nf_conntrack_max >= 65536",
     fixCommand: "echo 262144 > /proc/sys/net/netfilter/nf_conntrack_max && echo 'net.netfilter.nf_conntrack_max = 262144' >> /etc/sysctl.d/99-kastell.conf",
     safeToAutoFix: "FORBIDDEN",
-    forbiddenReason: "Raising nf_conntrack_max increases memory consumption (hash table size); server with limited RAM may OOM — manual memory budget review needed.",
+    forbiddenReason: "Raising nf_conntrack_max increases firewall memory consumption (hash table size); server with limited RAM may OOM — manual memory budget review needed.",
     explain: "Low connection tracking limits cause packet drops under load, which can be exploited for denial-of-service.",
   };
 
