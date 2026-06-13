@@ -4,6 +4,7 @@
  */
 
 import type { AuditResult, AuditCheck, Severity, FixTier, FixExecutionLogEntry } from "./types.js";
+import { isFailedCheck } from "./types.js";
 import { SEVERITY_WEIGHTS, CATEGORY_WEIGHTS, DEFAULT_CATEGORY_WEIGHT, buildImpactContext, calculateCategoryScore, calculateOverallScore } from "./scoring.js";
 import type { ImpactContext } from "./scoring.js";
 import { sshExec, sshMasterOpen, sshMasterClose } from "../../utils/ssh.js";
@@ -184,7 +185,7 @@ export function previewFixes(result: AuditResult): FixPlan {
 
   for (const category of result.categories) {
     for (const check of category.checks) {
-      if (!check.passed && check.fixCommand) {
+      if (isFailedCheck(check) && check.fixCommand) {
         fixableChecks.push({
           id: check.id,
           category: check.category,
@@ -231,7 +232,7 @@ export function previewSafeFixes(result: AuditResult, options?: { includeForbidd
 
   for (const category of result.categories) {
     for (const check of category.checks) {
-      if (!check.passed && check.fixCommand) {
+      if (isFailedCheck(check) && check.fixCommand) {
         const tier = resolveTier(check, category.name);
         if (tier === "SAFE") {
           safeChecks.push({
