@@ -77,6 +77,17 @@ function resolveSshKeygenPath(): string {
 }
 
 /**
+ * Resolve ssh-keyscan binary path from the resolved SSH path.
+ */
+function resolveSshKeyscanPath(): string {
+  const sshPath = resolveSshPath();
+  if (sshPath === "ssh") return "ssh-keyscan";
+  const dir = dirname(sshPath);
+  const ext = sshPath.endsWith(".exe") ? ".exe" : "";
+  return join(dir, `ssh-keyscan${ext}`);
+}
+
+/**
  * Remove stale host key for an IP from known_hosts.
  * Best-effort — failures are silently ignored.
  */
@@ -155,6 +166,36 @@ export function removeStaleHostKey(ip: string): void {
   // Use resolved path — bare "ssh-keygen" may not be on PATH in MCP environments.
   // spawnSync with separate args prevents shell injection (defense-in-depth).
   spawnSync(resolveSshKeygenPath(), ["-R", ip], { stdio: "ignore", env: sanitizedEnv() });
+}
+
+/**
+ * Best-effort: fetch the host's public key via ssh-keyscan and compute its
+ * fingerprint via ssh-keygen -lf -. Returns the normalized fingerprint
+ * (e.g. "SHA256:abc123") or null on any failure (timeout, non-zero exit,
+ * empty output, unparseable keygen output). This is the fingerprint observed
+ * on the current network path, not a trusted out-of-band verification.
+ */
+export function getObservedHostFingerprint(ip: string): string | null {
+  assertValidIp(ip);
+  // ssh-keyscan: fetch host public key, -T timeout seconds.
+  const keyscan = spawnSync(
+    resolveSshKeyscanPath(),
+    ["-T", "5", ip],
+    { encoding: "utf8", timeout: 5000, env: sanitizedEnv() },
+  );
+  if (keyscan.status === null || keyscan.status !== 0) return null;
+  const keyscanOut = (keyscan.stdout ?? "").trim();
+  if (keyscanOut.length === 0) return null;
+  // Pipe keyscan output into ssh-keygen -lf - via spawnSync `input` option
+  // (no shell, no command string concat).
+  const keygen = spawnSync(
+    resolveSshKeygenPath(),
+    ["-lf", "-"],
+    { encoding: "utf8", input: keyscanOut, timeout: 5000, env: sanitizedEnv() },
+  );
+  if (keygen.status === null || keygen.status !== 0) return null;
+  const match = (keygen.stdout ?? "").match(/SHA256:[A-Za-z0-9+/=]+/);
+  return match ? match[0] : null;
 }
 
 export const HOST_KEY_PATTERN = /Host key verification failed|REMOTE HOST IDENTIFICATION HAS CHANGED/i;
