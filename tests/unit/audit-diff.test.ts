@@ -161,6 +161,79 @@ describe("diffAudits", () => {
     expect(result.beforeLabel).toBe(audit.timestamp);
     expect(result.afterLabel).toBe(audit.timestamp);
   });
+
+  it("classifies pass-to-skip transition as 'skipped', not 'regressed'", () => {
+    const before = makeAuditResult([{ id: "SSH-PLUGIN-1", passed: true }], 80);
+    const after = makeAuditResult(
+      [
+        {
+          id: "SSH-PLUGIN-1",
+          passed: false,
+          skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-global" },
+        },
+      ],
+      80,
+    );
+    const result = diffAudits(before, after);
+    expect(result.regressions).toHaveLength(0);
+    expect(result.skipped).toHaveLength(1);
+    expect(result.skipped[0].id).toBe("SSH-PLUGIN-1");
+    expect(result.skipped[0].status).toBe("skipped");
+  });
+
+  it("classifies skip-to-fail transition as 'skipped', not 'regressed'", () => {
+    const before = makeAuditResult(
+      [
+        {
+          id: "SSH-PLUGIN-1",
+          passed: false,
+          skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-global" },
+        },
+      ],
+      80,
+    );
+    const after = makeAuditResult([{ id: "SSH-PLUGIN-1", passed: false }], 40);
+    const result = diffAudits(before, after);
+    expect(result.regressions).toHaveLength(0);
+    expect(result.skipped).toHaveLength(1);
+    expect(result.skipped[0].id).toBe("SSH-PLUGIN-1");
+  });
+
+  it("classifies fail-to-skip transition as 'skipped', not 'improved'", () => {
+    const before = makeAuditResult([{ id: "SSH-PLUGIN-1", passed: false }], 40);
+    const after = makeAuditResult(
+      [
+        {
+          id: "SSH-PLUGIN-1",
+          passed: false,
+          skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-global" },
+        },
+      ],
+      40,
+    );
+    const result = diffAudits(before, after);
+    expect(result.improvements).toHaveLength(0);
+    expect(result.skipped).toHaveLength(1);
+  });
+
+  it("preserves 'added' and 'removed' status when comparing across skip side", () => {
+    const before = makeAuditResult(
+      [
+        {
+          id: "SSH-PLUGIN-1",
+          passed: false,
+          skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-global" },
+        },
+      ],
+      0,
+    );
+    const after = makeAuditResult([], 0);
+    const result = diffAudits(before, after);
+    // Check exists only in before — must still be classified as 'removed'
+    expect(result.removed).toHaveLength(1);
+    expect(result.removed[0].id).toBe("SSH-PLUGIN-1");
+    expect(result.skipped).toHaveLength(0);
+  });
 });
 
 // ─── resolveSnapshotRef ───────────────────────────────────────────────────────
