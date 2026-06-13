@@ -299,3 +299,97 @@ describe("MCP SDK round-trip verification", () => {
     expect(parseResult.success).toBe(true);
   });
 });
+
+describe("P142: skip Zod schema strict validation", () => {
+  it("rejects malformed skip reason (wrong code value)", () => {
+    const AuditCheckSkipSchema = z.object({
+      code: z.literal("legacy-mutating"),
+      apiVersion: z.literal("2"),
+      kind: z.enum(["mutate-local", "mutate-global"]),
+    });
+    const malformed = {
+      code: "wrong-code",
+      apiVersion: "2",
+      kind: "mutate-local",
+    };
+    const result = AuditCheckSkipSchema.safeParse(malformed);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects malformed skip reason (wrong apiVersion value)", () => {
+    const AuditCheckSkipSchema = z.object({
+      code: z.literal("legacy-mutating"),
+      apiVersion: z.literal("2"),
+      kind: z.enum(["mutate-local", "mutate-global"]),
+    });
+    const malformed = {
+      code: "legacy-mutating",
+      apiVersion: "3",
+      kind: "mutate-local",
+    };
+    const result = AuditCheckSkipSchema.safeParse(malformed);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects malformed skip reason (wrong kind value)", () => {
+    const AuditCheckSkipSchema = z.object({
+      code: z.literal("legacy-mutating"),
+      apiVersion: z.literal("2"),
+      kind: z.enum(["mutate-local", "mutate-global"]),
+    });
+    const malformed = {
+      code: "legacy-mutating",
+      apiVersion: "2",
+      kind: "wrong-kind",
+    };
+    const result = AuditCheckSkipSchema.safeParse(malformed);
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts a well-formed skip reason", () => {
+    const AuditCheckSkipSchema = z.object({
+      code: z.literal("legacy-mutating"),
+      apiVersion: z.literal("2"),
+      kind: z.enum(["mutate-local", "mutate-global"]),
+    });
+    const valid = {
+      code: "legacy-mutating",
+      apiVersion: "2",
+      kind: "mutate-local",
+    };
+    const result = AuditCheckSkipSchema.safeParse(valid);
+    expect(result.success).toBe(true);
+  });
+
+  it("serverAudit outputSchema round-trip: JSON response with skip object validates", async () => {
+    const skipCheck = {
+      id: "PLUGIN-MUTATE-LOCAL",
+      category: "Plugin",
+      name: "Mutate Local",
+      severity: "info",
+      passed: false,
+      currentValue: "n/a",
+      expectedValue: "n/a",
+      skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-local" },
+    };
+    const auditData = {
+      format: "json" as const,
+      server: "test",
+      ip: "1.2.3.4",
+      overallScore: 100,
+      categories: [
+        {
+          name: "Plugin",
+          score: 100,
+          maxScore: 100,
+          checks: [skipCheck],
+        },
+      ],
+    };
+    const response = mcpSuccess(auditData, { largeResult: true });
+    const normalized = normalizeObjectSchema(serverAuditOutputSchema);
+    expect(normalized).toBeDefined();
+    const parseResult = await safeParseAsync(normalized!, response.structuredContent);
+    expect(parseResult.success).toBe(true);
+  });
+});
