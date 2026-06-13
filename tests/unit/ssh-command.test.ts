@@ -117,4 +117,80 @@ describe("sshCommand", () => {
     await sshCommand();
     expect(mockedInquirer.prompt).toHaveBeenCalled();
   });
+
+  describe("TOFU warning (interactive connect only)", () => {
+    const originalStrict = process.env.KASTELL_STRICT_HOST_KEY;
+
+    beforeEach(() => {
+      mockedSsh.checkSshAvailable.mockReturnValue(true);
+      mockedConfig.findServers.mockReturnValue([sampleServer]);
+      mockedSsh.sshConnect.mockResolvedValue(0);
+      // Default: getObservedHostFingerprint returns null (failure does not block)
+      mockedSsh.getObservedHostFingerprint.mockReturnValue(null);
+      mockedSsh.getHostKeyPolicy.mockReturnValue("accept-new");
+    });
+
+    afterEach(() => {
+      if (originalStrict === undefined) {
+        delete process.env.KASTELL_STRICT_HOST_KEY;
+      } else {
+        process.env.KASTELL_STRICT_HOST_KEY = originalStrict;
+      }
+    });
+
+    it("should log TOFU warning when policy is accept-new (default)", async () => {
+      delete process.env.KASTELL_STRICT_HOST_KEY;
+      await sshCommand("1.2.3.4");
+      const errOutput = consoleErrorSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
+      expect(errOutput.toLowerCase()).toContain("tofu");
+    });
+
+    it("warning should explain that an unseen host is not authenticated out of band", async () => {
+      delete process.env.KASTELL_STRICT_HOST_KEY;
+      await sshCommand("1.2.3.4");
+      const errOutput = consoleErrorSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n").toLowerCase();
+      expect(errOutput).toMatch(/not.*authentic|trust|unseen|first use/);
+    });
+
+    it("should log observed fingerprint when helper returns one", async () => {
+      delete process.env.KASTELL_STRICT_HOST_KEY;
+      mockedSsh.getObservedHostFingerprint.mockReturnValue("SHA256:abc123");
+      await sshCommand("1.2.3.4");
+      const allOutput = [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls]
+        .map((c: any[]) => c.join(" "))
+        .join("\n");
+      expect(allOutput).toContain("SHA256:abc123");
+    });
+
+    it("should NOT block the connection when fingerprint helper returns null", async () => {
+      delete process.env.KASTELL_STRICT_HOST_KEY;
+      mockedSsh.getObservedHostFingerprint.mockReturnValue(null);
+      await sshCommand("1.2.3.4");
+      expect(mockedSsh.sshConnect).toHaveBeenCalledWith("1.2.3.4");
+    });
+
+    it("should NOT log TOFU warning when KASTELL_STRICT_HOST_KEY=true", async () => {
+      process.env.KASTELL_STRICT_HOST_KEY = "true";
+      mockedSsh.getHostKeyPolicy.mockReturnValue("yes");
+      await sshCommand("1.2.3.4");
+      const errOutput = consoleErrorSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n").toLowerCase();
+      expect(errOutput).not.toContain("tofu");
+    });
+
+    it("should NOT call getObservedHostFingerprint when KASTELL_STRICT_HOST_KEY=true", async () => {
+      process.env.KASTELL_STRICT_HOST_KEY = "true";
+      mockedSsh.getHostKeyPolicy.mockReturnValue("yes");
+      await sshCommand("1.2.3.4");
+      expect(mockedSsh.getObservedHostFingerprint).not.toHaveBeenCalled();
+    });
+
+    it("should NOT log TOFU warning when --command path is used (non-interactive)", async () => {
+      delete process.env.KASTELL_STRICT_HOST_KEY;
+      mockedSsh.sshExec.mockResolvedValue({ code: 0, stdout: "ok", stderr: "" });
+      await sshCommand("1.2.3.4", { command: "uptime" });
+      const errOutput = consoleErrorSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n").toLowerCase();
+      expect(errOutput).not.toContain("tofu");
+      expect(mockedSsh.getObservedHostFingerprint).not.toHaveBeenCalled();
+    });
+  });
 });
