@@ -3,7 +3,8 @@
  * HTML: single-file with inline CSS. Markdown: clean tables.
  */
 
-import type { AuditResult } from "../types.js";
+import type { AuditResult, AuditCheck } from "../types.js";
+import { isSkippedCheck, describeCheckSkip } from "../types.js";
 
 // CodeQL suppression: shell embedding in fixCommand is display-only;
 // commands are shown to users but never executed
@@ -26,8 +27,9 @@ function scoreColorHtml(score: number): string {
 }
 
 /** Status icon for HTML */
-function statusIcon(passed: boolean): string {
-  return passed ? "&#x2705;" : "&#x274C;";
+function statusIcon(check: AuditCheck): string {
+  if (isSkippedCheck(check)) return "&#x23ED;"; // ⛭ neutral gear
+  return check.passed ? "&#x2705;" : "&#x274C;";
 }
 
 /**
@@ -40,9 +42,9 @@ export function formatHtmlReport(result: AuditResult): string {
         .map(
           (check) => `
           <tr>
-            <td>${statusIcon(check.passed)}</td>
+            <td class="status-${isSkippedCheck(check) ? "skipped" : check.passed ? "passed" : "failed"}">${statusIcon(check)}</td>
             <td>${escapeHtml(check.id)}</td>
-            <td>${escapeHtml(check.name)}</td>
+            <td>${escapeHtml(check.name)}${check.skip ? ` <span class="skip-reason">${escapeHtml(describeCheckSkip(check.skip))}</span>` : ""}</td>
             <td><span class="severity severity-${check.severity}">${check.severity}</span></td>
             <td>${escapeHtml(check.currentValue)}</td>
             <td>${escapeHtml(check.expectedValue)}</td>
@@ -102,6 +104,8 @@ export function formatHtmlReport(result: AuditResult): string {
     .severity-critical { background: #dc3545; }
     .severity-warning { background: #ffc107; color: #333; }
     .severity-info { background: #17a2b8; }
+    .status-skipped { color: #888; }
+    .skip-reason { color: #888; font-size: 0.85rem; font-style: italic; margin-left: 0.5rem; }
     code { background: #f1f1f1; padding: 2px 6px; border-radius: 3px; font-size: 0.9rem; }
     .quick-wins { background: #f0f9f0; padding: 1rem; border-radius: 8px; margin-top: 1.5rem; }
     .quick-wins ul { padding-left: 1.5rem; }
@@ -147,10 +151,11 @@ export function formatMdReport(result: AuditResult): string {
     lines.push("|-------|----------|--------|---------|----------|-----|");
 
     for (const check of category.checks) {
-      const status = check.passed ? "Pass" : "FAIL";
+      const status = isSkippedCheck(check) ? "Skipped" : check.passed ? "Pass" : "FAIL";
       const fix = check.fixCommand ? `\`${check.fixCommand.replace(/\|/g, "\\|")}\`` : "-";
+      const skipNote = check.skip ? ` _${describeCheckSkip(check.skip)}_` : "";
       lines.push(
-        `| ${check.name} | ${check.severity} | ${status} | ${check.currentValue.replace(/\|/g, "\\|")} | ${check.expectedValue.replace(/\|/g, "\\|")} | ${fix} |`,
+        `| ${check.name}${skipNote} | ${check.severity} | ${status} | ${check.currentValue.replace(/\|/g, "\\|")} | ${check.expectedValue.replace(/\|/g, "\\|")} | ${fix} |`,
       );
     }
     lines.push("");
