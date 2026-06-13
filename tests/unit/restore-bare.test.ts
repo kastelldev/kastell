@@ -6,6 +6,7 @@
 import { existsSync, readFileSync } from "fs";
 import inquirer from "inquirer";
 import * as config from "../../src/utils/config";
+import * as prompts from "../../src/utils/prompts";
 import * as sshUtils from "../../src/utils/ssh";
 import * as coreBackup from "../../src/core/backup";
 import { restoreCommand } from "../../src/commands/restore";
@@ -25,12 +26,16 @@ jest.mock("child_process", () => ({
 }));
 jest.mock("../../src/utils/config");
 jest.mock("../../src/utils/ssh");
+jest.mock("../../src/utils/prompts");
 jest.mock("../../src/core/backup");
 
 const mockedConfig = config as jest.Mocked<typeof config>;
 const mockedSsh = sshUtils as jest.Mocked<typeof sshUtils>;
 const mockedCoreBackup = coreBackup as jest.Mocked<typeof coreBackup>;
 const mockedInquirer = inquirer as jest.Mocked<typeof inquirer>;
+const mockedConfirmOrCancel = prompts.confirmOrCancel as jest.MockedFunction<
+  typeof prompts.confirmOrCancel
+>;
 const mockedExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;
 const mockedReadFileSync = readFileSync as jest.MockedFunction<typeof readFileSync>;
 
@@ -86,6 +91,13 @@ describe("restoreCommand — bare mode routing", () => {
     jest.clearAllMocks();
     delete process.env.SAFE_MODE;
     process.env.KASTELL_SAFE_MODE = "false";
+    // restore.ts calls confirmOrCancel (TTY-aware wrapper from utils/prompts)
+    // for the destructive-guard before the typed-name prompt. In the jest
+    // sandbox isTTY is undefined, which would short-circuit confirmOrCancel
+    // to 'Use --force to restore in non-interactive mode'. Default to
+    // confirmed=true so the existing test setup reaches the typed-name path.
+    mockedConfirmOrCancel.mockReset();
+    mockedConfirmOrCancel.mockResolvedValue({ confirmed: true, source: "prompt" });
     mockedCoreBackup.getBackupDir.mockReturnValue("/home/user/.kastell/backups/bare-test");
     // Default: manifest exists
     mockedExistsSync.mockReturnValue(true);
@@ -139,7 +151,6 @@ describe("restoreCommand — bare mode routing", () => {
     mockedInquirer.prompt = jest
       .fn()
       .mockResolvedValueOnce({ backup: "2026-02-28_08-00-00-000" })
-      .mockResolvedValueOnce({ confirm: true })
       .mockResolvedValueOnce({ confirmName: "bare-test" }) as unknown as typeof mockedInquirer.prompt;
 
     await restoreCommand("1.2.3.4");
@@ -159,8 +170,7 @@ describe("restoreCommand — bare mode routing", () => {
 
     mockedInquirer.prompt = jest
       .fn()
-      .mockResolvedValueOnce({ confirm: true })
-      .mockResolvedValueOnce({ confirmName: "coolify-test" }) as unknown as typeof mockedInquirer.prompt;
+      .mockResolvedValue({ confirmName: "coolify-test" }) as unknown as typeof mockedInquirer.prompt;
 
     // coolify path uses scpUpload from core - make it fail at first upload to short-circuit
     mockedCoreBackup.scpUpload.mockResolvedValue({ code: 1, stderr: "upload error" });
@@ -214,7 +224,6 @@ describe("restoreCommand — bare mode routing", () => {
     mockedInquirer.prompt = jest
       .fn()
       .mockResolvedValueOnce({ backup: "2026-02-28_08-00-00-000" })
-      .mockResolvedValueOnce({ confirm: true })
       .mockResolvedValueOnce({ confirmName: "bare-test" }) as unknown as typeof mockedInquirer.prompt;
 
     await restoreCommand("1.2.3.4");
@@ -236,7 +245,6 @@ describe("restoreCommand — bare mode routing", () => {
     mockedInquirer.prompt = jest
       .fn()
       .mockResolvedValueOnce({ backup: "2026-02-28_08-00-00-000" })
-      .mockResolvedValueOnce({ confirm: true })
       .mockResolvedValueOnce({ confirmName: "bare-test" }) as unknown as typeof mockedInquirer.prompt;
 
     await restoreCommand("1.2.3.4");
