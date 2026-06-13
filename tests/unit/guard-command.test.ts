@@ -83,6 +83,8 @@ const mockSpinner = {
 };
 
 beforeEach(() => {
+  // P142: deterministic reset to prevent cross-suite process.exitCode pollution
+  process.exitCode = 0;
   jest.resetAllMocks();
 
   mockedSsh.checkSshAvailable.mockReturnValue(true);
