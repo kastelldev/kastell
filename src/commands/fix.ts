@@ -306,13 +306,16 @@ export async function fixSafeCommand(
     }
 
     if (hasRegression(preFixRegression)) {
-      const proceed = await confirmOrCancel(
+      const decision = await confirmOrCancel(
         "Regression detected. Continue with fix?",
         force,
         "Regression detected. Use --force to proceed in non-interactive mode.",
       );
-      if (!proceed) {
-        logger.info("Fix cancelled.");
+      if (!decision.confirmed) {
+        logger.info(decision.message);
+        if (decision.reason === "non-tty") {
+          markCommandFailed();
+        }
         return;
       }
     }

@@ -1443,6 +1443,7 @@ describe("fixSafeCommand", () => {
         { severity: "warning", text: "Regression: 1 check(s) regressed: KERN-01" },
       ]);
       mockedRegression.shouldUpdateBaseline.mockReturnValue(false);
+      mockedConfirmOrCancel.mockResolvedValue({ confirmed: true, source: "force" });
 
       await fixSafeCommand(undefined, { safe: true, interactive: false, force: true } as Parameters<typeof fixSafeCommand>[1] & { force: boolean });
 
@@ -1477,6 +1478,7 @@ describe("fixSafeCommand", () => {
       mockedRegression.formatRegressionSummary.mockReturnValue([
         { severity: "warning", text: "Regression: 1 check(s) regressed: KERN-01" },
       ]);
+      mockedConfirmOrCancel.mockResolvedValue({ confirmed: true, source: "force" });
       mockedPrompt.mockResolvedValue({ confirm: true });
       mockedBackupServer.mockResolvedValue({ success: true, backupPath: "/tmp/backup" } as BackupResult);
       mockedSshExec.mockResolvedValue({ stdout: "", stderr: "", code: 0 });
@@ -1519,13 +1521,19 @@ describe("fixSafeCommand", () => {
       mockedRegression.formatRegressionSummary.mockReturnValue([
         { severity: "warning", text: "Regression: 1 check(s) regressed: KERN-01" },
       ]);
+      mockedConfirmOrCancel.mockResolvedValue({
+        confirmed: false,
+        reason: "non-tty",
+        message: "Regression detected. Use --force to proceed in non-interactive mode.",
+      });
 
       await fixSafeCommand(undefined, { safe: true, dryRun: true });
 
-      expect(mockedLogger.warning).toHaveBeenCalledWith(
+      expect(mockedLogger.info).toHaveBeenCalledWith(
         expect.stringContaining("--force"),
       );
       expect(mockedBackupServer).not.toHaveBeenCalled();
+      expect(mockedMarkCommandFailed).toHaveBeenCalledTimes(1);
 
       Object.defineProperty(process.stdin, "isTTY", { value: origIsTTY, configurable: true });
     });
