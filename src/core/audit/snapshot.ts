@@ -31,6 +31,12 @@ const complianceRefSchema = z.object({
   level: z.enum(["L1", "L2"]).optional(),
 });
 
+const skipReasonSchema = z.object({
+  code: z.literal("legacy-mutating"),
+  apiVersion: z.literal("2"),
+  kind: z.enum(["mutate-local", "mutate-global"]),
+});
+
 export const auditCheckSchema = z.object({
   id: z.string(),
   category: z.string(),
@@ -44,6 +50,7 @@ export const auditCheckSchema = z.object({
   complianceRefs: z.array(complianceRefSchema).optional(),
   tags: z.array(z.string()).optional(),
   vpsIrrelevant: z.boolean().optional(),
+  skip: skipReasonSchema.optional(),
 });
 
 export const categorySchema = z.object({

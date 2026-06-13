@@ -13,7 +13,9 @@ import type {
   SnapshotFile,
   CategoryDiffEntry,
   AuditCompareSummary,
+  AuditCheckState,
 } from "./types.js";
+import { getAuditCheckState } from "./types.js";
 import type { KastellResult, ServerRecord } from "../../types/index.js";
 import { loadSnapshot, listSnapshots } from "./snapshot.js";
 import { runAudit } from "./index.js";
@@ -40,6 +42,7 @@ export function diffAudits(
   const unchanged: CheckDiffEntry[] = [];
   const added: CheckDiffEntry[] = [];
   const removed: CheckDiffEntry[] = [];
+  const skipped: CheckDiffEntry[] = [];
 
   for (const id of allIds) {
     const b = beforeMap.get(id) ?? null;
@@ -55,14 +58,15 @@ export function diffAudits(
       category: source.category,
       severity: source.severity,
       status,
-      before: b ? b.passed : null,
-      after: a ? a.passed : null,
+      before: b ? getAuditCheckState(b) : null,
+      after: a ? getAuditCheckState(a) : null,
     };
 
     if (status === "improved") improvements.push(entry);
     else if (status === "regressed") regressions.push(entry);
     else if (status === "unchanged") unchanged.push(entry);
     else if (status === "added") added.push(entry);
+    else if (status === "skipped") skipped.push(entry);
     else removed.push(entry);
   }
 
@@ -77,6 +81,7 @@ export function diffAudits(
     unchanged,
     added,
     removed,
+    skipped,
   };
 }
 
@@ -96,6 +101,11 @@ function classifyStatus(
 ): CheckDiffStatus {
   if (before === null) return "added";
   if (after === null) return "removed";
+  // Skip transitions: either side is a structured skip → "skipped"
+  // (does NOT classify as improved/regressed/unchanged)
+  if (getAuditCheckState(before) === "skipped" || getAuditCheckState(after) === "skipped") {
+    return "skipped";
+  }
   if (!before.passed && after.passed) return "improved";
   if (before.passed && !after.passed) return "regressed";
   return "unchanged";
@@ -109,14 +119,14 @@ function classifyStatus(
  * Centralizes the flatten+classify logic that was previously in
  * serverCompare.ts's detail adapter (Altitude A6).
  */
-export type FlatCheckDiffStatus = "A_better" | "B_better" | "both_pass" | "both_fail";
+export type FlatCheckDiffStatus = "A_better" | "B_better" | "both_pass" | "both_fail" | "A_skip" | "B_skip" | "both_skip";
 
 export interface FlatCheckDiffEntry {
   id: string;
   name: string;
   status: FlatCheckDiffStatus;
-  before: boolean | null;
-  after: boolean | null;
+  before: AuditCheckState | null;
+  after: AuditCheckState | null;
 }
 
 /**
@@ -147,8 +157,13 @@ export function diffAuditsFlat(
     const a = afterMap.get(id) ?? null;
     if (b === null || a === null) continue; // skip added/removed — no A/B pair
     const source = a ?? b;
+    const bState = getAuditCheckState(b);
+    const aState = getAuditCheckState(a);
     let status: FlatCheckDiffStatus;
-    if (!b.passed && a.passed) status = "A_better";
+    if (bState === "skipped" && aState === "skipped") status = "both_skip";
+    else if (bState === "skipped") status = "B_skip"; // before is skipped, after is the real side
+    else if (aState === "skipped") status = "A_skip"; // after is skipped, before is the real side
+    else if (!b.passed && a.passed) status = "A_better";
     else if (b.passed && !a.passed) status = "B_better";
     else if (b.passed && a.passed) status = "both_pass";
     else status = "both_fail";
@@ -156,8 +171,8 @@ export function diffAuditsFlat(
       id,
       name: source.name,
       status,
-      before: b.passed,
-      after: a.passed,
+      before: bState,
+      after: aState,
     });
   }
 

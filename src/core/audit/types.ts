@@ -213,7 +213,7 @@ export interface TrendResult {
 
 // ─── Diff types ───────────────────────────────────────────────────────────────
 
-export type CheckDiffStatus = "improved" | "regressed" | "unchanged" | "added" | "removed";
+export type CheckDiffStatus = "improved" | "regressed" | "unchanged" | "added" | "removed" | "skipped";
 
 export interface CheckDiffEntry {
   id: string;
@@ -221,9 +221,9 @@ export interface CheckDiffEntry {
   category: string;
   severity: Severity;
   status: CheckDiffStatus;
-  /** null when check did not exist in this snapshot */
-  before: boolean | null;
-  after: boolean | null;
+  /** null when check did not exist in this snapshot, or AuditCheckState ("passed" | "failed" | "skipped") when present */
+  before: AuditCheckState | null;
+  after: AuditCheckState | null;
 }
 
 export interface AuditDiffResult {
@@ -237,6 +237,7 @@ export interface AuditDiffResult {
   unchanged: CheckDiffEntry[];
   added: CheckDiffEntry[];
   removed: CheckDiffEntry[];
+  skipped: CheckDiffEntry[];
 }
 
 export interface CategoryDiffEntry {

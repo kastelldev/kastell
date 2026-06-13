@@ -41,9 +41,9 @@ export const serverCompareOutputSchema = z.object({
       checks: z.array(z.object({
         id: z.string(),
         name: z.string(),
-        status: z.enum(["A_better", "B_better", "both_pass", "both_fail"]),
-        before: z.boolean().nullable(),
-        after: z.boolean().nullable(),
+        status: z.enum(["A_better", "B_better", "both_pass", "both_fail", "A_skip", "B_skip", "both_skip"]),
+        before: z.enum(["passed", "failed", "skipped"]).nullable(),
+        after: z.enum(["passed", "failed", "skipped"]).nullable(),
       })),
     }),
   ]),

@@ -83,8 +83,8 @@ describe("diffAudits", () => {
     expect(result.improvements).toHaveLength(1);
     expect(result.improvements[0].id).toBe("SSH-PASSWORD-AUTH");
     expect(result.improvements[0].status).toBe("improved");
-    expect(result.improvements[0].before).toBe(false);
-    expect(result.improvements[0].after).toBe(true);
+    expect(result.improvements[0].before).toBe("failed");
+    expect(result.improvements[0].after).toBe("passed");
   });
 
   it("one check regressed (passed->failed): 1 regression, correct entry", () => {
@@ -123,7 +123,7 @@ describe("diffAudits", () => {
     expect(result.added).toHaveLength(1);
     expect(result.added[0].id).toBe("SSH-ROOT-LOGIN");
     expect(result.added[0].before).toBeNull();
-    expect(result.added[0].after).toBe(true);
+    expect(result.added[0].after).toBe("passed");
   });
 
   it("removed checks (present in before, not after): classified as 'removed'", () => {
@@ -135,7 +135,7 @@ describe("diffAudits", () => {
     const result = diffAudits(before, after);
     expect(result.removed).toHaveLength(1);
     expect(result.removed[0].id).toBe("SSH-ROOT-LOGIN");
-    expect(result.removed[0].before).toBe(true);
+    expect(result.removed[0].before).toBe("passed");
     expect(result.removed[0].after).toBeNull();
   });
 
