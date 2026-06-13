@@ -292,6 +292,30 @@ describe("malformed params", () => {
   });
 });
 
+describe("QuickWin JSON contract (P142)", () => {
+  beforeEach(() => {
+    mockedConfig.getServers.mockReturnValue([sampleServer] as never);
+    mockedConfig.findServer.mockReturnValue(sampleServer as never);
+    mockedAuditRunner.runAudit.mockResolvedValue({
+      success: true,
+      data: sampleAuditResult,
+    });
+  });
+
+  it("should include id and severity on each quickWins entry in JSON format response", async () => {
+    const result = await handleServerAudit({ server: "coolify-test", format: "json" });
+
+    expect(result.isError).toBeUndefined();
+    const parsed = JSON.parse(result.content[0].text) as {
+      quickWins: Array<{ id?: string; severity?: string }>;
+    };
+
+    expect(parsed.quickWins.length).toBeGreaterThan(0);
+    expect(parsed.quickWins[0].id).toBe("FW-UFW-ACTIVE");
+    expect(parsed.quickWins[0].severity).toBe("critical");
+  });
+});
+
 describe("regression baseline", () => {
   beforeEach(() => {
     mockedConfig.getServers.mockReturnValue([sampleServer] as never);
