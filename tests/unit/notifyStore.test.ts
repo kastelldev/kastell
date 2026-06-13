@@ -178,6 +178,19 @@ describe("storeNotifySecret / readNotifySecret — fallback path", () => {
     expect(written.encrypted).toBe(true);
   });
 
+  it("marks notify-secrets.json writes with sensitivity=secret (P142 Task 6)", () => {
+    mockedReadFileSync.mockReturnValue("{}");
+    mockedExistsSync.mockReturnValue(true);
+
+    storeNotifySecret("telegram", "botToken", "bot123");
+
+    const secretWrite = mockSecureWriteFileSync.mock.calls.find(
+      (c) => typeof c[0] === "string" && (c[0] as string).includes("notify-secrets.json"),
+    );
+    expect(secretWrite).toBeDefined();
+    expect(secretWrite![2]).toEqual(expect.objectContaining({ sensitivity: "secret" }));
+  });
+
   it("reads from tokenBuffer first when keychain unavailable (SEC-01)", () => {
     readTokenMock.mockReturnValue("bot456");
 
