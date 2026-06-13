@@ -54,7 +54,7 @@ function writeSecretsFile(data: Record<string, string>): void {
   try {
     secureMkdirSync(KASTELL_DIR);
     const payload = encryptData(JSON.stringify(data), getMachineKey());
-    secureWriteFileSync(NOTIFY_SECRETS_FILE, JSON.stringify(payload, null, 2));
+    secureWriteFileSync(NOTIFY_SECRETS_FILE, JSON.stringify(payload, null, 2), { sensitivity: "secret" });
   } catch { /* ignore */ }
 }
 
