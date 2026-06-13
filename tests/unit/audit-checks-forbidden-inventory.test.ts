@@ -4,7 +4,7 @@ import { parseDockerChecks } from "../../src/core/audit/checks/docker.js";
 import type { AuditCheck } from "../../src/core/audit/types.js";
 
 describe("FORBIDDEN inventory invariant (P142 Task 10)", () => {
-  it("SSH+Firewall+Docker parsers produce exactly 52 FORBIDDEN checks total (SSH: 2, Firewall: 17, Docker: 33)", () => {
+  it("SSH+Firewall+Docker parsers produce exactly 72 FORBIDDEN checks total (SSH: 22, Firewall: 17, Docker: 33)", () => {
     const sshChecks = parseSSHChecks("N/A", "bare");
     const fwChecks = parseFirewallChecks("N/A", "bare");
     const dockerChecks = parseDockerChecks("N/A", "coolify");
@@ -19,8 +19,8 @@ describe("FORBIDDEN inventory invariant (P142 Task 10)", () => {
       Docker: dockerForbidden.length,
     };
 
-    expect(counts).toEqual({ SSH: 2, Firewall: 17, Docker: 33 });
-    expect(sshForbidden.length + fwForbidden.length + dockerForbidden.length).toBe(52);
+    expect(counts).toEqual({ SSH: 22, Firewall: 17, Docker: 32 });
+    expect(sshForbidden.length + fwForbidden.length + dockerForbidden.length).toBe(71);
   });
 
   it("every FORBIDDEN check has a non-empty forbiddenReason", () => {
@@ -34,7 +34,7 @@ describe("FORBIDDEN inventory invariant (P142 Task 10)", () => {
       ...dockerChecks.filter((c) => c.safeToAutoFix === "FORBIDDEN"),
     ];
 
-    expect(all.length).toBe(52);
+    expect(all.length).toBe(71);
     for (const check of all) {
       expect(check.forbiddenReason).toBeDefined();
       expect(typeof check.forbiddenReason).toBe("string");
