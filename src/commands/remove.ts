@@ -3,6 +3,8 @@ import { removeServer } from "../utils/config.js";
 import { resolveServer } from "../utils/serverSelect.js";
 import { logger } from "../utils/logger.js";
 import { listBackups, cleanupServerBackups } from "../core/backup.js";
+import { confirmOrCancel } from "../utils/prompts.js";
+import { markCommandFailed } from "../utils/exitCode.js";
 
 function showDryRun(server: { name: string; ip: string }): void {
   logger.title("Dry Run: Remove Server");
@@ -23,20 +25,18 @@ export async function removeCommand(query?: string, options?: { dryRun?: boolean
     return;
   }
 
-  if (!options?.force) {
-    const { confirm } = await inquirer.prompt([
-      {
-        type: "confirm",
-        name: "confirm",
-        message: `Remove "${server.name}" (${server.ip}) from local config? (Server will NOT be destroyed)`,
-        default: false,
-      },
-    ]);
-
-    if (!confirm) {
-      logger.info("Remove cancelled.");
-      return;
+  // Destructive guard: refuse before mutation in non-TTY mode without --force (P142 Task 9)
+  const decision = await confirmOrCancel(
+    `Remove "${server.name}" (${server.ip}) from local config? (Server will NOT be destroyed)`,
+    !!options?.force,
+    "Use --force to remove in non-interactive mode.",
+  );
+  if (!decision.confirmed) {
+    logger.info(decision.message);
+    if (decision.reason === "non-tty") {
+      markCommandFailed();
     }
+    return;
   }
 
   await removeServer(server.id);
