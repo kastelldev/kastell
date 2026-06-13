@@ -525,12 +525,29 @@ describe("PermissionSensitivity option", () => {
 
     secureWriteFileSync("/path/to/file.txt", "data", { sensitivity: "secret" });
 
-    // Third arg passed to writeFileSync must NOT contain `sensitivity`
+    // Third arg passed to writeFileSync must NOT contain `sensitivity`.
+    // When the only option was sensitivity, it is normalized to undefined.
     const call = mockedWriteFileSync.mock.calls[0];
     expect(call[0]).toBe("/path/to/file.txt");
     expect(call[1]).toBe("data");
     const forwarded = call[2] as Record<string, unknown> | undefined;
+    if (forwarded !== undefined) {
+      expect(forwarded).not.toHaveProperty("sensitivity");
+    }
+  });
+
+  it("preserves non-sensitivity options when stripping sensitivity", async () => {
+    const { secureWriteFileSync } = secureWriteModule;
+
+    secureWriteFileSync("/path/to/file.txt", "data", {
+      sensitivity: "secret",
+      encoding: "utf8",
+    });
+
+    const call = mockedWriteFileSync.mock.calls[0];
+    const forwarded = call[2] as Record<string, unknown> | undefined;
     expect(forwarded).toBeDefined();
+    expect(forwarded).toHaveProperty("encoding", "utf8");
     expect(forwarded).not.toHaveProperty("sensitivity");
   });
 
