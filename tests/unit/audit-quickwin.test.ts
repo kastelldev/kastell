@@ -192,6 +192,29 @@ describe("calculateQuickWins", () => {
     expect(wins[0].description).toContain("With Compliance Ref Check");
   });
 
+  it("should populate id and severity fields from the source check (P142 contract)", () => {
+    const result = makeResult([
+      makeCategory("SSH", [
+        makeCheck({
+          id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH,
+          category: "SSH",
+          name: "Password Authentication",
+          severity: "critical",
+          passed: false,
+          fixCommand: "fix-it",
+        }),
+      ]),
+    ]);
+
+    const wins = calculateQuickWins(result);
+    expect(wins.length).toBeGreaterThan(0);
+    // Each quick win must carry the source check's id and severity
+    expect(wins[0]).toMatchObject({
+      id: CHECK_IDS.SSH.SSH_PASSWORD_AUTH,
+      severity: "critical",
+    });
+  });
+
   it("should not inflate projected score with compliance boost", () => {
     // Both checks have complianceRefs — projected score should use baseImpact not effectiveImpact
     const result = makeResult([
