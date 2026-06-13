@@ -7,6 +7,7 @@ import { mapProviderError, classifyError } from "../utils/errorMapper.js";
 import { createProviderWithToken } from "../utils/providerFactory.js";
 import { isBareServer, requireManagedMode } from "../utils/modeGuard.js";
 import { markCommandFailed } from "../utils/exitCode.js";
+import { confirmOrCancel } from "../utils/prompts.js";
 import type { ServerRecord } from "../types/index.js";
 import {
   maintainServer,
@@ -187,6 +188,38 @@ async function maintainAll(options: MaintainOptions): Promise<void> {
     return;
   }
 
+  if (options.dryRun) {
+    for (const server of servers) {
+      if (isBareServer(server)) {
+        logger.warning(
+          `Skipping ${server.name}: update command is not available for bare servers.`,
+        );
+        continue;
+      }
+      const serverPlatform = resolvePlatform(server);
+      if (!serverPlatform) {
+        logger.warning(`Skipping ${server.name}: no platform detected.`);
+        continue;
+      }
+      showDryRun(server, !!options.skipReboot);
+    }
+    return;
+  }
+
+  // Destructive guard BEFORE token collection + snapshot-cost calls (F-MED-3)
+  const guard = await confirmOrCancel(
+    `Run platform maintenance on all ${servers.length} server(s)? This may cause brief downtime.`,
+    !!options.force,
+    "Use --force to run maintenance on all servers in non-interactive mode.",
+  );
+  if (!guard.confirmed) {
+    logger.info(guard.message);
+    if (guard.reason === "non-tty") {
+      markCommandFailed();
+    }
+    return;
+  }
+
   const tokenMap = await collectProviderTokens(servers);
   const results: MaintainResult[] = [];
   let failed = 0;
@@ -258,6 +291,20 @@ export async function maintainCommand(query?: string, options?: MaintainOptions)
 
   if (options?.dryRun) {
     showDryRun(server, !!options.skipReboot);
+    return;
+  }
+
+  // Destructive guard BEFORE token collection + snapshot-cost calls (F-MED-3)
+  const guard = await confirmOrCancel(
+    `Run platform maintenance on "${server.name}" (${server.ip})? This may cause brief downtime.`,
+    !!options?.force,
+    "Use --force to run maintenance in non-interactive mode.",
+  );
+  if (!guard.confirmed) {
+    logger.info(guard.message);
+    if (guard.reason === "non-tty") {
+      markCommandFailed();
+    }
     return;
   }
 

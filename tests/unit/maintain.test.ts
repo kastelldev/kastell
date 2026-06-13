@@ -6,13 +6,20 @@ import { pollHealth, maintainServer } from "../../src/core/maintain";
 import type { PlatformAdapter } from "../../src/adapters/interface";
 import * as adapterFactory from "../../src/adapters/factory";
 import { createMockAdapter } from "../helpers/mockAdapter";
+import * as inquirerPrompts from "@inquirer/prompts";
 
 jest.mock("../../src/utils/config");
 jest.mock("../../src/utils/ssh");
+jest.mock("@inquirer/prompts", () => ({
+  confirm: jest.fn(),
+}));
 
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 const mockedConfig = config as jest.Mocked<typeof config>;
 const mockedSsh = sshUtils as jest.Mocked<typeof sshUtils>;
+const mockedInquirerConfirm = inquirerPrompts.confirm as jest.MockedFunction<
+  typeof inquirerPrompts.confirm
+>;
 
 const sampleServer = {
   id: "123",
@@ -40,12 +47,31 @@ describe("maintainCommand", () => {
   let consoleSpy: jest.SpyInstance;
   let consoleErrorSpy: jest.SpyInstance;
   const originalSetTimeout = global.setTimeout;
+  const originalIsTTY = process.stdin.isTTY;
+  const originalExitCode = process.exitCode;
+
+  function setIsTTY(value: boolean | undefined): void {
+    Object.defineProperty(process.stdin, "isTTY", { value, configurable: true, writable: true });
+  }
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
     consoleErrorSpy = jest.spyOn(console, "error").mockImplementation();
-    jest.clearAllMocks();
+    // P139 LESSONS: mockReset clears call history AND mockReturnValue/Once queues
+    mockedInquirerConfirm.mockReset();
+    mockedConfig.findServers.mockReset();
+    mockedConfig.getServers.mockReset();
+    mockedSsh.checkSshAvailable.mockReset();
+    mockedSsh.sshExec.mockReset();
+    mockedAxios.get.mockReset();
+    mockedAxios.post.mockReset();
+    // Default: confirmOrCancel returns true (accept) — per-test mockResolvedValueOnce overrides
+    mockedInquirerConfirm.mockResolvedValue(true);
+    // Default: SSH available for pre-existing tests
+    mockedSsh.checkSshAvailable.mockReturnValue(true);
     process.exitCode = undefined;
+    // Default TTY mode for destructive-guard tests (P142 Task 9)
+    setIsTTY(true);
     // Make setTimeout instant for tests
     global.setTimeout = ((fn: () => void) => {
       fn();
@@ -56,6 +82,8 @@ describe("maintainCommand", () => {
   afterEach(() => {
     consoleSpy.mockRestore();
     consoleErrorSpy.mockRestore();
+    setIsTTY(originalIsTTY);
+    process.exitCode = originalExitCode;
     global.setTimeout = originalSetTimeout;
     process.exitCode = undefined;
   });
