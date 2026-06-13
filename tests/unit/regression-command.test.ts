@@ -1,9 +1,19 @@
 import { listBaselines, formatBaselineStatus, deleteBaseline, getBaselinePath, formatRelativeTime } from "../../src/core/audit/regression.js";
 import * as fs from "fs";
+import * as promptsModule from "../../src/utils/prompts.js";
+import * as exitCodeModule from "../../src/utils/exitCode.js";
 
 jest.mock("fs");
+jest.mock("../../src/utils/prompts.js", () => ({
+  confirmOrCancel: jest.fn(),
+}));
+jest.mock("../../src/utils/exitCode.js", () => ({
+  markCommandFailed: jest.fn(),
+}));
 
 const mockFs = fs as jest.Mocked<typeof fs>;
+const mockConfirmOrCancel = promptsModule.confirmOrCancel as jest.MockedFunction<typeof promptsModule.confirmOrCancel>;
+const mockMarkCommandFailed = exitCodeModule.markCommandFailed as jest.MockedFunction<typeof exitCodeModule.markCommandFailed>;
 
 describe("listBaselines", () => {
   it("returns empty array when regression dir does not exist", () => {
@@ -169,5 +179,75 @@ describe("deleteBaseline", () => {
       throw err;
     });
     expect(() => deleteBaseline("1.2.3.4")).toThrow("EPERM");
+  });
+});
+
+// P142 Task 8: regressionResetCommand with ConfirmationDecision contract
+describe("regressionResetCommand — ConfirmationDecision", () => {
+  const fakeBaseline = {
+    version: 1 as const,
+    serverIp: "1.2.3.4",
+    lastUpdated: "2026-04-20T10:00:00Z",
+    bestScore: 78,
+    passedChecks: ["CHECK-A", "CHECK-B"],
+  };
+
+  let mockedLoadBaseline: jest.SpyInstance;
+  let mockedDeleteBaseline: jest.SpyInstance;
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    // Spy on loadBaseline + deleteBaseline so the command has a baseline to reset
+    const regressionCore = require("../../src/core/audit/regression.js") as typeof import("../../src/core/audit/regression.js");
+    mockedLoadBaseline = jest.spyOn(regressionCore, "loadBaseline").mockReturnValue(fakeBaseline);
+    mockedDeleteBaseline = jest.spyOn(regressionCore, "deleteBaseline").mockImplementation(() => undefined);
+    // Default — none of these tests should leave logger import un-mocked
+    jest.mock("../../src/utils/logger.js", () => ({
+      logger: { info: jest.fn(), warning: jest.fn(), error: jest.fn() },
+    }));
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("proceeds to delete baseline when decision.confirmed is true (force)", async () => {
+    mockConfirmOrCancel.mockResolvedValue({ confirmed: true, source: "force" });
+    const { regressionResetCommand } = await import("../../src/commands/regression.js");
+    await regressionResetCommand("1.2.3.4", { force: true });
+
+    expect(mockConfirmOrCancel).toHaveBeenCalledWith(
+      expect.stringContaining("Delete baseline for 1.2.3.4"),
+      true,
+      "Use --force to reset baseline in non-interactive mode.",
+    );
+    expect(mockedDeleteBaseline).toHaveBeenCalledWith("1.2.3.4");
+    expect(mockMarkCommandFailed).not.toHaveBeenCalled();
+  });
+
+  it("does not delete baseline when decision.reason is 'declined' and does NOT call markCommandFailed", async () => {
+    mockConfirmOrCancel.mockResolvedValue({
+      confirmed: false,
+      reason: "declined",
+      message: "Reset cancelled.",
+    });
+    const { regressionResetCommand } = await import("../../src/commands/regression.js");
+    await regressionResetCommand("1.2.3.4", {});
+
+    expect(mockedDeleteBaseline).not.toHaveBeenCalled();
+    expect(mockMarkCommandFailed).not.toHaveBeenCalled();
+  });
+
+  it("calls markCommandFailed when decision.reason is 'non-tty' and does NOT delete baseline", async () => {
+    mockConfirmOrCancel.mockResolvedValue({
+      confirmed: false,
+      reason: "non-tty",
+      message: "Use --force to reset baseline in non-interactive mode.",
+    });
+    const { regressionResetCommand } = await import("../../src/commands/regression.js");
+    await regressionResetCommand("1.2.3.4", {});
+
+    expect(mockedDeleteBaseline).not.toHaveBeenCalled();
+    expect(mockMarkCommandFailed).toHaveBeenCalledTimes(1);
   });
 });
