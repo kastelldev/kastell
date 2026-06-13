@@ -3,12 +3,7 @@ import { PLUGIN_STATUS_LOADED } from "../../plugin/registry.js";
 import { getShortName } from "../../plugin/registry.js";
 import type { PluginRegistryEntry } from "../../plugin/registry.js";
 import type { PluginCheck } from "../../plugin/sdk/types.js";
-import type { AuditCategory, AuditCheck, Severity, FixTier, ComplianceRef } from "./types.js";
-
-// Sentinel for mutating plugin checks that audit never runs. Consumer uses the
-// regex below to detect this value; drift between the two helpers silently
-// breaks runAudit's connectionError heuristic.
-const MUTATING_SKIP_PATTERN = /^Not run by kastell audit \(mutating kind: .+\)$/;
+import type { AuditCategory, AuditCheck, Severity, FixTier, ComplianceRef, PluginCheckSkipReason } from "./types.js";
 
 export function mapPluginComplianceRefs(refs?: Array<{ framework: string; ref: string }>): ComplianceRef[] {
   if (!refs || refs.length === 0) return [];
@@ -19,14 +14,6 @@ export function mapPluginComplianceRefs(refs?: Array<{ framework: string; ref: s
     description: r.ref,
     coverage: "partial" as const,
   }));
-}
-
-export function mutatingPluginAuditCurrentValue(kind: PluginCheck["checkCommand"]["kind"]): string {
-  return `Not run by kastell audit (mutating kind: ${kind})`;
-}
-
-export function isMutatingPluginAuditCurrentValue(value: string): boolean {
-  return MUTATING_SKIP_PATTERN.test(value);
 }
 
 export function getSkippedMutatingPluginWarnings(
@@ -66,7 +53,7 @@ function evaluateCheck(output: string, check: PluginCheck): boolean {
 
 function buildAuditCheck(
   checkDef: PluginCheck,
-  state: { passed: boolean; currentValue: string },
+  state: { passed: boolean; currentValue: string; skip?: PluginCheckSkipReason },
   entry?: PluginRegistryEntry,
 ): AuditCheck {
   const check: AuditCheck = {
@@ -81,6 +68,7 @@ function buildAuditCheck(
     safeToAutoFix: checkDef.safeToAutoFix as FixTier | undefined,
     explain: checkDef.explain as AuditCheck["explain"],
     complianceRefs: mapPluginComplianceRefs(checkDef.complianceRefs),
+    ...(state.skip ? { skip: state.skip } : {}),
   };
 
   if (!state.passed && entry) {
@@ -168,11 +156,15 @@ export function parsePluginBatchOutput(
         const passed = evaluateCheck(section.body, checkDef);
         checks.push(buildAuditCheck(checkDef, { passed, currentValue: section.body }, entry));
       } else if (checkDef.checkCommand.kind !== "read") {
+        // P142 Task 2: structured skip metadata replaces sentinel currentValue.
+        // Audit consumers gate on check.skip !== undefined (isSkippedCheck).
+        const skip: PluginCheckSkipReason = {
+          code: "legacy-mutating",
+          apiVersion: "2",
+          kind: checkDef.checkCommand.kind,
+        };
         checks.push(
-          buildAuditCheck(checkDef, {
-            passed: false,
-            currentValue: mutatingPluginAuditCurrentValue(checkDef.checkCommand.kind),
-          }),
+          buildAuditCheck(checkDef, { passed: false, currentValue: "", skip }, entry),
         );
       } else {
         // Missing read section — runAudit's allUndetermined heuristic flags
