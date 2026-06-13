@@ -4,6 +4,7 @@
  */
 
 import type { AuditResult } from "./types.js";
+import { isFailedCheck } from "./types.js";
 import { runAudit } from "./index.js";
 import { saveAuditHistory } from "./history.js";
 import { extractReason } from "../../utils/errors.js";
@@ -55,7 +56,7 @@ export async function watchAudit(
       log(options.formatter(auditResult));
       for (const cat of auditResult.categories) {
         for (const check of cat.checks) {
-          if (!check.passed) {
+          if (isFailedCheck(check)) {
             previousFailedIds.add(check.id);
           }
         }
@@ -67,11 +68,11 @@ export async function watchAudit(
         diff > 0 ? `+${diff}` : diff < 0 ? `${diff}` : "unchanged";
       const timestamp = new Date().toLocaleTimeString("en-GB");
 
-      // Find new failures
+      // Find new failures (skipped checks are NOT failures)
       const currentFailedIds = new Set<string>();
       for (const cat of auditResult.categories) {
         for (const check of cat.checks) {
-          if (!check.passed) {
+          if (isFailedCheck(check)) {
             currentFailedIds.add(check.id);
           }
         }
