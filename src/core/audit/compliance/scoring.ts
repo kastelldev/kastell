@@ -5,7 +5,7 @@
  */
 
 import type { AuditCategory, AuditResult } from "../types.js";
-import { isSkippedCheck } from "../types.js";
+import { isSkippedCheck, isPassedCheck, isFailedCheck } from "../types.js";
 import { FRAMEWORK_VERSIONS, type FrameworkKey } from "./mapper.js";
 import type { ComplianceControlDetail, ComplianceDetailScore, ProfileName } from "./types.js";
 import { PROFILE_MAP } from "./types.js";
@@ -49,11 +49,11 @@ export function calculateComplianceScores(categories: AuditCategory[]): Complian
         const frameworkControls = controlMap.get(ref.framework)!;
         const existing = frameworkControls.get(ref.controlId);
         if (existing) {
-          if (!check.passed) existing.allPassed = false;
+          if (isFailedCheck(check)) existing.allPassed = false;
           if (ref.coverage === "partial") existing.hasPartial = true;
         } else {
           frameworkControls.set(ref.controlId, {
-            allPassed: check.passed,
+            allPassed: isPassedCheck(check),
             hasPartial: ref.coverage === "partial",
           });
         }
@@ -117,14 +117,14 @@ export function calculateComplianceDetail(categories: AuditCategory[]): Complian
         const frameworkControls = controlMap.get(ref.framework)!;
         const existing = frameworkControls.get(ref.controlId);
         if (existing) {
-          if (!check.passed) existing.allPassed = false;
+          if (isFailedCheck(check)) existing.allPassed = false;
           if (ref.coverage === "partial") existing.hasPartial = true;
-          existing.checks.push({ id: check.id, name: check.name, passed: check.passed });
+          existing.checks.push({ id: check.id, name: check.name, passed: isPassedCheck(check) });
         } else {
           frameworkControls.set(ref.controlId, {
-            allPassed: check.passed,
+            allPassed: isPassedCheck(check),
             hasPartial: ref.coverage === "partial",
-            checks: [{ id: check.id, name: check.name, passed: check.passed }],
+            checks: [{ id: check.id, name: check.name, passed: isPassedCheck(check) }],
             description: ref.description,
           });
         }
