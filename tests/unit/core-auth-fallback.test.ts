@@ -71,6 +71,18 @@ describe("file-based fallback (no keyring)", () => {
       expect(written.version).toBe(1);
     });
 
+    it("should mark provider token writes with sensitivity=secret (P142 Task 6)", () => {
+      mockExistsSync.mockReturnValue(false);
+
+      setToken("hetzner", "my-token");
+
+      expect(mockSecureWriteFileSync).toHaveBeenCalledWith(
+        expect.stringContaining("tokens.json"),
+        expect.any(String),
+        expect.objectContaining({ sensitivity: "secret" }),
+      );
+    });
+
     it("should merge with existing tokens", () => {
       // Return an encrypted payload that decrypts to { vultr: "v-token" }
       const encPayload = {
