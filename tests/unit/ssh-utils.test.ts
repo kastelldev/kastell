@@ -14,6 +14,7 @@ import {
   checkSshAvailable,
   clearKnownHostKey,
   getHostKeyPolicy,
+  getObservedHostFingerprint,
   removeStaleHostKey,
   resolveSshPath,
   resolveScpPath,
@@ -647,6 +648,148 @@ describe("ssh utils", () => {
         signal: null,
       });
       expect(() => clearKnownHostKey("203.0.113.1")).not.toThrow();
+    });
+  });
+
+  describe("getObservedHostFingerprint", () => {
+    it("returns normalized fingerprint when both keyscan and keygen exit 0", () => {
+      mockedSpawnSync
+        .mockReturnValueOnce({
+          status: 0,
+          stdout: "1.2.3.4 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAbc",
+          stderr: "",
+          pid: 1,
+          output: [],
+          signal: null,
+        })
+        .mockReturnValueOnce({
+          status: 0,
+          stdout: "256 SHA256:abc123def456 root@1.2.3.4 (ED25519)\n",
+          stderr: "",
+          pid: 1,
+          output: [],
+          signal: null,
+        });
+      const result = getObservedHostFingerprint("1.2.3.4");
+      expect(result).toBe("SHA256:abc123def456");
+    });
+
+    it("returns null when keyscan times out (non-zero exit)", () => {
+      mockedSpawnSync.mockReturnValueOnce({
+        status: null,
+        stdout: "",
+        stderr: "",
+        pid: 1,
+        output: [],
+        signal: null,
+      });
+      const result = getObservedHostFingerprint("1.2.3.4");
+      expect(result).toBeNull();
+    });
+
+    it("returns null when keyscan exits non-zero", () => {
+      mockedSpawnSync.mockReturnValueOnce({
+        status: 1,
+        stdout: "",
+        stderr: "connection refused",
+        pid: 1,
+        output: [],
+        signal: null,
+      });
+      const result = getObservedHostFingerprint("1.2.3.4");
+      expect(result).toBeNull();
+    });
+
+    it("returns null when keyscan stdout is empty", () => {
+      mockedSpawnSync.mockReturnValueOnce({
+        status: 0,
+        stdout: "",
+        stderr: "",
+        pid: 1,
+        output: [],
+        signal: null,
+      });
+      const result = getObservedHostFingerprint("1.2.3.4");
+      expect(result).toBeNull();
+    });
+
+    it("returns null when keygen exits non-zero", () => {
+      mockedSpawnSync
+        .mockReturnValueOnce({
+          status: 0,
+          stdout: "1.2.3.4 ssh-ed25519 AAAAC3Nz",
+          stderr: "",
+          pid: 1,
+          output: [],
+          signal: null,
+        })
+        .mockReturnValueOnce({
+          status: 1,
+          stdout: "",
+          stderr: "keygen error",
+          pid: 1,
+          output: [],
+          signal: null,
+        });
+      const result = getObservedHostFingerprint("1.2.3.4");
+      expect(result).toBeNull();
+    });
+
+    it("returns null when keygen output cannot be parsed", () => {
+      mockedSpawnSync
+        .mockReturnValueOnce({
+          status: 0,
+          stdout: "1.2.3.4 ssh-ed25519 AAAAC3Nz",
+          stderr: "",
+          pid: 1,
+          output: [],
+          signal: null,
+        })
+        .mockReturnValueOnce({
+          status: 0,
+          stdout: "garbled output with no fingerprint\n",
+          stderr: "",
+          pid: 1,
+          output: [],
+          signal: null,
+        });
+      const result = getObservedHostFingerprint("1.2.3.4");
+      expect(result).toBeNull();
+    });
+
+    it("invokes ssh-keyscan and ssh-keygen as separate array args (no shell)", () => {
+      mockedSpawnSync
+        .mockReturnValueOnce({
+          status: 0,
+          stdout: "1.2.3.4 ssh-ed25519 AAAAC3Nz",
+          stderr: "",
+          pid: 1,
+          output: [],
+          signal: null,
+        })
+        .mockReturnValueOnce({
+          status: 0,
+          stdout: "256 SHA256:abc root@1.2.3.4 (ED25519)\n",
+          stderr: "",
+          pid: 1,
+          output: [],
+          signal: null,
+        });
+      getObservedHostFingerprint("1.2.3.4");
+      // First call: ssh-keyscan with -T timeout + IP
+      expect(mockedSpawnSync).toHaveBeenNthCalledWith(
+        1,
+        expect.stringContaining("keyscan"),
+        expect.arrayContaining(["1.2.3.4"]),
+        expect.any(Object),
+      );
+      // Second call: ssh-keygen -lf - (read fingerprint from stdin)
+      expect(mockedSpawnSync).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining("keygen"),
+        ["-lf", "-"],
+        expect.objectContaining({ input: expect.any(String) }),
+      );
     });
   });
 
