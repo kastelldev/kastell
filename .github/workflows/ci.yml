@@ -67,6 +67,10 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Verify Windows ACL hardening
+        if: matrix.os == 'windows-latest' && matrix.node-version == 22
+        run: npm test -- --runInBand tests/integration/windows-acl.test.ts
+
       - name: Run tests with coverage
         if: matrix.os == 'ubuntu-latest' && matrix.node-version == 22
         run: npm run test:coverage
