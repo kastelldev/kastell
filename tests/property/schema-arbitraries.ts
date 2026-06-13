@@ -38,6 +38,14 @@ export const auditCheckArb = fc.record({
   passed: fc.boolean(),
   currentValue: nonEmptyString(200),
   expectedValue: nonEmptyString(200),
+  skip: fc.option(
+    fc.record({
+      code: fc.constant("legacy-mutating" as const),
+      apiVersion: fc.constant("2" as const),
+      kind: fc.constantFrom("mutate-local" as const, "mutate-global" as const),
+    }),
+    { nil: undefined },
+  ),
 });
 
 // Category arbitrary
