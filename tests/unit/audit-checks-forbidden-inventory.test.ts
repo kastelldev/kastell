@@ -4,7 +4,7 @@ import { parseDockerChecks } from "../../src/core/audit/checks/docker.js";
 import type { AuditCheck } from "../../src/core/audit/types.js";
 
 describe("FORBIDDEN inventory invariant (P142 Task 10)", () => {
-  it("SSH+Firewall+Docker parsers produce exactly 72 FORBIDDEN checks total (SSH: 22, Firewall: 17, Docker: 33)", () => {
+  it("SSH+Firewall+Docker parsers produce exactly 71 FORBIDDEN checks total (SSH: 22, Firewall: 17, Docker: 32)", () => {
     const sshChecks = parseSSHChecks("N/A", "bare");
     const fwChecks = parseFirewallChecks("N/A", "bare");
     const dockerChecks = parseDockerChecks("N/A", "coolify");
