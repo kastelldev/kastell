@@ -314,8 +314,8 @@ describe("P142: structured skip rendering in terminal", () => {
       name: "Legacy Mutating",
       severity: "info",
       passed: false,
-      // currentValue deliberately contains legacy sentinel to ensure we don't match it
-      currentValue: "Not run by kastell audit (legacy v2 mutating check)",
+      // currentValue deliberately contains legacy sentinel-like text to ensure we don't echo it
+      currentValue: "currentValue-fixture-sentinel",
       expectedValue: "n/a",
       skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-local" },
     };
@@ -335,8 +335,8 @@ describe("P142: structured skip rendering in terminal", () => {
 
     // Display should come from helper, not from currentValue
     expect(output).toContain("Skipped: legacy v2 mutating check (mutate-local)");
-    // Old sentinel should not appear as display text
-    expect(output).not.toContain("Not run by kastell audit (legacy v2 mutating check)");
+    // Old sentinel fixture in currentValue should NOT appear in display
+    expect(output).not.toContain("currentValue-fixture-sentinel");
   });
 });
 

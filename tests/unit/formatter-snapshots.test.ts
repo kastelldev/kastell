@@ -93,8 +93,8 @@ describe("P142: snapshot derives display from check.skip, not currentValue", () 
       name: "Mutate Local",
       severity: "info",
       passed: false,
-      // currentValue deliberately includes the old sentinel text — should be ignored
-      currentValue: "Not run by kastell audit (legacy v2 mutating check)",
+      // currentValue deliberately includes a sentinel-like fixture — should be ignored
+      currentValue: "currentValue-fixture-sentinel",
       expectedValue: "n/a",
       skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-local" },
     };
@@ -113,7 +113,7 @@ describe("P142: snapshot derives display from check.skip, not currentValue", () 
     const output = formatTerminal(result);
     // Helper-derived text appears
     expect(output).toContain("Skipped: legacy v2 mutating check (mutate-local)");
-    // The sentinel must NOT appear in display (helper is the source of truth)
-    expect(output).not.toContain("Not run by kastell audit (legacy v2 mutating check)");
+    // The fixture in currentValue must NOT appear in display (helper is the source of truth)
+    expect(output).not.toContain("currentValue-fixture-sentinel");
   });
 });
