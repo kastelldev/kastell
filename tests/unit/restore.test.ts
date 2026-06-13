@@ -5,6 +5,7 @@ import * as config from "../../src/utils/config";
 import * as sshUtils from "../../src/utils/ssh";
 import * as coreBackup from "../../src/core/backup";
 import * as adapterFactory from "../../src/adapters/factory";
+import * as inquirerPrompts from "@inquirer/prompts";
 import {
   tryRestartCoolify,
   buildStopCoolifyCommand,
@@ -31,6 +32,9 @@ jest.mock("child_process", () => ({
 }));
 jest.mock("../../src/utils/config");
 jest.mock("../../src/utils/ssh");
+jest.mock("@inquirer/prompts", () => ({
+  confirm: jest.fn(),
+}));
 jest.mock("../../src/core/backup", () => {
   const actual = jest.requireActual("../../src/core/backup");
   return {
@@ -52,6 +56,9 @@ const mockedAdapterFactory = adapterFactory as jest.Mocked<typeof adapterFactory
 const mockedExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;
 const mockedReadFileSync = readFileSync as jest.MockedFunction<typeof readFileSync>;
 const mockedInquirer = inquirer as jest.Mocked<typeof inquirer>;
+const mockedInquirerConfirm = inquirerPrompts.confirm as jest.MockedFunction<
+  typeof inquirerPrompts.confirm
+>;
 const mockedSpawn = spawn as jest.MockedFunction<typeof spawn>;
 
 const sampleServer = {
@@ -93,10 +100,23 @@ const defaultDokployAdapter = createMockAdapter({ name: "dokploy" });
 describe("restore", () => {
   const spy = createConsoleSpy();
   let stderrSpy: jest.SpyInstance;
+  const originalIsTTY = process.stdin.isTTY;
+  const originalExitCode = process.exitCode;
+
+  function setIsTTY(value: boolean | undefined): void {
+    Object.defineProperty(process.stdin, "isTTY", { value, configurable: true, writable: true });
+  }
 
   beforeEach(() => {
     spy.setup();
     stderrSpy = jest.spyOn(console, "error").mockImplementation();
+    // P139 LESSONS: mockReset clears call history AND mockReturnValue/Once queues
+    mockedInquirerConfirm.mockReset();
+    // Default: confirmOrCancel returns true (accept)
+    mockedInquirerConfirm.mockResolvedValue(true);
+    // Default: TTY mode for pre-existing tests
+    setIsTTY(true);
+    process.exitCode = undefined;
     jest.clearAllMocks();
     process.env.KASTELL_SAFE_MODE = "false";
     mockedSsh.resolveScpPath.mockReturnValue("scp");
@@ -108,6 +128,8 @@ describe("restore", () => {
   afterEach(() => {
     spy.restore();
     stderrSpy?.mockRestore();
+    setIsTTY(originalIsTTY);
+    process.exitCode = originalExitCode;
   });
 
   // Pure function tests
@@ -289,7 +311,7 @@ describe("restore", () => {
       mockedConfig.findServers.mockReturnValue([sampleServer]);
       mockedExistsSync.mockReturnValue(true);
       mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
-      mockedInquirer.prompt = jest.fn().mockResolvedValue({ confirm: false }) as unknown as typeof mockedInquirer.prompt;
+      mockedInquirerConfirm.mockResolvedValueOnce(false);
 
       await restoreCommand("1.2.3.4", { backup: "my-backup" });
 
@@ -304,7 +326,6 @@ describe("restore", () => {
       mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
       mockedInquirer.prompt = jest
         .fn()
-        .mockResolvedValueOnce({ confirm: true })
         .mockResolvedValueOnce({ confirmName: "wrong-name" }) as unknown as typeof mockedInquirer.prompt;
 
       await restoreCommand("1.2.3.4", { backup: "my-backup" });
@@ -321,8 +342,8 @@ describe("restore", () => {
       mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
       mockedInquirer.prompt = jest
         .fn()
-        .mockResolvedValueOnce({ backup: "2026-02-21_15-30-45-123" })
-        .mockResolvedValueOnce({ confirm: false }) as unknown as typeof mockedInquirer.prompt;
+        .mockResolvedValueOnce({ backup: "2026-02-21_15-30-45-123" }) as unknown as typeof mockedInquirer.prompt;
+      mockedInquirerConfirm.mockResolvedValueOnce(false);
 
       await restoreCommand("1.2.3.4");
 
@@ -342,7 +363,6 @@ describe("restore", () => {
         mockedReadFileSync.mockReturnValue(JSON.stringify(manifest));
         mockedInquirer.prompt = jest
           .fn()
-          .mockResolvedValueOnce({ confirm: true })
           .mockResolvedValueOnce({ confirmName: server.name }) as unknown as typeof mockedInquirer.prompt;
         mockedAdapterFactory.getAdapter.mockImplementation((platform: string) =>
           platform === "dokploy" ? mockDokployAdapter : mockCoolifyAdapter,
@@ -507,9 +527,7 @@ describe("restore", () => {
           ...sampleManifest,
           provider: "hetzner", // backup was from hetzner
         }));
-        mockedInquirer.prompt = jest
-          .fn()
-          .mockResolvedValueOnce({ confirm: false }) as unknown as typeof mockedInquirer.prompt; // cancel after warning
+        mockedInquirerConfirm.mockResolvedValueOnce(false); // cancel after warning
 
         await restoreCommand("1.2.3.4", { backup: "my-backup" });
 
@@ -558,7 +576,7 @@ describe("restore", () => {
         mockedExistsSync.mockReturnValue(true);
         mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
         // Cancel at first confirm
-        mockedInquirer.prompt = jest.fn().mockResolvedValue({ confirm: false }) as unknown as typeof mockedInquirer.prompt;
+        mockedInquirerConfirm.mockResolvedValueOnce(false);
 
         await restoreCommand("1.2.3.4", { backup: "my-backup" });
 

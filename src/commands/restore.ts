@@ -10,6 +10,8 @@ import { isSafeMode } from "../core/manage.js";
 import { logSafeModeBlock } from "../utils/safeMode.js";
 import { getAdapter } from "../adapters/factory.js";
 import { adapterDisplayName } from "../adapters/shared.js";
+import { confirmOrCancel } from "../utils/prompts.js";
+import { markCommandFailed } from "../utils/exitCode.js";
 import {
   listBackups,
   getBackupDir,
@@ -151,21 +153,21 @@ export async function restoreCommand(
   }
 
   if (!options?.force) {
-    // Double confirmation
-    const { confirm } = await inquirer.prompt([
-      {
-        type: "confirm",
-        name: "confirm",
-        message: `This will restore "${server.name}" from backup ${selectedBackup}. Current data will be OVERWRITTEN. Continue?`,
-        default: false,
-      },
-    ]);
-
-    if (!confirm) {
-      logger.info("Restore cancelled.");
+    // Destructive guard: refuse before mutation in non-TTY mode without --force (P142 Task 9)
+    const decision = await confirmOrCancel(
+      `This will restore "${server.name}" from backup ${selectedBackup}. Current data will be OVERWRITTEN. Continue?`,
+      false,
+      "Use --force to restore in non-interactive mode.",
+    );
+    if (!decision.confirmed) {
+      logger.info(decision.message);
+      if (decision.reason === "non-tty") {
+        markCommandFailed();
+      }
       return;
     }
 
+    // TTY-only typed-name second confirmation (preserves destroy/restore/snapshot UX)
     const { confirmName } = await inquirer.prompt([
       {
         type: "input",
