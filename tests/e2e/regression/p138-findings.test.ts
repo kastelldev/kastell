@@ -13,9 +13,11 @@ describe("P138 regression — open findings", () => {
   });
 
   // F-009 forward-protection — QuickWin schema fields (compile-time check)
-  it("F-009: QuickWin schema has commands, currentScore, projectedScore, description fields", () => {
+  it("F-009: QuickWin schema has id, severity, commands, currentScore, projectedScore, description fields", () => {
     // Type-level: if QuickWin interface changes, this file fails to compile
     const sample: QuickWin = {
+      id: "TEST-01",
+      severity: "info",
       commands: ["ls"],
       currentScore: 50,
       projectedScore: 85,
