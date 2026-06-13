@@ -70,7 +70,7 @@ import {
 import * as regressionRunner from "../../src/core/audit/regression.js";
 import inquirer from "inquirer";
 import type { FixHistoryEntry } from "../../src/core/audit/types.js";
-import * as pluginFixModule from "../../src/core/audit/pluginFix.js";
+import { getPluginBackupPaths } from "../../src/core/audit/pluginFix.js";
 
 const mockedResolveServer = resolveServer as jest.MockedFunction<typeof resolveServer>;
 const mockedCheckSsh = checkSshAvailable as jest.MockedFunction<typeof checkSshAvailable>;
@@ -1566,10 +1566,11 @@ describe("fixSafeCommand", () => {
       mockedSshExec.mockResolvedValue({ stdout: "", stderr: "", code: 0 });
 
       // Capture the failedCheckIds argument passed to getPluginBackupPaths.
-      // pluginFix is fully mocked at the top of this file — use the
-      // module-level import and override via mockImplementation.
+      // pluginFix is fully mocked at the top of this file — the imported
+      // reference is the same jest.fn() the test setup wired.
+      const mockedGetPluginBackupPaths = getPluginBackupPaths as jest.MockedFunction<typeof getPluginBackupPaths>;
       const callsWithFailedIds: string[][] = [];
-      (pluginFixModule.getPluginBackupPaths as jest.Mock).mockImplementation((ids: string[]) => {
+      mockedGetPluginBackupPaths.mockImplementation((ids: string[]) => {
         callsWithFailedIds.push([...ids]);
         return [];
       });
