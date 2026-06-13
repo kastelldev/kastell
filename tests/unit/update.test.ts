@@ -562,7 +562,7 @@ describe("updateCommand", () => {
       };
       mockedConfig.getServers.mockReturnValue([bareServer]);
       mockedModeGuard.isBareServer.mockReturnValue(true);
-  
+
       await updateCommand(undefined, { all: true });
 
       expect(process.exitCode).toBe(1);
