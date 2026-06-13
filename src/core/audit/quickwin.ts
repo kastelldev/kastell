@@ -4,6 +4,7 @@
  */
 
 import type { AuditResult, AuditCheck, QuickWin } from "./types.js";
+import { isFailedCheck } from "./types.js";
 import { SEVERITY_WEIGHTS, CATEGORY_WEIGHTS, DEFAULT_CATEGORY_WEIGHT, buildImpactContext } from "./scoring.js";
 
 /** Compliance-blocking checks get 1.5x sort boost (calibration starting point, tune 1.3x-2.0x) */
@@ -47,7 +48,7 @@ export function calculateQuickWins(
     const catWeight = CATEGORY_WEIGHTS[category.name] ?? DEFAULT_CATEGORY_WEIGHT;
 
     for (const check of category.checks) {
-      if (!check.passed && check.fixCommand) {
+      if (isFailedCheck(check) && check.fixCommand) {
         const checkWeight = SEVERITY_WEIGHTS[check.severity];
         // This check's contribution to category score (0-100 range)
         const categoryScoreGain = (checkWeight / totalCategoryWeight) * 100;
