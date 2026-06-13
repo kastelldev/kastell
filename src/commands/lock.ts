@@ -1,7 +1,8 @@
-import inquirer from "inquirer";
 import { resolveServer } from "../utils/serverSelect.js";
 import { checkSshAvailable } from "../utils/ssh.js";
 import { logger, createSpinner } from "../utils/logger.js";
+import { confirmOrCancel } from "../utils/prompts.js";
+import { markCommandFailed } from "../utils/exitCode.js";
 import { applyLock } from "../core/lock/index.js";
 import type { LockStepResult } from "../core/lock/index.js";
 
@@ -89,16 +90,17 @@ export async function lockCommand(
 
   // Confirmation prompt (skipped with --force)
   if (!options.force) {
-    const { confirm } = await inquirer.prompt([
-      {
-        type: "confirm",
-        name: "confirm",
-        message: `This will apply production hardening to ${server.name} (${server.ip}). Continue?`,
-        default: false,
-      },
-    ]);
-    if (!confirm) {
-      logger.info("Lock cancelled.");
+    // Destructive guard: refuse before mutation in non-TTY mode without --force (P142 Task 9)
+    const decision = await confirmOrCancel(
+      `This will apply production hardening to ${server.name} (${server.ip}). Continue?`,
+      false,
+      "Use --force to apply hardening in non-interactive mode.",
+    );
+    if (!decision.confirmed) {
+      logger.info(decision.message);
+      if (decision.reason === "non-tty") {
+        markCommandFailed();
+      }
       return;
     }
   }

@@ -2,6 +2,7 @@ import * as sshUtils from "../../src/utils/ssh";
 import * as serverSelectModule from "../../src/utils/serverSelect";
 import * as lockModule from "../../src/core/lock/index.js";
 import * as loggerModule from "../../src/utils/logger";
+import * as inquirerPrompts from "@inquirer/prompts";
 import { lockCommand } from "../../src/commands/lock";
 import type { LockResult } from "../../src/core/lock/index.js";
 import type { ServerRecord } from "../../src/types/index";
@@ -10,11 +11,17 @@ jest.mock("../../src/utils/ssh");
 jest.mock("../../src/utils/serverSelect");
 jest.mock("../../src/core/lock/index.js");
 jest.mock("../../src/utils/logger");
+jest.mock("@inquirer/prompts", () => ({
+  confirm: jest.fn(),
+}));
 
 const mockedSsh = sshUtils as jest.Mocked<typeof sshUtils>;
 const mockedServerSelect = serverSelectModule as jest.Mocked<typeof serverSelectModule>;
 const mockedLock = lockModule as jest.Mocked<typeof lockModule>;
 const mockedLogger = loggerModule as jest.Mocked<typeof loggerModule>;
+const mockedInquirerConfirm = inquirerPrompts.confirm as jest.MockedFunction<
+  typeof inquirerPrompts.confirm
+>;
 
 const sampleServer: ServerRecord = {
   id: "abc123",
@@ -111,6 +118,7 @@ beforeEach(() => {
   mockedSsh.checkSshAvailable.mockReturnValue(true);
   mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
   mockedLock.applyLock.mockResolvedValue(successResult);
+  Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
 
   // Logger mock
   (mockedLogger.logger as jest.Mocked<typeof mockedLogger.logger>) = {
