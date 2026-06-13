@@ -56,6 +56,15 @@ export function isFailedCheck(check: AuditCheck): boolean {
   return !isSkippedCheck(check) && !check.passed;
 }
 
+/** Tri-state for a check's effective state: passed, failed, or skipped. */
+export type AuditCheckState = "passed" | "failed" | "skipped";
+
+/** Map a check to its effective state (skipped takes precedence over passed/failed). */
+export function getAuditCheckState(check: AuditCheck): AuditCheckState {
+  if (isSkippedCheck(check)) return "skipped";
+  return check.passed ? "passed" : "failed";
+}
+
 export interface AuditCategory {
   name: string;
   checks: AuditCheck[];
