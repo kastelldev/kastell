@@ -25,7 +25,16 @@ export function createIsolatedKastellEnv(
       NO_COLOR: "1",
       FORCE_COLOR: "0",
     },
-    cleanup: () => rmSync(dir, { recursive: true, force: true }),
+    cleanup: () => {
+      try {
+        rmSync(dir, { recursive: true, force: true });
+      } catch (err) {
+        // Windows EPERM: spawned CLI may still hold file handles briefly after spawnSync.
+        // Test assertions have already evaluated; cleanup failure is best-effort and
+        // must not fail the test. Note: Node's rmSync maxRetries is ignored on win32.
+        console.warn(`isolatedKastellEnv cleanup warning: ${(err as Error).message}`);
+      }
+    },
   };
 }
 
