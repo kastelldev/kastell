@@ -18,6 +18,12 @@ export interface ComplianceRef {
   level?: "L1" | "L2";  // only meaningful for CIS framework
 }
 
+export type PluginCheckSkipReason = {
+  code: "legacy-mutating";
+  apiVersion: "2";
+  kind: "mutate-local" | "mutate-global";
+};
+
 export interface AuditCheck {
   id: string;                    // e.g. "SSH-PASSWORD-AUTH"
   category: string;              // e.g. "SSH"
@@ -32,6 +38,22 @@ export interface AuditCheck {
   tags?: string[];               // Searchable tags e.g. ["ssh", "authentication"]
   vpsIrrelevant?: boolean;       // true for checks not meaningful on VPS (physical-hardware)
   safeToAutoFix?: FixTier;       // SAFE (no restart), GUARDED (restart needed), FORBIDDEN (SSH/FW/Docker)
+  skip?: PluginCheckSkipReason;  // structured skip metadata (P142 Task 2)
+}
+
+/** Returns true when a check is a structured skip (audit never runs it). */
+export function isSkippedCheck(check: AuditCheck): boolean {
+  return check.skip !== undefined;
+}
+
+/** Returns true when a check passed and was not skipped. */
+export function isPassedCheck(check: AuditCheck): boolean {
+  return !isSkippedCheck(check) && check.passed;
+}
+
+/** Returns true when a check failed and was not skipped. */
+export function isFailedCheck(check: AuditCheck): boolean {
+  return !isSkippedCheck(check) && !check.passed;
 }
 
 export interface AuditCategory {
