@@ -391,3 +391,92 @@ describe("regression baseline", () => {
     expect((parsed.baselineRegression as any).newPasses).toEqual(["FW-UFW-ACTIVE"]);
   });
 });
+
+describe("P142: MCP serverAudit preserves structured skip object", () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+    mockedConfig.getServers.mockReturnValue([sampleServer] as never);
+    mockedConfig.findServer.mockReturnValue(sampleServer as never);
+    mockedRegression.saveBaselineSafe.mockResolvedValue();
+    mockedRegression.loadBaseline.mockReturnValue(null);
+    mockedRegression.checkRegression.mockReturnValue({ regressions: [], newPasses: [], baselineScore: 0, currentScore: 0 });
+    mockedRegression.formatRegressionSummary.mockReturnValue([{ severity: "info", text: "Best score: 0" }]);
+    mockedRegression.extractPassedCheckIds.mockReturnValue([]);
+  });
+
+  it("should preserve full skip object in JSON format response", async () => {
+    const skipCheck = {
+      id: "PLUGIN-MUTATE-LOCAL",
+      category: "Plugin",
+      name: "Mutate Local",
+      severity: "info" as const,
+      passed: false,
+      currentValue: "n/a",
+      expectedValue: "n/a",
+      skip: { code: "legacy-mutating" as const, apiVersion: "2" as const, kind: "mutate-local" as const },
+    };
+    const auditResultWithSkip: AuditResult = {
+      ...sampleAuditResult,
+      categories: [
+        {
+          name: "Plugin",
+          checks: [skipCheck],
+          score: 100,
+          maxScore: 100,
+        },
+      ],
+    };
+    mockedAuditRunner.runAudit.mockResolvedValue({
+      success: true,
+      data: auditResultWithSkip,
+    });
+
+    const result = await handleServerAudit({ server: "coolify-test", format: "json" });
+
+    expect(result.isError).toBeUndefined();
+    const parsed = JSON.parse(result.content[0].text) as {
+      categories: Array<{ name: string; checks: Array<{ id: string; skip?: { code: string; apiVersion: string; kind: string } }> }>;
+    };
+
+    const pluginCat = parsed.categories.find((c) => c.checks[0]?.id === "PLUGIN-MUTATE-LOCAL");
+    expect(pluginCat).toBeDefined();
+    expect(pluginCat?.checks[0].skip).toBeDefined();
+    expect(pluginCat?.checks[0].skip?.code).toBe("legacy-mutating");
+    expect(pluginCat?.checks[0].skip?.kind).toBe("mutate-local");
+  });
+
+  it("should not list skipped check in summary explain failure list", async () => {
+    const skipCheck = {
+      id: "PLUGIN-MUTATE-LOCAL",
+      category: "Plugin",
+      name: "Mutate Local",
+      severity: "info" as const,
+      passed: false,
+      currentValue: "n/a",
+      expectedValue: "n/a",
+      skip: { code: "legacy-mutating" as const, apiVersion: "2" as const, kind: "mutate-local" as const },
+    };
+    const auditResultWithSkip: AuditResult = {
+      ...sampleAuditResult,
+      categories: [
+        {
+          name: "Plugin",
+          checks: [skipCheck],
+          score: 100,
+          maxScore: 100,
+        },
+      ],
+    };
+    mockedAuditRunner.runAudit.mockResolvedValue({
+      success: true,
+      data: auditResultWithSkip,
+    });
+
+    const result = await handleServerAudit({ server: "coolify-test", format: "summary", explain: true });
+
+    expect(result.isError).toBeUndefined();
+    const summaryText = JSON.parse(result.content[0].text).summary as string;
+    // The skipped check must NOT appear in the "Failing Checks" explain section
+    expect(summaryText).not.toMatch(/Failing Checks[\s\S]*PLUGIN-MUTATE-LOCAL/);
+  });
+});
