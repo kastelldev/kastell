@@ -102,6 +102,18 @@ Release-time version bumps remain owned by `/release minor`; `package.json` and 
 
 ## [Unreleased]
 
+### Security
+- **`KASTELL_STRICT_HOST_KEY=true` and direct SSH TOFU behavior** — direct SSH connections now emit a one-time Trust-On-First-Use warning. Combined with `KASTELL_STRICT_HOST_KEY=true`, the warning is promoted to a hard error and unknown host keys are rejected outright.
+- **Non-TTY destructive commands require `--force` or documented opt-in** — destructive operations invoked without an attached TTY (CI, cron, automation) must include an explicit `--force` flag or the command's documented opt-in. Commands without explicit opt-in exit with a non-zero status, protecting unattended scripts from accidental destructive execution.
+- **Windows secret files receive restrictive ACLs** — secret-bearing files on Windows (token cache, fix history, audit snapshots) are created with restrictive DACLs granting access only to the current user. POSIX `0o600` remains the source of truth on Linux/macOS.
+- **FORBIDDEN previews include reasons** — `audit --dry-run` (CLI) and `server_fix` dry-run (MCP) responses now include a `forbiddenReason` for each FORBIDDEN-tier fix (e.g. "requires reboot", "disrupts active SSH sessions", "can lock out remote operators"). The `AuditCheck` type and `FixPreview` shape carry the new field across all 71 FORBIDDEN checks (SSH:2, Firewall:17, Docker:52).
+
+### Fixed
+- **Structured skipped checks are neutral, visible audit results** — checks that are not executed (VPS-irrelevant, platform-mismatch, missing prerequisite) now appear in audit output as a neutral, visible result with an explicit reason. Nothing is silently dropped from the audit trail.
+
+### Changed
+- **QuickWin JSON now includes `id` and `severity`** — `kastell audit --json` and `server_audit` MCP responses include stable `id` (check ID) and `severity` fields on every QuickWin entry in addition to the human-readable description, making QuickWins programmatically consumable without re-parsing the description field.
+
 ## [2.2.7] - 2026-05-16
 
 ### Fixed
