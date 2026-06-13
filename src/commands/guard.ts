@@ -1,8 +1,9 @@
 import chalk from "chalk";
-import inquirer from "inquirer";
 import { resolveServer } from "../utils/serverSelect.js";
 import { checkSshAvailable } from "../utils/ssh.js";
 import { logger, createSpinner } from "../utils/logger.js";
+import { confirmOrCancel } from "../utils/prompts.js";
+import { markCommandFailed } from "../utils/exitCode.js";
 import { startGuard, stopGuard, guardStatus, dispatchGuardBreaches, checkAuditScoreDrop } from "../core/guard.js";
 
 export async function guardCommand(
@@ -20,16 +21,17 @@ export async function guardCommand(
     if (!server) return;
 
     if (!options.force) {
-      const { confirm } = await inquirer.prompt([
-        {
-          type: "confirm",
-          name: "confirm",
-          message: `Install guard daemon on ${server.name} (${server.ip})? Checks disk, RAM, CPU every 5 minutes.`,
-          default: false,
-        },
-      ]);
-      if (!confirm) {
-        logger.info("Guard install cancelled.");
+      // Destructive guard: refuse before mutation in non-TTY mode without --force (P142 Task 9)
+      const decision = await confirmOrCancel(
+        `Install guard daemon on ${server.name} (${server.ip})? Checks disk, RAM, CPU every 5 minutes.`,
+        false,
+        "Use --force to install guard in non-interactive mode.",
+      );
+      if (!decision.confirmed) {
+        logger.info(decision.message);
+        if (decision.reason === "non-tty") {
+          markCommandFailed();
+        }
         return;
       }
     }
@@ -59,16 +61,17 @@ export async function guardCommand(
     if (!server) return;
 
     if (!options.force) {
-      const { confirm } = await inquirer.prompt([
-        {
-          type: "confirm",
-          name: "confirm",
-          message: `Remove guard daemon from ${server.name} (${server.ip})?`,
-          default: false,
-        },
-      ]);
-      if (!confirm) {
-        logger.info("Guard removal cancelled.");
+      // Destructive guard: refuse before mutation in non-TTY mode without --force (P142 Task 9)
+      const decision = await confirmOrCancel(
+        `Remove guard daemon from ${server.name} (${server.ip})?`,
+        false,
+        "Use --force to remove guard in non-interactive mode.",
+      );
+      if (!decision.confirmed) {
+        logger.info(decision.message);
+        if (decision.reason === "non-tty") {
+          markCommandFailed();
+        }
         return;
       }
     }

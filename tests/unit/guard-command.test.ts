@@ -2,6 +2,7 @@ import * as sshUtils from "../../src/utils/ssh";
 import * as serverSelectModule from "../../src/utils/serverSelect";
 import * as guardModule from "../../src/core/guard";
 import * as loggerModule from "../../src/utils/logger";
+import * as inquirerPrompts from "@inquirer/prompts";
 import { guardCommand } from "../../src/commands/guard";
 import type { GuardStartResult, GuardStopResult, GuardStatusResult } from "../../src/core/guard";
 import { dispatchGuardBreaches } from "../../src/core/guard";
@@ -12,15 +13,17 @@ jest.mock("../../src/utils/serverSelect");
 jest.mock("../../src/core/guard");
 jest.mock("../../src/core/notify");
 jest.mock("../../src/utils/logger");
-jest.mock("inquirer");
-
-import inquirer from "inquirer";
+jest.mock("@inquirer/prompts", () => ({
+  confirm: jest.fn(),
+}));
 
 const mockedSsh = sshUtils as jest.Mocked<typeof sshUtils>;
 const mockedServerSelect = serverSelectModule as jest.Mocked<typeof serverSelectModule>;
 const mockedGuard = guardModule as jest.Mocked<typeof guardModule>;
 const mockedLogger = loggerModule as jest.Mocked<typeof loggerModule>;
-const mockedInquirer = inquirer as jest.Mocked<typeof inquirer>;
+const mockedInquirerConfirm = inquirerPrompts.confirm as jest.MockedFunction<
+  typeof inquirerPrompts.confirm
+>;
 
 const sampleServer: ServerRecord = {
   id: "srv001",
@@ -100,7 +103,8 @@ beforeEach(() => {
   mockedLogger.createSpinner.mockReturnValue(mockSpinner as unknown as ReturnType<typeof mockedLogger.createSpinner>);
 
   // Default: user confirms
-  mockedInquirer.prompt = jest.fn().mockResolvedValue({ confirm: true }) as unknown as typeof mockedInquirer.prompt;
+  mockedInquirerConfirm.mockResolvedValue(true);
+  Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
 });
 
 // ─── guard start ──────────────────────────────────────────────────────────────
@@ -147,16 +151,16 @@ describe("guardCommand start", () => {
 
   it("skips confirmation prompt when --force is set", async () => {
     await guardCommand("start", "prod-server", { force: true });
-    expect(mockedInquirer.prompt).not.toHaveBeenCalled();
+    expect(mockedInquirerConfirm).not.toHaveBeenCalled();
   });
 
   it("shows confirmation prompt when --force is not set", async () => {
     await guardCommand("start", "prod-server", {});
-    expect(mockedInquirer.prompt).toHaveBeenCalled();
+    expect(mockedInquirerConfirm).toHaveBeenCalled();
   });
 
   it("does not call startGuard when user declines confirmation", async () => {
-    (mockedInquirer.prompt as jest.MockedFunction<typeof mockedInquirer.prompt>).mockResolvedValue({ confirm: false });
+    mockedInquirerConfirm.mockResolvedValueOnce(false);
     await guardCommand("start", "prod-server", {});
     expect(mockedGuard.startGuard).not.toHaveBeenCalled();
   });
@@ -199,12 +203,12 @@ describe("guardCommand stop", () => {
 
   it("skips confirmation prompt when --force is set", async () => {
     await guardCommand("stop", "prod-server", { force: true });
-    expect(mockedInquirer.prompt).not.toHaveBeenCalled();
+    expect(mockedInquirerConfirm).not.toHaveBeenCalled();
   });
 
   it("shows confirmation prompt when --force is not set", async () => {
     await guardCommand("stop", "prod-server", {});
-    expect(mockedInquirer.prompt).toHaveBeenCalled();
+    expect(mockedInquirerConfirm).toHaveBeenCalled();
   });
 });
 
