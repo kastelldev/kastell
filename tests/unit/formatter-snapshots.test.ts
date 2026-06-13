@@ -7,7 +7,7 @@
  * chalk is mocked to identity via jest.config.cjs moduleNameMapper.
  */
 
-import type { AuditResult } from "../../src/core/audit/types";
+import type { AuditResult, AuditCheck } from "../../src/core/audit/types";
 import { formatTerminal } from "../../src/core/audit/formatters/terminal";
 import { formatSummary } from "../../src/core/audit/formatters/summary";
 import { formatJson } from "../../src/core/audit/formatters/json";
@@ -82,5 +82,38 @@ describe("formatter snapshots", () => {
   it("formatJson output matches snapshot", () => {
     const output = formatJson(FIXED_AUDIT_RESULT);
     expect(output).toMatchSnapshot();
+  });
+});
+
+describe("P142: snapshot derives display from check.skip, not currentValue", () => {
+  it("formatTerminal renders a skipped check using helper output, not currentValue", () => {
+    const skipCheck: AuditCheck = {
+      id: "PLUGIN-MUTATE-LOCAL",
+      category: "Plugin",
+      name: "Mutate Local",
+      severity: "info",
+      passed: false,
+      // currentValue deliberately includes the old sentinel text — should be ignored
+      currentValue: "Not run by kastell audit (legacy v2 mutating check)",
+      expectedValue: "n/a",
+      skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-local" },
+    };
+    const result: AuditResult = {
+      ...FIXED_AUDIT_RESULT,
+      categories: [
+        {
+          name: "Plugin",
+          score: 100,
+          maxScore: 100,
+          checks: [skipCheck],
+        },
+      ],
+      quickWins: [],
+    };
+    const output = formatTerminal(result);
+    // Helper-derived text appears
+    expect(output).toContain("Skipped: legacy v2 mutating check (mutate-local)");
+    // The sentinel must NOT appear in display (helper is the source of truth)
+    expect(output).not.toContain("Not run by kastell audit (legacy v2 mutating check)");
   });
 });
