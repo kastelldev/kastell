@@ -6,6 +6,7 @@ import * as adapterFactory from "../../src/adapters/factory";
 import * as loggerUtils from "../../src/utils/logger";
 import * as modeGuard from "../../src/utils/modeGuard";
 import * as coreUpdate from "../../src/core/update";
+import * as inquirerPrompts from "@inquirer/prompts";
 import { updateCommand } from "../../src/commands/update";
 import { createConsoleSpy } from "../helpers/consoleSpy.js";
 
@@ -16,6 +17,9 @@ jest.mock("../../src/utils/logger");
 jest.mock("../../src/core/update");
 jest.mock("../../src/adapters/factory");
 jest.mock("../../src/utils/modeGuard");
+jest.mock("@inquirer/prompts", () => ({
+  confirm: jest.fn(),
+}));
 
 const mockedInquirer = inquirer as jest.Mocked<typeof inquirer>;
 const mockedConfig = config as jest.Mocked<typeof config>;
@@ -25,6 +29,9 @@ const mockedLogger = loggerUtils as jest.Mocked<typeof loggerUtils>;
 const mockedModeGuard = modeGuard as jest.Mocked<typeof modeGuard>;
 const mockedCoreUpdate = coreUpdate as jest.Mocked<typeof coreUpdate>;
 const mockedAdapterFactory = adapterFactory as jest.Mocked<typeof adapterFactory>;
+const mockedInquirerConfirm = inquirerPrompts.confirm as jest.MockedFunction<
+  typeof inquirerPrompts.confirm
+>;
 
 const sampleServer = {
   id: "123",
@@ -67,10 +74,20 @@ const mockAdapter = {
 
 describe("updateCommand", () => {
   const spy = createConsoleSpy();
+  const originalIsTTY = process.stdin.isTTY;
+  const originalExitCode = process.exitCode;
+
+  function setIsTTY(value: boolean | undefined): void {
+    Object.defineProperty(process.stdin, "isTTY", { value, configurable: true, writable: true });
+  }
 
   beforeEach(() => {
     spy.setup();
     jest.resetAllMocks();
+    // Re-apply inquirer prompts mock after resetAllMocks
+    mockedInquirerConfirm.mockReset();
+    mockedInquirerConfirm.mockResolvedValue(true);
+    setIsTTY(true);
     process.exitCode = undefined;
     // Default: SSH available
     mockedSsh.checkSshAvailable.mockReturnValue(true);
@@ -97,7 +114,8 @@ describe("updateCommand", () => {
 
   afterEach(() => {
     spy.restore();
-    process.exitCode = undefined;
+    setIsTTY(originalIsTTY);
+    process.exitCode = originalExitCode;
   });
 
   it("should show error when SSH not available", async () => {
@@ -119,16 +137,15 @@ describe("updateCommand", () => {
 
   it("should cancel when user declines", async () => {
     mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
-    mockedInquirer.prompt.mockResolvedValueOnce({ confirm: false });
+    mockedInquirerConfirm.mockResolvedValueOnce(false);
 
     await updateCommand("1.2.3.4");
-    expect(mockedLogger.logger.info).toHaveBeenCalledWith("Update cancelled.");
+    expect(mockedLogger.logger.info).toHaveBeenCalledWith("Operation cancelled.");
     expect(mockedCoreUpdate.updateServer).not.toHaveBeenCalled();
   });
 
   it("should call updateServer with correct args and show success", async () => {
     mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
-    mockedInquirer.prompt.mockResolvedValueOnce({ confirm: true });
     mockedServerSelect.promptApiToken.mockResolvedValue("test-token");
     mockedCoreUpdate.updateServer.mockResolvedValue({ success: true, output: "Coolify updated" });
 
@@ -146,7 +163,6 @@ describe("updateCommand", () => {
 
   it("should show error when updateServer returns failure", async () => {
     mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
-    mockedInquirer.prompt.mockResolvedValueOnce({ confirm: true });
     mockedServerSelect.promptApiToken.mockResolvedValue("test-token");
     mockedCoreUpdate.updateServer.mockResolvedValue({ success: false, error: "SSH connection refused" });
 
@@ -163,7 +179,7 @@ describe("updateCommand", () => {
 
     await updateCommand("1.2.3.4", { force: true });
 
-    expect(mockedInquirer.prompt).not.toHaveBeenCalled();
+    expect(mockedInquirerConfirm).not.toHaveBeenCalled();
     expect(mockedCoreUpdate.updateServer).toHaveBeenCalled();
     expect(mockedLogger.logger.success).toHaveBeenCalledWith(
       expect.stringContaining("update completed"),
@@ -185,7 +201,6 @@ describe("updateCommand", () => {
   it("should skip API token prompt for manually added servers", async () => {
     const manualServer = { ...sampleServer, id: "manual-123" };
     mockedServerSelect.resolveServer.mockResolvedValue(manualServer);
-    mockedInquirer.prompt.mockResolvedValueOnce({ confirm: true });
     mockedCoreUpdate.updateServer.mockResolvedValue({ success: true });
 
     await updateCommand("1.2.3.4");
@@ -200,7 +215,6 @@ describe("updateCommand", () => {
 
   it("should show hint when updateServer returns failure with hint", async () => {
     mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
-    mockedInquirer.prompt.mockResolvedValueOnce({ confirm: true });
     mockedServerSelect.promptApiToken.mockResolvedValue("test-token");
     mockedCoreUpdate.updateServer.mockResolvedValue({
       success: false,
@@ -215,7 +229,6 @@ describe("updateCommand", () => {
 
   it("should show output when updateServer returns output", async () => {
     mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
-    mockedInquirer.prompt.mockResolvedValueOnce({ confirm: true });
     mockedServerSelect.promptApiToken.mockResolvedValue("test-token");
     mockedCoreUpdate.updateServer.mockResolvedValue({ success: true, output: "Update log output" });
 
@@ -242,7 +255,7 @@ describe("updateCommand", () => {
     expect(mockedLogger.logger.title).toHaveBeenCalledWith("Dry Run: Update Server");
     expect(mockedLogger.logger.info).toHaveBeenCalledWith("No changes applied (dry run).");
     expect(mockedCoreUpdate.updateServer).not.toHaveBeenCalled();
-    expect(mockedInquirer.prompt).not.toHaveBeenCalled();
+    expect(mockedInquirerConfirm).not.toHaveBeenCalled();
   });
 
   it("should show platform and action in dry-run output", async () => {
@@ -263,7 +276,7 @@ describe("updateCommand", () => {
     expect(mockedLogger.logger.title).toHaveBeenCalledWith("Dry Run: Update Server");
     expect(mockedLogger.logger.info).toHaveBeenCalledWith("No changes applied (dry run).");
     expect(mockedCoreUpdate.updateServer).not.toHaveBeenCalled();
-    expect(mockedInquirer.prompt).not.toHaveBeenCalled();
+    expect(mockedInquirerConfirm).not.toHaveBeenCalled();
   });
 
   // ---- Bare mode tests ----
@@ -287,13 +300,12 @@ describe("updateCommand", () => {
 
       expect(mockedLogger.logger.error).toHaveBeenCalled();
       expect(mockedCoreUpdate.updateServer).not.toHaveBeenCalled();
-      expect(mockedInquirer.prompt).not.toHaveBeenCalled();
+      expect(mockedInquirerConfirm).not.toHaveBeenCalled();
     });
 
     it("should still update coolify server when passed", async () => {
       mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
-      mockedInquirer.prompt.mockResolvedValueOnce({ confirm: true });
-      mockedServerSelect.promptApiToken.mockResolvedValue("test-token");
+        mockedServerSelect.promptApiToken.mockResolvedValue("test-token");
       mockedCoreUpdate.updateServer.mockResolvedValue({ success: true });
 
       await updateCommand("1.2.3.4");
@@ -326,8 +338,7 @@ describe("updateCommand", () => {
       mockedAdapterFactory.getAdapter.mockReturnValue(dokplayAdapter as unknown as ReturnType<typeof mockedAdapterFactory.getAdapter>);
       mockedAdapterFactory.resolvePlatform.mockReturnValue("dokploy");
       mockedServerSelect.resolveServer.mockResolvedValue(dokployServer);
-      mockedInquirer.prompt.mockResolvedValueOnce({ confirm: true });
-      mockedServerSelect.promptApiToken.mockResolvedValue("test-token");
+        mockedServerSelect.promptApiToken.mockResolvedValue("test-token");
       mockedCoreUpdate.updateServer.mockResolvedValue({ success: true });
 
       await updateCommand("10.0.0.1");
@@ -367,18 +378,17 @@ describe("updateCommand", () => {
 
     it("should cancel when user declines confirmation", async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer]);
-      mockedInquirer.prompt.mockResolvedValueOnce({ confirm: false });
+      mockedInquirerConfirm.mockResolvedValueOnce(false);
 
       await updateCommand(undefined, { all: true });
 
-      expect(mockedLogger.logger.info).toHaveBeenCalledWith("Update cancelled.");
+      expect(mockedLogger.logger.info).toHaveBeenCalledWith("Operation cancelled.");
       expect(mockedServerSelect.collectProviderTokens).not.toHaveBeenCalled();
     });
 
     it("should update all servers sequentially on confirm", async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer, sampleServer2]);
-      mockedInquirer.prompt.mockResolvedValueOnce({ confirm: true });
-      mockedServerSelect.collectProviderTokens.mockResolvedValue(
+        mockedServerSelect.collectProviderTokens.mockResolvedValue(
         new Map([
           ["hetzner", "h-token"],
           ["digitalocean", "do-token"],
@@ -396,8 +406,7 @@ describe("updateCommand", () => {
 
     it("should report mixed results when some servers fail", async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer, sampleServer2]);
-      mockedInquirer.prompt.mockResolvedValueOnce({ confirm: true });
-      mockedServerSelect.collectProviderTokens.mockResolvedValue(
+        mockedServerSelect.collectProviderTokens.mockResolvedValue(
         new Map([
           ["hetzner", "h-token"],
           ["digitalocean", "do-token"],
@@ -417,8 +426,7 @@ describe("updateCommand", () => {
 
     it("should call updateServer even for non-running server result", async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer]);
-      mockedInquirer.prompt.mockResolvedValueOnce({ confirm: true });
-      mockedServerSelect.collectProviderTokens.mockResolvedValue(new Map([["hetzner", "h-token"]]));
+        mockedServerSelect.collectProviderTokens.mockResolvedValue(new Map([["hetzner", "h-token"]]));
       mockedCoreUpdate.updateServer.mockResolvedValue({
         success: false,
         error: "Server is not running (status: off)",
@@ -435,8 +443,7 @@ describe("updateCommand", () => {
 
     it("should handle server error gracefully in --all", async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer]);
-      mockedInquirer.prompt.mockResolvedValueOnce({ confirm: true });
-      mockedServerSelect.collectProviderTokens.mockResolvedValue(new Map([["hetzner", "h-token"]]));
+        mockedServerSelect.collectProviderTokens.mockResolvedValue(new Map([["hetzner", "h-token"]]));
       mockedCoreUpdate.updateServer.mockResolvedValue({
         success: false,
         error: "API down",
@@ -454,14 +461,13 @@ describe("updateCommand", () => {
 
       await updateCommand(undefined, { all: true, force: true });
 
-      expect(mockedInquirer.prompt).not.toHaveBeenCalled();
+      expect(mockedInquirerConfirm).not.toHaveBeenCalled();
       expect(mockedCoreUpdate.updateServer).toHaveBeenCalled();
     });
 
     it("should skip servers with no platform detected in --all mode", async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer]);
-      mockedInquirer.prompt.mockResolvedValueOnce({ confirm: true });
-      mockedServerSelect.collectProviderTokens.mockResolvedValue(new Map([["hetzner", "h-token"]]));
+        mockedServerSelect.collectProviderTokens.mockResolvedValue(new Map([["hetzner", "h-token"]]));
       mockedAdapterFactory.resolvePlatform.mockReturnValue(undefined);
 
       await updateCommand(undefined, { all: true });
@@ -474,8 +480,7 @@ describe("updateCommand", () => {
 
     it("should show hint when updateServer fails with hint in --all mode", async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer]);
-      mockedInquirer.prompt.mockResolvedValueOnce({ confirm: true });
-      mockedServerSelect.collectProviderTokens.mockResolvedValue(new Map([["hetzner", "h-token"]]));
+        mockedServerSelect.collectProviderTokens.mockResolvedValue(new Map([["hetzner", "h-token"]]));
       mockedCoreUpdate.updateServer.mockResolvedValue({
         success: false,
         error: "SSH down",
@@ -527,8 +532,7 @@ describe("updateCommand", () => {
         mode: "bare" as const,
       };
       mockedConfig.getServers.mockReturnValue([sampleServer, bareServer]);
-      mockedInquirer.prompt.mockResolvedValueOnce({ confirm: true });
-      mockedServerSelect.collectProviderTokens.mockResolvedValue(
+        mockedServerSelect.collectProviderTokens.mockResolvedValue(
         new Map([["hetzner", "h-token"]]),
       );
       // Return false for sampleServer, true for bareServer
@@ -556,8 +560,7 @@ describe("updateCommand", () => {
       };
       mockedConfig.getServers.mockReturnValue([bareServer]);
       mockedModeGuard.isBareServer.mockReturnValue(true);
-      mockedInquirer.prompt.mockResolvedValueOnce({ confirm: true });
-
+  
       await updateCommand(undefined, { all: true });
 
       expect(process.exitCode).toBe(1);
@@ -567,8 +570,7 @@ describe("updateCommand", () => {
       mockedConfig.getServers.mockReturnValue([sampleServer]);
       mockedModeGuard.isBareServer.mockReturnValue(false);
       mockedAdapterFactory.resolvePlatform.mockReturnValue(undefined);
-      mockedInquirer.prompt.mockResolvedValueOnce({ confirm: true });
-
+  
       await updateCommand(undefined, { all: true });
 
       expect(process.exitCode).toBe(1);
@@ -577,8 +579,7 @@ describe("updateCommand", () => {
     it("should set process.exitCode to 1 when a managed --all target updateServer fails", async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer]);
       mockedModeGuard.isBareServer.mockReturnValue(false);
-      mockedInquirer.prompt.mockResolvedValueOnce({ confirm: true });
-      mockedServerSelect.collectProviderTokens.mockResolvedValue(
+        mockedServerSelect.collectProviderTokens.mockResolvedValue(
         new Map([["hetzner", "h-token"]]),
       );
       mockedCoreUpdate.updateServer.mockResolvedValue({ success: false, error: "boom" });
@@ -591,8 +592,7 @@ describe("updateCommand", () => {
     it("should leave process.exitCode unset when --all targets are fully successful", async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer]);
       mockedModeGuard.isBareServer.mockReturnValue(false);
-      mockedInquirer.prompt.mockResolvedValueOnce({ confirm: true });
-      mockedServerSelect.collectProviderTokens.mockResolvedValue(
+        mockedServerSelect.collectProviderTokens.mockResolvedValue(
         new Map([["hetzner", "h-token"]]),
       );
       mockedCoreUpdate.updateServer.mockResolvedValue({ success: true, output: "OK" });
@@ -638,7 +638,7 @@ describe("updateCommand", () => {
 
     it("should leave process.exitCode unset when user cancels --all confirmation", async () => {
       mockedConfig.getServers.mockReturnValue([sampleServer]);
-      mockedInquirer.prompt.mockResolvedValueOnce({ confirm: false });
+      mockedInquirerConfirm.mockResolvedValueOnce(false);
 
       await updateCommand(undefined, { all: true });
 
@@ -677,7 +677,6 @@ describe("updateCommand", () => {
 
   it("should set process.exitCode to 1 when single server updateServer fails", async () => {
     mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
-    mockedInquirer.prompt.mockResolvedValueOnce({ confirm: true });
     mockedServerSelect.promptApiToken.mockResolvedValue("test-token");
     mockedCoreUpdate.updateServer.mockResolvedValue({
       success: false,
@@ -691,7 +690,6 @@ describe("updateCommand", () => {
 
   it("should set process.exitCode to 1 when single server update throws", async () => {
     mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
-    mockedInquirer.prompt.mockResolvedValueOnce({ confirm: true });
     mockedServerSelect.promptApiToken.mockResolvedValue("test-token");
     mockedCoreUpdate.updateServer.mockRejectedValue(new Error("catastrophic"));
 
@@ -702,7 +700,6 @@ describe("updateCommand", () => {
 
   it("should leave process.exitCode unset when single server update succeeds", async () => {
     mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
-    mockedInquirer.prompt.mockResolvedValueOnce({ confirm: true });
     mockedServerSelect.promptApiToken.mockResolvedValue("test-token");
     mockedCoreUpdate.updateServer.mockResolvedValue({ success: true, output: "OK" });
 
@@ -713,7 +710,7 @@ describe("updateCommand", () => {
 
   it("should leave process.exitCode unset when user cancels single server confirmation", async () => {
     mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
-    mockedInquirer.prompt.mockResolvedValueOnce({ confirm: false });
+    mockedInquirerConfirm.mockResolvedValueOnce(false);
 
     await updateCommand("1.2.3.4");
 

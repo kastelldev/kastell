@@ -1,4 +1,3 @@
-import inquirer from "inquirer";
 import { getServers } from "../utils/config.js";
 import { resolveServer, promptApiToken, collectProviderTokens } from "../utils/serverSelect.js";
 import { checkSshAvailable } from "../utils/ssh.js";
@@ -8,6 +7,7 @@ import { markCommandFailed } from "../utils/exitCode.js";
 import { getAdapter, resolvePlatform } from "../adapters/factory.js";
 import { adapterDisplayName } from "../adapters/shared.js";
 import { updateServer } from "../core/update.js";
+import { confirmOrCancel } from "../utils/prompts.js";
 import type { ServerRecord, Platform } from "../types/index.js";
 
 interface UpdateOptions {
@@ -93,17 +93,17 @@ async function updateAll(options?: UpdateOptions): Promise<void> {
   }
 
   if (!options?.force) {
-    const { confirm } = await inquirer.prompt([
-      {
-        type: "confirm",
-        name: "confirm",
-        message: `Update platform on all ${servers.length} server(s)? This may cause brief downtime.`,
-        default: false,
-      },
-    ]);
-
-    if (!confirm) {
-      logger.info("Update cancelled.");
+    // Destructive guard: refuse before mutation in non-TTY mode without --force (P142 Task 9)
+    const decision = await confirmOrCancel(
+      `Update platform on all ${servers.length} server(s)? This may cause brief downtime.`,
+      false,
+      "Use --force to update all in non-interactive mode.",
+    );
+    if (!decision.confirmed) {
+      logger.info(decision.message);
+      if (decision.reason === "non-tty") {
+        markCommandFailed();
+      }
       return;
     }
   }
@@ -183,17 +183,17 @@ export async function updateCommand(query?: string, options?: UpdateOptions): Pr
   }
 
   if (!options?.force) {
-    const { confirm } = await inquirer.prompt([
-      {
-        type: "confirm",
-        name: "confirm",
-        message: `Update ${displayName} on "${server.name}" (${server.ip})? This may cause brief downtime.`,
-        default: false,
-      },
-    ]);
-
-    if (!confirm) {
-      logger.info("Update cancelled.");
+    // Destructive guard: refuse before mutation in non-TTY mode without --force (P142 Task 9)
+    const decision = await confirmOrCancel(
+      `Update ${displayName} on "${server.name}" (${server.ip})? This may cause brief downtime.`,
+      false,
+      "Use --force to update in non-interactive mode.",
+    );
+    if (!decision.confirmed) {
+      logger.info(decision.message);
+      if (decision.reason === "non-tty") {
+        markCommandFailed();
+      }
       return;
     }
   }
