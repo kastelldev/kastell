@@ -59,6 +59,8 @@ export interface AuditResult {
 }
 
 export interface QuickWin {
+  id: string;
+  severity: Severity;
   commands: string[];
   currentScore: number;
   projectedScore: number;
