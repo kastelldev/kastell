@@ -1,5 +1,5 @@
 import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
-import type { AuditResult } from "../../src/core/audit/types";
+import type { AuditResult, AuditCheck } from "../../src/core/audit/types";
 
 const mockResult: AuditResult = {
   serverName: "test-server",
@@ -216,6 +216,127 @@ describe("formatTerminal", () => {
     // Old flat "Failed Checks" section heading should be gone
     // Check that "Failed Checks" does not appear as a standalone heading
     expect(output).not.toMatch(/\bFailed Checks\b/);
+  });
+
+  it("P142: terminal stats header shows passed, failed, AND skipped counts separately", async () => {
+    const { formatTerminal } = await import("../../src/core/audit/formatters/terminal");
+    const resultWithSkip: AuditResult = {
+      ...mockResult,
+      categories: [
+        {
+          name: "SSH",
+          checks: [
+            {
+              id: "SSH-01",
+              category: "SSH",
+              name: "Passing",
+              severity: "critical",
+              passed: true,
+              currentValue: "ok",
+              expectedValue: "ok",
+            },
+            {
+              id: "SSH-02",
+              category: "SSH",
+              name: "Failing",
+              severity: "critical",
+              passed: false,
+              currentValue: "bad",
+              expectedValue: "good",
+            },
+            {
+              id: "SSH-03",
+              category: "SSH",
+              name: "Skipped",
+              severity: "info",
+              passed: false,
+              currentValue: "n/a",
+              expectedValue: "n/a",
+              skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-local" },
+            },
+          ],
+          score: 33,
+          maxScore: 100,
+        },
+      ],
+      quickWins: [],
+    };
+    const output = formatTerminal(resultWithSkip);
+
+    // Stats line must show all three counts
+    expect(output).toMatch(/Checks:.*passed.*failed.*skipped/);
+    expect(output).toContain("1 passed");
+    expect(output).toContain("1 failed");
+    expect(output).toContain("1 skipped");
+  });
+});
+
+describe("P142: structured skip rendering in terminal", () => {
+  it("does not render skipped-only category as failing", async () => {
+    const { formatTerminal } = await import("../../src/core/audit/formatters/terminal");
+    const skipOnlyResult: AuditResult = {
+      ...mockResult,
+      categories: [
+        {
+          name: "PluginMutating",
+          checks: [
+            {
+              id: "PLUGIN-MUTATE-LOCAL",
+              category: "Plugin",
+              name: "Mutate Local",
+              severity: "info",
+              passed: false,
+              currentValue: "n/a",
+              expectedValue: "n/a",
+              skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-local" },
+            },
+          ],
+          score: 100,
+          maxScore: 100,
+        },
+      ],
+      quickWins: [],
+    };
+    const output = formatTerminal(skipOnlyResult);
+
+    // Category where all checks are skipped should NOT be in failing list
+    // It should NOT be rendered as "Failing" or with FAIL_ICON
+    expect(output).not.toContain("PluginMutating 0/1");
+    // Passing categories section should include it (no checks failed)
+    expect(output).toContain("PluginMutating");
+  });
+
+  it("derives skipped display text from check.skip, never from currentValue", async () => {
+    const { formatTerminal } = await import("../../src/core/audit/formatters/terminal");
+    const skipCheck: AuditCheck = {
+      id: "PLUGIN-MUTATE",
+      category: "Plugin",
+      name: "Legacy Mutating",
+      severity: "info",
+      passed: false,
+      // currentValue deliberately contains legacy sentinel to ensure we don't match it
+      currentValue: "Not run by kastell audit (legacy v2 mutating check)",
+      expectedValue: "n/a",
+      skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-local" },
+    };
+    const result: AuditResult = {
+      ...mockResult,
+      categories: [
+        {
+          name: "Plugin",
+          checks: [skipCheck],
+          score: 100,
+          maxScore: 100,
+        },
+      ],
+      quickWins: [],
+    };
+    const output = formatTerminal(result);
+
+    // Display should come from helper, not from currentValue
+    expect(output).toContain("Skipped: legacy v2 mutating check (mutate-local)");
+    // Old sentinel should not appear as display text
+    expect(output).not.toContain("Not run by kastell audit (legacy v2 mutating check)");
   });
 });
 
