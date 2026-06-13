@@ -170,6 +170,48 @@ describe("getSkippedMutatingPluginWarnings", () => {
   });
 });
 
+describe("parsePluginBatchOutput — structured skip metadata (P142 Task 2)", () => {
+  it("v2 mutating plugin checks emit skip metadata with empty currentValue", () => {
+    // P142 Task 2: replace sentinel-string with structured skip object on
+    // AuditCheck. Audit consumers (scoring/quickwin/fix) gate on
+    // check.skip !== undefined, not on regex match.
+    const reg = new Map<string, PluginRegistryEntry>();
+    reg.set("kastell-plugin-mut", loadedEntry("kastell-plugin-mut", [
+      check("VP-M-LOCAL", "mutate-local"),
+      check("VP-M-GLOBAL", "mutate-global"),
+    ]));
+    const result = parsePluginBatchOutput("", reg);
+    expect(result).toHaveLength(1);
+    const checks = result[0].checks;
+    expect(checks).toHaveLength(2);
+    const local = checks.find((c) => c.id === "VP-M-LOCAL");
+    const global = checks.find((c) => c.id === "VP-M-GLOBAL");
+    expect(local?.skip).toEqual({
+      code: "legacy-mutating",
+      apiVersion: "2",
+      kind: "mutate-local",
+    });
+    expect(global?.skip).toEqual({
+      code: "legacy-mutating",
+      apiVersion: "2",
+      kind: "mutate-global",
+    });
+    expect(local?.currentValue).toBe("");
+    expect(global?.currentValue).toBe("");
+  });
+
+  it("read checks with no skip metadata remain available (no false positive)", () => {
+    // Companion: read check is NOT skipped — its skip field is undefined.
+    const reg = new Map<string, PluginRegistryEntry>();
+    reg.set("kastell-plugin-mix", loadedEntry("kastell-plugin-mix", [
+      check("VP-READ", "read"),
+    ]));
+    const stdout = "---SECTION:PLUGIN:kastell-plugin-mix:VP-READ---\nok";
+    const result = parsePluginBatchOutput(stdout, reg);
+    expect(result[0].checks[0].skip).toBeUndefined();
+  });
+});
+
 describe("parsePluginBatchOutput — mutating-skip behavior", () => {
   it("surfaces all-mutating loaded plugin as not-run when stdout is empty", () => {
     // buildPluginBatchSection returns null (no read checks → no 4th batch) but
