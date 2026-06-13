@@ -6,6 +6,7 @@ import { KASTELL_DIR } from "../../utils/paths.js";
 import { withFileLock } from "../../utils/fileLock.js";
 import { formatRelativeTime } from "../../utils/dates.js";
 import type { AuditResult, RegressionBaseline, RegressionResult, RegressionLine } from "./types.js";
+import { isPassedCheck, isFailedCheck, isSkippedCheck } from "./types.js";
 
 const REGRESSION_DIR = join(KASTELL_DIR, "regression");
 
@@ -31,14 +32,14 @@ export function extractPassedCheckIds(audit: AuditResult): string[] {
   const ids: string[] = [];
   for (const category of audit.categories) {
     for (const check of category.checks) {
-      if (check.passed) ids.push(check.id);
+      if (isPassedCheck(check)) ids.push(check.id);
     }
   }
   return ids.sort();
 }
 
 export function extractFailedCheckIds(result: AuditResult): string[] {
-  return result.categories.flatMap((c) => c.checks.filter((ch) => !ch.passed).map((ch) => ch.id));
+  return result.categories.flatMap((c) => c.checks.filter(isFailedCheck).map((ch) => ch.id));
 }
 
 export async function saveBaseline(
@@ -83,8 +84,20 @@ export function checkRegression(
   const currentPassed = new Set(passedCheckIds ?? extractPassedCheckIds(audit));
   const baselinePassed = new Set(baseline.passedChecks);
 
+  // A check that exists in the current audit but is now SKIPPED should not
+  // count as a regression — it's not a fail, just an unsupported check.
+  // Build a "neutral" set of currently-skipped check IDs to exclude from
+  // regression detection.
+  const currentlySkipped = new Set<string>();
+  for (const category of audit.categories) {
+    for (const check of category.checks) {
+      if (isSkippedCheck(check)) currentlySkipped.add(check.id);
+    }
+  }
+
   const regressions: string[] = [];
   for (const id of baselinePassed) {
+    if (currentlySkipped.has(id)) continue; // skip→skip transition is neutral
     if (!currentPassed.has(id)) regressions.push(id);
   }
 
