@@ -476,4 +476,57 @@ describe("watchAudit", () => {
     process.emit("SIGINT" as never);
     await watchPromise.catch(() => {});
   });
+
+  it("should not announce a newly-skipped check as a new failure", async () => {
+    const result1 = makeAuditResult(72); // SSH-PASSWORD-AUTH passes
+    const result2: AuditResult = {
+      ...makeAuditResult(72),
+      categories: [
+        {
+          name: "SSH",
+          checks: [
+            {
+              id: "SSH-PASSWORD-AUTH",
+              category: "SSH",
+              name: "Password Auth",
+              severity: "critical",
+              passed: false,
+              currentValue: "yes",
+              expectedValue: "no",
+              skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-global" },
+            },
+          ],
+          score: 0,
+          maxScore: 100,
+        },
+      ],
+    };
+    mockedAuditRunner.runAudit
+      .mockResolvedValueOnce({ success: true, data: result1 })
+      .mockResolvedValueOnce({ success: true, data: result2 });
+
+    const output: string[] = [];
+    const formatter = (r: AuditResult) => `Full: ${r.overallScore}`;
+
+    const watchPromise = watchAudit("1.2.3.4", "test-server", "bare", {
+      interval: 10,
+      formatter,
+      output: (line: string) => output.push(line),
+    });
+
+    await jest.advanceTimersByTimeAsync(0);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    await jest.advanceTimersByTimeAsync(10_000);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // SSH-PASSWORD-AUTH was passing, now skipped — must NOT appear as a new failure
+    const skippedAnnouncement = output.find((l) => l.includes("SSH-PASSWORD-AUTH"));
+    expect(skippedAnnouncement).toBeUndefined();
+
+    process.emit("SIGINT" as never);
+    await watchPromise.catch(() => {});
+  });
 });
