@@ -118,10 +118,10 @@ describe("handleServerCompare", () => {
       beforeLabel: "server-a", afterLabel: "server-b", scoreBefore: 80, scoreAfter: 80,
       scoreDelta: 0,
       checks: [
-        { id: "A-1", name: "Check A", status: "A_better" as const, before: false, after: true },
-        { id: "B-1", name: "Check B", status: "B_better" as const, before: true, after: false },
-        { id: "C-1", name: "Check C", status: "both_fail" as const, before: false, after: false },
-        { id: "D-1", name: "Check D", status: "both_pass" as const, before: true, after: true },
+        { id: "A-1", name: "Check A", status: "A_better" as const, before: "failed" as const, after: "passed" as const },
+        { id: "B-1", name: "Check B", status: "B_better" as const, before: "passed" as const, after: "failed" as const },
+        { id: "C-1", name: "Check C", status: "both_fail" as const, before: "failed" as const, after: "failed" as const },
+        { id: "D-1", name: "Check D", status: "both_pass" as const, before: "passed" as const, after: "passed" as const },
       ],
     });
 
@@ -151,10 +151,10 @@ describe("handleServerCompare", () => {
       beforeLabel: "server-a", afterLabel: "server-b", scoreBefore: 80, scoreAfter: 80,
       scoreDelta: 0,
       checks: [
-        { id: "A-1", name: "A1", status: "A_better" as const, before: false, after: true },
-        { id: "B-1", name: "B1", status: "B_better" as const, before: true, after: false },
-        { id: "C-1", name: "C1", status: "both_fail" as const, before: false, after: false },
-        { id: "D-1", name: "D1", status: "both_pass" as const, before: true, after: true },
+        { id: "A-1", name: "A1", status: "A_better" as const, before: "failed" as const, after: "passed" as const },
+        { id: "B-1", name: "B1", status: "B_better" as const, before: "passed" as const, after: "failed" as const },
+        { id: "C-1", name: "C1", status: "both_fail" as const, before: "failed" as const, after: "failed" as const },
+        { id: "D-1", name: "D1", status: "both_pass" as const, before: "passed" as const, after: "passed" as const },
       ],
     });
 

@@ -88,13 +88,14 @@ const makeDiffResult = (regressionCount = 0) => ({
         category: "SSH",
         severity: "warning" as const,
         status: "regressed" as const,
-        before: true,
-        after: false,
+        before: "passed" as const,
+        after: "failed" as const,
       }))
     : [],
   unchanged: [],
   added: [],
   removed: [],
+  skipped: [],
 });
 
 const mockServer = {
