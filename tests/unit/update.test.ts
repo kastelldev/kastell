@@ -572,7 +572,7 @@ describe("updateCommand", () => {
       mockedConfig.getServers.mockReturnValue([sampleServer]);
       mockedModeGuard.isBareServer.mockReturnValue(false);
       mockedAdapterFactory.resolvePlatform.mockReturnValue(undefined);
-  
+
       await updateCommand(undefined, { all: true });
 
       expect(process.exitCode).toBe(1);
