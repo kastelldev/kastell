@@ -6,6 +6,7 @@ import { resolveSnapshotRef, diffAudits, formatDiffJson } from "../../core/audit
 import { saveSnapshot } from "../../core/audit/snapshot.js";
 import type { AuditFilter } from "../../core/audit/filter.js";
 import type { Severity } from "../../types/severity.js";
+import { isFailedCheck } from "../../core/audit/types.js";
 import {
   resolveServerForMcp,
   mcpSuccess,
@@ -292,7 +293,7 @@ export async function handleServerAudit(params: {
     if (params.explain) {
       const failingChecks = filteredResult.categories
         .flatMap((c) => c.checks)
-        .filter((ch) => !ch.passed && ch.explain);
+        .filter((ch) => isFailedCheck(ch) && ch.explain);
       if (failingChecks.length > 0) {
         summaryParts.push("", "Failing Checks (with explanations):");
         const maxDisplay = 10;
