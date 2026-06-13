@@ -405,10 +405,12 @@ export async function handleServerFix(
           .checks.find((ch) => ch.id === checkId)!;
         const tier = resolveTier(check, entry.categoryName);
         if (tier === "FORBIDDEN") {
+          const reason = check.forbiddenReason
+            ? `FORBIDDEN tier — ${check.forbiddenReason}`
+            : "FORBIDDEN tier — SSH/Firewall/Docker categories never auto-fixed";
           rejectedChecks.push({
             id: checkId,
-            reason:
-              "FORBIDDEN tier — SSH/Firewall/Docker categories never auto-fixed",
+            reason,
           });
         }
       }
