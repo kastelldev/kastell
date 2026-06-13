@@ -1,10 +1,9 @@
 import {
   getSkippedMutatingPluginWarnings,
   hasLoadedPluginChecks,
-  isMutatingPluginAuditCurrentValue,
-  mutatingPluginAuditCurrentValue,
   parsePluginBatchOutput,
 } from "../../../src/core/audit/pluginAudit.js";
+import { isSkippedCheck } from "../../../src/core/audit/types.js";
 import { PLUGIN_STATUS_FAILED, PLUGIN_STATUS_LOADED } from "../../../src/plugin/registry.js";
 import type { PluginRegistryEntry } from "../../../src/plugin/registry.js";
 import type { PluginCheck, PluginFix, PluginManifest, PluginCheckCommandKind } from "../../../src/plugin/sdk/types.js";
@@ -227,19 +226,19 @@ describe("parsePluginBatchOutput — mutating-skip behavior", () => {
     expect(result[0].checks).toHaveLength(2);
     for (const c of result[0].checks) {
       expect(c.passed).toBe(false);
-      expect(isMutatingPluginAuditCurrentValue(c.currentValue)).toBe(true);
+      expect(isSkippedCheck(c)).toBe(true);
     }
   });
 
-  it("emits mutating sentinel for mutating checks even when batch section is present", () => {
+  it("emits structured skip for mutating checks even when batch section is present", () => {
     // Defensive: if a section is accidentally emitted for a mutating check,
-    // the parser still falls back to the sentinel.
+    // the parser still falls back to the structured skip.
     const reg = new Map<string, PluginRegistryEntry>();
     reg.set("kastell-plugin-mix", loadedEntry("kastell-plugin-mix", [
       check("VP-READ", "read"),
       check("VP-MUT", "mutate-local"),
     ]));
-    // Only the read check has a section; mutating check has none → sentinel.
+    // Only the read check has a section; mutating check has none → skip.
     const stdout = "---SECTION:PLUGIN:kastell-plugin-mix:VP-READ---\nok";
     const result = parsePluginBatchOutput(stdout, reg);
     expect(result).toHaveLength(1);
@@ -248,7 +247,12 @@ describe("parsePluginBatchOutput — mutating-skip behavior", () => {
     expect(read?.passed).toBe(true);
     expect(read?.currentValue).toBe("ok");
     expect(mut?.passed).toBe(false);
-    expect(mut?.currentValue).toBe(mutatingPluginAuditCurrentValue("mutate-local"));
+    expect(mut?.skip).toEqual({
+      code: "legacy-mutating",
+      apiVersion: "2",
+      kind: "mutate-local",
+    });
+    expect(mut?.currentValue).toBe("");
   });
 
   it("drops sections for unknown plugin (debugLog + continue)", () => {
