@@ -49,7 +49,7 @@ describeIfWindows("Windows ACL hardening (real icacls)", () => {
     const acl = (result.stdout ?? "") + (result.stderr ?? "");
 
     // Inheritance must be disabled
-    expect(acl).toMatch(/\(OI\)\s*\(CI\)\s*\(IO\)/);
+    expect(acl).not.toMatch(/\(OI\)\s*\(CI\)\s*\(IO\)/);
     // The current user must have full control
     const whoami = spawnSync("whoami", [], { encoding: "utf8" });
     const identity = (whoami.stdout ?? "").trim();
@@ -68,7 +68,7 @@ describeIfWindows("Windows ACL hardening (real icacls)", () => {
     const acl = (result.stdout ?? "") + (result.stderr ?? "");
 
     // Inheritance must be disabled
-    expect(acl).toMatch(/\(OI\)\s*\(CI\)\s*\(IO\)/);
+    expect(acl).not.toMatch(/\(OI\)\s*\(CI\)\s*\(IO\)/);
     // Current user must have full control
     const whoami = spawnSync("whoami", [], { encoding: "utf8" });
     const identity = (whoami.stdout ?? "").trim();
