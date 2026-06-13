@@ -67,6 +67,8 @@ const sampleAuditResult: AuditResult = {
   overallScore: 72,
   quickWins: [
     {
+      id: "FW-UFW-ACTIVE",
+      severity: "critical",
       commands: ["ufw --force enable"],
       currentScore: 72,
       projectedScore: 85,
