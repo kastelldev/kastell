@@ -20,6 +20,7 @@ import {
   type ScoredFixCheck,
   type FixPreview,
 } from "../core/audit/fix.js";
+import { isFailedCheck } from "../core/audit/types.js";
 import { tryHandlerDispatch, type CollectedDiff } from "../core/audit/handlers/index.js";
 import { buildImpactContext } from "../core/audit/scoring.js";
 import { filterChecksByProfile, isValidProfile, listAllProfileNames } from "../core/audit/profiles.js";
@@ -468,7 +469,7 @@ export async function fixSafeCommand(
   const fixCommands = fixCommandsFromChecks(selectedChecks);
   const remoteBackupSpinner = createSpinner("Creating remote file backup...");
   remoteBackupSpinner.start();
-  const failedCheckIds = auditResult.categories.flatMap((c) => c.checks.filter((ch) => !ch.passed).map((ch) => ch.id));
+  const failedCheckIds = auditResult.categories.flatMap((c) => c.checks.filter(isFailedCheck).map((ch) => ch.id));
   const pluginBackupPaths = getPluginBackupPaths(failedCheckIds);
   const remoteBackupPath = await backupFilesBeforeFix(ip, fixId, fixCommands, pluginBackupPaths);
   remoteBackupSpinner.stop();
