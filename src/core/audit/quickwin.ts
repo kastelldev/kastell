@@ -76,6 +76,8 @@ export function calculateQuickWins(
     );
 
     return {
+      id: candidate.check.id,
+      severity: candidate.check.severity,
       commands: [candidate.check.fixCommand!],
       currentScore: result.overallScore,
       projectedScore,
