@@ -38,6 +38,14 @@ const auditJsonSchema = z.object({
   overallScore: z.number(),
   categories: z.array(AuditCategorySchema),
   checks: z.array(AuditCheckSchema).optional(),
+  quickWins: z.array(z.object({
+    id: z.string(),
+    severity: z.enum(["critical", "warning", "info"]),
+    commands: z.array(z.string()),
+    currentScore: z.number(),
+    projectedScore: z.number(),
+    description: z.string(),
+  })).optional(),
   complianceDetail: z.array(z.object({
     framework: z.string(),
     passedControls: z.number(),
@@ -225,6 +233,7 @@ export async function handleServerAudit(params: {
         ip: auditResult.serverIp,
         overallScore: auditResult.overallScore,
         categories: filteredResult.categories as unknown as AuditCategory[],
+        quickWins: filteredResult.quickWins,
         complianceDetail: jsonResult.complianceDetail,
         skippedCategories: filteredResult.skippedCategories,
         baselineRegression: jsonResult.baselineRegression,
