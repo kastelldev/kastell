@@ -3,16 +3,23 @@ import { destroyCommand } from "../../src/commands/destroy";
 import * as coreManage from "../../src/core/manage";
 import * as serverSelect from "../../src/utils/serverSelect";
 import * as coreBackup from "../../src/core/backup";
+import * as inquirerPrompts from "@inquirer/prompts";
 
 jest.mock("../../src/core/manage");
 jest.mock("../../src/utils/serverSelect");
 jest.mock("../../src/core/backup");
+jest.mock("@inquirer/prompts", () => ({
+  confirm: jest.fn(),
+}));
 
 const mockedCoreBackup = coreBackup as jest.Mocked<typeof coreBackup>;
 
 const mockedInquirer = inquirer as jest.Mocked<typeof inquirer>;
 const mockedCoreManage = coreManage as jest.Mocked<typeof coreManage>;
 const mockedServerSelect = serverSelect as jest.Mocked<typeof serverSelect>;
+const mockedInquirerConfirm = inquirerPrompts.confirm as jest.MockedFunction<
+  typeof inquirerPrompts.confirm
+>;
 
 const sampleServer = {
   id: "123",
@@ -43,11 +50,24 @@ const destroyNotFoundResult = {
 describe("destroyCommand", () => {
   let consoleSpy: jest.SpyInstance;
   let stderrSpy: jest.SpyInstance;
+  const originalIsTTY = process.stdin.isTTY;
+  const originalExitCode = process.exitCode;
+
+  function setIsTTY(value: boolean | undefined): void {
+    Object.defineProperty(process.stdin, "isTTY", { value, configurable: true, writable: true });
+  }
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
     stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
+    // P139 LESSONS: mockReset clears mockReturnValueOnce queues that clearAllMocks leaves behind
+    mockedInquirer.prompt.mockReset();
+    mockedInquirerConfirm.mockReset();
+    // Default: confirmOrCancel returns true (accept)
+    mockedInquirerConfirm.mockResolvedValue(true);
+    // Default: TTY mode for pre-existing tests (P142 destructive guard needs TTY to prompt)
+    setIsTTY(true);
     // Default: no backups exist for servers
     mockedCoreBackup.listBackups.mockReturnValue([]);
     mockedCoreBackup.cleanupServerBackups.mockReturnValue({ removed: true, path: "/mock/path" });
@@ -56,6 +76,8 @@ describe("destroyCommand", () => {
   afterEach(() => {
     consoleSpy.mockRestore();
     stderrSpy.mockRestore();
+    setIsTTY(originalIsTTY);
+    process.exitCode = originalExitCode;
   });
 
   it("should show error when server not found by query", async () => {
@@ -81,7 +103,7 @@ describe("destroyCommand", () => {
 
   it("should cancel when user declines first confirmation", async () => {
     mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
-    mockedInquirer.prompt.mockResolvedValueOnce({ confirm: false });
+    mockedInquirerConfirm.mockResolvedValueOnce(false);
 
     await destroyCommand("1.2.3.4");
 
@@ -92,9 +114,7 @@ describe("destroyCommand", () => {
 
   it("should cancel when server name does not match", async () => {
     mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
-    mockedInquirer.prompt
-      .mockResolvedValueOnce({ confirm: true })
-      .mockResolvedValueOnce({ confirmName: "wrong-name" });
+    mockedInquirer.prompt.mockResolvedValueOnce({ confirmName: "wrong-name" });
 
     await destroyCommand("1.2.3.4");
 
@@ -105,9 +125,7 @@ describe("destroyCommand", () => {
 
   it("should destroy server successfully", async () => {
     mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
-    mockedInquirer.prompt
-      .mockResolvedValueOnce({ confirm: true })
-      .mockResolvedValueOnce({ confirmName: "coolify-test" });
+    mockedInquirer.prompt.mockResolvedValueOnce({ confirmName: "coolify-test" });
     mockedCoreManage.destroyCloudServer.mockResolvedValue(destroySuccessResult);
 
     await destroyCommand("1.2.3.4");
@@ -120,10 +138,11 @@ describe("destroyCommand", () => {
 
   it("should handle API error during destroy", async () => {
     mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
-    mockedInquirer.prompt
-      .mockResolvedValueOnce({ confirm: true })
-      .mockResolvedValueOnce({ confirmName: "coolify-test" })
-      .mockResolvedValueOnce({ removeLocal: false });
+    mockedInquirer.prompt.mockResolvedValueOnce({ confirmName: "coolify-test" });
+    // 1st confirmOrCancel: accept destroy. 2nd confirmOrCancel (local-remove): decline.
+    mockedInquirerConfirm
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false);
     mockedCoreManage.destroyCloudServer.mockResolvedValue({
       success: false,
       server: sampleServer,
@@ -141,10 +160,11 @@ describe("destroyCommand", () => {
 
   it("should remove from local config when user confirms after API error", async () => {
     mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
-    mockedInquirer.prompt
-      .mockResolvedValueOnce({ confirm: true })
-      .mockResolvedValueOnce({ confirmName: "coolify-test" })
-      .mockResolvedValueOnce({ removeLocal: true });
+    mockedInquirer.prompt.mockResolvedValueOnce({ confirmName: "coolify-test" });
+    // 1st confirmOrCancel: accept destroy. 2nd confirmOrCancel (local-remove): accept.
+    mockedInquirerConfirm
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(true);
     mockedCoreManage.destroyCloudServer.mockResolvedValue({
       success: false,
       server: sampleServer,
@@ -166,9 +186,7 @@ describe("destroyCommand", () => {
 
   it("should remove from local config when server not found on provider", async () => {
     mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
-    mockedInquirer.prompt
-      .mockResolvedValueOnce({ confirm: true })
-      .mockResolvedValueOnce({ confirmName: "coolify-test" });
+    mockedInquirer.prompt.mockResolvedValueOnce({ confirmName: "coolify-test" });
     mockedCoreManage.destroyCloudServer.mockResolvedValue(destroyNotFoundResult);
 
     await destroyCommand("1.2.3.4");
@@ -179,9 +197,7 @@ describe("destroyCommand", () => {
 
   it("should allow interactive server selection", async () => {
     mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
-    mockedInquirer.prompt
-      .mockResolvedValueOnce({ confirm: true })
-      .mockResolvedValueOnce({ confirmName: "coolify-test" });
+    mockedInquirer.prompt.mockResolvedValueOnce({ confirmName: "coolify-test" });
     mockedCoreManage.destroyCloudServer.mockResolvedValue(destroySuccessResult);
 
     await destroyCommand();
@@ -198,7 +214,6 @@ describe("destroyCommand", () => {
   it("should prompt to clean backups when backups exist after successful destroy", async () => {
     mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
     mockedInquirer.prompt
-      .mockResolvedValueOnce({ confirm: true })
       .mockResolvedValueOnce({ confirmName: "coolify-test" })
       .mockResolvedValueOnce({ cleanBackups: true }); // backup cleanup prompt
     mockedCoreManage.destroyCloudServer.mockResolvedValue(destroySuccessResult);
@@ -213,9 +228,7 @@ describe("destroyCommand", () => {
 
   it("should not prompt to clean backups when no backups exist", async () => {
     mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
-    mockedInquirer.prompt
-      .mockResolvedValueOnce({ confirm: true })
-      .mockResolvedValueOnce({ confirmName: "coolify-test" });
+    mockedInquirer.prompt.mockResolvedValueOnce({ confirmName: "coolify-test" });
     mockedCoreManage.destroyCloudServer.mockResolvedValue(destroySuccessResult);
     mockedCoreBackup.listBackups.mockReturnValue([]);
 
@@ -228,7 +241,6 @@ describe("destroyCommand", () => {
   it("should keep backups when user declines cleanup prompt", async () => {
     mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
     mockedInquirer.prompt
-      .mockResolvedValueOnce({ confirm: true })
       .mockResolvedValueOnce({ confirmName: "coolify-test" })
       .mockResolvedValueOnce({ cleanBackups: false }); // user declines
     mockedCoreManage.destroyCloudServer.mockResolvedValue(destroySuccessResult);
@@ -244,7 +256,6 @@ describe("destroyCommand", () => {
   it("should prompt backup cleanup when server not found on provider (hint path)", async () => {
     mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
     mockedInquirer.prompt
-      .mockResolvedValueOnce({ confirm: true })
       .mockResolvedValueOnce({ confirmName: "coolify-test" })
       .mockResolvedValueOnce({ cleanBackups: false });
     mockedCoreManage.destroyCloudServer.mockResolvedValue(destroyNotFoundResult);
@@ -252,8 +263,8 @@ describe("destroyCommand", () => {
 
     await destroyCommand("1.2.3.4");
 
-    // Prompt was called once for first confirm, once for confirmName, once for backups
-    expect(mockedInquirer.prompt).toHaveBeenCalledTimes(3);
+    // Prompt was called once for confirmName, once for backups
+    expect(mockedInquirer.prompt).toHaveBeenCalledTimes(2);
   });
 
   // ---- --force flag tests ----
@@ -301,10 +312,11 @@ describe("destroyCommand", () => {
 
   it("should show error with hint when cloud deletion fails and result has hint", async () => {
     mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
-    mockedInquirer.prompt
-      .mockResolvedValueOnce({ confirm: true })
-      .mockResolvedValueOnce({ confirmName: "coolify-test" })
-      .mockResolvedValueOnce({ removeLocal: false });
+    mockedInquirer.prompt.mockResolvedValueOnce({ confirmName: "coolify-test" });
+    // 1st confirmOrCancel: accept destroy. 2nd confirmOrCancel (local-remove): decline.
+    mockedInquirerConfirm
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false);
     mockedCoreManage.destroyCloudServer.mockResolvedValue({
       success: false,
       server: sampleServer,
@@ -325,7 +337,6 @@ describe("destroyCommand", () => {
   it("should handle cleanup failure gracefully", async () => {
     mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
     mockedInquirer.prompt
-      .mockResolvedValueOnce({ confirm: true })
       .mockResolvedValueOnce({ confirmName: "coolify-test" })
       .mockResolvedValueOnce({ cleanBackups: true });
     mockedCoreManage.destroyCloudServer.mockResolvedValue(destroySuccessResult);
@@ -379,9 +390,7 @@ describe("destroyCommand", () => {
     };
 
     mockedServerSelect.resolveServer.mockResolvedValue(bareServer);
-    mockedInquirer.prompt
-      .mockResolvedValueOnce({ confirm: true })
-      .mockResolvedValueOnce({ confirmName: "coolify-test" });
+    mockedInquirer.prompt.mockResolvedValueOnce({ confirmName: "coolify-test" });
     mockedCoreManage.destroyCloudServer.mockResolvedValue(bareDestroyResult);
 
     await destroyCommand("1.2.3.4");
@@ -403,10 +412,6 @@ describe("destroyCommand", () => {
 
     beforeEach(() => {
       setIsTTY(originalIsTTY);
-      // P141 LESSONS invariant: explicit inquirer.prompt mock for end-to-end CLI flow tests.
-      (inquirer as unknown as { prompt: jest.Mock }).prompt = jest
-        .fn()
-        .mockResolvedValue({ apiToken: "test-token" });
     });
 
     afterEach(() => {
@@ -417,9 +422,9 @@ describe("destroyCommand", () => {
     it("prompts the user in TTY mode without --force", async () => {
       setIsTTY(true);
       mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
-      mockedInquirer.prompt
-        .mockResolvedValueOnce({ confirm: true })
-        .mockResolvedValueOnce({ confirmName: "coolify-test" });
+      // First confirm goes through @inquirer/prompts (mocked) returning true;
+      // second interactive step (typed-name) goes through inquirer.prompt.
+      mockedInquirer.prompt.mockResolvedValueOnce({ confirmName: "coolify-test" });
       mockedCoreManage.destroyCloudServer.mockResolvedValue(destroySuccessResult);
 
       await destroyCommand("1.2.3.4", { force: false });

@@ -3,6 +3,8 @@ import { resolveServer } from "../utils/serverSelect.js";
 import { destroyCloudServer, removeServerRecord } from "../core/manage.js";
 import { logger, createSpinner } from "../utils/logger.js";
 import { listBackups, cleanupServerBackups } from "../core/backup.js";
+import { confirmOrCancel } from "../utils/prompts.js";
+import { markCommandFailed } from "../utils/exitCode.js";
 
 async function promptBackupCleanup(serverName: string, force?: boolean): Promise<void> {
   const backups = listBackups(serverName);
@@ -54,33 +56,34 @@ export async function destroyCommand(query?: string, options?: { dryRun?: boolea
   }
 
   if (!options?.force) {
-    // First confirmation
-    const { confirm } = await inquirer.prompt([
-      {
-        type: "confirm",
-        name: "confirm",
-        message: `Are you sure you want to destroy "${server.name}" (${server.ip})?`,
-        default: false,
-      },
-    ]);
-
-    if (!confirm) {
-      logger.info("Destroy cancelled.");
+    // First confirmation — confirmOrCancel handles non-TTY refusal + exit code 1
+    const decision = await confirmOrCancel(
+      `Are you sure you want to destroy "${server.name}" (${server.ip})?`,
+      false,
+      "Use --force to destroy in non-interactive mode.",
+    );
+    if (!decision.confirmed) {
+      logger.info(decision.message);
+      if (decision.reason === "non-tty") {
+        markCommandFailed();
+      }
       return;
     }
 
-    // Second confirmation: type server name
-    const { confirmName } = await inquirer.prompt([
-      {
-        type: "input",
-        name: "confirmName",
-        message: `Type the server name "${server.name}" to confirm:`,
-      },
-    ]);
+    // Second confirmation (interactive TTY only): type server name
+    if (process.stdin.isTTY) {
+      const { confirmName } = await inquirer.prompt([
+        {
+          type: "input",
+          name: "confirmName",
+          message: `Type the server name "${server.name}" to confirm:`,
+        },
+      ]);
 
-    if (confirmName.trim() !== server.name) {
-      logger.error("Server name does not match. Destroy cancelled.");
-      return;
+      if (confirmName.trim() !== server.name) {
+        logger.error("Server name does not match. Destroy cancelled.");
+        return;
+      }
     }
   }
 
@@ -115,15 +118,12 @@ export async function destroyCommand(query?: string, options?: { dryRun?: boolea
       logger.success("Removed from local config.");
     }
   } else {
-    const { removeLocal } = await inquirer.prompt([
-      {
-        type: "confirm",
-        name: "removeLocal",
-        message: "Remove this server from local config anyway?",
-        default: false,
-      },
-    ]);
-    if (removeLocal) {
+    const removeDecision = await confirmOrCancel(
+      "Remove this server from local config anyway?",
+      false,
+      "Use --force to remove from local config in non-interactive mode.",
+    );
+    if (removeDecision.confirmed) {
       const removeResult = await removeServerRecord(server.name);
       if (removeResult.success) {
         logger.success("Removed from local config.");
