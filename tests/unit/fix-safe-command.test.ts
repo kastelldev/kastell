@@ -70,6 +70,7 @@ import {
 import * as regressionRunner from "../../src/core/audit/regression.js";
 import inquirer from "inquirer";
 import type { FixHistoryEntry } from "../../src/core/audit/types.js";
+import * as pluginFixModule from "../../src/core/audit/pluginFix.js";
 
 const mockedResolveServer = resolveServer as jest.MockedFunction<typeof resolveServer>;
 const mockedCheckSsh = checkSshAvailable as jest.MockedFunction<typeof checkSshAvailable>;
@@ -1517,6 +1518,70 @@ describe("fixSafeCommand", () => {
       expect(mockedBackupServer).not.toHaveBeenCalled();
 
       Object.defineProperty(process.stdin, "isTTY", { value: origIsTTY, configurable: true });
+    });
+  });
+
+  // P142 Task 2: skip-aware failed-check ID list
+  describe("P142 Task 2: failed-check ID list excludes skipped checks", () => {
+    it("skipped checks absent from getPluginBackupPaths call args", async () => {
+      mockedResolveServer.mockResolvedValue(testServer);
+      mockedCheckSsh.mockReturnValue(true);
+
+      // Audit result with one real fail + one skipped v2 mutating check.
+      const auditResult = makeResult([
+        makeCategory("Kernel", [
+          makeCheck({ id: "KERN-REAL", category: "Kernel", severity: "warning", passed: false, fixCommand: "sysctl -w x=1" }),
+          makeCheck({
+            id: "KERN-SKIPPED",
+            category: "Kernel",
+            severity: "critical",
+            passed: false,
+            fixCommand: "chmod 600 /etc/skip",
+            currentValue: "",
+            skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-local" },
+          }),
+        ]),
+      ]);
+      mockedRunAudit.mockResolvedValue({ success: true, data: auditResult });
+      mockedPreviewSafeFixes.mockReturnValue({
+        safePlan: {
+          groups: [{
+            severity: "warning",
+            checks: [{
+              id: "KERN-REAL",
+              category: "Kernel",
+              name: "Real",
+              severity: "warning",
+              fixCommand: "sysctl -w x=1",
+            }],
+            estimatedImpact: 3,
+          }],
+        },
+        guardedCount: 0,
+        forbiddenCount: 0,
+        guardedIds: [],
+      });
+      mockedPrompt.mockResolvedValue({ confirm: true });
+      mockedBackupServer.mockResolvedValue({ success: true, backupPath: "/tmp/backup" } as BackupResult);
+      mockedSshExec.mockResolvedValue({ stdout: "", stderr: "", code: 0 });
+
+      // Capture the failedCheckIds argument passed to getPluginBackupPaths.
+      // pluginFix is fully mocked at the top of this file — use the
+      // module-level import and override via mockImplementation.
+      const callsWithFailedIds: string[][] = [];
+      (pluginFixModule.getPluginBackupPaths as jest.Mock).mockImplementation((ids: string[]) => {
+        callsWithFailedIds.push([...ids]);
+        return [];
+      });
+
+      await fixSafeCommand(undefined, { safe: true });
+
+      // The command-level failedCheckIds list passed to getPluginBackupPaths
+      // must contain KERN-REAL but NOT KERN-SKIPPED.
+      expect(callsWithFailedIds.length).toBeGreaterThan(0);
+      const lastCallArgs = callsWithFailedIds[callsWithFailedIds.length - 1];
+      expect(lastCallArgs).toContain("KERN-REAL");
+      expect(lastCallArgs).not.toContain("KERN-SKIPPED");
     });
   });
 });
