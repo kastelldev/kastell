@@ -72,6 +72,8 @@ describe("BUG-02 — restore --force backup auto-selection", () => {
   let stderrSpy: jest.SpyInstance;
 
   beforeEach(() => {
+    // P142: deterministic reset to prevent cross-suite process.exitCode pollution
+    process.exitCode = 0;
     spy.setup();
     stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.resetAllMocks();
