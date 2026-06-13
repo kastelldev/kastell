@@ -1,6 +1,6 @@
 import * as config from "../../src/utils/config";
 import * as sshUtils from "../../src/utils/ssh";
-import inquirer from "inquirer";
+import * as inquirerPrompts from "@inquirer/prompts";
 import {
   isValidPort,
   isProtectedPort,
@@ -18,6 +18,9 @@ import { createConsoleSpy } from "../helpers/consoleSpy.js";
 
 jest.mock("../../src/utils/config");
 jest.mock("../../src/utils/ssh");
+jest.mock("@inquirer/prompts", () => ({
+  confirm: jest.fn(),
+}));
 jest.mock("../../src/adapters/factory.js", () => ({
   getAdapter: jest.fn((platform: string) => {
     if (platform === "coolify") return { name: "coolify", platformPorts: [80, 443, 8000, 6001, 6002] };
@@ -33,7 +36,9 @@ jest.mock("../../src/adapters/factory.js", () => ({
 
 const mockedConfig = config as jest.Mocked<typeof config>;
 const mockedSsh = sshUtils as jest.Mocked<typeof sshUtils>;
-const mockedInquirer = inquirer as jest.Mocked<typeof inquirer>;
+const mockedInquirerConfirm = inquirerPrompts.confirm as jest.MockedFunction<
+  typeof inquirerPrompts.confirm
+>;
 
 const sampleServer = {
   id: "123",
@@ -54,6 +59,8 @@ describe("firewall", () => {
     spy.setup();
     stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
+    mockedInquirerConfirm.mockReset();
+    Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
   });
 
   afterEach(() => {
@@ -377,7 +384,7 @@ describe("firewall", () => {
     it("should warn when removing Coolify port", async () => {
       mockedSsh.checkSshAvailable.mockReturnValue(true);
       mockedConfig.findServers.mockReturnValue([sampleServer]);
-      mockedInquirer.prompt = jest.fn().mockResolvedValue({ confirm: false }) as unknown as typeof mockedInquirer.prompt;
+      mockedInquirerConfirm.mockResolvedValueOnce(false);
 
       await firewallCommand("remove", "1.2.3.4", { port: "8000" });
 
@@ -777,7 +784,7 @@ describe("firewall", () => {
     it("should remove Coolify port when confirmed", async () => {
       mockedSsh.checkSshAvailable.mockReturnValue(true);
       mockedConfig.findServers.mockReturnValue([sampleServer]);
-      mockedInquirer.prompt = jest.fn().mockResolvedValue({ confirm: true }) as unknown as typeof mockedInquirer.prompt;
+      mockedInquirerConfirm.mockResolvedValueOnce(true);
       mockedSsh.sshExec.mockResolvedValue({ code: 0, stdout: "", stderr: "" });
 
       await firewallCommand("remove", "1.2.3.4", { port: "8000" });

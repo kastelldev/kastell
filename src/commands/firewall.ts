@@ -1,10 +1,11 @@
-import inquirer from "inquirer";
 import { resolveServer } from "../utils/serverSelect.js";
 import { checkSshAvailable } from "../utils/ssh.js";
 import { logger, createSpinner } from "../utils/logger.js";
 import { isBareServer } from "../utils/modeGuard.js";
 import { resolvePlatform, getAdapter } from "../adapters/factory.js";
 import { adapterDisplayName } from "../adapters/shared.js";
+import { confirmOrCancel } from "../utils/prompts.js";
+import { markCommandFailed } from "../utils/exitCode.js";
 import {
   isValidPort,
   isProtectedPort,
@@ -133,16 +134,17 @@ async function firewallRemove(
 
   if (isPlatformPort && !force) {
     const platformName = platformAdapter ? adapterDisplayName(platformAdapter) : "platform";
-    const { confirm } = await inquirer.prompt([
-      {
-        type: "confirm",
-        name: "confirm",
-        message: `Port ${port} is used by ${platformName}. Are you sure you want to remove it?`,
-        default: false,
-      },
-    ]);
-    if (!confirm) {
-      logger.info("Remove cancelled.");
+    // Destructive guard: refuse before mutation in non-TTY mode without --force (P142 Task 9)
+    const decision = await confirmOrCancel(
+      `Port ${port} is used by ${platformName}. Are you sure you want to remove it?`,
+      false,
+      "Use --force to remove platform port in non-interactive mode.",
+    );
+    if (!decision.confirmed) {
+      logger.info(decision.message);
+      if (decision.reason === "non-tty") {
+        markCommandFailed();
+      }
       return;
     }
   }
