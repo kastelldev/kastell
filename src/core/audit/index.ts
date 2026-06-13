@@ -19,9 +19,9 @@ import { getPluginRegistry } from "../../plugin/registry.js";
 import {
   getSkippedMutatingPluginWarnings,
   hasLoadedPluginChecks,
-  isMutatingPluginAuditCurrentValue,
   parsePluginBatchOutput,
 } from "./pluginAudit.js";
+import { isSkippedCheck } from "./types.js";
 
 /**
  * Detect categories where all checks have "not installed" or "N/A" currentValue.
@@ -92,15 +92,16 @@ export async function runAudit(
     }
 
     // Read checks that are "Unable to determine" or empty indicate the batch
-    // never ran. Mutating-skip checks are excluded since they are skipped by
-    // design, not because of a batch failure — an all-mutating category must
-    // not be flagged as connectionError even when the plugin batch failed.
+    // never ran. Skipped checks (v2 mutating-skip with structured skip
+    // metadata) are excluded since they are skipped by design, not because
+    // of a batch failure — an all-mutating category must not be flagged as
+    // connectionError even when the plugin batch failed.
     if (batchErrors.length > 0) {
       for (const cat of adjustedCategories) {
         let hasReadCheck = false;
         let allReadUndetermined = true;
         for (const c of cat.checks) {
-          if (isMutatingPluginAuditCurrentValue(c.currentValue)) continue;
+          if (isSkippedCheck(c)) continue;
           hasReadCheck = true;
           if (c.passed || (c.currentValue !== "Unable to determine" && c.currentValue !== "")) {
             allReadUndetermined = false;
