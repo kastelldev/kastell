@@ -300,6 +300,9 @@ export async function handleServerAudit(params: {
         for (const ch of failingChecks.slice(0, maxDisplay)) {
           summaryParts.push(`  [${ch.severity}] ${ch.id}: ${ch.name}`);
           summaryParts.push(`    Why: ${ch.explain}`);
+          if (ch.forbiddenReason) {
+            summaryParts.push(`    Manual review: ${ch.forbiddenReason}`);
+          }
         }
         if (failingChecks.length > maxDisplay) {
           summaryParts.push(`  ... and ${failingChecks.length - maxDisplay} more failing checks`);
