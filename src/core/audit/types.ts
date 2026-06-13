@@ -65,6 +65,14 @@ export function getAuditCheckState(check: AuditCheck): AuditCheckState {
   return check.passed ? "passed" : "failed";
 }
 
+/** Render a structured skip reason as a human-readable display string. */
+export function describeCheckSkip(skip: PluginCheckSkipReason): string {
+  switch (skip.code) {
+    case "legacy-mutating":
+      return `Skipped: legacy v2 mutating check (${skip.kind}) is not run by audit`;
+  }
+}
+
 export interface AuditCategory {
   name: string;
   checks: AuditCheck[];
