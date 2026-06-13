@@ -1,6 +1,7 @@
 import { loadBaseline, listBaselines, formatBaselineStatus, deleteBaseline, formatRelativeTime } from "../core/audit/regression.js";
 import { logger } from "../utils/logger.js";
 import { confirmOrCancel } from "../utils/prompts.js";
+import { markCommandFailed } from "../utils/exitCode.js";
 
 export async function regressionStatusCommand(server?: string): Promise<void> {
   if (server) {
@@ -36,13 +37,16 @@ export async function regressionResetCommand(server: string, options: { force?: 
     return;
   }
 
-  const proceed = await confirmOrCancel(
+  const decision = await confirmOrCancel(
     `Delete baseline for ${server}? (Best Score: ${baseline.bestScore}, ${baseline.passedChecks.length} checks)`,
     !!options.force,
     "Use --force to reset baseline in non-interactive mode.",
   );
-  if (!proceed) {
-    logger.info("Reset cancelled.");
+  if (!decision.confirmed) {
+    logger.info(decision.message);
+    if (decision.reason === "non-tty") {
+      markCommandFailed();
+    }
     return;
   }
 
