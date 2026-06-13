@@ -215,6 +215,57 @@ describe("calculateQuickWins", () => {
     });
   });
 
+  it("P142 Task 2: skipped checks are excluded from quick wins", () => {
+    // A v2 mutating-skip check has passed=false and a fixCommand, but its
+    // skip metadata signals "audit never runs this, do not surface as fix".
+    // It must not appear in calculateQuickWins output.
+    const result = makeResult([
+      makeCategory("Test", [
+        makeCheck({
+          id: "T-REAL",
+          category: "Test",
+          name: "Real Fix",
+          severity: "warning",
+          passed: false,
+          fixCommand: "fix-real",
+        }),
+        makeCheck({
+          id: "T-SKIPPED",
+          category: "Test",
+          name: "Skipped Mutating",
+          severity: "critical",
+          passed: false,
+          fixCommand: "fix-skip",
+          currentValue: "",
+          skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-local" },
+        }),
+      ]),
+    ]);
+    const wins = calculateQuickWins(result);
+    const winIds = wins.map((w) => w.id);
+    expect(winIds).toContain("T-REAL");
+    expect(winIds).not.toContain("T-SKIPPED");
+  });
+
+  it("P142 Task 2: all-skipped category produces no quick wins", () => {
+    const result = makeResult([
+      makeCategory("Test", [
+        makeCheck({
+          id: "T-S-01",
+          category: "Test",
+          name: "Skipped",
+          severity: "warning",
+          passed: false,
+          fixCommand: "fix-it",
+          currentValue: "",
+          skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-global" },
+        }),
+      ]),
+    ]);
+    const wins = calculateQuickWins(result);
+    expect(wins).toEqual([]);
+  });
+
   it("should not inflate projected score with compliance boost", () => {
     // Both checks have complianceRefs — projected score should use baseImpact not effectiveImpact
     const result = makeResult([
