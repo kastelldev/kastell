@@ -1,11 +1,12 @@
 import { join } from "path";
-import inquirer from "inquirer";
 import { getServers } from "../utils/config.js";
 import { resolveServer } from "../utils/serverSelect.js";
 import { checkSshAvailable } from "../utils/ssh.js";
 import { logger, createSpinner } from "../utils/logger.js";
 import { mapSshError, classifyError } from "../utils/errorMapper.js";
 import { resolvePlatform } from "../adapters/factory.js";
+import { confirmOrCancel } from "../utils/prompts.js";
+import { markCommandFailed } from "../utils/exitCode.js";
 import type { ServerRecord } from "../types/index.js";
 import {
   formatTimestamp,
@@ -111,17 +112,17 @@ async function backupCleanupCommand(force?: boolean): Promise<void> {
   console.log();
 
   if (!force) {
-    const { confirm } = await inquirer.prompt([
-      {
-        type: "confirm",
-        name: "confirm",
-        message: `Remove all ${orphans.length} orphan backup folder(s)?`,
-        default: false,
-      },
-    ]);
-
-    if (!confirm) {
-      logger.info("Cleanup cancelled.");
+    // Destructive guard: refuse before mutation in non-TTY mode without --force (P142 Task 9)
+    const decision = await confirmOrCancel(
+      `Remove all ${orphans.length} orphan backup folder(s)?`,
+      false,
+      "Use --force to remove orphan backups in non-interactive mode.",
+    );
+    if (!decision.confirmed) {
+      logger.info(decision.message);
+      if (decision.reason === "non-tty") {
+        markCommandFailed();
+      }
       return;
     }
   }

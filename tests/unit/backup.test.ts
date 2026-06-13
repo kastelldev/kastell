@@ -1,6 +1,7 @@
 import { mkdirSync, existsSync, writeFileSync, readdirSync } from "fs";
 import { spawn } from "child_process";
 import inquirer from "inquirer";
+import * as inquirerPrompts from "@inquirer/prompts";
 import * as config from "../../src/utils/config";
 import * as sshUtils from "../../src/utils/ssh";
 import * as serverSelect from "../../src/utils/serverSelect";
@@ -34,6 +35,9 @@ jest.mock("../../src/utils/config");
 jest.mock("../../src/utils/ssh");
 jest.mock("../../src/utils/serverSelect");
 jest.mock("inquirer");
+jest.mock("@inquirer/prompts", () => ({
+  confirm: jest.fn(),
+}));
 jest.mock("ora", () =>
   jest.fn(() => ({
     start: jest.fn().mockReturnThis(),
@@ -72,6 +76,9 @@ const mockedConfig = config as jest.Mocked<typeof config>;
 const mockedSsh = sshUtils as jest.Mocked<typeof sshUtils>;
 const mockedServerSelect = serverSelect as jest.Mocked<typeof serverSelect>;
 const mockedInquirer = inquirer as jest.Mocked<typeof inquirer>;
+const mockedInquirerConfirm = inquirerPrompts.confirm as jest.MockedFunction<
+  typeof inquirerPrompts.confirm
+>;
 const mockedExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;
 const mockedReaddirSync = readdirSync as jest.MockedFunction<typeof readdirSync>;
 const mockedWriteFileSync = writeFileSync as jest.MockedFunction<typeof writeFileSync>;
@@ -111,6 +118,7 @@ describe("backup", () => {
     spy.setup();
     stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.resetAllMocks();
+    Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
     mockedSsh.resolveScpPath.mockReturnValue("scp");
     mockedResolvePlatform.mockReturnValue("coolify");
     mockedOra.mockReturnValue({
@@ -389,13 +397,13 @@ describe("backup", () => {
       mockedReaddirSync
         .mockReturnValueOnce(["old-server"] as unknown as ReturnType<typeof mockedReaddirSync>) // listOrphanBackups reads BACKUPS_DIR
         .mockReturnValueOnce(["2026-02-21_10-00-00-000"] as unknown as ReturnType<typeof mockedReaddirSync>); // listBackups for old-server
-      mockedInquirer.prompt.mockResolvedValue({ confirm: false });
+      mockedInquirerConfirm.mockResolvedValueOnce(false);
 
       await backupCommand("cleanup");
 
       const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("old-server");
-      expect(output).toContain("Cleanup cancelled");
+      expect(output).toContain("Operation cancelled");
     });
 
     it("should remove orphan backups when user confirms", async () => {
@@ -408,7 +416,7 @@ describe("backup", () => {
       mockedReaddirSync
         .mockReturnValueOnce(["old-server"] as unknown as ReturnType<typeof mockedReaddirSync>)
         .mockReturnValueOnce(["2026-02-21_10-00-00-000"] as unknown as ReturnType<typeof mockedReaddirSync>);
-      mockedInquirer.prompt.mockResolvedValue({ confirm: true });
+      mockedInquirerConfirm.mockResolvedValueOnce(true);
 
       await backupCommand("cleanup");
 
@@ -476,7 +484,7 @@ describe("backup", () => {
       await backupCommand("cleanup", { force: true });
 
       // inquirer.prompt should NOT have been called
-      expect(mockedInquirer.prompt).not.toHaveBeenCalled();
+      expect(mockedInquirerConfirm).not.toHaveBeenCalled();
       // rmSync should have been called for cleanup
       const { rmSync } = require("fs");
       expect(rmSync).toHaveBeenCalled();
