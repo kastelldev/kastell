@@ -47,6 +47,8 @@ describe("restartCommand", () => {
   }
 
   beforeEach(() => {
+    // P142: deterministic reset to prevent cross-suite process.exitCode pollution
+    process.exitCode = 0;
     spy.setup();
     stderrSpy = jest.spyOn(console, "error").mockImplementation();
     // P139 LESSONS: mockReset clears call history AND mockReturnValue/Once queues
