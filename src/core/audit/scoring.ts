@@ -4,6 +4,7 @@
  */
 
 import type { AuditCheck, AuditCategory, Severity } from "./types.js";
+import { isSkippedCheck } from "./types.js";
 
 /** Severity weights: critical checks matter more than info checks */
 export const SEVERITY_WEIGHTS: Record<Severity, number> = {
@@ -16,24 +17,31 @@ export const SEVERITY_WEIGHTS: Record<Severity, number> = {
  * Calculate score for a single category based on its checks.
  * Score = (sum of passed check weights / sum of all check weights) * 100
  *
- * @returns score (0-100) and maxScore (always 100 if checks exist, 0 if empty)
+ * Skipped checks (P142 Task 2: structured skip metadata) are excluded from
+ * both numerator and denominator — they signal "audit never runs this" and
+ * should not affect scoring. If every check is skipped, returns
+ * { score: 0, maxScore: 0 } to signal "no scoring info available" (and
+ * to align with detectSkippedCategories which inspects currentValue).
+ *
+ * @returns score (0-100) and maxScore (always 100 if non-skipped checks exist, 0 if all skipped or empty)
  */
 export function calculateCategoryScore(
   checks: AuditCheck[],
 ): { score: number; maxScore: number } {
-  if (checks.length === 0) {
-    return { score: 0, maxScore: 0 };
-  }
-
   let totalWeight = 0;
   let passedWeight = 0;
 
   for (const check of checks) {
+    if (isSkippedCheck(check)) continue;
     const weight = SEVERITY_WEIGHTS[check.severity];
     totalWeight += weight;
     if (check.passed) {
       passedWeight += weight;
     }
+  }
+
+  if (totalWeight === 0) {
+    return { score: 0, maxScore: 0 };
   }
 
   const score = Math.round((passedWeight / totalWeight) * 100);
