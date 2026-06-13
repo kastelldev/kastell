@@ -5,6 +5,7 @@
 
 import chalk from "chalk";
 import type { AuditResult } from "../types.js";
+import { isSkippedCheck } from "../types.js";
 import { calculateComplianceScores } from "../compliance/scoring.js";
 import { scoreColor, progressBar } from "./shared.js";
 
@@ -15,6 +16,10 @@ export function formatSummary(result: AuditResult): string {
   const lines: string[] = [];
 
   const colorFn = scoreColor(result.overallScore);
+  const skippedTotal = result.categories.reduce(
+    (n, c) => n + c.checks.filter(isSkippedCheck).length,
+    0,
+  );
 
   lines.push(
     chalk.bold.cyan(`Kastell Security Audit`) +
@@ -23,6 +28,9 @@ export function formatSummary(result: AuditResult): string {
   lines.push(
     `Overall: ${colorFn(chalk.bold(`${result.overallScore}/100`))} ${progressBar(result.overallScore, 14)}`,
   );
+  if (skippedTotal > 0) {
+    lines.push(chalk.dim(`Skipped: ${skippedTotal} check(s) \u2014 not run by audit`));
+  }
   lines.push("");
 
   // Compliance summary
