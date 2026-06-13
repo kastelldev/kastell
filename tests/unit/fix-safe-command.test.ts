@@ -70,7 +70,7 @@ import {
 import * as regressionRunner from "../../src/core/audit/regression.js";
 import inquirer from "inquirer";
 import type { FixHistoryEntry } from "../../src/core/audit/types.js";
-import { getPluginBackupPaths } from "../../src/core/audit/pluginFix.js";
+import * as pluginFixModule from "../../src/core/audit/pluginFix.js";
 
 const mockedResolveServer = resolveServer as jest.MockedFunction<typeof resolveServer>;
 const mockedCheckSsh = checkSshAvailable as jest.MockedFunction<typeof checkSshAvailable>;
@@ -1566,13 +1566,18 @@ describe("fixSafeCommand", () => {
       mockedSshExec.mockResolvedValue({ stdout: "", stderr: "", code: 0 });
 
       // Capture the failedCheckIds argument passed to getPluginBackupPaths.
-      // pluginFix is fully mocked at the top of this file — the imported
-      // reference is the same jest.fn() the test setup wired.
-      const mockedGetPluginBackupPaths = getPluginBackupPaths as jest.MockedFunction<typeof getPluginBackupPaths>;
+      // pluginFix is fully mocked at the top of this file with a plain
+      // arrow function (not jest.fn). Override by mutating the module
+      // export object so the implementation in src/commands/fix.js
+      // (which re-imports the same module) sees the new function.
       const callsWithFailedIds: string[][] = [];
-      mockedGetPluginBackupPaths.mockImplementation((ids: string[]) => {
-        callsWithFailedIds.push([...ids]);
-        return [];
+      Object.defineProperty(pluginFixModule, "getPluginBackupPaths", {
+        value: (ids: string[]) => {
+          callsWithFailedIds.push([...ids]);
+          return [];
+        },
+        configurable: true,
+        writable: true,
       });
 
       await fixSafeCommand(undefined, { safe: true });
