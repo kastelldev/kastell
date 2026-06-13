@@ -40,6 +40,8 @@ describe("removeCommand", () => {
   }
 
   beforeEach(() => {
+    // P142: deterministic reset to prevent cross-suite process.exitCode pollution
+    process.exitCode = 0;
     spy.setup();
     // P139 LESSONS: mockReset clears call history AND mockReturnValue/Once queues
     mockedInquirerConfirm.mockReset();
