@@ -64,6 +64,7 @@ describe("file-based fallback (no keyring)", () => {
       expect(mockSecureWriteFileSync).toHaveBeenCalledWith(
         expect.stringContaining("tokens.json"),
         expect.any(String),
+        expect.objectContaining({ sensitivity: "secret" }),
       );
       // Verify the written content is an encrypted payload
       const written = JSON.parse(mockSecureWriteFileSync.mock.calls[0][1] as string);

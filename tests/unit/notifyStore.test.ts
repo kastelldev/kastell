@@ -167,7 +167,7 @@ describe("storeNotifySecret / readNotifySecret — fallback path", () => {
     expect(mockSecureWriteFileSync).toHaveBeenCalledWith(
       expect.stringContaining("notify-secrets.json"),
       expect.any(String),
-
+      expect.objectContaining({ sensitivity: "secret" }),
     );
     // Verify the written content is encrypted
     const written = JSON.parse(
@@ -509,7 +509,7 @@ describe("removeNotifySecret — fallback path (keychain unavailable)", () => {
     expect(mockSecureWriteFileSync).toHaveBeenCalledWith(
       expect.stringContaining("notify-secrets.json"),
       expect.any(String),
-
+      expect.objectContaining({ sensitivity: "secret" }),
     );
   });
 });
