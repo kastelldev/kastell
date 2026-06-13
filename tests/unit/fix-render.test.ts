@@ -1,8 +1,8 @@
 import { renderForbiddenBlock } from "../../src/commands/fix.js";
 import type { FixPreview } from "../../src/core/audit/fix.js";
 
-const mk = (checkId: string, command: string): FixPreview =>
-  ({ checkId, command, tier: "FORBIDDEN" });
+const mk = (checkId: string, command: string, reason = "test reason"): FixPreview =>
+  ({ checkId, command, tier: "FORBIDDEN", forbiddenReason: reason });
 
 describe("renderForbiddenBlock", () => {
   it("returns empty string when includeForbidden is false", () => {
@@ -35,5 +35,10 @@ describe("renderForbiddenBlock", () => {
     const out = renderForbiddenBlock([mk("UFW-DENY", shortCmd)], true);
     expect(out).toContain(`[F1] UFW-DENY — ${shortCmd}`);
     expect(out).not.toContain("…");
+  });
+
+  it("[P142 Task 10] renders [F1] CHECK-ID — command — reason: <forbiddenReason>", () => {
+    const out = renderForbiddenBlock([mk("SSH-PWD-AUTH", "sed -i ...", "Disabling password auth may lock out operators without key-based access")], true);
+    expect(out).toContain("[F1] SSH-PWD-AUTH — sed -i ... — reason: Disabling password auth may lock out operators without key-based access");
   });
 });
