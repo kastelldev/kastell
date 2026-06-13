@@ -6,6 +6,7 @@
 
 import chalk from "chalk";
 import type { AuditResult, Severity } from "../types.js";
+import { describeCheckSkip, isSkippedCheck, isFailedCheck, isPassedCheck } from "../types.js";
 import { calculateComplianceScores } from "../compliance/scoring.js";
 import { scoreColor, progressBar } from "./shared.js";
 
@@ -63,14 +64,15 @@ export function formatTerminal(result: AuditResult, options?: { explain?: boolea
     lines.push("");
   }
 
-  // Stats header: total / passed / failed counts, VPS-adjusted count when applicable
+  // Stats header: total / passed / failed / skipped counts, VPS-adjusted count when applicable
   const allChecks = result.categories.flatMap((c) => c.checks);
   const totalChecks = allChecks.length;
-  const passedChecks = allChecks.filter((c) => c.passed).length;
-  const failedChecks = totalChecks - passedChecks;
+  const passedChecks = allChecks.filter(isPassedCheck).length;
+  const failedChecks = allChecks.filter(isFailedCheck).length;
+  const skippedChecks = allChecks.filter(isSkippedCheck).length;
   const adjusted = result.vpsAdjustedCount ?? 0;
 
-  let statsLine = `Checks: ${totalChecks} total | ${passedChecks} passed | ${failedChecks} failed`;
+  let statsLine = `Checks: ${totalChecks} total | ${passedChecks} passed | ${failedChecks} failed | ${skippedChecks} skipped`;
   if (adjusted > 0) statsLine += ` | ${adjusted} VPS-adjusted`;
   lines.push(chalk.gray(statsLine));
 
@@ -80,9 +82,9 @@ export function formatTerminal(result: AuditResult, options?: { explain?: boolea
   }
   lines.push("");
 
-  // Separate categories into failing and passing
-  const failingCats = result.categories.filter((c) => c.checks.some((ch) => !ch.passed));
-  const passingCats = result.categories.filter((c) => c.checks.every((ch) => ch.passed));
+  // Separate categories into failing and passing (skipped-only categories are neither)
+  const failingCats = result.categories.filter((c) => c.checks.some(isFailedCheck));
+  const passingCats = result.categories.filter((c) => c.checks.length > 0 && c.checks.every((ch) => isPassedCheck(ch) || isSkippedCheck(ch)));
 
   // Severity sort order for failed checks within a category
   const severityOrder: Record<Severity, number> = { critical: 0, warning: 1, info: 2 };
@@ -93,8 +95,8 @@ export function formatTerminal(result: AuditResult, options?: { explain?: boolea
     lines.push(chalk.gray("\u2500".repeat(50)));
 
     for (const category of failingCats) {
-      const catFailed = category.checks.filter((ch) => !ch.passed);
-      const catPassed = category.checks.filter((ch) => ch.passed).length;
+      const catFailed = category.checks.filter(isFailedCheck);
+      const catPassed = category.checks.filter(isPassedCheck).length;
       const catTotal = category.checks.length;
       const catColor = scoreColor(category.score);
 
@@ -126,9 +128,18 @@ export function formatTerminal(result: AuditResult, options?: { explain?: boolea
   if (passingCats.length > 0) {
     lines.push("");
     for (const category of passingCats) {
+      const allPassingOrSkipped = category.checks.every((ch) => isPassedCheck(ch) || isSkippedCheck(ch));
+      const displayScore = allPassingOrSkipped ? 100 : category.score;
       lines.push(
-        `${PASS_ICON} ${category.name} ${category.checks.length}/${category.checks.length} (100%)`,
+        `${PASS_ICON} ${category.name} ${category.checks.length}/${category.checks.length} (${displayScore}%)`,
       );
+      // Show skipped checks inline with helper-derived display
+      const skippedInCat = category.checks.filter(isSkippedCheck);
+      for (const chk of skippedInCat) {
+        if (chk.skip) {
+          lines.push(chalk.dim(`     ${describeCheckSkip(chk.skip)}`));
+        }
+      }
     }
   }
 
