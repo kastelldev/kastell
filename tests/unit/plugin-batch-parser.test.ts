@@ -201,10 +201,33 @@ describe("parsePluginBatchOutput", () => {
     const result = parsePluginBatchOutput(stdout, reg);
 
     expect(result[0].checks.find((c) => c.id === "WP-READ")?.passed).toBe(true);
-    expect(result[0].checks.find((c) => c.id === "WP-LOCAL")?.currentValue)
-      .toBe("Not run by kastell audit (mutating kind: mutate-local)");
-    expect(result[0].checks.find((c) => c.id === "WP-GLOBAL")?.currentValue)
-      .toBe("Not run by kastell audit (mutating kind: mutate-global)");
+    // P142 Task 2: structured skip metadata replaces sentinel-string.
+    expect(result[0].checks.find((c) => c.id === "WP-LOCAL")?.skip).toEqual({
+      code: "legacy-mutating",
+      apiVersion: "2",
+      kind: "mutate-local",
+    });
+    expect(result[0].checks.find((c) => c.id === "WP-GLOBAL")?.skip).toEqual({
+      code: "legacy-mutating",
+      apiVersion: "2",
+      kind: "mutate-global",
+    });
+    expect(result[0].checks.find((c) => c.id === "WP-LOCAL")?.currentValue).toBe("");
+    expect(result[0].checks.find((c) => c.id === "WP-GLOBAL")?.currentValue).toBe("");
+  });
+
+  it("P142 Task 2: read check has no skip metadata and keeps its currentValue", () => {
+    // Regression guard: read checks must NOT be marked as skip, and their
+    // currentValue must come from the batch section (not blanked out).
+    const reg = new Map<string, PluginRegistryEntry>();
+    reg.set("kastell-plugin-wp", entry("kastell-plugin-wp", [
+      check("WP-READ", { passPattern: "^ok$" }),
+    ]));
+    const stdout = "---SECTION:PLUGIN:kastell-plugin-wp:WP-READ---\nok";
+    const result = parsePluginBatchOutput(stdout, reg);
+    const read = result[0].checks[0];
+    expect(read.skip).toBeUndefined();
+    expect(read.currentValue).toBe("ok");
   });
 
   it("identifies mutating plugin audit not-run markers", () => {
