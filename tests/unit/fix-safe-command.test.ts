@@ -190,6 +190,8 @@ const defaultSafePlan = {
 // ─── Setup ───────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
+  // P142: deterministic reset to prevent cross-suite process.exitCode pollution
+  process.exitCode = 0;
   jest.resetAllMocks();
 
   // Default spinner mock — returns a no-op spinner
