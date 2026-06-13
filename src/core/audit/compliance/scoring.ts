@@ -5,6 +5,7 @@
  */
 
 import type { AuditCategory, AuditResult } from "../types.js";
+import { isSkippedCheck } from "../types.js";
 import { FRAMEWORK_VERSIONS, type FrameworkKey } from "./mapper.js";
 import type { ComplianceControlDetail, ComplianceDetailScore, ProfileName } from "./types.js";
 import { PROFILE_MAP } from "./types.js";
@@ -37,6 +38,10 @@ export function calculateComplianceScores(categories: AuditCategory[]): Complian
   for (const cat of categories) {
     for (const check of cat.checks) {
       if (!check.complianceRefs) continue;
+      // Skip-check guard: compliance refs from a skipped check must NOT
+      // contribute to pass/fail aggregation. Collect them separately so
+      // we can omit controls whose ONLY checks are skipped.
+      if (isSkippedCheck(check)) continue;
       for (const ref of check.complianceRefs) {
         if (!controlMap.has(ref.framework)) {
           controlMap.set(ref.framework, new Map());
@@ -102,6 +107,9 @@ export function calculateComplianceDetail(categories: AuditCategory[]): Complian
   for (const cat of categories) {
     for (const check of cat.checks) {
       if (!check.complianceRefs) continue;
+      // Skip-check guard: compliance refs from a skipped check must NOT
+      // contribute to per-control detail aggregation.
+      if (isSkippedCheck(check)) continue;
       for (const ref of check.complianceRefs) {
         if (!controlMap.has(ref.framework)) {
           controlMap.set(ref.framework, new Map());

@@ -268,9 +268,9 @@ describe("calculateComplianceDetail", () => {
     cat.checks[0].skip = { code: "legacy-mutating", apiVersion: "2", kind: "mutate-global" };
 
     const scores = calculateComplianceScores([cat]);
-    // Control 5.3.2 had only skipped checks → must not enter the total/denominator
-    expect(scores[0].totalControls).toBe(0);
-    expect(scores[0].passedControls).toBe(0);
+    // Control 5.3.2 had only skipped checks → framework has no scores
+    // (control must not enter the denominator)
+    expect(scores).toHaveLength(0);
   });
 });
 
