@@ -38,6 +38,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
     expectedValue: "active",
     fixCommand: "ufw enable",
     safeToAutoFix: "FORBIDDEN",
+    forbiddenReason: "Enabling ufw without explicit SSH allow rule can cause immediate SSH lockout if SSH is not already allowed — requires manual SSH rule verification.",
     explain: "A firewall is the first line of defense against unauthorized network access.",
   };
 
@@ -53,6 +54,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
     expectedValue: "deny (incoming)",
     fixCommand: "ufw default deny incoming",
     safeToAutoFix: "FORBIDDEN",
+    forbiddenReason: "Setting default deny incoming before verifying explicit allow rules can break application connectivity — requires manual rule audit.",
     explain: "Default deny ensures only explicitly allowed traffic reaches the server.",
   };
 
@@ -68,6 +70,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
     expectedValue: "SSH port (22) explicitly allowed",
     fixCommand: "ufw allow 22/tcp",
     safeToAutoFix: "FORBIDDEN",
+    forbiddenReason: "Adding SSH allow rule assumes port 22 is the actual SSH listener — non-standard ports require manual verification to avoid wrong port exposure.",
     explain: "SSH port should be explicitly allowed to prevent lockout when firewall is active.",
   };
 
@@ -94,6 +97,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
     expectedValue: "No 0.0.0.0/0 rules on non-standard ports",
     fixCommand: "ufw status numbered && ufw delete <rule_number>",
     safeToAutoFix: "FORBIDDEN",
+    forbiddenReason: "Deleting wide-open rules requires knowing which numbered rule to remove — wrong rule deletes legitimate access — manual rule review needed.",
     explain: "Wide-open rules on database or service ports expose them to the entire internet.",
   };
 
@@ -109,6 +113,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
     expectedValue: "IPv6 firewall rules configured",
     fixCommand: "sed -i 's/IPV6=no/IPV6=yes/' /etc/default/ufw && ufw reload",
     safeToAutoFix: "FORBIDDEN",
+    forbiddenReason: "Enabling IPv6 in ufw without ip6table rules can expose services on the IPv6 interface — manual ip6tables configuration review needed.",
     explain: "IPv6 firewall rules prevent bypassing security through IPv6 connections.",
   };
 
@@ -125,6 +130,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
     expectedValue: "nftables available as modern firewall",
     fixCommand: "apt install -y nftables && systemctl enable --now nftables",
     safeToAutoFix: "FORBIDDEN",
+    forbiddenReason: "Installing nftables alongside iptables/ufw can cause packet filtering conflicts and lockout — manual migration plan required.",
     explain: "nftables is the modern replacement for iptables with improved performance and maintainability.",
   };
 
@@ -140,6 +146,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
     expectedValue: "fail2ban running with at least one jail",
     fixCommand: "apt install -y fail2ban && systemctl enable --now fail2ban",
     safeToAutoFix: "FORBIDDEN",
+    forbiddenReason: "Enabling fail2ban without jail configuration bans nobody — needs custom jail.local with sane thresholds; manual review of ban policy required.",
     explain: "fail2ban blocks brute-force attacks by banning IPs with repeated failed logins.",
   };
 
@@ -156,6 +163,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
     expectedValue: "More than 8 iptables lines (non-empty chains)",
     fixCommand: "iptables -A INPUT -j DROP",
     safeToAutoFix: "FORBIDDEN",
+    forbiddenReason: "Appending blanket DROP to INPUT chain can drop established/related traffic and break active connections — manual chain policy review needed.",
     explain: "An iptables ruleset with only default chains (< 8 lines) provides no real protection.",
   };
 
@@ -172,6 +180,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
     expectedValue: "Chain INPUT (policy DROP) or (policy REJECT)",
     fixCommand: "iptables -P INPUT DROP",
     safeToAutoFix: "FORBIDDEN",
+    forbiddenReason: "Setting INPUT default DROP without first ensuring ESTABLISHED/RELATED and loopback rules exist causes immediate session drops and lockout — manual rule ordering required.",
     explain: "Setting iptables INPUT default policy to DROP ensures all inbound traffic is denied unless explicitly allowed.",
   };
 
@@ -187,6 +196,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
     expectedValue: "REJECT preferred for user-facing services",
     fixCommand: "iptables -A INPUT -j REJECT --reject-with icmp-port-unreachable",
     safeToAutoFix: "FORBIDDEN",
+    forbiddenReason: "Adding REJECT rules after a DROP-default policy doesn't change behavior — REJECT must be in a chain ordered before final DROP — manual chain review needed.",
     explain: "REJECT informs the client the port is closed, which is preferable for user-facing services.",
   };
 
@@ -203,6 +213,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
     expectedValue: "Consider restricting outbound traffic",
     fixCommand: "iptables -P OUTPUT DROP && iptables -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT",
     safeToAutoFix: "FORBIDDEN",
+    forbiddenReason: "Setting OUTPUT to DROP breaks all outbound traffic except ESTABLISHED/RELATED — apt, DNS, monitoring, backups all break — manual allow list required.",
     explain: "Restricting outbound traffic limits damage from compromised services attempting to exfiltrate data.",
   };
 
@@ -218,6 +229,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
     expectedValue: "iptables rate limiting rules configured",
     fixCommand: "iptables -A INPUT -p tcp --dport 22 -m limit --limit 3/minute --limit-burst 3 -j ACCEPT",
     safeToAutoFix: "FORBIDDEN",
+    forbiddenReason: "Rate-limit rule position matters — appending after final DROP/REJECT rule is a no-op; rules must be ordered before terminal target — manual chain ordering required.",
     explain: "Rate limiting rules protect against brute-force and DoS attacks by throttling connection attempts.",
   };
 
@@ -236,6 +248,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
     expectedValue: "Chain FORWARD (policy DROP) or (policy REJECT)",
     fixCommand: "iptables -P FORWARD DROP",
     safeToAutoFix: "FORBIDDEN",
+    forbiddenReason: "Setting FORWARD to DROP on a router/gateway host breaks inter-VLAN or container-to-external traffic — requires manual topology review.",
     explain:
       "FORWARD chain default ACCEPT allows unintended traffic routing through the host, potentially bypassing network segmentation.",
   };
@@ -258,6 +271,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
     expectedValue: "IPv6 disabled or ip6tables has rules (> 3 lines)",
     fixCommand: "ip6tables -P INPUT DROP && ip6tables -P FORWARD DROP && ip6tables -P OUTPUT ACCEPT",
     safeToAutoFix: "FORBIDDEN",
+    forbiddenReason: "Replacing ip6tables policy requires verifying IPv6 connectivity is not required (e.g., IPv6-only services) — manual IPv6 service inventory needed.",
     explain:
       "Unfiltered IPv6 traffic can bypass IPv4 firewall rules on dual-stack systems.",
   };
@@ -278,6 +292,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
     expectedValue: "No 'ACCEPT all -- 0.0.0.0/0 0.0.0.0/0' rule without restrictions",
     fixCommand: "iptables -D INPUT -j ACCEPT  # Remove and replace with specific allow rules",
     safeToAutoFix: "FORBIDDEN",
+    forbiddenReason: "Deleting wildcard ACCEPT without first installing specific allow rules drops all inbound traffic immediately — manual allow-list migration required.",
     explain:
       "A wildcard ACCEPT rule in the INPUT chain bypasses all other security rules, effectively disabling the firewall.",
   };
@@ -298,6 +313,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
     expectedValue: "nf_conntrack_max >= 65536",
     fixCommand: "echo 262144 > /proc/sys/net/netfilter/nf_conntrack_max && echo 'net.netfilter.nf_conntrack_max = 262144' >> /etc/sysctl.d/99-kastell.conf",
     safeToAutoFix: "FORBIDDEN",
+    forbiddenReason: "Raising nf_conntrack_max increases memory consumption (hash table size); server with limited RAM may OOM — manual memory budget review needed.",
     explain: "Low connection tracking limits cause packet drops under load, which can be exploited for denial-of-service.",
   };
 
@@ -317,6 +333,7 @@ export const parseFirewallChecks: CheckParser = (sectionOutput: string, _platfor
     expectedValue: "At least 1 LOG rule in iptables for forensic evidence",
     fixCommand: "iptables -A INPUT -j LOG --log-prefix \"iptables-dropped: \" --log-level 4",
     safeToAutoFix: "FORBIDDEN",
+    forbiddenReason: "LOG rule on busy firewall generates huge log volume; without logrotate threshold tuning it fills disk and DoS'es the host — manual logrotate config required.",
     explain: "Logging dropped firewall packets provides forensic evidence of attack attempts and helps identify malicious traffic patterns.",
   };
 
