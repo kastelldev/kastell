@@ -111,7 +111,13 @@ describe("runAudit — plugin batch integration", () => {
       const pluginCat = result.data.categories.find((c) => c.name === "Plugin: test");
       expect(pluginCat).toBeDefined();
       expect(pluginCat!.connectionError).toBeUndefined();
-      expect(pluginCat!.checks[0].currentValue).toBe("Not run by kastell audit (mutating kind: mutate-local)");
+      // P142 Task 2: structured skip metadata on the check, empty currentValue.
+      expect(pluginCat!.checks[0].skip).toEqual({
+        code: "legacy-mutating",
+        apiVersion: "2",
+        kind: "mutate-local",
+      });
+      expect(pluginCat!.checks[0].currentValue).toBe("");
       expect(result.data.warnings).toContain("Plugin kastell-plugin-test check T-MUT is mutate-local and is not run by kastell audit");
     }
   });
@@ -144,8 +150,15 @@ describe("runAudit — plugin batch integration", () => {
       const pluginCat = result.data.categories.find((c) => c.name === "Plugin: test");
       expect(pluginCat).toBeDefined();
       expect(pluginCat!.connectionError).toBe(true);
-      expect(pluginCat!.checks.find((c) => c.id === "T-MUT")?.currentValue)
-        .toBe("Not run by kastell audit (mutating kind: mutate-local)");
+      // P142 Task 2: mutating check now carries structured skip metadata,
+      // not a sentinel currentValue string.
+      const mut = pluginCat!.checks.find((c) => c.id === "T-MUT");
+      expect(mut?.skip).toEqual({
+        code: "legacy-mutating",
+        apiVersion: "2",
+        kind: "mutate-local",
+      });
+      expect(mut?.currentValue).toBe("");
     }
   });
 
@@ -180,8 +193,11 @@ describe("runAudit — plugin batch integration", () => {
       expect(pluginCat).toBeDefined();
       expect(pluginCat!.connectionError).toBeUndefined();
       expect(pluginCat!.checks).toHaveLength(2);
+      // P142 Task 2: skipped checks carry structured skip metadata, not
+      // a sentinel currentValue string.
       for (const c of pluginCat!.checks) {
-        expect(c.currentValue).toMatch(/^Not run by kastell audit \(mutating kind: /);
+        expect(c.skip).toBeDefined();
+        expect(c.currentValue).toBe("");
       }
     }
   });
@@ -216,6 +232,41 @@ describe("runAudit — plugin batch integration", () => {
       const pluginCat = result.data.categories.find((c) => c.name === "Plugin: mix");
       expect(pluginCat).toBeDefined();
       expect(pluginCat!.connectionError).toBe(true);
+    }
+  });
+
+  it("P142 Task 2: missing read section still uses connection-error path (skip NOT applied)", async () => {
+    // Regression: a read check whose section is missing (batch failure) is
+    // NOT marked with skip metadata. The existing connection-error path
+    // applies. Skip metadata is reserved for v2 mutating plugin checks.
+    const manifest: PluginManifest = {
+      name: "kastell-plugin-readonly",
+      version: "1.0.0",
+      apiVersion: "2",
+      kastell: "*",
+      capabilities: ["audit"],
+      checkPrefix: "R",
+      entry: "./index.js",
+    };
+    const checks: PluginCheck[] = [
+      { id: "R-001", category: "Test", name: "Read", severity: "warning", description: "", checkCommand: { kind: "read", cmd: "echo ok" }, passPattern: "^ok$" },
+    ];
+    registerPlugin(manifest, checks);
+    const spy = jest.spyOn(ssh, "sshExec").mockImplementation(async () => ({ stdout: "", stderr: "", code: 0 }));
+    spy.mockImplementationOnce(async () => ({ stdout: "", stderr: "", code: 0 }));
+    spy.mockImplementationOnce(async () => ({ stdout: "", stderr: "", code: 0 }));
+    spy.mockImplementationOnce(async () => ({ stdout: "", stderr: "", code: 0 }));
+    spy.mockImplementationOnce(async () => { throw new Error("ssh timeout"); });
+
+    const result = await runAudit("1.2.3.4", "test-server", "coolify");
+    expect(result.success).toBe(true);
+    if (result.success && result.data) {
+      const pluginCat = result.data.categories.find((c) => c.name === "Plugin: readonly");
+      expect(pluginCat).toBeDefined();
+      expect(pluginCat!.connectionError).toBe(true);
+      // Read check must NOT carry skip metadata
+      expect(pluginCat!.checks[0].skip).toBeUndefined();
+      expect(pluginCat!.checks[0].currentValue).toBe("Unable to determine");
     }
   });
 });
