@@ -142,6 +142,24 @@ describe("parseFirewallChecks", () => {
     expect(check!.passed).toBe(true);
   });
 
+  it("[P142 Task 10] every Firewall check has a non-empty forbiddenReason", () => {
+    const checks = parseFirewallChecks("N/A", "bare");
+    for (const check of checks) {
+      expect(check.forbiddenReason).toBeDefined();
+      expect(typeof check.forbiddenReason).toBe("string");
+      expect((check.forbiddenReason as string).trim().length).toBeGreaterThan(0);
+    }
+  });
+
+  it("[P142 Task 10] Firewall reasons name reachability or lockout risk", () => {
+    const checks = parseFirewallChecks("N/A", "bare");
+    for (const check of checks) {
+      const reason = check.forbiddenReason!.toLowerCase();
+      // Class: Firewall policy/rule — exposure/connectivity or lockout
+      expect(reason).toMatch(/lockout|expos|connect|reach|filter|firewall|disab|remov|open|deny|traffic|port|risk|impact|interrup/i);
+    }
+  });
+
   it("should handle N/A output gracefully", () => {
     const checks = parseFirewallChecks("N/A", "bare");
     expect(checks).toHaveLength(17);
