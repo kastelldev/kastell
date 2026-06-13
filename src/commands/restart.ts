@@ -1,4 +1,3 @@
-import inquirer from "inquirer";
 import { resolveServer } from "../utils/serverSelect.js";
 import { rebootServer } from "../core/manage.js";
 import { getCloudServerStatus } from "../core/status.js";
@@ -8,6 +7,8 @@ import { resolvePlatform } from "../adapters/factory.js";
 import { platformDefaults } from "../core/domain.js";
 import { logger, debugLog, createSpinner } from "../utils/logger.js";
 import { RESTART_DELAY_MS } from "../constants.js";
+import { confirmOrCancel } from "../utils/prompts.js";
+import { markCommandFailed } from "../utils/exitCode.js";
 
 function showDryRun(server: { name: string; ip: string; provider: string }): void {
   logger.title("Dry Run: Restart Server");
@@ -29,20 +30,18 @@ export async function restartCommand(query?: string, options?: { dryRun?: boolea
     return;
   }
 
-  if (!options?.force) {
-    const { confirm } = await inquirer.prompt([
-      {
-        type: "confirm",
-        name: "confirm",
-        message: `Restart server "${server.name}" (${server.ip})? This will cause brief downtime.`,
-        default: false,
-      },
-    ]);
-
-    if (!confirm) {
-      logger.info("Restart cancelled.");
-      return;
+  // Destructive guard: refuse before mutation in non-TTY mode without --force (P142 Task 9)
+  const decision = await confirmOrCancel(
+    `Restart server "${server.name}" (${server.ip})? This will cause brief downtime.`,
+    !!options?.force,
+    "Use --force to restart in non-interactive mode.",
+  );
+  if (!decision.confirmed) {
+    logger.info(decision.message);
+    if (decision.reason === "non-tty") {
+      markCommandFailed();
     }
+    return;
   }
 
   const spinner = createSpinner("Rebooting server...");
