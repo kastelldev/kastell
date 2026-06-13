@@ -390,4 +390,80 @@ describe("destroyCommand", () => {
     const output = consoleSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n");
     expect(output).toContain("removed from your cloud provider");
   });
+
+  // ---- P142 Task 9: 4-case destructive-guard matrix ----
+
+  describe("P142 Task 9 — destructive guard matrix", () => {
+    const originalIsTTY = process.stdin.isTTY;
+    const originalExitCode = process.exitCode;
+
+    function setIsTTY(value: boolean | undefined): void {
+      Object.defineProperty(process.stdin, "isTTY", { value, configurable: true, writable: true });
+    }
+
+    beforeEach(() => {
+      setIsTTY(originalIsTTY);
+      // P141 LESSONS invariant: explicit inquirer.prompt mock for end-to-end CLI flow tests.
+      (inquirer as unknown as { prompt: jest.Mock }).prompt = jest
+        .fn()
+        .mockResolvedValue({ apiToken: "test-token" });
+    });
+
+    afterEach(() => {
+      setIsTTY(originalIsTTY);
+      process.exitCode = originalExitCode;
+    });
+
+    it("prompts the user in TTY mode without --force", async () => {
+      setIsTTY(true);
+      mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+      mockedInquirer.prompt
+        .mockResolvedValueOnce({ confirm: true })
+        .mockResolvedValueOnce({ confirmName: "coolify-test" });
+      mockedCoreManage.destroyCloudServer.mockResolvedValue(destroySuccessResult);
+
+      await destroyCommand("1.2.3.4", { force: false });
+
+      // TTY + no force -> typed-name prompt IS shown
+      expect(mockedInquirer.prompt).toHaveBeenCalled();
+      expect(mockedCoreManage.destroyCloudServer).toHaveBeenCalledWith("coolify-test");
+      expect(process.exitCode ?? 0).not.toBe(1);
+    });
+
+    it("bypasses prompts in TTY mode with --force", async () => {
+      setIsTTY(true);
+      mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+      mockedCoreManage.destroyCloudServer.mockResolvedValue(destroySuccessResult);
+
+      await destroyCommand("1.2.3.4", { force: true });
+
+      // TTY + force -> NO inquirer prompts (typed-name skipped too)
+      expect(mockedInquirer.prompt).not.toHaveBeenCalled();
+      expect(mockedCoreManage.destroyCloudServer).toHaveBeenCalledWith("coolify-test");
+      expect(process.exitCode ?? 0).not.toBe(1);
+    });
+
+    it("refuses the destroy and sets exit code 1 in non-TTY mode without --force", async () => {
+      setIsTTY(false);
+      mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+
+      await destroyCommand("1.2.3.4", { force: false });
+
+      // non-TTY + no force -> refuses BEFORE mutation, exit 1
+      expect(mockedCoreManage.destroyCloudServer).not.toHaveBeenCalled();
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("reaches the destroy mutation in non-TTY mode with --force", async () => {
+      setIsTTY(false);
+      mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+      mockedCoreManage.destroyCloudServer.mockResolvedValue(destroySuccessResult);
+
+      await destroyCommand("1.2.3.4", { force: true });
+
+      // non-TTY + force -> bypasses guard, mutation runs
+      expect(mockedCoreManage.destroyCloudServer).toHaveBeenCalledWith("coolify-test");
+      expect(process.exitCode ?? 0).not.toBe(1);
+    });
+  });
 });
