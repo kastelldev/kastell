@@ -35,7 +35,7 @@ function writeTokensFile(data: Record<string, string>): boolean {
   try {
     secureMkdirSync(KASTELL_DIR);
     const payload = encryptData(JSON.stringify(data), getMachineKey());
-    secureWriteFileSync(TOKENS_FILE, JSON.stringify(payload, null, 2));
+    secureWriteFileSync(TOKENS_FILE, JSON.stringify(payload, null, 2), { sensitivity: "secret" });
     return true;
   } catch { return false; }
 }
