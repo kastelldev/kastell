@@ -1,5 +1,5 @@
 import { resolveServer } from "../utils/serverSelect.js";
-import { checkSshAvailable, sshConnect, sshExec } from "../utils/ssh.js";
+import { checkSshAvailable, getHostKeyPolicy, getObservedHostFingerprint, sshConnect, sshExec } from "../utils/ssh.js";
 import { raw } from "../utils/sshCommand.js";
 import { logger } from "../utils/logger.js";
 
@@ -23,6 +23,13 @@ export async function sshCommand(query?: string, options?: { command?: string })
       logger.error(`Command exited with code ${result.code}`);
     }
   } else {
+    if (getHostKeyPolicy() === "accept-new") {
+      logger.warning(
+        `First connection uses SSH trust-on-first-use (TOFU): this host has not been authenticated out of band.`,
+      );
+      const fingerprint = getObservedHostFingerprint(server.ip);
+      if (fingerprint) logger.info(`Observed host fingerprint: ${fingerprint}`);
+    }
     logger.info(`Connecting to ${server.name} (${server.ip})...`);
     const exitCode = await sshConnect(server.ip);
     if (exitCode === 130) {
