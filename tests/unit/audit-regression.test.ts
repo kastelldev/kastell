@@ -3,8 +3,10 @@ import {
   saveBaseline,
   checkRegression,
   getBaselinePath,
+  extractPassedCheckIds,
+  extractFailedCheckIds,
 } from "../../src/core/audit/regression.js";
-import type { AuditResult } from "../../src/core/audit/types.js";
+import type { AuditResult, AuditCheck } from "../../src/core/audit/types.js";
 import * as fs from "fs";
 
 jest.mock("fs");
@@ -144,6 +146,48 @@ describe("regression suite", () => {
       expect(result.baselineScore).toBe(80);
       expect(result.currentScore).toBe(66);
       expect(result.currentScore < result.baselineScore).toBe(true);
+    });
+
+    it("should exclude skipped checks from extracted passed ID set", () => {
+      const checks: AuditCheck[] = [
+        { id: "SSH-001", category: "SSH", name: "Root login", severity: "critical", passed: true, currentValue: "", expectedValue: "" },
+        { id: "SSH-002", category: "SSH", name: "Password auth", severity: "critical", passed: true, currentValue: "", expectedValue: "" },
+        { id: "SSH-003", category: "SSH", name: "Protocol", severity: "warning", passed: false, currentValue: "", expectedValue: "" },
+        { id: "PLUGIN-SKIP-1", category: "Plugin", name: "Skipped plugin check", severity: "warning", passed: false, currentValue: "n/a", expectedValue: "n/a", skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-global" } },
+      ];
+      const result = makeAuditResult({ categories: [{ name: "X", checks, score: 50, maxScore: 100 }] });
+      expect(extractPassedCheckIds(result)).toEqual(["SSH-001", "SSH-002"]);
+    });
+
+    it("should exclude skipped checks from extracted failed ID set", () => {
+      const checks: AuditCheck[] = [
+        { id: "SSH-001", category: "SSH", name: "Root login", severity: "critical", passed: true, currentValue: "", expectedValue: "" },
+        { id: "SSH-002", category: "SSH", name: "Password auth", severity: "critical", passed: false, currentValue: "", expectedValue: "" },
+        { id: "PLUGIN-SKIP-1", category: "Plugin", name: "Skipped plugin check", severity: "warning", passed: false, currentValue: "n/a", expectedValue: "n/a", skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-global" } },
+      ];
+      const result = makeAuditResult({ categories: [{ name: "X", checks, score: 50, maxScore: 100 }] });
+      expect(extractFailedCheckIds(result)).toEqual(["SSH-002"]);
+    });
+
+    it("should not regress a baseline check that became skipped in current audit", () => {
+      const baseline = {
+        version: 1 as const,
+        serverIp: "1.2.3.4",
+        lastUpdated: "2026-04-20T10:00:00Z",
+        bestScore: 66,
+        passedChecks: ["SSH-001", "SSH-002"],
+      };
+      const checks: AuditCheck[] = [
+        { id: "SSH-001", category: "SSH", name: "Root login", severity: "critical", passed: true, currentValue: "", expectedValue: "" },
+        { id: "SSH-002", category: "SSH", name: "Password auth", severity: "critical", passed: false, currentValue: "", expectedValue: "", skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-global" } },
+        { id: "SSH-003", category: "SSH", name: "Protocol", severity: "warning", passed: false, currentValue: "", expectedValue: "" },
+      ];
+      const audit = makeAuditResult({ categories: [{ name: "X", checks, score: 33, maxScore: 100 }] });
+
+      const result = checkRegression(baseline, audit);
+      // SSH-002 became skipped — not a regression, not a new pass
+      expect(result.regressions).toEqual([]);
+      expect(result.newPasses).toEqual([]);
     });
 
     it("should detect new passes", () => {
