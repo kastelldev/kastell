@@ -7,6 +7,7 @@ import { createSnapshot, listSnapshots, deleteSnapshot, restoreSnapshot } from "
 import { isSafeMode } from "../core/manage.js";
 import { logSafeModeBlock } from "../utils/safeMode.js";
 import { createProviderWithToken } from "../utils/providerFactory.js";
+import { confirmOrCancel } from "../utils/prompts.js";
 
 interface SnapshotOptions {
   all?: boolean;
@@ -53,16 +54,17 @@ async function snapshotCreate(
   }
 
   if (!options?.force) {
-    const { confirm } = await inquirer.prompt([
-      {
-        type: "confirm",
-        name: "confirm",
-        message: `Create snapshot of ${server.name}? (Estimated cost: ${costEstimate})`,
-        default: true,
-      },
-    ]);
-    if (!confirm) {
-      logger.info("Snapshot cancelled.");
+    // Destructive guard: refuse before mutation in non-TTY mode without --force (P142 Task 9)
+    const decision = await confirmOrCancel(
+      `Create snapshot of ${server.name}? (Estimated cost: ${costEstimate})`,
+      false,
+      "Use --force to create snapshot in non-interactive mode.",
+    );
+    if (!decision.confirmed) {
+      logger.info(decision.message);
+      if (decision.reason === "non-tty") {
+        markCommandFailed();
+      }
       return;
     }
   }
@@ -203,16 +205,17 @@ async function snapshotDelete(
   ]);
 
   if (!options?.force) {
-    const { confirm } = await inquirer.prompt([
-      {
-        type: "confirm",
-        name: "confirm",
-        message: `Delete snapshot ${selectedId}? This cannot be undone.`,
-        default: false,
-      },
-    ]);
-    if (!confirm) {
-      logger.info("Delete cancelled.");
+    // Destructive guard: refuse before mutation in non-TTY mode without --force (P142 Task 9)
+    const decision = await confirmOrCancel(
+      `Delete snapshot ${selectedId}? This cannot be undone.`,
+      false,
+      "Use --force to delete snapshot in non-interactive mode.",
+    );
+    if (!decision.confirmed) {
+      logger.info(decision.message);
+      if (decision.reason === "non-tty") {
+        markCommandFailed();
+      }
       return;
     }
   }
@@ -282,19 +285,21 @@ async function snapshotRestore(
   ]);
 
   if (!options?.force) {
-    const { confirm } = await inquirer.prompt([
-      {
-        type: "confirm",
-        name: "confirm",
-        message: `This will restore "${server.name}" from snapshot ${selectedId}. Current data will be OVERWRITTEN. Continue?`,
-        default: false,
-      },
-    ]);
-    if (!confirm) {
-      logger.info("Restore cancelled.");
+    // Destructive guard: refuse before mutation in non-TTY mode without --force (P142 Task 9)
+    const decision = await confirmOrCancel(
+      `This will restore "${server.name}" from snapshot ${selectedId}. Current data will be OVERWRITTEN. Continue?`,
+      false,
+      "Use --force to restore snapshot in non-interactive mode.",
+    );
+    if (!decision.confirmed) {
+      logger.info(decision.message);
+      if (decision.reason === "non-tty") {
+        markCommandFailed();
+      }
       return;
     }
 
+    // TTY-only typed-name second confirmation (preserves snapshot restore UX)
     const { confirmName } = await inquirer.prompt([
       {
         type: "input",

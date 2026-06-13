@@ -3,6 +3,7 @@ import * as config from "../../src/utils/config";
 import * as errorMapper from "../../src/utils/errorMapper";
 import * as serverSelect from "../../src/utils/serverSelect";
 import * as providerFactory from "../../src/utils/providerFactory";
+import * as inquirerPrompts from "@inquirer/prompts";
 import { snapshotCommand } from "../../src/commands/snapshot";
 import { restoreSnapshot } from "../../src/core/snapshot";
 import { createConsoleSpy } from "../helpers/consoleSpy.js";
@@ -11,11 +12,17 @@ jest.mock("inquirer");
 jest.mock("../../src/utils/config");
 jest.mock("../../src/utils/serverSelect");
 jest.mock("../../src/utils/providerFactory");
+jest.mock("@inquirer/prompts", () => ({
+  confirm: jest.fn(),
+}));
 
 const mockedConfig = config as jest.Mocked<typeof config>;
 const mockedServerSelect = serverSelect as jest.Mocked<typeof serverSelect>;
 const mockedProviderFactory = providerFactory as jest.Mocked<typeof providerFactory>;
 const mockedInquirer = inquirer as jest.Mocked<typeof inquirer>;
+const mockedInquirerConfirm = inquirerPrompts.confirm as jest.MockedFunction<
+  typeof inquirerPrompts.confirm
+>;
 
 const sampleServer = {
   id: "123",
@@ -64,10 +71,23 @@ const sampleSnapshot = {
 describe("snapshotCommand", () => {
   const spy = createConsoleSpy();
   let stderrSpy: jest.SpyInstance;
+  const originalIsTTY = process.stdin.isTTY;
+  const originalExitCode = process.exitCode;
+
+  function setIsTTY(value: boolean | undefined): void {
+    Object.defineProperty(process.stdin, "isTTY", { value, configurable: true, writable: true });
+  }
 
   beforeEach(() => {
     spy.setup();
     stderrSpy = jest.spyOn(console, "error").mockImplementation();
+    // P139 LESSONS: mockReset clears call history AND mockReturnValue/Once queues
+    mockedInquirerConfirm.mockReset();
+    mockedInquirer.prompt.mockReset();
+    // Default: confirmOrCancel returns true (accept)
+    mockedInquirerConfirm.mockResolvedValue(true);
+    // Default: TTY mode for pre-existing tests
+    setIsTTY(true);
     jest.clearAllMocks();
     process.exitCode = undefined;
     process.env.KASTELL_SAFE_MODE = "false";
@@ -78,6 +98,8 @@ describe("snapshotCommand", () => {
   afterEach(() => {
     spy.restore();
     stderrSpy?.mockRestore();
+    setIsTTY(originalIsTTY);
+    process.exitCode = originalExitCode;
     process.exitCode = undefined;
   });
 
@@ -106,7 +128,6 @@ describe("snapshotCommand", () => {
       mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
       mockProvider.getSnapshotCostEstimate.mockResolvedValue("\u20ac0.24/mo");
       mockProvider.createSnapshot.mockResolvedValue(sampleSnapshot);
-      mockedInquirer.prompt.mockResolvedValue({ confirm: true });
 
       await snapshotCommand("create", "test");
       expect(mockProvider.createSnapshot).toHaveBeenCalled();
@@ -115,7 +136,7 @@ describe("snapshotCommand", () => {
     it("should cancel when user declines", async () => {
       mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
       mockProvider.getSnapshotCostEstimate.mockResolvedValue("\u20ac0.24/mo");
-      mockedInquirer.prompt.mockResolvedValue({ confirm: false });
+      mockedInquirerConfirm.mockResolvedValueOnce(false);
 
       await snapshotCommand("create", "test");
       expect(mockProvider.createSnapshot).not.toHaveBeenCalled();
@@ -128,7 +149,7 @@ describe("snapshotCommand", () => {
 
       await snapshotCommand("create", "test", { force: true });
       expect(mockProvider.createSnapshot).toHaveBeenCalled();
-      expect(mockedInquirer.prompt).not.toHaveBeenCalled();
+      expect(mockedInquirerConfirm).not.toHaveBeenCalled();
     });
 
     it("should show dry-run info", async () => {
@@ -145,7 +166,6 @@ describe("snapshotCommand", () => {
       mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
       mockProvider.getSnapshotCostEstimate.mockResolvedValue("\u20ac0.24/mo");
       mockProvider.createSnapshot.mockRejectedValue(new Error("API error"));
-      mockedInquirer.prompt.mockResolvedValue({ confirm: true });
 
       await snapshotCommand("create", "test");
       const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: unknown[]) => c.join(" ")).join("\n");
@@ -259,9 +279,7 @@ describe("snapshotCommand", () => {
     it("should delete snapshot with confirmation", async () => {
       mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
       mockProvider.listSnapshots.mockResolvedValue([sampleSnapshot]);
-      mockedInquirer.prompt
-        .mockResolvedValueOnce({ selectedId: "snap-123" })
-        .mockResolvedValueOnce({ confirm: true });
+      mockedInquirer.prompt.mockResolvedValueOnce({ selectedId: "snap-123" });
 
       await snapshotCommand("delete", "test");
       expect(mockProvider.deleteSnapshot).toHaveBeenCalledWith("snap-123");
@@ -270,9 +288,8 @@ describe("snapshotCommand", () => {
     it("should cancel delete on decline", async () => {
       mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
       mockProvider.listSnapshots.mockResolvedValue([sampleSnapshot]);
-      mockedInquirer.prompt
-        .mockResolvedValueOnce({ selectedId: "snap-123" })
-        .mockResolvedValueOnce({ confirm: false });
+      mockedInquirer.prompt.mockResolvedValueOnce({ selectedId: "snap-123" });
+      mockedInquirerConfirm.mockResolvedValueOnce(false);
 
       await snapshotCommand("delete", "test");
       expect(mockProvider.deleteSnapshot).not.toHaveBeenCalled();
@@ -281,9 +298,7 @@ describe("snapshotCommand", () => {
     it("should handle delete error", async () => {
       mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
       mockProvider.listSnapshots.mockResolvedValue([sampleSnapshot]);
-      mockedInquirer.prompt
-        .mockResolvedValueOnce({ selectedId: "snap-123" })
-        .mockResolvedValueOnce({ confirm: true });
+      mockedInquirer.prompt.mockResolvedValueOnce({ selectedId: "snap-123" });
       mockProvider.deleteSnapshot.mockRejectedValue(new Error("API error"));
 
       await snapshotCommand("delete", "test");
@@ -331,7 +346,6 @@ describe("snapshotCommand", () => {
     mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
     mockProvider.getSnapshotCostEstimate.mockResolvedValue("€0.24/mo");
     mockProvider.createSnapshot.mockRejectedValue(new Error("API error"));
-    mockedInquirer.prompt.mockResolvedValue({ confirm: true });
 
     await snapshotCommand("create", "test");
 
@@ -341,7 +355,7 @@ describe("snapshotCommand", () => {
   it("should leave process.exitCode unset when create user declines", async () => {
     mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
     mockProvider.getSnapshotCostEstimate.mockResolvedValue("€0.24/mo");
-    mockedInquirer.prompt.mockResolvedValue({ confirm: false });
+    mockedInquirerConfirm.mockResolvedValueOnce(false);
 
     await snapshotCommand("create", "test");
 
@@ -431,9 +445,8 @@ describe("snapshotCommand", () => {
   it("should leave process.exitCode unset when delete user declines", async () => {
     mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
     mockProvider.listSnapshots.mockResolvedValue([sampleSnapshot]);
-    mockedInquirer.prompt
-      .mockResolvedValueOnce({ selectedId: "snap-123" })
-      .mockResolvedValueOnce({ confirm: false });
+    mockedInquirer.prompt.mockResolvedValueOnce({ selectedId: "snap-123" });
+    mockedInquirerConfirm.mockResolvedValueOnce(false);
 
     await snapshotCommand("delete", "test");
 
@@ -476,10 +489,8 @@ describe("snapshotCommand", () => {
     process.env.KASTELL_SAFE_MODE = "false";
     mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
     mockProvider.listSnapshots.mockResolvedValue([sampleSnapshot]);
-    mockedInquirer.prompt
-      .mockResolvedValueOnce({ selectedId: "snap-123" })
-      .mockResolvedValueOnce({ confirm: true })
-      .mockResolvedValueOnce({ confirmName: "wrong-name" });
+    mockedInquirer.prompt.mockResolvedValueOnce({ selectedId: "snap-123" });
+    mockedInquirer.prompt.mockResolvedValueOnce({ confirmName: "wrong-name" });
 
     await snapshotCommand("restore", "test");
 
@@ -492,7 +503,6 @@ describe("snapshotCommand", () => {
     mockProvider.listSnapshots.mockResolvedValue([sampleSnapshot]);
     mockedInquirer.prompt
       .mockResolvedValueOnce({ selectedId: "snap-123" })
-      .mockResolvedValueOnce({ confirm: true })
       .mockResolvedValueOnce({ confirmName: "coolify-test" });
     mockProvider.restoreSnapshot.mockRejectedValue(new Error("API error"));
 
@@ -505,9 +515,8 @@ describe("snapshotCommand", () => {
     process.env.KASTELL_SAFE_MODE = "false";
     mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
     mockProvider.listSnapshots.mockResolvedValue([sampleSnapshot]);
-    mockedInquirer.prompt
-      .mockResolvedValueOnce({ selectedId: "snap-123" })
-      .mockResolvedValueOnce({ confirm: false });
+    mockedInquirer.prompt.mockResolvedValueOnce({ selectedId: "snap-123" });
+    mockedInquirerConfirm.mockResolvedValueOnce(false);
 
     await snapshotCommand("restore", "test");
 
@@ -546,7 +555,6 @@ describe("snapshotCommand", () => {
         mode: "coolify" as const,
         costPerMonth: "€0.03/mo",
       });
-      mockedInquirer.prompt.mockResolvedValue({ confirm: true });
 
       await snapshotCommand("create", "test");
 
