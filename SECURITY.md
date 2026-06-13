@@ -210,3 +210,14 @@ Coolify and Dokploy are installed via remote shell scripts downloaded over HTTPS
 - Download-then-execute pattern (prevents partial execution on network interruption)
 - **Script validation before execution:** Downloaded scripts are verified to start with a shebang (`#!`) and have a minimum size (>100 bytes) before being executed. A truncated, empty, or non-script response will be rejected.
 - Install scripts are downloaded to `/tmp/` and cleaned up after execution
+
+## v2.3.1 local hardening
+
+The contracts below are shipped in v2.3.1 and apply to the local Kastell process (CLI and MCP server). They are operator-facing — refer to the CHANGELOG for the full list of code-level changes.
+
+- **`KASTELL_STRICT_HOST_KEY=true` (SSH TOFU behavior)** — by default, Kastell uses `StrictHostKeyChecking=accept-new` and emits a one-time TOFU warning on the first connection to a new host. Setting `KASTELL_STRICT_HOST_KEY=true` rejects unknown host keys outright. Operators who need zero TOFU exposure should pin this in their shell profile or CI environment.
+- **Non-TTY destructive command guard** — destructive CLI commands invoked without an attached TTY (CI, cron, automation) must be paired with an explicit `--force` flag, or with the command's documented opt-in (e.g. `--unsafe-skip-reboot`). Commands that do not receive an explicit opt-in exit with a non-zero status. This protects against accidental destructive execution from unattended scripts.
+- **Structured skipped checks (audit)** — checks that are not executed (VPS-irrelevant, platform-mismatch, missing prerequisite) are reported as a neutral, visible result in the audit output. Operators can see the full universe of checks and the reason for each skip; nothing is silently dropped from the audit trail.
+- **Windows secret file ACLs** — on Windows, secret-bearing files written by Kastell (e.g. token cache, fix history, audit snapshots) are created with restrictive ACLs that grant access only to the current user. POSIX `0o600` remains the source of truth on Linux/macOS; Windows uses the equivalent DACL via `icacls`.
+- **QuickWin JSON contract** — `kastell audit --json` QuickWin entries now include `id` (check ID) and `severity` in addition to the human-readable description. This makes QuickWins directly consumable by automation without re-parsing the description field. MCP `server_audit` responses include the same shape.
+- **FORBIDDEN preview reasons** — `--dry-run` output (CLI) and `server_fix` dry-run responses (MCP) now include a `forbiddenReason` for each FORBIDDEN-tier fix, explaining the risk (e.g. "requires reboot", "disrupts active SSH sessions", "can lock out remote operators"). Operators see why a fix is FORBIDDEN, not just that it is.
