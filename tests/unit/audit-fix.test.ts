@@ -437,6 +437,55 @@ describe("previewFixes — edge cases", () => {
   });
 });
 
+// ─── P142 Task 10: FixPreview forbiddenReason field ─────────────────────────
+
+describe("[P142 Task 10] FixPreview exposes forbiddenReason", () => {
+  it("previewSafeFixes includes forbiddenReason in forbiddenFixes when includeForbidden=true", () => {
+    const result = makeResult([
+      makeCategory("SSH", [
+        makeCheck({
+          id: "SSH-X",
+          category: "SSH",
+          name: "Test SSH",
+          severity: "critical",
+          passed: false,
+          fixCommand: "sed -i 's/a/b/' /etc/ssh/sshd_config",
+          safeToAutoFix: "FORBIDDEN" as const,
+          forbiddenReason: "Test SSH auth lockout",
+        }),
+      ]),
+    ]);
+
+    const out = previewSafeFixes(result, { includeForbidden: true });
+    expect(out.forbiddenFixes).toBeDefined();
+    expect(out.forbiddenFixes).toHaveLength(1);
+    const preview = out.forbiddenFixes![0];
+    expect(preview.checkId).toBe("SSH-X");
+    expect(preview.tier).toBe("FORBIDDEN");
+    expect(preview.forbiddenReason).toBe("Test SSH auth lockout");
+  });
+
+  it("previewSafeFixes omitted when includeForbidden is false", () => {
+    const result = makeResult([
+      makeCategory("SSH", [
+        makeCheck({
+          id: "SSH-Y",
+          category: "SSH",
+          name: "Test",
+          severity: "critical",
+          passed: false,
+          fixCommand: "echo test",
+          safeToAutoFix: "FORBIDDEN" as const,
+          forbiddenReason: "Test reason",
+        }),
+      ]),
+    ]);
+
+    const out = previewSafeFixes(result);
+    expect(out.forbiddenFixes).toBeUndefined();
+  });
+});
+
 // ─── Mutation-Killer: isFixCommandAllowed ────────────────────────────────────
 
 describe("isFixCommandAllowed mutation-killer", () => {
