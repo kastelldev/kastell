@@ -55,7 +55,8 @@ export function renderForbiddenBlock(
     const cmd = fix.command.length > COMMAND_TRUNCATE_LEN
       ? fix.command.slice(0, COMMAND_TRUNCATE_LEN - 1) + "…"
       : fix.command;
-    lines.push(`[F${idx + 1}] ${fix.checkId} — ${cmd}`);
+    const reasonSuffix = fix.forbiddenReason ? ` — reason: ${fix.forbiddenReason}` : "";
+    lines.push(`[F${idx + 1}] ${fix.checkId} — ${cmd}${reasonSuffix}`);
   });
   return lines.join("\n");
 }
