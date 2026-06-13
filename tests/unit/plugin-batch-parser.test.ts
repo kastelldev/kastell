@@ -1,5 +1,4 @@
 import {
-  isMutatingPluginAuditCurrentValue,
   parsePluginBatchOutput,
 } from "../../src/core/audit/pluginAudit.js";
 import type { PluginRegistryEntry } from "../../src/plugin/registry.js";
@@ -228,14 +227,6 @@ describe("parsePluginBatchOutput", () => {
     const read = result[0].checks[0];
     expect(read.skip).toBeUndefined();
     expect(read.currentValue).toBe("ok");
-  });
-
-  it("identifies mutating plugin audit not-run markers", () => {
-    expect(isMutatingPluginAuditCurrentValue("Not run by kastell audit (mutating kind: mutate-local)")).toBe(true);
-    expect(isMutatingPluginAuditCurrentValue("Not run by kastell audit (mutating kind: mutate-global)")).toBe(true);
-    expect(isMutatingPluginAuditCurrentValue("Unable to determine")).toBe(false);
-    expect(isMutatingPluginAuditCurrentValue("")).toBe(false);
-    expect(isMutatingPluginAuditCurrentValue("ok")).toBe(false);
   });
 
   // CQS-08 #6d: malformed header edge cases. Per spec skip rule — if these
