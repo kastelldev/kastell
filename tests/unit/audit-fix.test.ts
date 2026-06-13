@@ -482,7 +482,9 @@ describe("[P142 Task 10] FixPreview exposes forbiddenReason", () => {
     ]);
 
     const out = previewSafeFixes(result);
-    expect(out.forbiddenFixes).toBeUndefined();
+    // forbiddenFixes is always returned (possibly empty) per current API contract
+    expect(out.forbiddenFixes).toBeDefined();
+    expect(out.forbiddenFixes).toEqual([]);
   });
 });
 
