@@ -7,12 +7,12 @@ import ora, { type Ora } from "ora";
 
 export const logger = {
   info: (message: string) => {
-     
+
     console.log(chalk.blue("ℹ"), message);
   },
 
   success: (message: string) => {
-     
+
     console.log(chalk.green("✔"), message);
   },
 
@@ -25,7 +25,7 @@ export const logger = {
   },
 
   warning: (message: string) => {
-     
+
     console.error(chalk.yellow("⚠"), message);
   },
 
@@ -47,14 +47,117 @@ export function createSpinner(text: string): Ora {
   });
 }
 
-const REDACT_PATTERNS = /token|secret|password|credential|apikey|api_key/i;
+// ─── Recursive secret-shape redaction (P142 Task 5) ─────────────────────────
+//
+// The fixed depth of 8 is the approved P142 contract, not a runtime override:
+// it covers current provider, Axios, SSH error/cause, and notification payload
+// shapes while bounding hostile or accidental deep structures.
+export const MAX_REDACTION_DEPTH = 8;
+export const REDACTED = "[REDACTED]";
+export const CIRCULAR = "[Circular]";
+export const MAX_DEPTH = "[MaxDepth]";
+export const UNSERIALIZABLE = "[Unserializable]";
+
+// Sensitive-key patterns: matched case-insensitively against the key name.
+// EXPORTED so tests can audit the contract.
+export const SENSITIVE_KEY_PATTERNS: readonly RegExp[] = [
+  /password/i,
+  /passphrase/i,
+  /secret/i,
+  /token/i,
+  /apikey/i,
+  /api_key/i,
+  /api[-_]?token/i,
+  /authorization/i,
+  /credential/i,
+  /private[_-]?key/i,
+];
+
+// Provider value patterns: anchored against the whole string.
+// EXPORTED so tests can audit the contract.
+export const PROVIDER_TOKEN_PATTERNS: readonly RegExp[] = [
+  /^[A-Za-z0-9._-]*hcic_[A-Za-z0-9]+$/, // Hetzner
+  /^dop_v1_[A-Za-z0-9]+$/, // DigitalOcean
+];
+
+// String-shape patterns: matched anywhere in the value.
+const BEARER_PATTERN = /(^|\W)Bearer\s+[A-Za-z0-9._+/=_-]+/i;
+const JWT_PATTERN = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
+
+function isSensitiveKey(key: string): boolean {
+  return SENSITIVE_KEY_PATTERNS.some((re) => re.test(key));
+}
+
+function looksLikeSecretValue(value: string): boolean {
+  if (PROVIDER_TOKEN_PATTERNS.some((re) => re.test(value))) return true;
+  if (BEARER_PATTERN.test(value)) return true;
+  if (JWT_PATTERN.test(value)) return true;
+  return false;
+}
+
+function redactString(value: string): string {
+  if (looksLikeSecretValue(value)) return REDACTED;
+  return value;
+}
+
+function safeStringify(value: unknown): string {
+  // Bounded recursive serializer with cycle detection.
+  const seen = new WeakSet<object>();
+  function walk(node: unknown, depth: number): unknown {
+    if (node === null || node === undefined) return node;
+    const t = typeof node;
+    if (t === "string") return redactString(node as string);
+    if (t === "number" || t === "boolean" || t === "bigint") return node;
+    if (t === "function") return "[Function]";
+    if (t === "symbol") return node.toString();
+    if (depth > MAX_REDACTION_DEPTH) return MAX_DEPTH;
+    if (t !== "object") return String(node);
+    const obj = node as object;
+    if (seen.has(obj)) return CIRCULAR;
+    seen.add(obj);
+    if (Array.isArray(node)) {
+      return (node as unknown[]).map((item) => walk(item, depth + 1));
+    }
+    const out: Record<string, unknown> = {};
+    try {
+      for (const key of Object.keys(node as Record<string, unknown>)) {
+        try {
+          if (isSensitiveKey(key)) {
+            out[key] = REDACTED;
+            continue;
+          }
+          const descriptor = Object.getOwnPropertyDescriptor(node, key);
+          if (descriptor && descriptor.get) {
+            try {
+              out[key] = walk(descriptor.get.call(node), depth + 1);
+            } catch {
+              out[key] = UNSERIALIZABLE;
+            }
+            continue;
+          }
+          out[key] = walk((node as Record<string, unknown>)[key], depth + 1);
+        } catch {
+          out[key] = UNSERIALIZABLE;
+        }
+      }
+    } catch {
+      return UNSERIALIZABLE;
+    }
+    return out;
+  }
+  try {
+    return JSON.stringify(walk(value, 0));
+  } catch {
+    return UNSERIALIZABLE;
+  }
+}
 
 function redactArg(arg: unknown): unknown {
   if (typeof arg === "string") {
-    return REDACT_PATTERNS.test(arg) ? "[REDACTED]" : arg;
+    return redactString(arg);
   }
-  if (typeof arg === "object" && arg !== null) {
-    return "[object]";
+  if (arg !== null && typeof arg === "object") {
+    return safeStringify(arg);
   }
   return arg;
 }
