@@ -98,6 +98,8 @@ const mockAuditResult = {
   overallScore: 72,
   quickWins: [
     {
+      id: "SSH-ROOT-LOGIN",
+      severity: "critical",
       commands: ["sed -i 's/PermitRootLogin yes/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config"],
       currentScore: 72,
       projectedScore: 85,
