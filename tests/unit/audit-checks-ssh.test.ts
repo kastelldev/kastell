@@ -255,6 +255,34 @@ describe("parseSSHChecks", () => {
   });
 });
 
+// ─── P142 Task 10: FORBIDDEN reason invariant ──────────────────────────────
+
+describe("[P142 Task 10] SSH FORBIDDEN reason metadata", () => {
+  it("every SSH check has a non-empty forbiddenReason", () => {
+    const checks = parseSSHChecks("N/A", "bare");
+    for (const check of checks) {
+      expect(check.forbiddenReason).toBeDefined();
+      expect(typeof check.forbiddenReason).toBe("string");
+      expect((check.forbiddenReason as string).trim().length).toBeGreaterThan(0);
+    }
+  });
+
+  it("SSH-PASSWORD-AUTH reason names operator-lockout risk", () => {
+    const checks = parseSSHChecks("N/A", "bare");
+    const check = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_PASSWORD_AUTH)!;
+    const reason = check.forbiddenReason!.toLowerCase();
+    // Class: SSH authentication/daemon — name the auth change and lockout risk
+    expect(reason).toMatch(/lockout|password|authentication|remote access|disab/i);
+  });
+
+  it("SSH-ROOT-LOGIN reason names root access / lockout risk", () => {
+    const checks = parseSSHChecks("N/A", "bare");
+    const check = checks.find((c) => c.id === CHECK_IDS.SSH.SSH_ROOT_LOGIN)!;
+    const reason = check.forbiddenReason!.toLowerCase();
+    expect(reason).toMatch(/lockout|root|remote|disab|daemon|operator/i);
+  });
+});
+
 describe("[MUTATION-KILLER] SSH check string assertions", () => {
   const secureOutput = [
     "passwordauthentication no",
