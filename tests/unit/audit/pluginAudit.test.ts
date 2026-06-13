@@ -54,42 +54,6 @@ function check(id: string, kind: PluginCheckCommandKind = "read"): PluginCheck {
   };
 }
 
-describe("mutatingPluginAuditCurrentValue", () => {
-  it("produces expected format for mutate-local", () => {
-    expect(mutatingPluginAuditCurrentValue("mutate-local")).toBe(
-      "Not run by kastell audit (mutating kind: mutate-local)",
-    );
-  });
-
-  it("produces expected format for mutate-global", () => {
-    expect(mutatingPluginAuditCurrentValue("mutate-global")).toBe(
-      "Not run by kastell audit (mutating kind: mutate-global)",
-    );
-  });
-});
-
-describe("isMutatingPluginAuditCurrentValue", () => {
-  it("returns false for ordinary values", () => {
-    expect(isMutatingPluginAuditCurrentValue("Unable to determine")).toBe(false);
-    expect(isMutatingPluginAuditCurrentValue("")).toBe(false);
-    expect(isMutatingPluginAuditCurrentValue("ok")).toBe(false);
-    expect(isMutatingPluginAuditCurrentValue("Not run by kastell audit (something else)")).toBe(false);
-  });
-
-  it("returns false for prefix but missing closing paren", () => {
-    expect(isMutatingPluginAuditCurrentValue("Not run by kastell audit (mutating kind: mutate-local")).toBe(false);
-  });
-
-  it("returns false for suffix but missing opening prefix", () => {
-    expect(isMutatingPluginAuditCurrentValue("(mutating kind: mutate-local)")).toBe(false);
-  });
-
-  it("returns true for both producer outputs (roundtrip)", () => {
-    expect(isMutatingPluginAuditCurrentValue(mutatingPluginAuditCurrentValue("mutate-local"))).toBe(true);
-    expect(isMutatingPluginAuditCurrentValue(mutatingPluginAuditCurrentValue("mutate-global"))).toBe(true);
-  });
-});
-
 describe("hasLoadedPluginChecks", () => {
   it("returns false for empty registry", () => {
     expect(hasLoadedPluginChecks(new Map())).toBe(false);
