@@ -26,7 +26,7 @@ describe("serverCompare outputSchema", () => {
           id: "ssh-001",
           name: "SSH Hardening",
           status: "A_better" as const,
-          before: true,
+          before: "failed" as const,
           after: null,
         },
       ],
