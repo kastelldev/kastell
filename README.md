@@ -278,6 +278,17 @@ Kastell is built with security as a priority -- **11,206 tests** across 344 suit
 - Claude Code hooks: destroy-block prevents accidental `kastell destroy` without `--force`, pre-commit audit guard warns on score drops
 - **Zero Telemetry** — Kastell collects no usage data, analytics, or telemetry. Your server data never leaves your machine.
 
+## Security behavior (v2.3.1)
+
+This section documents security contracts shipped in v2.3.1. Future work is described elsewhere (see `CHANGELOG.md` for upcoming entries).
+
+- **`KASTELL_STRICT_HOST_KEY=true`** — when set, Kastell rejects unknown SSH host keys outright. Direct SSH connections (i.e. those that go through `accept-new`) emit a one-time Trust-On-First-Use (TOFU) warning so operators see the risk; combined with `KASTELL_STRICT_HOST_KEY=true`, the warning is promoted to a hard error.
+- **Non-TTY destructive commands** — in non-interactive environments (CI, scripts, automation), destructive operations require an explicit `--force` flag or the command's documented opt-in flag. Without one, the command exits with a non-zero status and a clear error.
+- **Structured skipped checks** — checks that are skipped (e.g. VPS-irrelevant, platform-mismatch, missing prerequisite) appear in audit output as a neutral, visible result rather than being silently dropped. Operators can see exactly which checks did not run and why.
+- **Windows secret files** — secret-bearing files written by Kastell on Windows receive restrictive ACLs (owner-only access). `0o600` POSIX permissions remain the source of truth on Linux/macOS; Windows uses the equivalent DACL.
+- **QuickWin JSON shape** — `audit --json` QuickWin entries now include a stable `id` (check ID) and `severity` field, in addition to the existing `description` and `commands`. This makes QuickWins programmatically consumable without parsing the human-readable description.
+- **FORBIDDEN previews include reasons** — when previewing fixes with `--dry-run` (or via `server_fix` MCP dry-run), each FORBIDDEN-tier fix now renders a short reason explaining why the fix is classified FORBIDDEN (e.g. "requires reboot", "disrupts active SSH sessions"). The reason is sourced from the check's `forbiddenReason` field.
+
 ## Installation
 
 ```bash
