@@ -86,7 +86,7 @@ function getOrCreatePersistedValue(filePath: string, generate: () => string): st
   // File does not exist — create it
   ensureKastellDir();
   const value = generate();
-  secureWriteFileSync(filePath, value);
+  secureWriteFileSync(filePath, value, { sensitivity: "secret" });
   return value;
 }
 
