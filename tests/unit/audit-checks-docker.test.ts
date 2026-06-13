@@ -63,6 +63,23 @@ const insecureDockerOutput = [
 ].join("\n");
 
 describe("parseDockerChecks", () => {
+  it("[P142 Task 10] every Docker check has a non-empty forbiddenReason", () => {
+    const checks = parseDockerChecks(secureDockerOutput, "bare");
+    for (const check of checks) {
+      expect(check.forbiddenReason).toBeDefined();
+      expect(typeof check.forbiddenReason).toBe("string");
+      expect((check.forbiddenReason as string).trim().length).toBeGreaterThan(0);
+    }
+  });
+
+  it("[P142 Task 10] skipped Docker checks also have non-empty forbiddenReason", () => {
+    const checks = parseDockerChecks("N/A", "bare");
+    for (const check of checks) {
+      expect(check.forbiddenReason).toBeDefined();
+      expect((check.forbiddenReason as string).trim().length).toBeGreaterThan(0);
+    }
+  });
+
   it("should return 32 checks for secure Docker setup", () => {
     const checks = parseDockerChecks(secureDockerOutput, "bare");
     expect(checks).toHaveLength(32);
