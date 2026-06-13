@@ -211,9 +211,13 @@ describe("P142 Task 9 — destructive guard inventory", () => {
 
     it("imports confirmOrCancel from utils/prompts", () => {
       if (!entry.expectImport) return;
-      expect(source).toMatch(
-        /import\s*\{\s*confirmOrCancel[^}]*\}\s*from\s*["']\.\.\/\.\.\/utils\/prompts\.js["']/,
-      );
+      // Find any import line ending in ../utils/prompts.js that references confirmOrCancel
+      const importLineRegex = /import\s*\{[^}]*\}\s*from\s*["'][^"']*utils\/prompts\.js["']/;
+      const match = source.match(importLineRegex);
+      expect(match).not.toBeNull();
+      if (match) {
+        expect(match[0]).toContain("confirmOrCancel");
+      }
     });
 
     it("calls confirmOrCancel at least once", () => {
