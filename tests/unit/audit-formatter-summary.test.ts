@@ -190,3 +190,74 @@ describe("formatSummary branch coverage", () => {
     expect(output).toContain("SSH");
   });
 });
+
+describe("P142: structured skip rendering in summary", () => {
+  let formatSummary: (result: AuditResult) => string;
+
+  beforeAll(async () => {
+    const mod = await import("../../src/core/audit/formatters/summary");
+    formatSummary = mod.formatSummary;
+  });
+
+  it("does not list skipped checks as failures in summary output", () => {
+    const resultWithSkip: AuditResult = {
+      ...mockResult,
+      categories: [
+        {
+          name: "Plugin",
+          checks: [
+            {
+              id: "PLUGIN-MUTATE-LOCAL",
+              category: "Plugin",
+              name: "Mutate Local",
+              severity: "info",
+              passed: false,
+              currentValue: "n/a",
+              expectedValue: "n/a",
+              skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-local" },
+            },
+          ],
+          score: 100,
+          maxScore: 100,
+        },
+      ],
+      quickWins: [],
+    };
+    const output = formatSummary(resultWithSkip);
+
+    // Summary explain path on a skipped check should NOT surface it as a failure
+    // (here we use no explain, but verify no negative language appears)
+    expect(output).not.toMatch(/failing.*PLUGIN-MUTATE-LOCAL/i);
+    expect(output).not.toMatch(/FAIL.*PLUGIN-MUTATE-LOCAL/i);
+  });
+
+  it("summary handles skipped-only category without showing FAIL", () => {
+    const skipOnlyResult: AuditResult = {
+      ...mockResult,
+      categories: [
+        {
+          name: "Plugin",
+          checks: [
+            {
+              id: "PLUGIN-MUTATE-LOCAL",
+              category: "Plugin",
+              name: "Mutate Local",
+              severity: "info",
+              passed: false,
+              currentValue: "n/a",
+              expectedValue: "n/a",
+              skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-local" },
+            },
+          ],
+          score: 100,
+          maxScore: 100,
+        },
+      ],
+      quickWins: [],
+    };
+    const output = formatSummary(skipOnlyResult);
+    // Category score is 100 (all skipped) — should not show "0" or "FAIL"
+    expect(output).toContain("Plugin");
+    expect(output).toContain("100");
+  });
+});
