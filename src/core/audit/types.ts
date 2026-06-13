@@ -38,6 +38,7 @@ export interface AuditCheck {
   tags?: string[];               // Searchable tags e.g. ["ssh", "authentication"]
   vpsIrrelevant?: boolean;       // true for checks not meaningful on VPS (physical-hardware)
   safeToAutoFix?: FixTier;       // SAFE (no restart), GUARDED (restart needed), FORBIDDEN (SSH/FW/Docker)
+  forbiddenReason?: string;      // Human-readable explanation when safeToAutoFix === "FORBIDDEN" (P142 Task 10)
   skip?: PluginCheckSkipReason;  // structured skip metadata (P142 Task 2)
 }
 
