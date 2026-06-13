@@ -32,6 +32,12 @@ jest.mock("../../src/core/audit/pluginFix.js", () => {
     executePluginFix: async () => ({ success: false }),
   };
 });
+jest.mock("../../src/utils/prompts.js", () => ({
+  confirmOrCancel: jest.fn(),
+}));
+jest.mock("../../src/utils/exitCode.js", () => ({
+  markCommandFailed: jest.fn(),
+}));
 
 import { fixSafeCommand } from "../../src/commands/fix.js";
 import { resolveServer } from "../../src/utils/serverSelect.js";
@@ -71,6 +77,8 @@ import * as regressionRunner from "../../src/core/audit/regression.js";
 import inquirer from "inquirer";
 import type { FixHistoryEntry } from "../../src/core/audit/types.js";
 import * as pluginFixModule from "../../src/core/audit/pluginFix.js";
+import * as promptsModule from "../../src/utils/prompts.js";
+import * as exitCodeModule from "../../src/utils/exitCode.js";
 
 const mockedResolveServer = resolveServer as jest.MockedFunction<typeof resolveServer>;
 const mockedCheckSsh = checkSshAvailable as jest.MockedFunction<typeof checkSshAvailable>;
@@ -99,6 +107,8 @@ const mockedSelectChecksForTarget = selectChecksForTarget as jest.MockedFunction
 const mockedBuildImpactContext = buildImpactContext as jest.MockedFunction<typeof buildImpactContext>;
 const mockedTryHandlerDispatch = tryHandlerDispatch as jest.MockedFunction<typeof tryHandlerDispatch>;
 const mockedRegression = regressionRunner as jest.Mocked<typeof regressionRunner>;
+const mockedConfirmOrCancel = promptsModule.confirmOrCancel as jest.MockedFunction<typeof promptsModule.confirmOrCancel>;
+const mockedMarkCommandFailed = exitCodeModule.markCommandFailed as jest.MockedFunction<typeof exitCodeModule.markCommandFailed>;
 
 // ─── Test Helpers ────────────────────────────────────────────────────────────
 
@@ -1588,6 +1598,87 @@ describe("fixSafeCommand", () => {
       const lastCallArgs = callsWithFailedIds[callsWithFailedIds.length - 1];
       expect(lastCallArgs).toContain("KERN-REAL");
       expect(lastCallArgs).not.toContain("KERN-SKIPPED");
+    });
+  });
+
+  // P142 Task 8: regression gate inspects ConfirmationDecision
+  describe("P142 Task 8: regression gate inspects ConfirmationDecision", () => {
+    const baselineWithPassedChecks = {
+      version: 1 as const,
+      serverIp: "1.2.3.4",
+      lastUpdated: "2026-04-20T10:00:00Z",
+      bestScore: 80,
+      passedChecks: ["KERN-01"],
+    };
+
+    function arrangeRegressionDetected() {
+      mockedResolveServer.mockResolvedValue(testServer);
+      mockedCheckSsh.mockReturnValue(true);
+      const auditResult = makeResult([
+        makeCategory("Kernel", [
+          makeCheck({ id: "KERN-01", category: "Kernel", severity: "warning", passed: false, fixCommand: "sysctl -w net.ipv4.tcp_syncookies=1", safeToAutoFix: "SAFE" }),
+        ]),
+      ], 70);
+      mockedRunAudit.mockResolvedValue({ success: true, data: auditResult });
+      mockedPreviewSafeFixes.mockReturnValue(defaultSafePlan);
+      mockedRegression.loadBaseline.mockReturnValue(baselineWithPassedChecks);
+      mockedRegression.checkRegression.mockReturnValue({
+        regressions: ["KERN-01"],
+        newPasses: [],
+        baselineScore: 80,
+        currentScore: 70,
+      });
+      mockedRegression.hasRegression.mockReturnValue(true);
+      mockedRegression.formatRegressionSummary.mockReturnValue([
+        { severity: "warning", text: "Regression: 1 check(s) regressed: KERN-01" },
+      ]);
+    }
+
+    it("proceeds past gate when decision.confirmed is true and does NOT call markCommandFailed", async () => {
+      arrangeRegressionDetected();
+      mockedConfirmOrCancel.mockResolvedValue({ confirmed: true, source: "force" });
+      mockedPrompt.mockResolvedValue({ confirm: true });
+      mockedBackupServer.mockResolvedValue({ success: true, backupPath: "/tmp/backup" } as BackupResult);
+      mockedSshExec.mockResolvedValue({ stdout: "", stderr: "", code: 0 });
+
+      await fixSafeCommand(undefined, { safe: true, force: true });
+
+      expect(mockedConfirmOrCancel).toHaveBeenCalledWith(
+        "Regression detected. Continue with fix?",
+        true,
+        "Regression detected. Use --force to proceed in non-interactive mode.",
+      );
+      expect(mockedMarkCommandFailed).not.toHaveBeenCalled();
+      expect(mockedBackupServer).toHaveBeenCalled();
+    });
+
+    it("returns early without markCommandFailed when decision.reason is 'declined'", async () => {
+      arrangeRegressionDetected();
+      mockedConfirmOrCancel.mockResolvedValue({
+        confirmed: false,
+        reason: "declined",
+        message: "Fix cancelled.",
+      });
+
+      await fixSafeCommand(undefined, { safe: true });
+
+      expect(mockedLogger.info).toHaveBeenCalledWith("Fix cancelled.");
+      expect(mockedBackupServer).not.toHaveBeenCalled();
+      expect(mockedMarkCommandFailed).not.toHaveBeenCalled();
+    });
+
+    it("calls markCommandFailed when decision.reason is 'non-tty' and does NOT proceed", async () => {
+      arrangeRegressionDetected();
+      mockedConfirmOrCancel.mockResolvedValue({
+        confirmed: false,
+        reason: "non-tty",
+        message: "Regression detected. Use --force to proceed in non-interactive mode.",
+      });
+
+      await fixSafeCommand(undefined, { safe: true });
+
+      expect(mockedBackupServer).not.toHaveBeenCalled();
+      expect(mockedMarkCommandFailed).toHaveBeenCalledTimes(1);
     });
   });
 });
