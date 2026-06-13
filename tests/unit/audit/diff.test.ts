@@ -1,5 +1,5 @@
-import { buildCategorySummary, formatCompareSummaryTerminal, formatCompareSummaryJson } from "../../../src/core/audit/diff.js";
-import type { AuditResult } from "../../../src/core/audit/types.js";
+import { buildCategorySummary, formatCompareSummaryTerminal, formatCompareSummaryJson, diffAudits, diffAuditsFlat } from "../../../src/core/audit/diff.js";
+import type { AuditResult, AuditCheck } from "../../../src/core/audit/types.js";
 
 describe("buildCategorySummary", () => {
   function makeAuditResult(overrides: Partial<AuditResult> = {}): AuditResult {
@@ -145,5 +145,151 @@ describe("formatCompareSummaryJson", () => {
     expect(() => JSON.parse(json)).not.toThrow();
     const parsed = JSON.parse(json);
     expect(parsed.scoreBefore).toBe(80);
+  });
+});
+
+describe("diffAudits — DTO AuditCheckState widening", () => {
+  function makeAudit(overrides: Partial<AuditResult> = {}): AuditResult {
+    return {
+      serverName: "test",
+      serverIp: "1.2.3.4",
+      platform: "bare",
+      timestamp: "2026-01-01T00:00:00.000Z",
+      auditVersion: "1.0.0",
+      categories: [],
+      overallScore: 50,
+      quickWins: [],
+      ...overrides,
+    };
+  }
+
+  function makeCheck(id: string, overrides: Partial<AuditCheck> = {}): AuditCheck {
+    return {
+      id,
+      category: "X",
+      name: id,
+      severity: "warning",
+      passed: false,
+      currentValue: "",
+      expectedValue: "",
+      ...overrides,
+    };
+  }
+
+  it("classifies comparison where after is skipped with status 'skipped' (not 'unchanged')", () => {
+    const before = makeAudit({
+      categories: [
+        { name: "X", checks: [makeCheck("C1", { passed: false })], score: 0, maxScore: 100 },
+      ],
+    });
+    const after = makeAudit({
+      categories: [
+        {
+          name: "X",
+          checks: [
+            makeCheck("C1", {
+              passed: false,
+              skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-global" },
+            }),
+          ],
+          score: 0,
+          maxScore: 100,
+        },
+      ],
+    });
+    const result = diffAudits(before, after);
+    expect(result.skipped).toHaveLength(1);
+    expect(result.skipped[0].id).toBe("C1");
+    expect(result.skipped[0].status).toBe("skipped");
+    expect(result.unchanged).toHaveLength(0);
+    expect(result.improvements).toHaveLength(0);
+    expect(result.regressions).toHaveLength(0);
+  });
+
+  it("DTO before/after fields are typed as AuditCheckState union (accept 'skipped' literal)", () => {
+    const before = makeAudit({
+      categories: [
+        { name: "X", checks: [makeCheck("C1", { passed: true })], score: 100, maxScore: 100 },
+      ],
+    });
+    const after = makeAudit({
+      categories: [
+        {
+          name: "X",
+          checks: [
+            makeCheck("C1", {
+              passed: false,
+              skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-global" },
+            }),
+          ],
+          score: 0,
+          maxScore: 100,
+        },
+      ],
+    });
+    const result = diffAudits(before, after);
+    // before: "passed" and after: "skipped" must be the AuditCheckState values
+    const entry = result.skipped[0];
+    expect(entry.before).toBe("passed");
+    expect(entry.after).toBe("skipped");
+  });
+});
+
+describe("diffAuditsFlat — neutral status for skip side", () => {
+  function makeAudit(overrides: Partial<AuditResult> = {}): AuditResult {
+    return {
+      serverName: "test",
+      serverIp: "1.2.3.4",
+      platform: "bare",
+      timestamp: "2026-01-01T00:00:00.000Z",
+      auditVersion: "1.0.0",
+      categories: [],
+      overallScore: 50,
+      quickWins: [],
+      ...overrides,
+    };
+  }
+
+  function makeCheck(id: string, overrides: Partial<AuditCheck> = {}): AuditCheck {
+    return {
+      id,
+      category: "X",
+      name: id,
+      severity: "warning",
+      passed: false,
+      currentValue: "",
+      expectedValue: "",
+      ...overrides,
+    };
+  }
+
+  it("classifies skip side in flat diff as neutral status (not both_pass/both_fail)", () => {
+    const before = makeAudit({
+      categories: [
+        { name: "X", checks: [makeCheck("C1", { passed: true })], score: 100, maxScore: 100 },
+      ],
+    });
+    const after = makeAudit({
+      categories: [
+        {
+          name: "X",
+          checks: [
+            makeCheck("C1", {
+              passed: false,
+              skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-global" },
+            }),
+          ],
+          score: 0,
+          maxScore: 100,
+        },
+      ],
+    });
+    const result = diffAuditsFlat(before, after);
+    expect(result.checks).toHaveLength(1);
+    const entry = result.checks[0];
+    // One side is skipped — must NOT be coerced into both_pass or both_fail
+    expect(["A_better", "B_better", "both_pass", "both_fail"]).not.toContain(entry.status);
+    expect(entry.before).toBe("passed");
+    expect(entry.after).toBe("skipped");
   });
 });
