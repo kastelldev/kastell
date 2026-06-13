@@ -84,6 +84,7 @@ type CheckOpts = {
   fixCommand?: string;
   safeToAutoFix?: "SAFE" | "GUARDED" | "FORBIDDEN";
   severity?: "critical" | "warning" | "info";
+  forbiddenReason?: string;
 };
 
 const makeCheck = (
@@ -100,6 +101,7 @@ const makeCheck = (
   expectedValue: "good",
   fixCommand: opts.fixCommand ?? `sysctl -w test.${id.toLowerCase()}=1`,
   safeToAutoFix: opts.safeToAutoFix ?? ("SAFE" as const),
+  ...(opts.forbiddenReason !== undefined ? { forbiddenReason: opts.forbiddenReason } : {}),
 });
 
 type SimpleCheck = ReturnType<typeof makeCheck>;
@@ -143,7 +145,10 @@ const defaultAuditResult = makeAuditResult([
   {
     name: "SSH",
     checks: [
-      makeCheck("SSH-PERMIT-ROOT", "SSH", { safeToAutoFix: "FORBIDDEN" }),
+      makeCheck("SSH-PERMIT-ROOT", "SSH", {
+        safeToAutoFix: "FORBIDDEN",
+        forbiddenReason: "PermitRootLogin change may lock out the only console-accessible user",
+      }),
     ],
   },
 ]);
@@ -347,6 +352,30 @@ describe("MCP server_fix tool", () => {
           expect.objectContaining({
             id: "SSH-PERMIT-ROOT",
             reason: expect.stringContaining("FORBIDDEN"),
+          }),
+        ]),
+      );
+    });
+
+    it("[P142 Task 10] exposes forbiddenReason from the check definition in rejection reason", async () => {
+      const result = await handleServerFix({ checks: ["SSH-PERMIT-ROOT"] });
+
+      expect(result.isError).toBeUndefined();
+      const parsed = JSON.parse(result.content[0].text) as Record<
+        string,
+        unknown
+      >;
+      const rejected = parsed.rejectedChecks as Array<{
+        id: string;
+        reason: string;
+      }>;
+      expect(rejected).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: "SSH-PERMIT-ROOT",
+            reason: expect.stringContaining(
+              "PermitRootLogin change may lock out the only console-accessible user",
+            ),
           }),
         ]),
       );
