@@ -179,19 +179,27 @@ export async function confirmDeployment(
 
 type ConfirmFn = (opts: { message: string; default: boolean }) => Promise<boolean>;
 
+export type ConfirmationDecision =
+  | { confirmed: true; source: "force" | "prompt" }
+  | { confirmed: false; reason: "declined" | "non-tty"; message: string };
+
+const DEFAULT_CANCEL_MESSAGE = "Use --force to proceed in non-interactive mode.";
+
 export async function confirmOrCancel(
   message: string,
   force: boolean,
-  cancelMessage = "Use --force to proceed in non-interactive mode.",
+  cancelMessage = DEFAULT_CANCEL_MESSAGE,
   confirmFn?: ConfirmFn,
-): Promise<boolean> {
-  if (force) return true;
+): Promise<ConfirmationDecision> {
+  if (force) return { confirmed: true, source: "force" };
 
   if (process.stdin.isTTY) {
     const fn = confirmFn ?? (await import("@inquirer/prompts")).confirm;
-    return fn({ message, default: false });
+    const accepted = await fn({ message, default: false });
+    if (accepted) return { confirmed: true, source: "prompt" };
+    return { confirmed: false, reason: "declined", message: "Operation cancelled." };
   }
 
   logger.warning(cancelMessage);
-  return false;
+  return { confirmed: false, reason: "non-tty", message: cancelMessage };
 }
