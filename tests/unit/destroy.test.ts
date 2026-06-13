@@ -58,6 +58,8 @@ describe("destroyCommand", () => {
   }
 
   beforeEach(() => {
+    // P142: deterministic reset to prevent cross-suite process.exitCode pollution
+    process.exitCode = 0;
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
     stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
