@@ -66,12 +66,18 @@ export function getAuditCheckState(check: AuditCheck): AuditCheckState {
   return check.passed ? "passed" : "failed";
 }
 
+/**
+ * Dispatch table for skip reason → human-readable string.
+ * Record<PluginCheckSkipReason["code"], ...> forces a compile-time error
+ * (TS2741) if a new code is added to the union without an entry here.
+ */
+const SKIP_REASON_DESCRIPTIONS: Record<PluginCheckSkipReason["code"], (skip: PluginCheckSkipReason) => string> = {
+  "legacy-mutating": (skip) => `Skipped: legacy v2 mutating check (${skip.kind}) is not run by audit`,
+};
+
 /** Render a structured skip reason as a human-readable display string. */
 export function describeCheckSkip(skip: PluginCheckSkipReason): string {
-  switch (skip.code) {
-    case "legacy-mutating":
-      return `Skipped: legacy v2 mutating check (${skip.kind}) is not run by audit`;
-  }
+  return SKIP_REASON_DESCRIPTIONS[skip.code](skip);
 }
 
 export interface AuditCategory {

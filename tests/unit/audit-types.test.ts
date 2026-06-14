@@ -1,4 +1,11 @@
 import { CHECK_IDS } from "../../src/core/audit/checkIds.js";
+import {
+  describeCheckSkip,
+  isSkippedCheck,
+  isFailedCheck,
+  isPassedCheck,
+  getAuditCheckState,
+} from "../../src/core/audit/types.js";
 import type {
   Severity,
   AuditCheck,
@@ -9,6 +16,7 @@ import type {
   CheckParser,
   ComplianceCoverage,
   ComplianceRef,
+  PluginCheckSkipReason,
 } from "../../src/core/audit/types.js";
 
 describe("Audit types", () => {
@@ -201,5 +209,30 @@ describe("AuditCheck with complianceRefs and tags", () => {
     expect(check.complianceRefs).toHaveLength(1);
     expect(check.complianceRefs![0].framework).toBe("CIS");
     expect(check.tags).toEqual(["ssh", "authentication"]);
+  });
+
+  describe("describeCheckSkip (P142 exhaustive guard)", () => {
+    it("renders legacy-mutating/mutate-local", () => {
+      const skip: PluginCheckSkipReason = { code: "legacy-mutating", apiVersion: "2", kind: "mutate-local" };
+      expect(describeCheckSkip(skip)).toContain("legacy v2 mutating check");
+      expect(describeCheckSkip(skip)).toContain("mutate-local");
+    });
+
+    it("renders legacy-mutating/mutate-global", () => {
+      const skip: PluginCheckSkipReason = { code: "legacy-mutating", apiVersion: "2", kind: "mutate-global" };
+      expect(describeCheckSkip(skip)).toContain("mutate-global");
+    });
+
+    it("tri-state helpers agree on skipped checks", () => {
+      const check: AuditCheck = {
+        id: "X", category: "X", name: "x", severity: "warning", passed: false,
+        currentValue: "n/a", expectedValue: "n/a",
+        skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-local" },
+      };
+      expect(isSkippedCheck(check)).toBe(true);
+      expect(isPassedCheck(check)).toBe(false);
+      expect(isFailedCheck(check)).toBe(false);
+      expect(getAuditCheckState(check)).toBe("skipped");
+    });
   });
 });
