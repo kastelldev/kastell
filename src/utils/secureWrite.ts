@@ -47,8 +47,9 @@ function applyPosixPermissions(targetPath: string, mode: 0o600 | 0o700): void {
 //
 // Use spawnSync with array args (NO shell, NO command string concat) to:
 //   1. Resolve current Windows identity via `whoami`
-//   2. Disable inheritance with `icacls <path> /inheritance:r`
-//   3. Grant the current user full control with `icacls <path> /grant <user>:(F)`
+//   2. Disable inheritance
+//   3. Remove every explicit DACL principal
+//   4. Add one current-user full-control rule and verify the result
 //
 // Failure policy is controlled by the caller via the `sensitivity` argument:
 //   - "secret" → THROWS (caller must know secrets are weakly protected)
@@ -90,6 +91,30 @@ function runSpawn(executable: string, args: string[]): { status: number | null; 
   };
 }
 
+function aclPrincipals(targetPath: string, output: string): string[] {
+  const normalizedTarget = targetPath.toLowerCase();
+  const principals: string[] = [];
+
+  for (const rawLine of output.split(/\r?\n/)) {
+    let line = rawLine.trim();
+    if (line.toLowerCase().startsWith(normalizedTarget)) {
+      line = line.slice(targetPath.length).trim();
+    }
+    const match = /^(.+?):\(/.exec(line);
+    if (match) principals.push(match[1].trim());
+  }
+
+  return principals;
+}
+
+function icaclsIdentity(identity: string): string {
+  const logonSession = /\\LogonSessionId_(\d+)_(\d+)$/i.exec(identity);
+  if (logonSession) {
+    return `*S-1-5-5-${logonSession[1]}-${logonSession[2]}`;
+  }
+  return /^S-\d(?:-\d+)+$/i.test(identity) ? `*${identity}` : identity;
+}
+
 function applyWindowsAcl(
   targetPath: string,
   sensitivity: PermissionSensitivity,
@@ -125,8 +150,7 @@ function applyWindowsAcl(
     return;
   }
 
-  // 2. Disable inheritance
-  const inheritance = runSpawn("icacls", [targetPath, "/inheritance:r"]);
+  const inheritance = runSpawn("icacls", [targetPath, "/inheritance:r", "/Q"]);
   if (inheritance.status !== 0) {
     const err = buildAclError(
       targetPath,
@@ -142,8 +166,46 @@ function applyWindowsAcl(
     return;
   }
 
-  // 3. Grant current user full control (F)
-  const grant = runSpawn("icacls", [targetPath, "/grant", `${identity}:(F)`, "/Q"]);
+  const inspect = runSpawn("icacls", [targetPath]);
+  if (inspect.status !== 0) {
+    const err = buildAclError(
+      targetPath,
+      {
+        executable: "icacls",
+        status: inspect.status,
+        stderr: inspect.stderr,
+        cause: inspect.error,
+      },
+      sensitivity,
+    );
+    handleAclFailure(err, sensitivity);
+    return;
+  }
+
+  let removalFailure: AclFailure | undefined;
+  for (const principal of new Set(aclPrincipals(targetPath, inspect.stdout))) {
+    const remove = runSpawn("icacls", [
+      targetPath,
+      "/remove",
+      icaclsIdentity(principal),
+      "/Q",
+    ]);
+    if (remove.status !== 0) {
+      removalFailure ??= {
+        executable: "icacls",
+        status: remove.status,
+        stderr: remove.stderr,
+        cause: remove.error,
+      };
+    }
+  }
+
+  const grant = runSpawn("icacls", [
+    targetPath,
+    "/grant:r",
+    `${identity}:(F)`,
+    "/Q",
+  ]);
   if (grant.status !== 0) {
     const err = buildAclError(
       targetPath,
@@ -157,6 +219,30 @@ function applyWindowsAcl(
     );
     handleAclFailure(err, sensitivity);
     return;
+  }
+
+  const verify = runSpawn("icacls", [targetPath]);
+  const principals = aclPrincipals(targetPath, verify.stdout);
+  if (
+    verify.status !== 0 ||
+    principals.length !== 1 ||
+    principals[0].toLowerCase() !== identity.toLowerCase() ||
+    !verify.stdout.toLowerCase().includes(`${identity.toLowerCase()}:(f)`)
+  ) {
+    const err = buildAclError(
+      targetPath,
+      {
+        executable: "icacls",
+        status: verify.status,
+        stderr:
+          verify.stderr ||
+          removalFailure?.stderr ||
+          "owner-only ACL verification failed",
+        cause: verify.error ?? removalFailure?.cause,
+      },
+      sensitivity,
+    );
+    handleAclFailure(err, sensitivity);
   }
 }
 

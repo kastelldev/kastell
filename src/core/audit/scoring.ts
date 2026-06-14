@@ -109,7 +109,10 @@ export function buildImpactContext(categories: AuditCategory[]): ImpactContext {
     }
     catWeightMap.set(
       cat.name,
-      cat.checks.reduce((sum, c) => sum + SEVERITY_WEIGHTS[c.severity], 0),
+      cat.checks.reduce(
+        (sum, c) => sum + (isSkippedCheck(c) ? 0 : SEVERITY_WEIGHTS[c.severity]),
+        0,
+      ),
     );
   }
 

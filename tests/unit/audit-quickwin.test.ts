@@ -247,6 +247,34 @@ describe("calculateQuickWins", () => {
     expect(winIds).not.toContain("T-SKIPPED");
   });
 
+  it("P142 Task 2: skipped checks do not dilute projected quick-win impact", () => {
+    const result = makeResult([
+      makeCategory("Test", [
+        makeCheck({
+          id: "T-REAL",
+          category: "Test",
+          severity: "warning",
+          passed: false,
+          fixCommand: "fix-real",
+        }),
+        makeCheck({
+          id: "T-SKIPPED",
+          category: "Test",
+          severity: "critical",
+          passed: false,
+          currentValue: "",
+          skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-local" },
+        }),
+      ]),
+    ]);
+    result.overallScore = 0;
+
+    const wins = calculateQuickWins(result);
+
+    expect(wins).toHaveLength(1);
+    expect(wins[0].projectedScore).toBe(100);
+  });
+
   it("P142 Task 2: all-skipped category produces no quick wins", () => {
     const result = makeResult([
       makeCategory("Test", [

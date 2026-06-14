@@ -58,14 +58,19 @@ beforeEach(async () => {
   mockedMkdirSync.mockReturnValue(undefined);
   mockedChmodSync.mockReturnValue(undefined);
   // Default: spawnSync for ACL/whoami calls succeeds
-  mockedSpawnSync.mockReturnValue({
-    stdout: "DOMAIN\\user\r\n",
+  mockedSpawnSync.mockImplementation(((cmd: string, args?: readonly string[]) => ({
+    stdout:
+      cmd === "whoami"
+        ? "DOMAIN\\user\r\n"
+        : args?.length === 1
+          ? `${args[0]} DOMAIN\\user:(F)\r\n`
+          : `processed file: ${args?.[0] ?? ""}\r\n`,
     stderr: "",
     status: 0,
     pid: 0,
     output: [],
     signal: null,
-  } as unknown as ReturnType<typeof spawnSync>);
+  })) as unknown as typeof spawnSync);
   const { clearCache } = await import("../../src/utils/secureWrite");
   clearCache();
 });
@@ -370,7 +375,7 @@ describe("Win32 ACL hardening (P142 Task 6)", () => {
     expect(whoamiCalls[0].args).toEqual([]);
   });
 
-  it("invokes icacls with /inheritance:r to disable inheritance (array args)", async () => {
+  it("disables inheritance before replacing explicit ACL entries", async () => {
     const { secureWriteFileSync } = secureWriteModule;
 
     secureWriteFileSync("C:\\Users\\test\\file.txt", "data");
@@ -378,17 +383,30 @@ describe("Win32 ACL hardening (P142 Task 6)", () => {
     const inheritanceCalls = getSpawnCalls().filter(
       (c) => c.cmd === "icacls" && c.args.includes("/inheritance:r"),
     );
-    expect(inheritanceCalls.length).toBeGreaterThanOrEqual(1);
-    // Path must be a single argument, not a string-concatenated command
+    expect(inheritanceCalls).toHaveLength(1);
     expect(inheritanceCalls[0].args[0]).toBe("C:\\Users\\test\\file.txt");
-    expect(inheritanceCalls[0].args[0]).not.toContain(" ");
   });
 
-  it("invokes icacls with /grant to give current user full control (F)", async () => {
-    mockedSpawnSync.mockImplementation(((cmd: string) => {
+  it("removes existing principals and grants only current-user full control", async () => {
+    let inspectionCount = 0;
+    mockedSpawnSync.mockImplementation(((cmd: string, args?: readonly string[]) => {
       if (cmd === "whoami") {
         return {
           stdout: "DOMAIN\\testuser\r\n",
+          stderr: "",
+          status: 0,
+          pid: 0,
+          output: [],
+          signal: null,
+        } as unknown as ReturnType<typeof spawnSync>;
+      }
+      if (args?.length === 1) {
+        inspectionCount += 1;
+        return {
+          stdout:
+            inspectionCount === 1
+              ? `${args[0]} NT AUTHORITY\\LogonSessionId_0_123:(F)\r\n Everyone:(R)\r\n DOMAIN\\testuser:(F)\r\n`
+              : `${args[0]} DOMAIN\\testuser:(F)\r\n`,
           stderr: "",
           status: 0,
           pid: 0,
@@ -410,16 +428,26 @@ describe("Win32 ACL hardening (P142 Task 6)", () => {
 
     secureWriteFileSync("C:\\Users\\test\\file.txt", "data");
 
-    const grantCalls = getSpawnCalls().filter(
-      (c) => c.cmd === "icacls" && c.args.includes("/grant"),
-    );
-    expect(grantCalls.length).toBeGreaterThanOrEqual(1);
-    // The grant target should be the current identity (DOMAIN\testuser) with :F (full control)
-    const grantArg = grantCalls[0].args.find((a: string) => a.startsWith("DOMAIN\\testuser:"));
-    expect(grantArg).toBe("DOMAIN\\testuser:(F)");
+    const calls = getSpawnCalls();
+    expect(calls).toContainEqual({
+      cmd: "icacls",
+      args: ["C:\\Users\\test\\file.txt", "/remove", "Everyone", "/Q"],
+    });
+    expect(calls).toContainEqual({
+      cmd: "icacls",
+      args: ["C:\\Users\\test\\file.txt", "/remove", "*S-1-5-5-0-123", "/Q"],
+    });
+    expect(calls).toContainEqual({
+      cmd: "icacls",
+      args: ["C:\\Users\\test\\file.txt", "/remove", "DOMAIN\\testuser", "/Q"],
+    });
+    expect(calls).toContainEqual({
+      cmd: "icacls",
+      args: ["C:\\Users\\test\\file.txt", "/grant:r", "DOMAIN\\testuser:(F)", "/Q"],
+    });
   });
 
-  it("uses array args (no shell, no command string concat) for icacls calls", async () => {
+  it("uses array args and never enables a shell for ACL calls", async () => {
     const { secureWriteFileSync } = secureWriteModule;
 
     secureWriteFileSync("C:\\Users\\test\\file.txt", "data");
@@ -443,12 +471,12 @@ describe("Win32 ACL hardening (P142 Task 6)", () => {
 
     secureWriteFileSync(pathWithSpaces, "data");
 
-    const inheritanceCalls = getSpawnCalls().filter(
+    const aclCalls = getSpawnCalls().filter(
       (c) => c.cmd === "icacls" && c.args.includes("/inheritance:r"),
     );
-    expect(inheritanceCalls.length).toBeGreaterThanOrEqual(1);
+    expect(aclCalls).toHaveLength(1);
     // Path with spaces must remain ONE argument, not split on spaces
-    expect(inheritanceCalls[0].args[0]).toBe(pathWithSpaces);
+    expect(aclCalls[0].args).toContain(pathWithSpaces);
   });
 
   it("preserves paths with shell metacharacters as a single argument", async () => {
@@ -457,11 +485,11 @@ describe("Win32 ACL hardening (P142 Task 6)", () => {
 
     secureWriteFileSync(dangerousPath, "data");
 
-    const inheritanceCalls = getSpawnCalls().filter(
+    const aclCalls = getSpawnCalls().filter(
       (c) => c.cmd === "icacls" && c.args.includes("/inheritance:r"),
     );
-    expect(inheritanceCalls.length).toBeGreaterThanOrEqual(1);
-    expect(inheritanceCalls[0].args[0]).toBe(dangerousPath);
+    expect(aclCalls).toHaveLength(1);
+    expect(aclCalls[0].args).toContain(dangerousPath);
   });
 
   it("does NOT call chmodSync on win32 (ACL is the permission mechanism)", async () => {

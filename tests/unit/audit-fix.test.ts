@@ -413,6 +413,33 @@ describe("previewFixes — edge cases", () => {
     expect(allCheckIds).not.toContain("FX-SKIP");
   });
 
+  it("P142 Task 2: skipped checks do not dilute estimated fix impact", () => {
+    const result = makeResult([
+      makeCategory("Test", [
+        makeCheck({
+          id: "FX-REAL",
+          category: "Test",
+          severity: "warning",
+          passed: false,
+          fixCommand: "chmod 600 /etc/test",
+        }),
+        makeCheck({
+          id: "FX-SKIP",
+          category: "Test",
+          severity: "critical",
+          passed: false,
+          currentValue: "",
+          skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-local" },
+        }),
+      ]),
+    ]);
+
+    const plan = previewFixes(result);
+
+    expect(plan.groups).toHaveLength(1);
+    expect(plan.groups[0].estimatedImpact).toBe(100);
+  });
+
   it("P142 Task 2: skipped checks are excluded from previewSafeFixes", () => {
     const result = makeResult([
       makeCategory("Test", [

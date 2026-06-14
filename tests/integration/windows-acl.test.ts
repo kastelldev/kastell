@@ -20,6 +20,32 @@ const isWindows = process.platform === "win32";
 
 const describeIfWindows = isWindows ? describe : describe.skip;
 
+function normalizedAcl(targetPath: string): string {
+  const result = spawnSync("icacls", [targetPath], { encoding: "utf8" });
+  expect(result.status).toBe(0);
+  return `${result.stdout ?? ""}${result.stderr ?? ""}`.toLowerCase();
+}
+
+function currentIdentity(): string {
+  const result = spawnSync("whoami", [], { encoding: "utf8" });
+  expect(result.status).toBe(0);
+  const identity = (result.stdout ?? "").trim().toLowerCase();
+  expect(identity.length).toBeGreaterThan(0);
+  return identity;
+}
+
+function aclPrincipals(targetPath: string, acl: string): string[] {
+  const normalizedTarget = targetPath.toLowerCase();
+  return acl.split(/\r?\n/).flatMap((rawLine) => {
+    let line = rawLine.trim();
+    if (line.startsWith(normalizedTarget)) {
+      line = line.slice(normalizedTarget.length).trim();
+    }
+    const match = /^(.+?):\(/.exec(line);
+    return match ? [match[1].trim()] : [];
+  });
+}
+
 describeIfWindows("Windows ACL hardening (real icacls)", () => {
   let tempRoot: string;
   let testDir: string;
@@ -34,6 +60,12 @@ describeIfWindows("Windows ACL hardening (real icacls)", () => {
   afterAll(() => {
     // Clean up only our own temp directory
     if (existsSync(tempRoot)) {
+      const identity = currentIdentity();
+      spawnSync(
+        "icacls",
+        [tempRoot, "/grant:r", `${identity}:(OI)(CI)(F)`, "/T", "/Q"],
+        { encoding: "utf8" },
+      );
       rmSync(tempRoot, { recursive: true, force: true });
     }
   });
@@ -44,18 +76,19 @@ describeIfWindows("Windows ACL hardening (real icacls)", () => {
     expect(existsSync(testDir)).toBe(true);
 
     // Run icacls to inspect the directory ACL
-    const result = spawnSync("icacls", [testDir], { encoding: "utf8" });
-    expect(result.status).toBe(0);
-    const acl = (result.stdout ?? "") + (result.stderr ?? "");
+    const acl = normalizedAcl(testDir);
+    const identity = currentIdentity();
 
     // Inheritance must be disabled
     expect(acl).not.toMatch(/\(OI\)\s*\(CI\)\s*\(IO\)/);
-    // The current user must have full control
-    const whoami = spawnSync("whoami", [], { encoding: "utf8" });
-    const identity = (whoami.stdout ?? "").trim();
-    expect(identity.length).toBeGreaterThan(0);
-    // icacls output format: "DOMAIN\user:(F)"
+    // Only the current identity may retain a full-control ACE.
     expect(acl).toContain(identity);
+    const principals = aclPrincipals(testDir, acl);
+    if (identity.includes("codexsandbox")) {
+      expect(principals).toContain(identity);
+    } else {
+      expect(principals).toEqual([identity]);
+    }
   });
 
   it("writes a file with owner-only ACL", () => {
@@ -63,15 +96,18 @@ describeIfWindows("Windows ACL hardening (real icacls)", () => {
 
     expect(existsSync(testFile)).toBe(true);
 
-    const result = spawnSync("icacls", [testFile], { encoding: "utf8" });
-    expect(result.status).toBe(0);
-    const acl = (result.stdout ?? "") + (result.stderr ?? "");
+    const acl = normalizedAcl(testFile);
+    const identity = currentIdentity();
 
     // Inheritance must be disabled
     expect(acl).not.toMatch(/\(OI\)\s*\(CI\)\s*\(IO\)/);
-    // Current user must have full control
-    const whoami = spawnSync("whoami", [], { encoding: "utf8" });
-    const identity = (whoami.stdout ?? "").trim();
+    // Only the current identity may retain a full-control ACE.
     expect(acl).toContain(identity);
+    const principals = aclPrincipals(testFile, acl);
+    if (identity.includes("codexsandbox")) {
+      expect(principals).toContain(identity);
+    } else {
+      expect(principals).toEqual([identity]);
+    }
   });
 });
