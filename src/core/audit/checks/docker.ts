@@ -101,7 +101,7 @@ function makeDockerSkippedChecks(severity: "info" | "warning"): AuditCheck[] {
     expectedValue: "Docker installed and configured securely",
     fixCommand: "curl -fsSL https://get.docker.com -o /tmp/get-docker.sh && sh /tmp/get-docker.sh && rm -f /tmp/get-docker.sh",
     safeToAutoFix: "FORBIDDEN",
-    forbiddenReason: DOCKER_FORBIDDEN_REASONS[def.id] ?? "Installing Docker impacts platform workloads; manual review of platform stack required.",
+    forbiddenReason: DOCKER_FORBIDDEN_REASONS.DCK_PID_MODE ?? "Installing Docker impacts platform workloads; manual review of platform stack required.",
     explain: severity === "info"
       ? "Docker is not installed on this server. Checks skipped."
       : "Docker is expected on this platform but was not found.",
@@ -498,7 +498,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
     expectedValue: "AppArmor profile applied to running containers",
     fixCommand: "docker run --security-opt apparmor=docker-default ...",
     safeToAutoFix: "FORBIDDEN",
-    forbiddenReason: DOCKER_FORBIDDEN_REASONS.DCK_APPARMOR_PROFILE,
+    forbiddenReason: DOCKER_FORBIDDEN_REASONS.DCK_NO_EXPERIMENTAL,
     explain: "AppArmor profiles restrict container file system access and capabilities via MAC enforcement.",
   };
 
@@ -797,7 +797,7 @@ export const parseDockerChecks: CheckParser = (sectionOutput: string, platform: 
     expectedValue: "Swarm mode inactive (if not intentionally used)",
     fixCommand: "docker swarm leave --force (if swarm not intentionally used)",
     safeToAutoFix: "FORBIDDEN",
-    forbiddenReason: DOCKER_FORBIDDEN_REASONS.DCK_SWARM_INACTIVE,
+    forbiddenReason: DOCKER_FORBIDDEN_REASONS.DCK_BRIDGE_NFCALL,
     explain: "Docker Swarm mode opens additional network ports and management APIs; disable if not actively used.",
   };
 

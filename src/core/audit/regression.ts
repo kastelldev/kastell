@@ -42,6 +42,10 @@ export function extractFailedCheckIds(result: AuditResult): string[] {
   return result.categories.flatMap((c) => c.checks.filter(isFailedCheck).map((ch) => ch.id));
 }
 
+export function extractSkippedCheckIds(result: AuditResult): string[] {
+  return result.categories.flatMap((c) => c.checks.filter(isSkippedCheck).map((ch) => ch.id));
+}
+
 export async function saveBaseline(
   audit: AuditResult,
   existing?: RegressionBaseline | null,
@@ -88,12 +92,7 @@ export function checkRegression(
   // count as a regression — it's not a fail, just an unsupported check.
   // Build a "neutral" set of currently-skipped check IDs to exclude from
   // regression detection.
-  const currentlySkipped = new Set<string>();
-  for (const category of audit.categories) {
-    for (const check of category.checks) {
-      if (isSkippedCheck(check)) currentlySkipped.add(check.id);
-    }
-  }
+  const currentlySkipped = new Set(extractSkippedCheckIds(audit));
 
   const regressions: string[] = [];
   for (const id of baselinePassed) {
