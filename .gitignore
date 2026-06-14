@@ -189,3 +189,4 @@ docs/audits/
 # Local /simplify investigation scratch space (e.g. tmp/p140-diff.patch).
 # Never commit; this dir is a sandbox for diff/e2e artifacts.
 tmp/
+.simplify-sandbox*/
