@@ -57,8 +57,10 @@ export const categoryArb = fc.record({
   connectionError: fc.option(fc.boolean(), { nil: undefined }),
 });
 
-// Quick win arbitrary
+// Quick win arbitrary — matches quickWinSchema in snapshot.ts
 export const quickWinArb = fc.record({
+  id: fc.stringMatching(/^[A-Z][A-Z0-9-]{2,40}$/),
+  severity: fc.constantFrom("critical", "warning", "info" as const),
   commands: fc.array(nonEmptyString(200), { minLength: 1, maxLength: 3 }),
   currentScore: fc.integer({ min: 0, max: 100 }),
   projectedScore: fc.integer({ min: 0, max: 100 }),

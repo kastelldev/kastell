@@ -62,6 +62,8 @@ export const categorySchema = z.object({
 });
 
 export const quickWinSchema = z.object({
+  id: z.string(),
+  severity: z.enum(["critical", "warning", "info"]),
   commands: z.array(z.string()),
   currentScore: z.number(),
   projectedScore: z.number(),

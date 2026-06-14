@@ -116,6 +116,44 @@ describe("Property-based: Snapshot Schemas", () => {
         { numRuns: 100 },
       );
     });
+
+    it("rejects quick win missing id field", () => {
+      const { id: _id, ...noId } = {
+        id: "DUMMY",
+        severity: "warning" as const,
+        commands: ["x"],
+        currentScore: 50,
+        projectedScore: 60,
+        description: "d",
+      };
+      const result = quickWinSchema.safeParse(noId);
+      expect(result.success).toBe(false);
+    });
+
+    it("rejects quick win missing severity field", () => {
+      const { severity: _s, ...noSeverity } = {
+        id: "DUMMY",
+        severity: "warning" as const,
+        commands: ["x"],
+        currentScore: 50,
+        projectedScore: 60,
+        description: "d",
+      };
+      const result = quickWinSchema.safeParse(noSeverity);
+      expect(result.success).toBe(false);
+    });
+
+    it("rejects quick win with invalid severity value", () => {
+      const result = quickWinSchema.safeParse({
+        id: "DUMMY",
+        severity: "bogus",
+        commands: ["x"],
+        currentScore: 50,
+        projectedScore: 60,
+        description: "d",
+      });
+      expect(result.success).toBe(false);
+    });
   });
 
   describe("snapshotFileV2Schema", () => {
