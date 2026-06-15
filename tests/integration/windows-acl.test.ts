@@ -29,8 +29,14 @@ function normalizedAcl(targetPath: string): string {
 function currentIdentity(): string {
   const result = spawnSync("whoami", [], { encoding: "utf8" });
   expect(result.status).toBe(0);
-  const identity = (result.stdout ?? "").trim().toLowerCase();
+  const identity = (result.stdout ?? "").trim();
   expect(identity.length).toBeGreaterThan(0);
+  // icacls uses DOMAIN\username format; if whoami returns bare username, prepend computer name
+  if (!identity.includes("\\")) {
+    const computerResult = spawnSync("hostname", [], { encoding: "utf8" });
+    const computer = (computerResult.stdout ?? "").trim();
+    return `${computer}\\${identity}`.toLowerCase();
+  }
   return identity;
 }
 
