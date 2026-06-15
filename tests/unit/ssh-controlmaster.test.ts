@@ -25,6 +25,9 @@ jest.mock("fs", () => ({
   writeFileSync: jest.fn(),
   readFileSync: jest.fn(),
   statSync: jest.fn(() => ({ mtimeMs: Date.now(), dev: 0 })),
+  // applyPosixPermissions calls chmodSync on non-Windows; mock is a no-op
+  // (LESSONS: v2.2.6 chmodSync mock gap — Win32 no-op branch masked locally)
+  chmodSync: jest.fn(),
 }));
 
 const mockedSpawn = spawn as jest.MockedFunction<typeof spawn>;
