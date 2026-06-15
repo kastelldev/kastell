@@ -142,6 +142,39 @@ describe("formatMdReport", () => {
 
     expect(output).toContain("Quick");
   });
+
+  it("escapes backslashes before pipes in Markdown table cells", async () => {
+    const { formatMdReport } = await import("../../src/core/audit/formatters/report");
+    const result: AuditResult = {
+      ...mockResult,
+      categories: [
+        {
+          name: "Paths",
+          checks: [
+            {
+              id: "PATH-ESCAPING",
+              category: "Paths",
+              name: "Path escaping",
+              severity: "warning",
+              passed: false,
+              currentValue: String.raw`C:\current\|value`,
+              expectedValue: String.raw`C:\expected\|value`,
+              fixCommand: String.raw`printf 'C:\fix\|value'`,
+            },
+          ],
+          score: 0,
+          maxScore: 100,
+        },
+      ],
+      quickWins: [],
+    };
+
+    const output = formatMdReport(result);
+
+    expect(output).toContain(String.raw`C:\\current\\\|value`);
+    expect(output).toContain(String.raw`C:\\expected\\\|value`);
+    expect(output).toContain(String.raw`printf 'C:\\fix\\\|value'`);
+  });
 });
 
 describe("P142: structured skip rendering in HTML+MD report", () => {

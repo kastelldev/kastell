@@ -19,6 +19,11 @@ function escapeHtml(str: string): string {
     .replace(/"/g, "&quot;");
 }
 
+/** Escape Markdown table delimiters without allowing existing escapes to interfere. */
+function escapeMarkdownTableCell(str: string): string {
+  return str.replace(/\\/g, "\\\\").replace(/\|/g, "\\|");
+}
+
 /** Score color for HTML */
 function scoreColorHtml(score: number): string {
   if (score >= 80) return "#2d7d46";
@@ -152,10 +157,10 @@ export function formatMdReport(result: AuditResult): string {
 
     for (const check of category.checks) {
       const status = isSkippedCheck(check) ? "Skipped" : check.passed ? "Pass" : "FAIL";
-      const fix = check.fixCommand ? `\`${check.fixCommand.replace(/\|/g, "\\|")}\`` : "-";
+      const fix = check.fixCommand ? `\`${escapeMarkdownTableCell(check.fixCommand)}\`` : "-";
       const skipNote = check.skip ? ` _${describeCheckSkip(check.skip)}_` : "";
       lines.push(
-        `| ${check.name}${skipNote} | ${check.severity} | ${status} | ${check.currentValue.replace(/\|/g, "\\|")} | ${check.expectedValue.replace(/\|/g, "\\|")} | ${fix} |`,
+        `| ${check.name}${skipNote} | ${check.severity} | ${status} | ${escapeMarkdownTableCell(check.currentValue)} | ${escapeMarkdownTableCell(check.expectedValue)} | ${fix} |`,
       );
     }
     lines.push("");
