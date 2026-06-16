@@ -6,7 +6,6 @@ import { KASTELL_DIR } from "../../utils/paths.js";
 import { withFileLock } from "../../utils/fileLock.js";
 import { formatRelativeTime } from "../../utils/dates.js";
 import type { AuditResult, RegressionBaseline, RegressionResult, RegressionLine } from "./types.js";
-import { isPassedCheck, isFailedCheck, isSkippedCheck } from "./types.js";
 
 const REGRESSION_DIR = join(KASTELL_DIR, "regression");
 
@@ -28,23 +27,11 @@ export function loadBaseline(serverIp: string): RegressionBaseline | null {
   }
 }
 
-export function extractPassedCheckIds(audit: AuditResult): string[] {
-  const ids: string[] = [];
-  for (const category of audit.categories) {
-    for (const check of category.checks) {
-      if (isPassedCheck(check)) ids.push(check.id);
-    }
-  }
-  return ids.sort();
-}
-
-export function extractFailedCheckIds(result: AuditResult): string[] {
-  return result.categories.flatMap((c) => c.checks.filter(isFailedCheck).map((ch) => ch.id));
-}
-
-export function extractSkippedCheckIds(result: AuditResult): string[] {
-  return result.categories.flatMap((c) => c.checks.filter(isSkippedCheck).map((ch) => ch.id));
-}
+// Re-export extractors from their new home so existing call sites in
+// commands/, mcp/, and tests keep working. Domain-correct location is
+// `./checks.ts`; the regression module is just one of many consumers.
+import { extractFailedCheckIds, extractPassedCheckIds, extractSkippedCheckIds } from "./checks.js";
+export { extractFailedCheckIds, extractPassedCheckIds, extractSkippedCheckIds };
 
 export async function saveBaseline(
   audit: AuditResult,
