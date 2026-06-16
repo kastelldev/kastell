@@ -1,4 +1,4 @@
-import { getServerMode, isBareServer, requireManagedMode } from "../../src/utils/modeGuard";
+import { getServerMode, getServerModeLabel, isBareServer, requireManagedMode } from "../../src/utils/modeGuard";
 import type { ServerRecord } from "../../src/types/index";
 import type { Platform } from "../../src/types/index";
 
@@ -99,4 +99,31 @@ describe("requireManagedMode", () => {
     expect(result).toContain("Dokploy");
   });
 
+});
+
+describe("getServerModeLabel", () => {
+  it("should return 'bare' for a server with mode='bare'", () => {
+    const record = makeRecord({ mode: "bare" });
+    expect(getServerModeLabel(record)).toBe("bare");
+  });
+
+  it("should return 'coolify' for a server with mode='coolify'", () => {
+    const record = makeRecord({ mode: "coolify" });
+    expect(getServerModeLabel(record)).toBe("coolify");
+  });
+
+  it("should return 'coolify' as fallback when server has no mode/platform", () => {
+    const record = makeRecord();
+    expect(getServerModeLabel(record)).toBe("coolify");
+  });
+
+  it("should return 'dokploy' for a server with platform='dokploy'", () => {
+    const record = makeRecord({ platform: "dokploy" });
+    expect(getServerModeLabel(record)).toBe("dokploy");
+  });
+
+  it("should return 'coolify' for a server with platform='coolify'", () => {
+    const record = makeRecord({ platform: "coolify" });
+    expect(getServerModeLabel(record)).toBe("coolify");
+  });
 });
