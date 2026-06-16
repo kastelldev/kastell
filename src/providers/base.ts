@@ -242,3 +242,26 @@ export function stripSensitiveData(error: unknown): void {
     }
   }
 }
+
+/**
+ * Default `lookupServerResource` implementation — shared by all 4 providers.
+ * Calls `provider.getServerDetails` and maps errors:
+ * - `BusinessError` (404/409) → "not-found"
+ * - any other error → "unknown" with the cause attached
+ * - success → "exists" with the server IP
+ */
+export async function defaultLookupServerResource(
+  provider: { getServerDetails(id: string): Promise<{ ip: string }> },
+  serverId: string,
+): Promise<ProviderResourceLookup> {
+  try {
+    const details = await provider.getServerDetails(serverId);
+    return { status: "exists", providerId: serverId, ip: details.ip };
+  } catch (error: unknown) {
+    if (error instanceof BusinessError) {
+      return { status: "not-found", providerId: serverId };
+    }
+    const cause = error instanceof Error ? error : new Error(String(error));
+    return { status: "unknown", providerId: serverId, cause };
+  }
+}
