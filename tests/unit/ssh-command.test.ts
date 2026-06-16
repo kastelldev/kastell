@@ -1,7 +1,7 @@
 import inquirer from "inquirer";
 import * as config from "../../src/utils/config";
 import * as sshUtils from "../../src/utils/ssh";
-import { sshCommand } from "../../src/commands/ssh";
+import { sshCommand, __resetSshCommandTofuWarning } from "../../src/commands/ssh";
 
 jest.mock("../../src/utils/config");
 jest.mock("../../src/utils/ssh");
@@ -128,6 +128,9 @@ describe("sshCommand", () => {
       // Default: getObservedHostFingerprint returns null (failure does not block)
       mockedSsh.getObservedHostFingerprint.mockReturnValue(null);
       mockedSsh.getHostKeyPolicy.mockReturnValue("accept-new");
+      // P143 Task 9: reset the one-time-per-process warning flag so each
+      // test starts from a clean slate (otherwise dedup state leaks).
+      __resetSshCommandTofuWarning();
     });
 
     afterEach(() => {
@@ -191,6 +194,30 @@ describe("sshCommand", () => {
       const errOutput = consoleErrorSpy.mock.calls.map((c: any[]) => c.join(" ")).join("\n").toLowerCase();
       expect(errOutput).not.toContain("tofu");
       expect(mockedSsh.getObservedHostFingerprint).not.toHaveBeenCalled();
+    });
+
+    // P143 Task 9: one-time-per-process interactive SSH TOFU warning.
+    // The first interactive connect in a process logs the warning; a
+    // second interactive connect in the same process must NOT log it
+    // again. beforeEach resets the flag, so we test the in-process
+    // transition by NOT resetting between the two sshCommand() calls.
+    it("should log TOFU warning only on the first interactive connect (process lifetime)", async () => {
+      delete process.env.KASTELL_STRICT_HOST_KEY;
+      await sshCommand("1.2.3.4");
+      const firstErrOutput = consoleErrorSpy.mock.calls
+        .map((c: any[]) => c.join(" "))
+        .join("\n")
+        .toLowerCase();
+      expect(firstErrOutput).toContain("tofu");
+
+      consoleErrorSpy.mockClear();
+
+      await sshCommand("1.2.3.4");
+      const secondErrOutput = consoleErrorSpy.mock.calls
+        .map((c: any[]) => c.join(" "))
+        .join("\n")
+        .toLowerCase();
+      expect(secondErrOutput).not.toContain("tofu");
     });
   });
 });

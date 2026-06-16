@@ -1588,6 +1588,9 @@ describe("fixSafeCommand", () => {
       mockedPrompt.mockResolvedValue({ confirm: true });
       mockedBackupServer.mockResolvedValue({ success: true, backupPath: "/tmp/backup" } as BackupResult);
       mockedSshExec.mockResolvedValue({ stdout: "", stderr: "", code: 0 });
+      // P143 Task 9 (C2): regression module is fully mocked — provide a
+      // skip-aware return value (real helper excludes skipped checks).
+      mockedRegression.extractFailedCheckIds.mockReturnValue(["KERN-REAL"]);
 
       // Capture the failedCheckIds argument passed to getPluginBackupPaths.
       // pluginFix is fully mocked at the top of this file with a plain
@@ -1612,6 +1615,65 @@ describe("fixSafeCommand", () => {
       const lastCallArgs = callsWithFailedIds[callsWithFailedIds.length - 1];
       expect(lastCallArgs).toContain("KERN-REAL");
       expect(lastCallArgs).not.toContain("KERN-SKIPPED");
+    });
+  });
+
+  // P143 Task 9 (C2): CLI fix command delegates failed-check ID extraction to extractFailedCheckIds()
+  describe("P143 Task 9: CLI fix command uses extractFailedCheckIds helper", () => {
+    it("delegates failed-check ID extraction to extractFailedCheckIds() helper", async () => {
+      mockedResolveServer.mockResolvedValue(testServer);
+      mockedCheckSsh.mockReturnValue(true);
+
+      const auditResult = makeResult([
+        makeCategory("Kernel", [
+          makeCheck({ id: "KERN-REAL", category: "Kernel", severity: "warning", passed: false, fixCommand: "sysctl -w x=1" }),
+          makeCheck({ id: "KERN-FAKE", category: "Kernel", severity: "warning", passed: true }),
+        ]),
+      ]);
+      mockedRunAudit.mockResolvedValue({ success: true, data: auditResult });
+      mockedPreviewSafeFixes.mockReturnValue({
+        safePlan: {
+          groups: [{
+            severity: "warning",
+            checks: [{
+              id: "KERN-REAL",
+              category: "Kernel",
+              name: "Real",
+              severity: "warning",
+              fixCommand: "sysctl -w x=1",
+            }],
+            estimatedImpact: 3,
+          }],
+        },
+        guardedCount: 0,
+        forbiddenCount: 0,
+        guardedIds: [],
+      });
+      // C2: command path must call helper (not inline filter+map)
+      mockedRegression.extractFailedCheckIds.mockReturnValue(["KERN-REAL"]);
+      mockedPrompt.mockResolvedValue({ confirm: true });
+      mockedBackupServer.mockResolvedValue({ success: true, backupPath: "/tmp/backup" } as BackupResult);
+      mockedSshExec.mockResolvedValue({ stdout: "", stderr: "", code: 0 });
+
+      // Capture the failedCheckIds argument passed to getPluginBackupPaths.
+      const callsWithFailedIds: string[][] = [];
+      Object.defineProperty(pluginFixModule, "getPluginBackupPaths", {
+        value: (ids: string[]) => {
+          callsWithFailedIds.push([...ids]);
+          return [];
+        },
+        configurable: true,
+        writable: true,
+      });
+
+      await fixSafeCommand(undefined, { safe: true });
+
+      // C2: helper was called (not inline extraction)
+      expect(mockedRegression.extractFailedCheckIds).toHaveBeenCalledWith(auditResult);
+      // The IDs passed to getPluginBackupPaths come from the helper
+      expect(callsWithFailedIds.length).toBeGreaterThan(0);
+      const lastCallArgs = callsWithFailedIds[callsWithFailedIds.length - 1];
+      expect(lastCallArgs).toEqual(["KERN-REAL"]);
     });
   });
 
@@ -1646,6 +1708,9 @@ describe("fixSafeCommand", () => {
       mockedRegression.formatRegressionSummary.mockReturnValue([
         { severity: "warning", text: "Regression: 1 check(s) regressed: KERN-01" },
       ]);
+      // P143 Task 9 (C2): provide a default return for the mocked helper
+      // (real implementation mirrors auditResult shape; KERN-01 is a real fail).
+      mockedRegression.extractFailedCheckIds.mockReturnValue(["KERN-01"]);
     }
 
     it("proceeds past gate when decision.confirmed is true and does NOT call markCommandFailed", async () => {
