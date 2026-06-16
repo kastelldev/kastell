@@ -738,7 +738,13 @@ describe("config", () => {
       mockedFs.existsSync.mockReturnValue(true);
       mockedFs.readFileSync.mockReturnValue(JSON.stringify([staleRecord]));
 
-      const result = await saveServerAfterDuplicateIpVerification(newRecord, "stale-provider-id");
+      const result = await saveServerAfterDuplicateIpVerification(newRecord, {
+        id: staleRecord.id,
+        name: staleRecord.name,
+        provider: staleRecord.provider,
+        ip: staleRecord.ip,
+        mode: staleRecord.mode,
+      });
 
       expect(result).toEqual({
         kind: "created-persisted",
@@ -758,8 +764,14 @@ describe("config", () => {
       mockedFs.readFileSync.mockReturnValue(JSON.stringify([activeRecord]));
 
       await expect(
-        saveServerAfterDuplicateIpVerification(newRecord, "stale-provider-id"),
-      ).rejects.toThrow(/IP|exists|conflict/i);
+        saveServerAfterDuplicateIpVerification(newRecord, {
+          id: "stale-provider-id",
+          name: "stale-srv",
+          provider: "hetzner",
+          ip: staleIp,
+          mode: "coolify",
+        }),
+      ).rejects.toThrow(/IP|exists|conflict|mismatch/i);
       // No disk modification
       expect(secureWriteFileSync).not.toHaveBeenCalled();
     });
@@ -781,7 +793,51 @@ describe("config", () => {
       mockedFs.readFileSync.mockReturnValue(JSON.stringify([mutated]));
 
       await expect(
-        saveServerAfterDuplicateIpVerification(newRecord, "stale-provider-id"),
+        saveServerAfterDuplicateIpVerification(newRecord, {
+          id: staleRecord.id,
+          name: staleRecord.name,
+          provider: staleRecord.provider,
+          ip: staleRecord.ip,
+          mode: staleRecord.mode,
+        }),
+      ).rejects.toThrow(/mismatch|snapshot|change/i);
+      expect(secureWriteFileSync).not.toHaveBeenCalled();
+    });
+
+    it("rejects when conflict name changes between snapshot and CAS (concurrent rename)", async () => {
+      // Disk has been concurrently renamed since the snapshot was captured.
+      // The locked CAS re-reads the conflict, sees the new name, and the
+      // 5-field fingerprint (which includes `name`) detects the mismatch.
+      const renamedRecord = { ...staleRecord, name: "renamed-srv" };
+      mockedFs.existsSync.mockReturnValue(true);
+      mockedFs.readFileSync.mockReturnValue(JSON.stringify([renamedRecord]));
+
+      await expect(
+        saveServerAfterDuplicateIpVerification(newRecord, {
+          id: "stale-provider-id",
+          name: "stale-srv",
+          provider: "hetzner",
+          ip: staleIp,
+          mode: "coolify",
+        }),
+      ).rejects.toThrow(/mismatch|snapshot|change/i);
+      expect(secureWriteFileSync).not.toHaveBeenCalled();
+    });
+
+    it("rejects when conflict provider changes between snapshot and CAS (concurrent provider change)", async () => {
+      // Disk has been concurrently re-assigned to a different provider.
+      const mutated = { ...staleRecord, provider: "digitalocean" };
+      mockedFs.existsSync.mockReturnValue(true);
+      mockedFs.readFileSync.mockReturnValue(JSON.stringify([mutated]));
+
+      await expect(
+        saveServerAfterDuplicateIpVerification(newRecord, {
+          id: "stale-provider-id",
+          name: "stale-srv",
+          provider: "hetzner",
+          ip: staleIp,
+          mode: "coolify",
+        }),
       ).rejects.toThrow(/mismatch|snapshot|change/i);
       expect(secureWriteFileSync).not.toHaveBeenCalled();
     });
@@ -803,10 +859,17 @@ describe("config", () => {
 
       const recordA: ServerRecord = { ...newRecord, id: "provider-A" };
       const recordB: ServerRecord = { ...newRecord, id: "provider-B" };
+      const sharedSnapshot = {
+        id: staleRecord.id,
+        name: staleRecord.name,
+        provider: staleRecord.provider,
+        ip: staleRecord.ip,
+        mode: staleRecord.mode,
+      };
 
       const [first, second] = await Promise.allSettled([
-        saveServerAfterDuplicateIpVerification(recordA, "stale-provider-id"),
-        saveServerAfterDuplicateIpVerification(recordB, "stale-provider-id"),
+        saveServerAfterDuplicateIpVerification(recordA, sharedSnapshot),
+        saveServerAfterDuplicateIpVerification(recordB, sharedSnapshot),
       ]);
 
       const statuses = [first.status, second.status].sort();

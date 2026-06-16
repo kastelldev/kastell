@@ -97,18 +97,33 @@ export type SaveServerResult =
   | { kind: "created-persisted"; server: ServerRecord; replacedStaleServer?: Readonly<ServerRecord> };
 
 /**
+ * Snapshot of a conflict's immutable fields, captured by the caller before
+ * the locked CAS re-read. Required so the CAS can detect a concurrent
+ * mutation of the conflict (e.g. rename, re-assign to another provider)
+ * between the snapshot and the lock acquisition. 5 fields per the P143
+ * design: id, name, provider, ip, mode.
+ */
+export type ConflictSnapshot = {
+  id: string;
+  name: string;
+  provider: string;
+  ip: string;
+  mode: ServerRecord["mode"];
+};
+
+/**
  * Compare-and-swap duplicate-IP recovery.
  *
  * Only callable when a previous `saveServer` (or its own looped re-entry)
  * detected a duplicate concrete IP. The caller MUST have already verified
  * with the provider API that the conflicting local record is gone
- * (`lookupServerResource` returned `not-found`) and MUST pass that record's
- * `id` as `verifiedMissingProviderId` so this helper can refuse to clobber
- * an active conflict that appears in the meantime.
+ * (`lookupServerResource` returned `not-found`) and MUST pass the
+ * conflict's immutable fields as `conflictSnapshot` so this helper can
+ * refuse to clobber a record that has been concurrently mutated on disk.
  *
  * Inside the file lock we re-read servers, find the conflict by IP, and
  * compare the immutable fields of the on-disk conflict against
- * `verifiedMissingProviderId` (id, name, provider, ip, mode/defaulted mode).
+ * `conflictSnapshot` (id, name, provider, ip, mode/defaulted mode).
  * If anything mismatches we reject — the local registry has changed since
  * the snapshot was captured and a CAS would be unsafe.
  *
@@ -120,10 +135,12 @@ export type SaveServerResult =
  */
 export async function saveServerAfterDuplicateIpVerification(
   record: ServerRecord,
-  verifiedMissingProviderId?: string,
+  conflictSnapshot?: ConflictSnapshot,
 ): Promise<SaveServerResult> {
-  if (!verifiedMissingProviderId) {
-    throw new Error("saveServerAfterDuplicateIpVerification: verifiedMissingProviderId is required (lookup not performed)");
+  if (!conflictSnapshot) {
+    throw new Error(
+      "saveServerAfterDuplicateIpVerification: conflictSnapshot is required (lookup not performed)",
+    );
   }
   return await withFileLock(SERVERS_FILE, () => {
     ensureConfigDir();
@@ -144,9 +161,11 @@ export async function saveServerAfterDuplicateIpVerification(
     const conflictMode = (conflict.mode ?? "coolify") as ServerRecord["mode"];
     const recordMode = (record.mode ?? "coolify") as ServerRecord["mode"];
     if (
-      conflict.id !== verifiedMissingProviderId ||
-      conflict.ip !== record.ip ||
-      conflictMode !== recordMode
+      conflict.id !== conflictSnapshot.id ||
+      conflict.name !== conflictSnapshot.name ||
+      conflict.provider !== conflictSnapshot.provider ||
+      conflict.ip !== conflictSnapshot.ip ||
+      conflictMode !== conflictSnapshot.mode
     ) {
       throw new Error(
         `saveServerAfterDuplicateIpVerification: conflict snapshot mismatch for IP ${record.ip} (concurrent registry change)`,

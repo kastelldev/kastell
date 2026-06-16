@@ -4,7 +4,7 @@ import { createProviderWithToken } from "../utils/providerFactory.js";
 import { getBareCloudInit } from "../utils/cloudInit.js";
 import { getAdapter } from "../adapters/factory.js";
 import { findLocalSshKey, generateSshKey, getSshKeyName } from "../utils/sshKey.js";
-import { saveServer, updateServer, saveServerAfterDuplicateIpVerification, getServers } from "../utils/config.js";
+import { saveServer, updateServer, saveServerAfterDuplicateIpVerification, getServers, type ConflictSnapshot } from "../utils/config.js";
 import { getTemplateDefaults } from "../utils/templates.js";
 import { getErrorMessage, mapProviderError } from "../utils/errorMapper.js";
 import { KastellError } from "../utils/errors.js";
@@ -120,23 +120,34 @@ async function tryRecoverDuplicateIp(params: {
   const duplicateIp = dupMatch[1];
   if (duplicateIp !== initialIp) return undefined;
 
-  // Snapshot the conflicting record id under a short config read.
-  // getServers() uses memoizeOnStat, so this is a fast cached read.
-  let conflictId: string | undefined;
+  // Snapshot the conflicting record's immutable fields under a short config
+  // read. getServers() uses memoizeOnStat, so this is a fast cached read.
+  // The full snapshot (5 fields) is needed so the locked CAS can detect a
+  // concurrent rename/re-assignment of the conflict between snapshot and
+  // lock acquisition.
+  let conflictSnapshot: ConflictSnapshot | undefined;
   try {
     const conflict = getServers().find(
       (server) => server.ip === duplicateIp,
     );
-    conflictId = conflict?.id;
+    if (conflict) {
+      conflictSnapshot = {
+        id: conflict.id,
+        name: conflict.name,
+        provider: conflict.provider,
+        ip: conflict.ip,
+        mode: (conflict.mode ?? "coolify") as ServerRecord["mode"],
+      };
+    }
   } catch {
     return undefined;
   }
-  if (!conflictId) return undefined;
+  if (!conflictSnapshot) return undefined;
 
   // Verify with the provider OUTSIDE the file lock.
   let lookup;
   try {
-    lookup = await provider.lookupServerResource(conflictId);
+    lookup = await provider.lookupServerResource(conflictSnapshot.id);
   } catch {
     // lookup itself threw — treat as transient/unknown.
     return undefined;
@@ -146,7 +157,7 @@ async function tryRecoverDuplicateIp(params: {
   }
   // lookup.status === "not-found" — try the locked compare-and-swap.
   try {
-    const result = await saveServerAfterDuplicateIpVerification(record, conflictId);
+    const result = await saveServerAfterDuplicateIpVerification(record, conflictSnapshot);
     return result.server;
   } catch {
     return undefined;

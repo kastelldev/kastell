@@ -1211,7 +1211,13 @@ describe("provisionServer — duplicate-IP recovery (Task 2)", () => {
     expect(mockProvider.lookupServerResource).toHaveBeenCalledWith("stale-provider-id");
     expect(mockedConfig.saveServerAfterDuplicateIpVerification).toHaveBeenCalledWith(
       expect.objectContaining({ id: "srv-123", ip: "5.6.7.8" }),
-      "stale-provider-id",
+      {
+        id: "stale-provider-id",
+        name: "stale-srv",
+        provider: "hetzner",
+        ip: "5.6.7.8",
+        mode: "coolify",
+      },
     );
   });
 
