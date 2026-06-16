@@ -100,8 +100,18 @@ function redactString(value: string): string {
   return value;
 }
 
-function safeStringify(value: unknown): string {
-  // Bounded recursive serializer with cycle detection.
+/**
+ * Bounded recursive serializer with cycle detection, sensitive-key
+ * redaction, and getter safety. Exported so the contract is testable in
+ * isolation from the `debugLog` env-gated entry point.
+ *
+ * 1-arg form preserves the P142 default of MAX_REDACTION_DEPTH=8.
+ * 2-arg form accepts an explicit `maxDepth` override; supply a smaller
+ * value to surface deep structures quickly or a larger value to inspect
+ * unusually nested provider/SSH error shapes.
+ */
+export function safeStringify(value: unknown, options?: { maxDepth?: number }): string {
+  const maxDepth = options?.maxDepth ?? MAX_REDACTION_DEPTH;
   const seen = new WeakSet<object>();
   function walk(node: unknown, depth: number): unknown {
     if (node === null || node === undefined) return node;
@@ -110,7 +120,7 @@ function safeStringify(value: unknown): string {
     if (t === "number" || t === "boolean" || t === "bigint") return node;
     if (t === "function") return "[Function]";
     if (t === "symbol") return node.toString();
-    if (depth > MAX_REDACTION_DEPTH) return MAX_DEPTH;
+    if (depth > maxDepth) return MAX_DEPTH;
     if (t !== "object") return String(node);
     const obj = node as object;
     if (seen.has(obj)) return CIRCULAR;
