@@ -4,7 +4,7 @@ import { createProviderWithToken } from "../utils/providerFactory.js";
 import { getBareCloudInit } from "../utils/cloudInit.js";
 import { getAdapter } from "../adapters/factory.js";
 import { findLocalSshKey, generateSshKey, getSshKeyName } from "../utils/sshKey.js";
-import { saveServer, updateServer } from "../utils/config.js";
+import { saveServer, updateServer, saveServerAfterDuplicateIpVerification, getServers } from "../utils/config.js";
 import { getTemplateDefaults } from "../utils/templates.js";
 import { getErrorMessage, mapProviderError } from "../utils/errorMapper.js";
 import { KastellError } from "../utils/errors.js";
@@ -90,6 +90,67 @@ export class ProvisionPersistenceError extends KastellError {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Detect a "Server already exists: IP <ip>" duplicate error and try to
+ * recover by replacing the stale local record with the freshly-created
+ * cloud server. Returns the persisted record on success, or undefined if
+ * the error was not a duplicate-IP conflict (caller should surface the
+ * original error as ProvisionPersistenceError).
+ *
+ * Recovery contract:
+ *  1. Snapshot the conflicting record id (one short config read).
+ *  2. Call provider.lookupServerResource(conflict.id) OUTSIDE the lock.
+ *  3. exists / unknown → reject recovery (caller surfaces original error).
+ *  4. not-found → saveServerAfterDuplicateIpVerification atomically replaces
+ *     the stale record. If the helper rejects (concurrent change), the
+ *     caller still surfaces the original error.
+ */
+async function tryRecoverDuplicateIp(params: {
+  record: ServerRecord;
+  provider: CloudProvider;
+  initialIp: string;
+  error: unknown;
+}): Promise<ServerRecord | undefined> {
+  const { record, provider, initialIp, error } = params;
+  if (!(error instanceof Error)) return undefined;
+  const dupMatch = /Server already exists: IP (\S+)/.exec(error.message);
+  if (!dupMatch) return undefined;
+  const duplicateIp = dupMatch[1];
+  if (duplicateIp !== initialIp) return undefined;
+
+  // Snapshot the conflicting record id under a short config read.
+  // getServers() uses memoizeOnStat, so this is a fast cached read.
+  let conflictId: string | undefined;
+  try {
+    const conflict = getServers().find(
+      (server) => server.ip === duplicateIp,
+    );
+    conflictId = conflict?.id;
+  } catch {
+    return undefined;
+  }
+  if (!conflictId) return undefined;
+
+  // Verify with the provider OUTSIDE the file lock.
+  let lookup;
+  try {
+    lookup = await provider.lookupServerResource(conflictId);
+  } catch {
+    // lookup itself threw — treat as transient/unknown.
+    return undefined;
+  }
+  if (lookup.status === "exists" || lookup.status === "unknown") {
+    return undefined;
+  }
+  // lookup.status === "not-found" — try the locked compare-and-swap.
+  try {
+    const result = await saveServerAfterDuplicateIpVerification(record, conflictId);
+    return result.server;
+  } catch {
+    return undefined;
+  }
 }
 
 function isPendingIp(ip: string): boolean {
@@ -271,15 +332,31 @@ export async function provisionServer(
   try {
     await saveServer(record);
   } catch (error) {
-    throw new ProvisionPersistenceError(
-      {
-        provider: config.provider,
-        serverId,
-        serverName: config.name,
-        ip: initialIp,
-      },
+    // Duplicate-IP path: if the local registry already holds a record for
+    // this concrete IP, this is likely a stale entry from a prior cloud
+    // resource that has since been destroyed. Verify with the provider
+    // and compare-and-swap to the new record. This MUST happen OUTSIDE
+    // the file lock so we don't hold config I/O while waiting on a
+    // network round trip.
+    const recovered = await tryRecoverDuplicateIp({
+      record,
+      provider,
+      initialIp,
       error,
-    );
+    });
+    if (recovered) {
+      record = recovered;
+    } else {
+      throw new ProvisionPersistenceError(
+        {
+          provider: config.provider,
+          serverId,
+          serverName: config.name,
+          ip: initialIp,
+        },
+        error,
+      );
+    }
   }
 
   // Defer policy: skip ALL provider/IP/SSH polling. Caller will get the

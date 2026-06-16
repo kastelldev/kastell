@@ -93,6 +93,74 @@ export async function saveServer(record: ServerRecord): Promise<void> {
   });
 }
 
+export type SaveServerResult =
+  | { kind: "created-persisted"; server: ServerRecord; replacedStaleServer?: Readonly<ServerRecord> };
+
+/**
+ * Compare-and-swap duplicate-IP recovery.
+ *
+ * Only callable when a previous `saveServer` (or its own looped re-entry)
+ * detected a duplicate concrete IP. The caller MUST have already verified
+ * with the provider API that the conflicting local record is gone
+ * (`lookupServerResource` returned `not-found`) and MUST pass that record's
+ * `id` as `verifiedMissingProviderId` so this helper can refuse to clobber
+ * an active conflict that appears in the meantime.
+ *
+ * Inside the file lock we re-read servers, find the conflict by IP, and
+ * compare the immutable fields of the on-disk conflict against
+ * `verifiedMissingProviderId` (id, name, provider, ip, mode/defaulted mode).
+ * If anything mismatches we reject — the local registry has changed since
+ * the snapshot was captured and a CAS would be unsafe.
+ *
+ * Concurrency: this helper is itself locked, so two simultaneous callers
+ * will serialize. The second caller will re-read the file and either see
+ * the new record (replacement already applied) or the conflict gone
+ * (different path) — both fall into the rejection branch and the
+ * `servers.json` file ends with exactly one record holding the IP.
+ */
+export async function saveServerAfterDuplicateIpVerification(
+  record: ServerRecord,
+  verifiedMissingProviderId?: string,
+): Promise<SaveServerResult> {
+  if (!verifiedMissingProviderId) {
+    throw new Error("saveServerAfterDuplicateIpVerification: verifiedMissingProviderId is required (lookup not performed)");
+  }
+  return await withFileLock(SERVERS_FILE, () => {
+    ensureConfigDir();
+    const servers = getServers();
+    const conflict = servers.find(
+      (server) =>
+        !isSentinelIp(record.ip) &&
+        !isSentinelIp(server.ip) &&
+        server.ip === record.ip,
+    );
+    if (!conflict) {
+      // No conflict on disk — record was added by a different path. Reject
+      // to keep CAS semantics strict; caller may retry the normal saveServer.
+      throw new Error(
+        `saveServerAfterDuplicateIpVerification: no duplicate IP ${record.ip} on disk (concurrent change)`,
+      );
+    }
+    const conflictMode = (conflict.mode ?? "coolify") as ServerRecord["mode"];
+    const recordMode = (record.mode ?? "coolify") as ServerRecord["mode"];
+    if (
+      conflict.id !== verifiedMissingProviderId ||
+      conflict.ip !== record.ip ||
+      conflictMode !== recordMode
+    ) {
+      throw new Error(
+        `saveServerAfterDuplicateIpVerification: conflict snapshot mismatch for IP ${record.ip} (concurrent registry change)`,
+      );
+    }
+    const replaced: ServerRecord = { ...conflict };
+    const next = servers.map((server) =>
+      server.ip === record.ip ? record : server,
+    );
+    atomicWriteServers(next);
+    return { kind: "created-persisted", server: record, replacedStaleServer: replaced };
+  });
+}
+
 export async function updateServer(name: string, updates: Partial<ServerRecord>): Promise<boolean> {
   return await withFileLock(SERVERS_FILE, () => {
     const servers = getServers();

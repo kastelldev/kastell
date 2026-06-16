@@ -47,6 +47,7 @@ const createMockProvider = (): jest.Mocked<CloudProvider> => ({
   restoreSnapshot: jest.fn().mockResolvedValue(undefined),
   getSnapshotCostEstimate: jest.fn().mockReturnValue("$0.01/GB/month"),
   findServerByIp: jest.fn().mockResolvedValue(null),
+  lookupServerResource: jest.fn(),
 });
 
 let mockProvider: jest.Mocked<CloudProvider>;
@@ -1154,5 +1155,116 @@ describe("handleServerProvision — ProvisionPersistenceError recovery branch", 
         expect.objectContaining({ command: expect.stringContaining("server_info") }),
       ]),
     );
+  });
+});
+
+// ─── Task 2: P143-A Duplicate-IP Compare-And-Swap Recovery ───────────────
+
+describe("provisionServer — duplicate-IP recovery (Task 2)", () => {
+  const staleRecord = {
+    id: "stale-provider-id",
+    name: "stale-srv",
+    provider: "hetzner",
+    ip: "5.6.7.8",
+    region: "nbg1",
+    size: "cax11",
+    createdAt: "2026-01-01T00:00:00Z",
+    mode: "coolify" as const,
+  };
+
+  it("recovers via lookupServerResource='not-found' and saveServerAfterDuplicateIpVerification", async () => {
+    // Arrange: cloud creation succeeded, but the local config already has
+    // a record with the same concrete IP. saveServer rejects with the
+    // "IP 5.6.7.8" duplicate message.
+    mockedConfig.getServers.mockReturnValueOnce([staleRecord]);
+    mockProvider.lookupServerResource.mockResolvedValueOnce({
+      status: "not-found",
+      providerId: "stale-provider-id",
+    });
+    mockedConfig.saveServer.mockRejectedValueOnce(
+      Object.assign(new Error("Server already exists: IP 5.6.7.8")),
+    );
+    mockedConfig.saveServerAfterDuplicateIpVerification.mockResolvedValueOnce({
+      kind: "created-persisted",
+      server: {
+        id: "srv-123",
+        name: "recover-srv",
+        provider: "hetzner",
+        ip: "5.6.7.8",
+        region: "nbg1",
+        size: "cax11",
+        createdAt: "2026-06-16T00:00:00Z",
+        mode: "coolify",
+      },
+      replacedStaleServer: staleRecord,
+    });
+
+    // Act
+    const result = await provisionServer(
+      { provider: "hetzner", region: "nbg1", size: "cax11", name: "recover-srv" },
+      { readinessPolicy: "defer" },
+    );
+
+    // Assert
+    expect(result.success).toBe(true);
+    expect(result.server?.ip).toBe("5.6.7.8");
+    expect(mockProvider.lookupServerResource).toHaveBeenCalledWith("stale-provider-id");
+    expect(mockedConfig.saveServerAfterDuplicateIpVerification).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "srv-123", ip: "5.6.7.8" }),
+      "stale-provider-id",
+    );
+  });
+
+  it("rejects when lookupServerResource returns 'exists' (active conflict)", async () => {
+    // Arrange: another machine actually owns the IP — do not clobber.
+    mockedConfig.getServers.mockReturnValueOnce([staleRecord]);
+    mockProvider.lookupServerResource.mockResolvedValueOnce({
+      status: "exists",
+      providerId: "stale-provider-id",
+      ip: "5.6.7.8",
+    });
+    mockedConfig.saveServer.mockRejectedValueOnce(
+      Object.assign(new Error("Server already exists: IP 5.6.7.8")),
+    );
+
+    // Act + Assert: defer policy surfaces the original error as
+    // ProvisionPersistenceError; recovery was rejected (lookup said "exists").
+    await expect(
+      provisionServer(
+        { provider: "hetzner", region: "nbg1", size: "cax11", name: "active-conflict" },
+        { readinessPolicy: "defer" },
+      ),
+    ).rejects.toMatchObject({
+      name: "ProvisionPersistenceError",
+      provider: "hetzner",
+      serverName: "active-conflict",
+    });
+    expect(mockedConfig.saveServerAfterDuplicateIpVerification).not.toHaveBeenCalled();
+  });
+
+  it("rejects when lookupServerResource returns 'unknown' (transient)", async () => {
+    // Arrange: provider API was unreachable — cannot make a CAS decision.
+    mockedConfig.getServers.mockReturnValueOnce([staleRecord]);
+    mockProvider.lookupServerResource.mockResolvedValueOnce({
+      status: "unknown",
+      providerId: "stale-provider-id",
+      cause: new Error("network timeout"),
+    });
+    mockedConfig.saveServer.mockRejectedValueOnce(
+      Object.assign(new Error("Server already exists: IP 5.6.7.8")),
+    );
+
+    // Act + Assert
+    await expect(
+      provisionServer(
+        { provider: "hetzner", region: "nbg1", size: "cax11", name: "unknown-conflict" },
+        { readinessPolicy: "defer" },
+      ),
+    ).rejects.toMatchObject({
+      name: "ProvisionPersistenceError",
+      provider: "hetzner",
+      serverName: "unknown-conflict",
+    });
+    expect(mockedConfig.saveServerAfterDuplicateIpVerification).not.toHaveBeenCalled();
   });
 });
