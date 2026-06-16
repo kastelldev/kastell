@@ -1,6 +1,7 @@
 import { z } from "zod";
-import { apiClient, stripSensitiveData, withProviderErrorHandling, assertValidServerId, uploadSshKeyWithConflict, type CloudProvider } from "./base.js";
+import { apiClient, stripSensitiveData, withProviderErrorHandling, assertValidServerId, uploadSshKeyWithConflict, type CloudProvider, type ProviderResourceLookup } from "./base.js";
 import { withRetry } from "../utils/retry.js";
+import { BusinessError } from "../utils/errors.js";
 
 import type { Region, ServerSize, ServerConfig, ServerResult, SnapshotInfo, ServerMode } from "../types/index.js";
 import { VULTR_UBUNTU_OS_ID, formatSnapshotCost } from "../constants.js";
@@ -330,5 +331,18 @@ export class VultrProvider implements CloudProvider {
       const found = instances.find((instance) => instance.main_ip === ip);
       return found ? found.id : null;
     }, extractVultrError);
+  }
+
+  async lookupServerResource(serverId: string): Promise<ProviderResourceLookup> {
+    try {
+      const details = await this.getServerDetails(serverId);
+      return { status: "exists", providerId: serverId, ip: details.ip };
+    } catch (error: unknown) {
+      if (error instanceof BusinessError) {
+        return { status: "not-found", providerId: serverId };
+      }
+      const cause = error instanceof Error ? error : new Error(String(error));
+      return { status: "unknown", providerId: serverId, cause };
+    }
   }
 }

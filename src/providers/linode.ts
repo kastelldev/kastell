@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { z } from "zod";
-import { apiClient, stripSensitiveData, withProviderErrorHandling, assertValidServerId, uploadSshKeyWithConflict, type CloudProvider } from "./base.js";
+import { apiClient, stripSensitiveData, withProviderErrorHandling, assertValidServerId, uploadSshKeyWithConflict, type CloudProvider, type ProviderResourceLookup } from "./base.js";
 import { BusinessError } from "../utils/errors.js";
 
 import { withRetry } from "../utils/retry.js";
@@ -356,5 +356,18 @@ export class LinodeProvider implements CloudProvider {
       const found = instances.find((instance) => instance.ipv4?.includes(ip));
       return found ? found.id.toString() : null;
     }, extractLinodeError);
+  }
+
+  async lookupServerResource(serverId: string): Promise<ProviderResourceLookup> {
+    try {
+      const details = await this.getServerDetails(serverId);
+      return { status: "exists", providerId: serverId, ip: details.ip };
+    } catch (error: unknown) {
+      if (error instanceof BusinessError) {
+        return { status: "not-found", providerId: serverId };
+      }
+      const cause = error instanceof Error ? error : new Error(String(error));
+      return { status: "unknown", providerId: serverId, cause };
+    }
   }
 }

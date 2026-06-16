@@ -39,7 +39,19 @@ export interface CloudProvider {
   restoreSnapshot(serverId: string, snapshotId: string): Promise<void>;
   getSnapshotCostEstimate(serverId: string): Promise<string>;
   findServerByIp(ip: string): Promise<string | null>;
+  lookupServerResource(serverId: string): Promise<ProviderResourceLookup>;
 }
+
+/**
+ * Normalized server resource lookup result.
+ * - "exists": server is reachable and authoritative data is returned.
+ * - "not-found": server does not exist (404 / authoritative missing).
+ * - "unknown": failure is transient or unactionable (auth, rate-limit, timeout, malformed, transport).
+ */
+export type ProviderResourceLookup =
+  | { status: "exists"; providerId: string; ip?: string }
+  | { status: "not-found"; providerId: string }
+  | { status: "unknown"; providerId: string; cause: Error };
 
 /**
  * Sanitize axios response data — whitelist-only approach.
