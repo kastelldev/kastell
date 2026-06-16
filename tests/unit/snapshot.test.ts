@@ -55,6 +55,7 @@ const mockProvider = {
   restoreSnapshot: jest.fn(),
   getSnapshotCostEstimate: jest.fn(),
   findServerByIp: jest.fn().mockResolvedValue(null),
+  lookupServerResource: jest.fn(),
 };
 
 const sampleSnapshot = {
@@ -608,6 +609,7 @@ describe("restoreSnapshot", () => {
     restoreSnapshot: jest.fn(),
     getSnapshotCostEstimate: jest.fn(),
     findServerByIp: jest.fn().mockResolvedValue(null),
+    lookupServerResource: jest.fn(),
   };
 
   let getErrorMessageSpy: jest.SpyInstance;

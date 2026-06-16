@@ -49,6 +49,7 @@ const mockProvider: CloudProvider = {
   restoreSnapshot: jest.fn(),
   getSnapshotCostEstimate: jest.fn(),
   findServerByIp: jest.fn().mockResolvedValue(null),
+  lookupServerResource: jest.fn(),
 };
 
 const mockAdapter = createMockAdapter({ overrides: { update: jest.fn() } });
