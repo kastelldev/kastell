@@ -500,6 +500,67 @@ describe("snapshotCommand", () => {
     expect(process.exitCode).toBe(1);
   });
 
+  it("should delegate typed-name confirmation to confirmTypedNameInTty helper (P143-D)", async () => {
+    const promptsModule = await import("../../src/utils/prompts.js");
+    const helperSpy = jest
+      .spyOn(promptsModule, "confirmTypedNameInTty")
+      .mockResolvedValue(true);
+
+    process.env.KASTELL_SAFE_MODE = "false";
+    mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+    mockProvider.listSnapshots.mockResolvedValue([sampleSnapshot]);
+    mockedInquirer.prompt.mockResolvedValueOnce({ selectedId: "snap-123" });
+
+    await snapshotCommand("restore", "test");
+
+    expect(helperSpy).toHaveBeenCalledWith({
+      expected: sampleServer.name,
+      promptMessage: `Type the server name "${sampleServer.name}" to confirm:`,
+    });
+
+    helperSpy.mockRestore();
+  });
+
+  it("should set process.exitCode to 1 when confirmTypedNameInTty returns false (P143-D)", async () => {
+    const promptsModule = await import("../../src/utils/prompts.js");
+    const helperSpy = jest
+      .spyOn(promptsModule, "confirmTypedNameInTty")
+      .mockResolvedValue(false);
+
+    process.env.KASTELL_SAFE_MODE = "false";
+    mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+    mockProvider.listSnapshots.mockResolvedValue([sampleSnapshot]);
+    mockedInquirer.prompt.mockResolvedValueOnce({ selectedId: "snap-123" });
+
+    await snapshotCommand("restore", "test");
+
+    expect(process.exitCode).toBe(1);
+    expect(mockProvider.restoreSnapshot).not.toHaveBeenCalled();
+
+    helperSpy.mockRestore();
+  });
+
+  it("should skip typed-name helper in non-TTY mode (P143-D)", async () => {
+    setIsTTY(false);
+
+    const promptsModule = await import("../../src/utils/prompts.js");
+    const helperSpy = jest.spyOn(promptsModule, "confirmTypedNameInTty");
+
+    process.env.KASTELL_SAFE_MODE = "false";
+    mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+    mockProvider.listSnapshots.mockResolvedValue([sampleSnapshot]);
+    mockedInquirer.prompt.mockResolvedValueOnce({ selectedId: "snap-123" });
+
+    await snapshotCommand("restore", "test");
+
+    // In non-TTY mode the destructive guard already refuses (exit 1) before
+    // the typed-name block; helper must not be invoked in that path.
+    expect(helperSpy).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
+
+    helperSpy.mockRestore();
+  });
+
   it("should set process.exitCode to 1 when restore core fails", async () => {
     process.env.KASTELL_SAFE_MODE = "false";
     mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);

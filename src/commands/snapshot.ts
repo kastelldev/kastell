@@ -7,7 +7,7 @@ import { createSnapshot, listSnapshots, deleteSnapshot, restoreSnapshot } from "
 import { isSafeMode } from "../core/manage.js";
 import { logSafeModeBlock } from "../utils/safeMode.js";
 import { createProviderWithToken } from "../utils/providerFactory.js";
-import { confirmOrCancel, enforceOrCancel } from "../utils/prompts.js";
+import { confirmOrCancel, enforceOrCancel, confirmTypedNameInTty } from "../utils/prompts.js";
 
 interface SnapshotOptions {
   all?: boolean;
@@ -282,17 +282,16 @@ async function snapshotRestore(
     if (!enforceOrCancel(decision)) return;
 
     // TTY-only typed-name second confirmation (preserves snapshot restore UX)
-    const { confirmName } = await inquirer.prompt([
-      {
-        type: "input",
-        name: "confirmName",
-        message: `Type the server name "${server.name}" to confirm:`,
-      },
-    ]);
-    if (confirmName.trim() !== server.name) {
-      logger.error("Server name does not match. Restore cancelled.");
-      markCommandFailed();
-      return;
+    if (process.stdin.isTTY) {
+      const nameMatches = await confirmTypedNameInTty({
+        expected: server.name,
+        promptMessage: `Type the server name "${server.name}" to confirm:`,
+      });
+      if (!nameMatches) {
+        logger.error("Server name does not match. Restore cancelled.");
+        markCommandFailed();
+        return;
+      }
     }
   }
 

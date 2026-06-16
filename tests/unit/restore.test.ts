@@ -324,6 +324,9 @@ describe("restore", () => {
       mockedConfig.findServers.mockReturnValue([sampleServer]);
       mockedExistsSync.mockReturnValue(true);
       mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
+      // P143-D: restore now routes the typed-name confirmation through
+      // confirmTypedNameInTty. The helper internally calls inquirer.prompt,
+      // so we mock it the same way the helper expects.
       mockedInquirer.prompt = jest
         .fn()
         .mockResolvedValueOnce({ confirmName: "wrong-name" }) as unknown as typeof mockedInquirer.prompt;
@@ -332,6 +335,48 @@ describe("restore", () => {
 
       const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("does not match");
+    });
+
+    it("should delegate typed-name confirmation to confirmTypedNameInTty helper (P143-D)", async () => {
+      const promptsModule = await import("../../src/utils/prompts.js");
+      const helperSpy = jest
+        .spyOn(promptsModule, "confirmTypedNameInTty")
+        .mockResolvedValue(true);
+
+      mockedSsh.checkSshAvailable.mockReturnValue(true);
+      mockedConfig.findServers.mockReturnValue([sampleServer]);
+      mockedExistsSync.mockReturnValue(true);
+      mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
+
+      await restoreCommand("1.2.3.4", { backup: "my-backup" });
+
+      expect(helperSpy).toHaveBeenCalledWith({
+        expected: sampleServer.name,
+        promptMessage: `Type the server name "${sampleServer.name}" to confirm:`,
+      });
+
+      helperSpy.mockRestore();
+    });
+
+    it("should skip typed-name helper in non-TTY mode (P143-D)", async () => {
+      setIsTTY(false);
+
+      const promptsModule = await import("../../src/utils/prompts.js");
+      const helperSpy = jest.spyOn(promptsModule, "confirmTypedNameInTty");
+
+      mockedSsh.checkSshAvailable.mockReturnValue(true);
+      mockedConfig.findServers.mockReturnValue([sampleServer]);
+      mockedExistsSync.mockReturnValue(true);
+      mockedReadFileSync.mockReturnValue(JSON.stringify(sampleManifest));
+
+      // In non-TTY mode the destructive guard already refuses (exit 1) before
+      // the typed-name block; helper must not be invoked in that path.
+      await restoreCommand("1.2.3.4", { backup: "my-backup" });
+
+      expect(helperSpy).not.toHaveBeenCalled();
+      expect(process.exitCode).toBe(1);
+
+      helperSpy.mockRestore();
     });
 
     it("should select backup from prompt when not specified", async () => {

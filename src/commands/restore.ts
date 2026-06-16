@@ -10,7 +10,7 @@ import { isSafeMode } from "../core/manage.js";
 import { logSafeModeBlock } from "../utils/safeMode.js";
 import { getAdapter } from "../adapters/factory.js";
 import { adapterDisplayName } from "../adapters/shared.js";
-import { confirmOrCancel, enforceOrCancel } from "../utils/prompts.js";
+import { confirmOrCancel, enforceOrCancel, confirmTypedNameInTty } from "../utils/prompts.js";
 import {
   listBackups,
   getBackupDir,
@@ -161,17 +161,15 @@ export async function restoreCommand(
     if (!enforceOrCancel(decision)) return;
 
     // TTY-only typed-name second confirmation (preserves destroy/restore/snapshot UX)
-    const { confirmName } = await inquirer.prompt([
-      {
-        type: "input",
-        name: "confirmName",
-        message: `Type the server name "${server.name}" to confirm:`,
-      },
-    ]);
-
-    if (confirmName.trim() !== server.name) {
-      logger.error("Server name does not match. Restore cancelled.");
-      return;
+    if (process.stdin.isTTY) {
+      const nameMatches = await confirmTypedNameInTty({
+        expected: server.name,
+        promptMessage: `Type the server name "${server.name}" to confirm:`,
+      });
+      if (!nameMatches) {
+        logger.error("Server name does not match. Restore cancelled.");
+        return;
+      }
     }
   }
 
