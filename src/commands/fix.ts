@@ -27,7 +27,7 @@ import { filterChecksByProfile, isValidProfile, listAllProfileNames } from "../c
 import { writeFixReport } from "../utils/fixReport.js";
 import { backupServer } from "../core/backup.js";
 import { classifyError } from "../utils/errorMapper.js";
-import { confirmOrCancel } from "../utils/prompts.js";
+import { confirmOrCancel, enforceOrCancel } from "../utils/prompts.js";
 import {
   loadFixHistory,
   saveFixHistory,
@@ -312,13 +312,7 @@ export async function fixSafeCommand(
         force,
         "Regression detected. Use --force to proceed in non-interactive mode.",
       );
-      if (!decision.confirmed) {
-        logger.info(decision.message);
-        if (decision.reason === "non-tty") {
-          markCommandFailed();
-        }
-        return;
-      }
+      if (!enforceOrCancel(decision)) return;
     }
   }
 

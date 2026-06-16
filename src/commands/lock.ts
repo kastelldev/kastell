@@ -1,8 +1,7 @@
 import { resolveServer } from "../utils/serverSelect.js";
 import { checkSshAvailable } from "../utils/ssh.js";
 import { logger, createSpinner } from "../utils/logger.js";
-import { confirmOrCancel } from "../utils/prompts.js";
-import { markCommandFailed } from "../utils/exitCode.js";
+import { confirmOrCancel, enforceOrCancel } from "../utils/prompts.js";
 import { applyLock } from "../core/lock/index.js";
 import type { LockStepResult } from "../core/lock/index.js";
 
@@ -96,13 +95,7 @@ export async function lockCommand(
       false,
       "Use --force to apply hardening in non-interactive mode.",
     );
-    if (!decision.confirmed) {
-      logger.info(decision.message);
-      if (decision.reason === "non-tty") {
-        markCommandFailed();
-      }
-      return;
-    }
+    if (!enforceOrCancel(decision)) return;
   }
 
   // Apply hardening with spinner

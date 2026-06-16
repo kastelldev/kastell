@@ -4,8 +4,7 @@ import { logger, createSpinner } from "../utils/logger.js";
 import { isBareServer } from "../utils/modeGuard.js";
 import { resolvePlatform, getAdapter } from "../adapters/factory.js";
 import { adapterDisplayName } from "../adapters/shared.js";
-import { confirmOrCancel } from "../utils/prompts.js";
-import { markCommandFailed } from "../utils/exitCode.js";
+import { confirmOrCancel, enforceOrCancel } from "../utils/prompts.js";
 import {
   isValidPort,
   isProtectedPort,
@@ -140,13 +139,7 @@ async function firewallRemove(
       false,
       "Use --force to remove platform port in non-interactive mode.",
     );
-    if (!decision.confirmed) {
-      logger.info(decision.message);
-      if (decision.reason === "non-tty") {
-        markCommandFailed();
-      }
-      return;
-    }
+    if (!enforceOrCancel(decision)) return;
   }
 
   if (dryRun) {

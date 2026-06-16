@@ -10,8 +10,7 @@ import { isSafeMode } from "../core/manage.js";
 import { logSafeModeBlock } from "../utils/safeMode.js";
 import { getAdapter } from "../adapters/factory.js";
 import { adapterDisplayName } from "../adapters/shared.js";
-import { confirmOrCancel } from "../utils/prompts.js";
-import { markCommandFailed } from "../utils/exitCode.js";
+import { confirmOrCancel, enforceOrCancel } from "../utils/prompts.js";
 import {
   listBackups,
   getBackupDir,
@@ -159,13 +158,7 @@ export async function restoreCommand(
       false,
       "Use --force to restore in non-interactive mode.",
     );
-    if (!decision.confirmed) {
-      logger.info(decision.message);
-      if (decision.reason === "non-tty") {
-        markCommandFailed();
-      }
-      return;
-    }
+    if (!enforceOrCancel(decision)) return;
 
     // TTY-only typed-name second confirmation (preserves destroy/restore/snapshot UX)
     const { confirmName } = await inquirer.prompt([

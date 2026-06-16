@@ -3,8 +3,7 @@ import { removeServer } from "../utils/config.js";
 import { resolveServer } from "../utils/serverSelect.js";
 import { logger } from "../utils/logger.js";
 import { listBackups, cleanupServerBackups } from "../core/backup.js";
-import { confirmOrCancel } from "../utils/prompts.js";
-import { markCommandFailed } from "../utils/exitCode.js";
+import { confirmOrCancel, enforceOrCancel } from "../utils/prompts.js";
 
 function showDryRun(server: { name: string; ip: string }): void {
   logger.title("Dry Run: Remove Server");
@@ -31,13 +30,7 @@ export async function removeCommand(query?: string, options?: { dryRun?: boolean
     !!options?.force,
     "Use --force to remove in non-interactive mode.",
   );
-  if (!decision.confirmed) {
-    logger.info(decision.message);
-    if (decision.reason === "non-tty") {
-      markCommandFailed();
-    }
-    return;
-  }
+  if (!enforceOrCancel(decision)) return;
 
   await removeServer(server.id);
   logger.success(`"${server.name}" removed from local config.`);

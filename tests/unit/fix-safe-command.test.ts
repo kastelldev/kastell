@@ -32,9 +32,13 @@ jest.mock("../../src/core/audit/pluginFix.js", () => {
     executePluginFix: async () => ({ success: false }),
   };
 });
-jest.mock("../../src/utils/prompts.js", () => ({
-  confirmOrCancel: jest.fn(),
-}));
+jest.mock("../../src/utils/prompts.js", () => {
+  const actual = jest.requireActual("../../src/utils/prompts.js");
+  return {
+    ...actual,
+    confirmOrCancel: jest.fn(),
+  };
+});
 jest.mock("../../src/utils/exitCode.js", () => ({
   markCommandFailed: jest.fn(),
 }));

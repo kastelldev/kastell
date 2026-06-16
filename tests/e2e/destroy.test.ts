@@ -13,6 +13,12 @@ const mockedCoreManage = coreManage as jest.Mocked<typeof coreManage>;
 const mockedConfirmOrCancel = prompts.confirmOrCancel as jest.MockedFunction<
   typeof prompts.confirmOrCancel
 >;
+const mockedEnforceOrCancel = prompts.enforceOrCancel as jest.MockedFunction<
+  typeof prompts.enforceOrCancel
+>;
+const mockedConfirmTypedNameInTty = prompts.confirmTypedNameInTty as jest.MockedFunction<
+  typeof prompts.confirmTypedNameInTty
+>;
 const mockedServerSelect = serverSelect as jest.Mocked<typeof serverSelect>;
 
 const sampleServer = {
@@ -50,6 +56,12 @@ describe("destroyCommand E2E", () => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
     stderrSpy = jest.spyOn(console, "error").mockImplementation();
     jest.clearAllMocks();
+    // enforceOrCancel and confirmTypedNameInTty are auto-mocked; route them
+    // to the real implementations so the destructive-guard chain and
+    // typed-name second-factor preserve end-to-end behavior.
+    const realPrompts = jest.requireActual("../../src/utils/prompts");
+    mockedEnforceOrCancel.mockImplementation(realPrompts.enforceOrCancel);
+    mockedConfirmTypedNameInTty.mockImplementation(realPrompts.confirmTypedNameInTty);
     Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
   });
 

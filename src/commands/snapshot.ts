@@ -7,7 +7,7 @@ import { createSnapshot, listSnapshots, deleteSnapshot, restoreSnapshot } from "
 import { isSafeMode } from "../core/manage.js";
 import { logSafeModeBlock } from "../utils/safeMode.js";
 import { createProviderWithToken } from "../utils/providerFactory.js";
-import { confirmOrCancel } from "../utils/prompts.js";
+import { confirmOrCancel, enforceOrCancel } from "../utils/prompts.js";
 
 interface SnapshotOptions {
   all?: boolean;
@@ -60,13 +60,7 @@ async function snapshotCreate(
       false,
       "Use --force to create snapshot in non-interactive mode.",
     );
-    if (!decision.confirmed) {
-      logger.info(decision.message);
-      if (decision.reason === "non-tty") {
-        markCommandFailed();
-      }
-      return;
-    }
+    if (!enforceOrCancel(decision)) return;
   }
 
   const spinner = createSpinner(`Creating snapshot...`);
@@ -211,13 +205,7 @@ async function snapshotDelete(
       false,
       "Use --force to delete snapshot in non-interactive mode.",
     );
-    if (!decision.confirmed) {
-      logger.info(decision.message);
-      if (decision.reason === "non-tty") {
-        markCommandFailed();
-      }
-      return;
-    }
+    if (!enforceOrCancel(decision)) return;
   }
 
   const deleteSpinner = createSpinner("Deleting snapshot...");
@@ -291,13 +279,7 @@ async function snapshotRestore(
       false,
       "Use --force to restore snapshot in non-interactive mode.",
     );
-    if (!decision.confirmed) {
-      logger.info(decision.message);
-      if (decision.reason === "non-tty") {
-        markCommandFailed();
-      }
-      return;
-    }
+    if (!enforceOrCancel(decision)) return;
 
     // TTY-only typed-name second confirmation (preserves snapshot restore UX)
     const { confirmName } = await inquirer.prompt([
