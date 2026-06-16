@@ -35,7 +35,7 @@ export function diffAudits(
   const { checkMap: beforeMap, stateMap: beforeStateMap } = buildCheckStateMaps(before);
   const { checkMap: afterMap, stateMap: afterStateMap } = buildCheckStateMaps(after);
 
-  const allIds = new Set([...beforeMap.keys(), ...afterMap.keys()]);
+  const allIds = getAllCheckIds(before, after);
 
   const improvements: CheckDiffEntry[] = [];
   const regressions: CheckDiffEntry[] = [];
@@ -102,6 +102,14 @@ function buildCheckStateMaps(audit: AuditResult): {
   return { checkMap, stateMap };
 }
 
+/** Union of check IDs present in either side of a diff. */
+function getAllCheckIds(before: AuditResult, after: AuditResult): Set<string> {
+  const ids = new Set<string>();
+  for (const id of buildCheckStateMaps(before).checkMap.keys()) ids.add(id);
+  for (const id of buildCheckStateMaps(after).checkMap.keys()) ids.add(id);
+  return ids;
+}
+
 function classifyStatus(
   before: AuditCheck | null,
   after: AuditCheck | null,
@@ -158,7 +166,7 @@ export function diffAuditsFlat(
 } {
   const { checkMap: beforeMap, stateMap: beforeStateMap } = buildCheckStateMaps(before);
   const { checkMap: afterMap, stateMap: afterStateMap } = buildCheckStateMaps(after);
-  const allIds = new Set([...beforeMap.keys(), ...afterMap.keys()]);
+  const allIds = getAllCheckIds(before, after);
 
   const checks: FlatCheckDiffEntry[] = [];
   for (const id of allIds) {
