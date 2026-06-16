@@ -11,6 +11,15 @@ jest.mock("../../../src/plugin/loader.js", () => ({
   loadPlugins: jest.fn().mockResolvedValue({ loaded: [], errors: [] }),
 }));
 
+/**
+ * P143-C EXEMPTION: minimal-6
+ * Reason: spreads `jest.requireActual("fs")` to keep real fs module exports
+ *   (Stats, promises, etc.) that plugin loader transitively uses. Selectively
+ *   mocks only existsSync/mkdir/write/chmod. createFsMock() does not provide
+ *   the partial spread pattern needed for plugin manifest validation.
+ * Verified: cannot migrate — plugin SUT needs real fs for manifest parsing
+ *   path; partial mock factory is required.
+ */
 jest.mock("fs", () => {
   const actual = jest.requireActual("fs") as typeof import("fs");
   return { ...actual, existsSync: jest.fn().mockReturnValue(true), mkdirSync: jest.fn(), writeFileSync: jest.fn(), chmodSync: jest.fn() };

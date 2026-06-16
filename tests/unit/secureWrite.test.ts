@@ -1,3 +1,13 @@
+/**
+ * P143-C EXEMPTION: minimal-1
+ * Reason: spreads `jest.requireActual("fs")` to keep real constants, Stats, Dirent,
+ *   and stream types; selectively mocks only write/append/mkdir/chmod.
+ *   createFsMock() does not include appendFileSync or fs exports (constants, Stats, etc.)
+ *   required by these ACL-path tests.
+ * Verified: cannot migrate — secureWrite.ts touches both `applyPermissions` and
+ *   real `constants.F_OK` checks (see secureWrite.ts:128-160). Minimal mock would
+ *   break the type system.
+ */
 jest.mock("fs", () => {
   const actual = jest.requireActual<typeof import("fs")>("fs");
   return {

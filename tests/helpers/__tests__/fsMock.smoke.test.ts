@@ -18,6 +18,7 @@ describe("fsMock smoke", () => {
     expect(typeof mock.statSync).toBe("function");
     expect(typeof mock.unlinkSync).toBe("function");
     expect(typeof mock.renameSync).toBe("function");
+    expect(typeof mock.copyFileSync).toBe("function");
   });
 
   it("createFsMock() default existsSync returns false", () => {

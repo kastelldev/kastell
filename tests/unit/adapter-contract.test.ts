@@ -35,11 +35,10 @@ jest.mock("../../src/utils/errorMapper", () => ({
   sanitizeStderr: jest.fn(),
 }));
 
-jest.mock("fs", () => ({
-  mkdirSync: jest.fn(),
-  writeFileSync: jest.fn(),
-  chmodSync: jest.fn(),
-}));
+jest.mock("fs", () => {
+  const { createFsMock } = require("../helpers/fsMock.js");
+  return createFsMock();
+});
 
 // --- Import mocked functions after jest.mock declarations ---
 

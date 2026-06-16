@@ -39,6 +39,15 @@ jest.mock("../../src/core/audit/snapshot");
 jest.mock("../../src/utils/fileLock", () => ({
   withFileLock: jest.fn((_path: string, fn: () => unknown) => Promise.resolve(fn())),
 }));
+/**
+ * P143-C EXEMPTION: minimal-3
+ * Reason: spreads `jest.requireActual("fs")` to retain real fs module shape
+ *   (Stats, constants, Dirent, ReadStream, WriteStream types) that core/audit,
+ *   core/doctor, core/evidence transitively import. Mocks only the methods
+ *   the test bodies explicitly set up.
+ * Verified: tests exercise audit/doctor/evidence orchestrators which depend
+ *   on real fs types — partial mock factory would break type compatibility.
+ */
 jest.mock("fs", () => ({
   ...jest.requireActual("fs"),
   mkdirSync: jest.fn(),

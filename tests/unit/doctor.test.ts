@@ -6,6 +6,15 @@ jest.mock("child_process", () => ({
   spawnSync: jest.fn(),
 }));
 
+/**
+ * P143-C EXEMPTION: minimal-4
+ * Reason: factory exposes `constants: { R_OK: 4, W_OK: 2 }` which createFsMock()
+ *   does not provide. Doctor SUT uses `fs.constants.R_OK` for `accessSync` permission
+ *   checks (src/core/doctor.ts). Without constants export, the test would fail
+ *   with "Cannot read property 'R_OK' of undefined".
+ * Verified: cannot migrate — fs.constants is a module-level export that
+ *   createFsMock() does not include (it is a per-method mock, not a module shape).
+ */
 jest.mock("fs", () => ({
   existsSync: jest.fn(),
   accessSync: jest.fn(),

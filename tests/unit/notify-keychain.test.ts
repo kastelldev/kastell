@@ -16,13 +16,10 @@ import {
 
 // ─── Module mocks ─────────────────────────────────────────────────────────────
 
-jest.mock("fs", () => ({
-  readFileSync: jest.fn(),
-  writeFileSync: jest.fn(),
-  existsSync: jest.fn(() => false),
-  mkdirSync: jest.fn(),
-  chmodSync: jest.fn(),
-}));
+jest.mock("fs", () => {
+  const { createFsMock } = require("../helpers/fsMock.js");
+  return createFsMock();
+});
 
 jest.mock("../../src/core/notifyStore.js", () => ({
   loadNotifyChannels: jest.fn(),

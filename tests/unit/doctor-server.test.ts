@@ -27,13 +27,10 @@ import type { AuditHistoryEntry } from "../../src/core/audit/types";
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
-jest.mock("fs", () => ({
-  readFileSync: jest.fn(),
-  writeFileSync: jest.fn(),
-  existsSync: jest.fn(),
-  mkdirSync: jest.fn(),
-  renameSync: jest.fn(),
-}));
+jest.mock("fs", () => {
+  const { createFsMock } = require("../helpers/fsMock.js");
+  return createFsMock();
+});
 
 jest.mock("os", () => ({
   homedir: () => "/home/test",

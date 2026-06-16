@@ -5,6 +5,13 @@ jest.mock("@napi-rs/keyring", () => {
   throw new Error("Native module not available");
 });
 
+/**
+ * P143-C EXEMPTION: minimal-10
+ * Reason: spreads `jest.requireActual("fs")` for auth-fallback test. Mocks
+ *   only existsSync/readFileSync/writeFileSync/mkdirSync. Auth SUT uses
+ *   real-fs shape for token persistence tests.
+ * Verified: cannot migrate — requireActual spread pattern not in createFsMock().
+ */
 jest.mock("fs", () => {
   const actual = jest.requireActual<typeof import("fs")>("fs");
   return {

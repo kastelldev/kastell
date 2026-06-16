@@ -14,6 +14,14 @@ import {
 import type { ProfileName } from "../../src/core/audit/profiles.js";
 import * as fs from "fs";
 
+/**
+ * P143-C EXEMPTION: minimal-9
+ * Reason: spreads `jest.requireActual("fs")` and selectively mocks only
+ *   existsSync + readFileSync. Fix profiles SUT uses real-fs types in
+ *   snapshot fixture loading; cannot reach P143-C permission paths
+ *   because mkdirSync/chmodSync flow through real fs.
+ * Verified: minimal surface — not migratable to createFsMock() (no spread).
+ */
 jest.mock("fs", () => ({
   ...jest.requireActual("fs"),
   existsSync: jest.fn(),

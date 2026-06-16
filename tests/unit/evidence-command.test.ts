@@ -10,6 +10,14 @@ import * as fsModule from "fs";
 
 jest.mock("../../src/core/evidence");
 jest.mock("../../src/utils/serverSelect");
+/**
+ * P143-C EXEMPTION: automock
+ * Reason: factory mocks only `readFileSync` (single method, no permission paths).
+ *   This is a CLI command wiring test that mocks `../../src/core/evidence` and
+ *   `../../src/utils/serverSelect` — fs is touched only to satisfy one print
+ *   path that reads a manifest. Never reaches chmodSync/rename/copyFile.
+ * Verified: cannot reach P143-C permission paths — src/core/evidence is fully mocked.
+ */
 jest.mock("fs", () => ({ readFileSync: jest.fn() }));
 
 jest.mock("../../src/utils/logger", () => ({

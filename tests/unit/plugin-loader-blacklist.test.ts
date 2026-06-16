@@ -2,6 +2,12 @@ import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 import { clearPluginRegistry, getPluginRegistry } from "../../src/plugin/registry.js";
 
 // Mock fs for directory scanning
+/**
+ * P143-C EXEMPTION: minimal-8
+ * Reason: same as plugin/loader.test.ts — `jest.requireActual("fs")` spread
+ *   for plugin loader, mocks only existsSync/readdirSync/readFileSync.
+ * Verified: blacklist logic needs real fs shape; not migratable.
+ */
 jest.mock("fs", () => {
   const actual = jest.requireActual<typeof import("fs")>("fs");
   return {
