@@ -1162,6 +1162,109 @@ describe("handleServerProvision — ProvisionPersistenceError recovery branch", 
       ]),
     );
   });
+
+  it("projects orphan through DTO when handler catches ProvisionPersistenceError with internalResult (Task 3 wire-up)", async () => {
+    // Arrange: provisionServer throws ProvisionPersistenceError carrying an
+    // internalResult of kind "created-orphan". The cause holds a token-shaped
+    // property — the MCP boundary MUST project through the DTO so the token
+    // never reaches the response.
+    const tokenLeak = "hetzner_secret_xyz_42";
+    const leakyCause = Object.assign(new Error("disk full"), {
+      code: "ENOSPC",
+      apiToken: tokenLeak,
+      responseBody: "<html>secret</html>",
+    });
+    const internalResult: ProvisionPersistenceResult = {
+      kind: "created-orphan",
+      provider: "hetzner",
+      providerId: "provider-orphan-1",
+      name: "orphan-wire-srv",
+      ip: "203.0.113.99",
+      suggestedCommand:
+        "kastell server_manage add --name orphan-wire-srv --provider hetzner",
+      cause: leakyCause,
+    };
+
+    const persistenceError = new ProvisionPersistenceError(
+      {
+        provider: "hetzner",
+        serverId: "provider-orphan-1",
+        serverName: "orphan-wire-srv",
+        ip: "203.0.113.99",
+      },
+      leakyCause,
+    );
+    // Attach internalResult post-construction — the constructor does not take
+    // it as an arg, so we set it as a property. The handler MUST pick it up.
+    (persistenceError as unknown as { internalResult: ProvisionPersistenceResult }).internalResult =
+      internalResult;
+    provisionServerSpy.mockRejectedValueOnce(persistenceError);
+
+    // Act
+    const result = await handleServerProvision({
+      provider: "hetzner",
+      name: "orphan-wire-srv",
+      region: "nbg1",
+      size: "cax11",
+    });
+    const body = JSON.parse(result.content[0].text);
+
+    // Assert: response is a success-shaped orphan DTO, NOT an error envelope
+    expect(result.isError).toBeUndefined();
+    expect(body.kind).toBe("created-orphan");
+    expect(body.provider).toBe("hetzner");
+    expect(body.providerId).toBe("provider-orphan-1");
+    expect(body.name).toBe("orphan-wire-srv");
+    expect(body.ip).toBe("203.0.113.99");
+    expect(body.suggestedCommand).toContain("server_manage add");
+
+    // Assert: NO leakage of internal cause, token, or response body
+    expect(body).not.toHaveProperty("cause");
+    expect(body).not.toHaveProperty("apiToken");
+    expect(body).not.toHaveProperty("responseBody");
+    expect(body).not.toHaveProperty("stack");
+    const serialized = JSON.stringify(body);
+    expect(serialized).not.toContain(tokenLeak);
+    expect(serialized).not.toContain("responseBody");
+  });
+
+  it("falls back to legacy error envelope when ProvisionPersistenceError has no internalResult (backward compat)", async () => {
+    // Arrange: classic ProvisionPersistenceError (no internalResult). The
+    // handler MUST continue to surface provider/serverId/warning/recovery in
+    // the existing error shape, NOT regress to the orphan DTO branch.
+    const persistenceError = new ProvisionPersistenceError(
+      {
+        provider: "hetzner",
+        serverId: "provider-123",
+        serverName: "legacy-srv",
+        ip: "pending",
+      },
+      new Error("EACCES"),
+    );
+    provisionServerSpy.mockRejectedValueOnce(persistenceError);
+
+    // Act
+    const result = await handleServerProvision({
+      provider: "hetzner",
+      name: "legacy-srv",
+      region: "nbg1",
+      size: "cax11",
+    });
+    const body = JSON.parse(result.content[0].text);
+
+    // Assert: existing legacy envelope unchanged
+    expect(result.isError).toBe(true);
+    expect(body).toMatchObject({
+      provider: "hetzner",
+      serverId: "provider-123",
+      serverName: "legacy-srv",
+      ip: "pending",
+      warning: expect.stringMatching(/billable/i),
+      recovery: expect.arrayContaining([expect.stringMatching(/dashboard/i)]),
+    });
+    // Sanity: legacy envelope must not carry the orphan DTO field
+    expect(body.kind).toBeUndefined();
+  });
 });
 
 // ─── Task 2: P143-A Duplicate-IP Compare-And-Swap Recovery ───────────────

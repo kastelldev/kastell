@@ -131,6 +131,14 @@ export class ProvisionPersistenceError extends KastellError {
   readonly ip: string;
   readonly warning: string;
   readonly recovery: string[];
+  /**
+   * Optional typed payload describing the persistence outcome. When set, the
+   * MCP boundary (`mcp/tools/serverProvision`) projects this through
+   * {@link toProvisionPublicDto} so internal `cause` data never leaks to
+   * clients. Omitted for callers that don't need a structured payload (CLI
+   * commands use the legacy error envelope instead).
+   */
+  readonly internalResult?: ProvisionPersistenceResult;
 
   constructor(
     details: {
@@ -140,6 +148,7 @@ export class ProvisionPersistenceError extends KastellError {
       ip: string;
     },
     cause: unknown,
+    options: { internalResult?: ProvisionPersistenceResult } = {},
   ) {
     super(
       `Cloud server "${details.serverName}" was created but could not be saved locally.`,
@@ -155,6 +164,7 @@ export class ProvisionPersistenceError extends KastellError {
       "Delete the resource through the provider dashboard or provider CLI if it is unwanted.",
       "Optionally use server_manage add for local visibility; manual registration does not preserve the original provider server ID.",
     ];
+    this.internalResult = options.internalResult;
     Object.setPrototypeOf(this, ProvisionPersistenceError.prototype);
   }
 }
@@ -431,6 +441,11 @@ export async function provisionServer(
     if (recovered) {
       record = recovered;
     } else {
+      // Orphan case: the cloud resource exists but local persistence failed.
+      // Attach internalResult so the MCP boundary can project through the
+      // public DTO (DTO strips `cause` and any token-shaped property the
+      // cause may carry). The CLI path keeps the legacy error envelope —
+      // it ignores internalResult entirely.
       throw new ProvisionPersistenceError(
         {
           provider: config.provider,
@@ -439,6 +454,17 @@ export async function provisionServer(
           ip: initialIp,
         },
         error,
+        {
+          internalResult: {
+            kind: "created-orphan",
+            provider: config.provider as SupportedProvider,
+            providerId: serverId,
+            name: config.name,
+            ip: initialIp,
+            suggestedCommand: `kastell server_manage add --name ${config.name} --provider ${config.provider}`,
+            cause: error instanceof Error ? error : new Error(String(error)),
+          },
+        },
       );
     }
   }

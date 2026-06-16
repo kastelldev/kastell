@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { isSafeMode } from "../../core/manage.js";
 import { logSafeModeBlock } from "../../utils/safeMode.js";
-import { provisionServer, ProvisionPersistenceError } from "../../core/provision.js";
+import { provisionServer, ProvisionPersistenceError, toProvisionPublicDto } from "../../core/provision.js";
 import { mcpSuccess, mcpError, mcpLog, elicitMissingParams, ELICIT_PROVIDER_SCHEMA, ELICIT_SERVER_NAME_SCHEMA } from "../utils.js";
 import { getErrorMessage, sanitizeStderr } from "../../utils/errorMapper.js";
 import { SUPPORTED_PROVIDERS } from "../../constants.js";
@@ -218,6 +218,14 @@ export async function handleServerProvision(
     return mcpSuccess(data);
   } catch (error: unknown) {
     if (error instanceof ProvisionPersistenceError) {
+      // Task 3 wire-up: when the core layer attaches an internalResult (the
+      // orphan case), project it through the public DTO. The DTO strips
+      // `cause` and any token/responseBody/apiToken properties the cause may
+      // carry, so nothing internal leaks to MCP clients. The success-shaped
+      // response carries a `kind` discriminator the client can switch on.
+      if (error.internalResult) {
+        return mcpSuccess(toProvisionPublicDto(error.internalResult));
+      }
       return {
         content: [{
           type: "text",
