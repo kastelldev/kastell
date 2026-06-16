@@ -195,17 +195,14 @@ function applyWindowsAcl(
   try {
     identity = getCurrentWindowsIdentity();
   } catch (cause) {
-    // First whoami call failed; surface as ACL error with the original
-    // spawn error preserved as cause.
-    const whoami = runSpawn("whoami", []);
+    // First whoami call failed; surface as ACL error with the original cause.
     handleAclFailure(
       buildAclError(
         targetPath,
         {
           executable: "whoami",
-          status: whoami.status,
-          stderr: whoami.stderr || "empty identity",
-          cause: whoami.error ?? cause,
+          status: -1,
+          stderr: String((cause as Error).message ?? cause),
         },
         sensitivity,
       ),
