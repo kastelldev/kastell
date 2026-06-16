@@ -159,7 +159,6 @@ export async function saveServerAfterDuplicateIpVerification(
       );
     }
     const conflictMode = (conflict.mode ?? "coolify") as ServerRecord["mode"];
-    const recordMode = (record.mode ?? "coolify") as ServerRecord["mode"];
     if (
       conflict.id !== conflictSnapshot.id ||
       conflict.name !== conflictSnapshot.name ||
