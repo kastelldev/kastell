@@ -103,18 +103,8 @@ export function atomicWriteFileSync(
       unlinkBestEffort(tmpFile);
       throw renameErr;
     }
-    // Rename retries exhausted on permission errors. Build a diagnostic,
-    // then try the copy fallback. If the copy itself fails, rethrow the
-    // diagnostic with stage "copy" so the operator can tell which step died.
-    const renameExhaustedErr = renameErr as NodeJS.ErrnoException;
-    const renameExhausted: AtomicWriteExhaustedError = new AtomicWriteExhaustedError({
-      target: targetPath,
-      attempts,
-      elapsedMs: Math.round(performance.now() - startedAt),
-      finalCode: renameExhaustedErr.code ?? "EPERM",
-      stage: "rename",
-      cause: renameExhaustedErr,
-    });
+    // Permission errors exhausted. Try the copy fallback; on failure, throw
+    // with stage "copy" so the operator can tell which step died.
     try {
       copyFileSync(tmpFile, targetPath);
     } catch (copyErr) {
@@ -130,10 +120,5 @@ export function atomicWriteFileSync(
       });
     }
     unlinkBestEffort(tmpFile);
-    // The copy fallback succeeded — the original rename exhaustion is no
-    // longer a hard failure. Do not throw.
-    // (We keep `renameExhausted` referenced so future diagnostic consumers
-    // can opt into strict-rename mode without restructuring the helper.)
-    void renameExhausted;
   }
 }
