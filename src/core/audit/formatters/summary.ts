@@ -5,9 +5,9 @@
 
 import chalk from "chalk";
 import type { AuditResult } from "../types.js";
-import { isSkippedCheck } from "../types.js";
 import { calculateComplianceScores } from "../compliance/scoring.js";
 import { scoreColor, progressBar } from "./shared.js";
+import { getCheckCounts } from "./counts.js";
 
 /**
  * Format audit result as compact dashboard summary.
@@ -16,10 +16,8 @@ export function formatSummary(result: AuditResult): string {
   const lines: string[] = [];
 
   const colorFn = scoreColor(result.overallScore);
-  const skippedTotal = result.categories.reduce(
-    (n, c) => n + c.checks.filter(isSkippedCheck).length,
-    0,
-  );
+  const allChecks = result.categories.flatMap((c) => c.checks);
+  const { skipped: skippedTotal } = getCheckCounts(allChecks);
 
   lines.push(
     chalk.bold.cyan(`Kastell Security Audit`) +

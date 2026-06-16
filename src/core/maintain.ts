@@ -6,8 +6,71 @@ import type { PlatformAdapter } from "../adapters/interface.js";
 import { getAdapter, resolvePlatform } from "../adapters/factory.js";
 import { adapterDisplayName } from "../adapters/shared.js";
 import { debugLog } from "../utils/logger.js";
+import { isBareServer } from "../utils/modeGuard.js";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
+
+/**
+ * Pure classification of a server for the maintain command.
+ * Used by both single-server and --all flows to keep decision logic
+ * in one testable place. The command layer applies side effects
+ * (token prompt, snapshot offer) based on this decision.
+ */
+export type MaintainDecisionKind = "run" | "dry-run" | "skip-bare";
+
+export interface MaintainDecision {
+  kind: MaintainDecisionKind;
+  platform?: ReturnType<typeof resolvePlatform>;
+  reason?: string;
+  detail?: string;
+}
+
+export interface MaintainClassificationOptions {
+  dryRun?: boolean;
+  force?: boolean;
+}
+
+const BARE_HELP_DETAIL = "Run 'apt update && apt upgrade -y' manually, or use 'kastell fix --safe' for hardening.";
+
+/**
+ * Classify a server for the maintain command.
+ *
+ * Decision rules (evaluated in this order):
+ *   1. isBareServer(server) is true       -> "skip-bare"
+ *   2. options.dryRun === true            -> "dry-run"
+ *   3. otherwise                          -> "run"
+ *
+ * Note: isBareServer returns true when resolvePlatform is undefined, which
+ * is the only path that yields no platform. resolvePlatform returns undefined
+ * when server.platform is unset AND server.mode === "bare" — so a server
+ * with mode="coolify" but no platform field defaults to "coolify" and is
+ * maintainable. The bare and managed cases are mutually exclusive in
+ * current factory logic.
+ *
+ * The `force` flag is intentionally not part of the decision — it only
+ * affects whether the destructive-guard prompt is bypassed in the command
+ * layer. Classification is orthogonal to user-confirmation policy.
+ */
+export function canMaintain(
+  server: ServerRecord,
+  options: MaintainClassificationOptions = {},
+): MaintainDecision {
+  if (isBareServer(server)) {
+    return {
+      kind: "skip-bare",
+      reason: "Bare server has no platform adapter",
+      detail: BARE_HELP_DETAIL,
+    };
+  }
+
+  const platform = resolvePlatform(server);
+
+  if (options.dryRun) {
+    return { kind: "dry-run", platform };
+  }
+
+  return { kind: "run", platform };
+}
 
 export interface StepResult {
   step: number;
