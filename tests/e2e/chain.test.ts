@@ -301,13 +301,8 @@ describe("Command→Core Chain Tests", () => {
       mockedSsh.checkSshAvailable.mockReturnValue(true);
       mockedServerSelect.promptApiToken.mockResolvedValue("api-token-123");
 
-      // requireManagedMode returns null for managed servers (no error)
-      const modeGuard = require("../../src/utils/modeGuard.js");
-      jest.mock("../../src/utils/modeGuard.js", () => ({
-        requireManagedMode: jest.fn().mockReturnValue(null),
-        isBareServer: jest.fn().mockReturnValue(false),
-        getServerModeLabel: jest.fn().mockReturnValue("Coolify"),
-      }), { virtual: false });
+      // canMaintain returns "run" decision for managed servers (P143-E wire-up)
+      mockedCoreMaintain.canMaintain.mockReturnValue({ kind: "run", platform: "coolify" });
 
       mockedCoreMaintain.maintainServer.mockResolvedValue({
         server: "my-server",
