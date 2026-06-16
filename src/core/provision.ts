@@ -14,6 +14,7 @@ import { debugLog } from "../utils/logger.js";
 import type { CloudProvider } from "../providers/base.js";
 import type { ServerRecord, Platform } from "../types/index.js";
 import { IP_WAIT, BOOT_WAIT, BOOT_WAIT_DEFAULT, invalidProviderError } from "../constants.js";
+import type { SupportedProvider } from "../constants.js";
 
 const BARE_SSH_WAIT_ATTEMPTS = 60;
 const BARE_SSH_WAIT_INTERVAL_MS = 5000;
@@ -47,6 +48,78 @@ export interface ProvisionResult {
   readiness?: ProvisionReadiness;
   error?: string;
   hint?: string;
+}
+
+/**
+ * Internal persistence result returned by provision steps. Two mutually
+ * exclusive cases:
+ *
+ *  - `created-persisted` — cloud resource exists AND the local record is
+ *    safely written. Caller may proceed to readiness checks.
+ *  - `created-orphan` — cloud resource was created on the provider but the
+ *    local persistence step failed. The cloud server may be billable and
+ *    must be surfaced to the user with recovery guidance. The typed `cause`
+ *    is internal-only; MCP boundary MUST project this through
+ *    {@link toProvisionPublicDto} so that error/stack/response body/token
+ *    fields never leak into the public payload.
+ *
+ * This type is a superset of the Task 2 `SaveServerResult` (persistence-step
+ * outcome only). It is the dedicated contract between `core/provision` and
+ * `mcp/tools/serverProvision` for the orphan-vs-persisted case.
+ */
+export type ProvisionPersistenceResult =
+  | { kind: "created-persisted"; server: ServerRecord; replacedStaleServer?: Readonly<ServerRecord> }
+  | {
+      kind: "created-orphan";
+      provider: SupportedProvider;
+      providerId: string;
+      name: string;
+      ip: string;
+      suggestedCommand: string;
+      cause: Error;
+    };
+
+/**
+ * Public, sanitized DTO for a {@link ProvisionPersistenceResult}.
+ *
+ * The orphan case carries a `cause: Error` internally for downstream
+ * diagnostics (logging, debugging). The public DTO strips `cause` AND any
+ * non-whitelisted fields the cause might have set on itself (e.g. response
+ * bodies, tokens, raw stack traces) so that nothing internal leaks to MCP
+ * clients.
+ *
+ * Whitelist (deliberate, exhaustive):
+ *  - `kind`
+ *  - `provider`, `providerId`, `name`, `ip` (orphan)
+ *  - `suggestedCommand` (orphan)
+ *  - `server`, `replacedStaleServer` (persisted)
+ *
+ * Anything else (cause, stack, responseBody, apiToken, …) is dropped.
+ */
+export function toProvisionPublicDto(
+  result: ProvisionPersistenceResult,
+): Record<string, unknown> {
+  if (result.kind === "created-persisted") {
+    const dto: Record<string, unknown> = {
+      kind: "created-persisted",
+      server: result.server,
+    };
+    if (result.replacedStaleServer !== undefined) {
+      dto.replacedStaleServer = result.replacedStaleServer;
+    }
+    return dto;
+  }
+  // created-orphan: explicit field projection — never spread `result` to
+  // avoid leaking the typed cause (which may carry response body / token /
+  // stack on its own properties).
+  return {
+    kind: "created-orphan",
+    provider: result.provider,
+    providerId: result.providerId,
+    name: result.name,
+    ip: result.ip,
+    suggestedCommand: result.suggestedCommand,
+  };
 }
 
 // ─── Errors ──────────────────────────────────────────────────────────────────

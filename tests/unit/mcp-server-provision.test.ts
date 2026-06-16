@@ -6,7 +6,13 @@ import * as sshKey from "../../src/utils/sshKey";
 import * as cloudInit from "../../src/utils/cloudInit";
 import * as templates from "../../src/utils/templates";
 import { provisionServer, uploadSshKeyBestEffort, ProvisionPersistenceError } from "../../src/core/provision";
-import { handleServerProvision } from "../../src/mcp/tools/serverProvision";
+import {
+  handleServerProvision,
+} from "../../src/mcp/tools/serverProvision";
+import {
+  toProvisionPublicDto,
+  type ProvisionPersistenceResult,
+} from "../../src/core/provision";
 import type { CloudProvider } from "../../src/providers/base";
 
 jest.mock("../../src/utils/config");
@@ -1272,5 +1278,110 @@ describe("provisionServer — duplicate-IP recovery (Task 2)", () => {
       serverName: "unknown-conflict",
     });
     expect(mockedConfig.saveServerAfterDuplicateIpVerification).not.toHaveBeenCalled();
+  });
+});
+
+// ─── Task 3: P143-A Orphan Result DTO and Public Sanitization ───────────────
+
+describe("toProvisionPublicDto — orphan DTO sanitization (Task 3)", () => {
+  it("created-orphan internal result carries a typed Error cause", () => {
+    const cause = Object.assign(new Error("EACCES: config dir"), { code: "EACCES" });
+    const internal: ProvisionPersistenceResult = {
+      kind: "created-orphan",
+      provider: "hetzner",
+      providerId: "provider-123",
+      name: "orphan-srv",
+      ip: "5.6.7.8",
+      suggestedCommand: "kastell server_manage add --name orphan-srv --provider hetzner",
+      cause,
+    };
+
+    expect(internal.kind).toBe("created-orphan");
+    expect(internal.cause).toBeInstanceOf(Error);
+    expect((internal.cause as NodeJS.ErrnoException).code).toBe("EACCES");
+  });
+
+  it("public DTO strips the cause field while preserving provider, providerId, name, ip, and suggestedCommand", () => {
+    const cause = Object.assign(new Error("disk full"), { code: "ENOSPC" });
+    const internal: ProvisionPersistenceResult = {
+      kind: "created-orphan",
+      provider: "hetzner",
+      providerId: "provider-123",
+      name: "orphan-srv",
+      ip: "5.6.7.8",
+      suggestedCommand: "kastell server_manage add --name orphan-srv --provider hetzner",
+      cause,
+    };
+
+    const publicPayload = toProvisionPublicDto(internal) as Record<string, unknown>;
+
+    expect(publicPayload).not.toHaveProperty("cause");
+    expect(publicPayload).not.toHaveProperty("stack");
+    expect(publicPayload).toMatchObject({
+      kind: "created-orphan",
+      provider: "hetzner",
+      providerId: "provider-123",
+      name: "orphan-srv",
+      ip: "5.6.7.8",
+      suggestedCommand: expect.stringContaining("kastell"),
+    });
+  });
+
+  it("public DTO does not leak raw response body, token, or any error subclass field", () => {
+    const cause = Object.assign(new Error("403: token=hetzner_secret_abc"), {
+      code: "EAUTH",
+      responseBody: "<html>secret</html>",
+      apiToken: "hetzner_secret_abc",
+    });
+    const internal: ProvisionPersistenceResult = {
+      kind: "created-orphan",
+      provider: "digitalocean",
+      providerId: "do-999",
+      name: "leak-srv",
+      ip: "10.0.0.1",
+      suggestedCommand: "kastell server_info { action: 'list' }",
+      cause,
+    };
+
+    const publicPayload = toProvisionPublicDto(internal) as Record<string, unknown>;
+
+    // No raw cause, no response body, no token leak via any field name
+    expect(publicPayload.cause).toBeUndefined();
+    expect(publicPayload.responseBody).toBeUndefined();
+    expect(publicPayload.apiToken).toBeUndefined();
+    // Serialized JSON must not contain the token
+    const serialized = JSON.stringify(publicPayload);
+    expect(serialized).not.toContain("hetzner_secret_abc");
+    expect(serialized).not.toContain("responseBody");
+  });
+
+  it("created-persisted public DTO exposes server record without serverRecord.cause leakage", () => {
+    const internal: ProvisionPersistenceResult = {
+      kind: "created-persisted",
+      server: {
+        id: "srv-1",
+        name: "ok-srv",
+        provider: "hetzner",
+        ip: "5.6.7.8",
+        region: "nbg1",
+        size: "cax11",
+        createdAt: "2026-06-16T00:00:00Z",
+        mode: "coolify",
+      },
+    };
+
+    const publicPayload = toProvisionPublicDto(internal) as Record<string, unknown>;
+
+    expect(publicPayload.kind).toBe("created-persisted");
+    expect(publicPayload).not.toHaveProperty("cause");
+    expect(publicPayload).toMatchObject({
+      kind: "created-persisted",
+      server: expect.objectContaining({
+        id: "srv-1",
+        name: "ok-srv",
+        provider: "hetzner",
+        ip: "5.6.7.8",
+      }),
+    });
   });
 });
