@@ -8,12 +8,17 @@ import * as templates from "../../src/utils/templates";
 import { provisionServer, uploadSshKeyBestEffort, ProvisionPersistenceError } from "../../src/core/provision";
 import {
   handleServerProvision,
+  serverProvisionOutputSchema,
 } from "../../src/mcp/tools/serverProvision";
 import {
   toProvisionPublicDto,
   type ProvisionPersistenceResult,
 } from "../../src/core/provision";
 import type { CloudProvider } from "../../src/providers/base";
+import {
+  normalizeObjectSchema,
+  safeParseAsync,
+} from "@modelcontextprotocol/sdk/server/zod-compat.js";
 
 jest.mock("../../src/utils/config");
 jest.mock("../../src/utils/ssh");
@@ -57,6 +62,15 @@ const createMockProvider = (): jest.Mocked<CloudProvider> => ({
 });
 
 let mockProvider: jest.Mocked<CloudProvider>;
+
+function mockMcpServer(elicitResult: unknown) {
+  const server = {
+    getClientCapabilities: jest.fn().mockReturnValue({ elicitation: {} }),
+    elicitInput: jest.fn().mockResolvedValue(elicitResult),
+    sendLoggingMessage: jest.fn().mockResolvedValue(undefined),
+  };
+  return { server };
+}
 
 // ─── Setup ───────────────────────────────────────────────────────────────────
 
@@ -472,6 +486,26 @@ describe("handleServerProvision — SAFE_MODE", () => {
     expect(result.isError).toBe(true);
     expect(data.error).toContain("SAFE_MODE");
     expect(data.hint).toContain("SAFE_MODE=false");
+  });
+});
+
+// ─── handleServerProvision — elicitation ─────────────────────────────────────
+
+describe("handleServerProvision — elicitation", () => {
+  it("validates cancelled elicitation structuredContent against serverProvision outputSchema", async () => {
+    const response = await handleServerProvision(
+      { provider: undefined as never, name: undefined as never },
+      mockMcpServer({ action: "decline" }) as never,
+    );
+
+    const parsed = await safeParseAsync(
+      normalizeObjectSchema(serverProvisionOutputSchema)!,
+      (response as { structuredContent?: unknown }).structuredContent,
+    );
+    expect(parsed.success).toBe(true);
+    expect(JSON.parse(response.content[0].text)).toEqual(
+      expect.objectContaining({ kind: "cancelled", status: "cancelled" }),
+    );
   });
 });
 
@@ -1226,6 +1260,43 @@ describe("handleServerProvision — ProvisionPersistenceError recovery branch", 
     const serialized = JSON.stringify(body);
     expect(serialized).not.toContain(tokenLeak);
     expect(serialized).not.toContain("responseBody");
+  });
+
+  it("validates orphan DTO structuredContent against serverProvision outputSchema", async () => {
+    const internalResult: ProvisionPersistenceResult = {
+      kind: "created-orphan",
+      provider: "hetzner",
+      providerId: "provider-orphan-schema",
+      name: "orphan-schema-srv",
+      ip: "203.0.113.100",
+      suggestedCommand:
+        "kastell server_manage add --name orphan-schema-srv --provider hetzner",
+      cause: new Error("EACCES"),
+    };
+    const persistenceError = new ProvisionPersistenceError(
+      {
+        provider: "hetzner",
+        serverId: "provider-orphan-schema",
+        serverName: "orphan-schema-srv",
+        ip: "203.0.113.100",
+      },
+      internalResult.cause,
+      { internalResult },
+    );
+    provisionServerSpy.mockRejectedValueOnce(persistenceError);
+
+    const response = await handleServerProvision({
+      provider: "hetzner",
+      name: "orphan-schema-srv",
+      region: "nbg1",
+      size: "cax11",
+    });
+
+    const parsed = await safeParseAsync(
+      normalizeObjectSchema(serverProvisionOutputSchema)!,
+      (response as { structuredContent?: unknown }).structuredContent,
+    );
+    expect(parsed.success).toBe(true);
   });
 
   it("falls back to legacy error envelope when ProvisionPersistenceError has no internalResult (backward compat)", async () => {

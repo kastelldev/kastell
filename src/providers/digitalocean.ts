@@ -3,7 +3,6 @@ import { apiClient, defaultLookupServerResource, stripSensitiveData, withProvide
 import { withRetry } from "../utils/retry.js";
 import type { Region, ServerSize, ServerConfig, ServerResult, SnapshotInfo, ServerMode } from "../types/index.js";
 import { formatSnapshotCost } from "../constants.js";
-import { BusinessError } from "../utils/errors.js";
 
 export const DODropletSchema = z.object({
   droplet: z.object({

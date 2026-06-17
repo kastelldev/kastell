@@ -260,6 +260,20 @@ describe.each(PROVIDERS)("CloudProvider contract — $providerName", ({ factory 
       });
     });
 
+    it("returns { status: 'unknown', providerId, cause } on non-missing business errors", async () => {
+      const axiosLike409 = Object.assign(new Error("Request failed with status code 409"), {
+        isAxiosError: true,
+        response: { status: 409, data: { message: "conflict" } },
+      });
+      mockedAxios.get.mockRejectedValueOnce(axiosLike409);
+      const result = await provider.lookupServerResource("conflict-1");
+      expect(result.status).toBe("unknown");
+      expect(result.providerId).toBe("conflict-1");
+      if (result.status === "unknown") {
+        expect(result.cause).toBeInstanceOf(Error);
+      }
+    });
+
     it("returns { status: 'unknown', providerId, cause: Error } on transport failure", async () => {
       const transportError: TransientError = new TransientError("timeout");
       mockedAxios.get.mockRejectedValueOnce(transportError);

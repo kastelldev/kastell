@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { apiClient, defaultLookupServerResource, stripSensitiveData, withProviderErrorHandling, assertValidServerId, uploadSshKeyWithConflict, type CloudProvider, type ProviderResourceLookup } from "./base.js";
 import { withRetry } from "../utils/retry.js";
-import { BusinessError } from "../utils/errors.js";
 
 import type { Region, ServerSize, ServerConfig, ServerResult, SnapshotInfo, ServerMode } from "../types/index.js";
 import { VULTR_UBUNTU_OS_ID, formatSnapshotCost } from "../constants.js";
