@@ -99,6 +99,7 @@ const mockProvider: CloudProvider = {
   restoreSnapshot: jest.fn(),
   getSnapshotCostEstimate: jest.fn(),
   findServerByIp: jest.fn().mockResolvedValue(null),
+  lookupServerResource: jest.fn(),
 };
 
 const originalEnv = process.env;
@@ -901,5 +902,37 @@ describe("handleServerManage — malformed params", () => {
     expect(result.isError).toBe(true);
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.error).toBeTruthy();
+  });
+});
+
+// ─── MCP Handler: SAFE_MODE guards (additional coverage) ────────────────────
+
+describe("handleServerManage — SAFE_MODE guards", () => {
+  it("should block remove action in SAFE_MODE", async () => {
+    process.env.KASTELL_SAFE_MODE = "true";
+
+    const result = await handleServerManage({
+      action: "remove",
+      server: "coolify-test",
+    });
+    const data = JSON.parse(result.content[0].text);
+
+    expect(result.isError).toBe(true);
+    expect(data.error).toContain("SAFE_MODE");
+  });
+
+  it("should allow remove action when SAFE_MODE is disabled", async () => {
+    process.env.KASTELL_SAFE_MODE = "false";
+    mockedConfig.findServer.mockReturnValue(sampleServer);
+    mockedConfig.removeServer.mockResolvedValue(true);
+
+    const result = await handleServerManage({
+      action: "remove",
+      server: "coolify-test",
+    });
+    const data = JSON.parse(result.content[0].text);
+
+    expect(result.isError).toBeUndefined();
+    expect(data.success).toBe(true);
   });
 });

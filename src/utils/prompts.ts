@@ -3,6 +3,7 @@ import type { CloudProvider } from "../providers/base.js";
 import type { DeploymentConfig, ServerMode } from "../types/index.js";
 import { SUPPORTED_PROVIDERS, PROVIDER_DISPLAY_NAMES } from "../constants.js";
 import { logger } from "./logger.js";
+import { markCommandFailed } from "./exitCode.js";
 
 export const BACK_SIGNAL = "__BACK__";
 
@@ -202,4 +203,62 @@ export async function confirmOrCancel(
 
   logger.warning(cancelMessage);
   return { confirmed: false, reason: "non-tty", message: cancelMessage };
+}
+
+/**
+ * Thin wrapper around a `ConfirmationDecision` that:
+ *   - returns `true` if the user confirmed (proceed)
+ *   - logs the decision message and returns `false` if declined
+ *   - logs the decision message, calls `markFailed` (exit code 1) and returns
+ *     `false` if the refusal came from non-interactive mode
+ *
+ * Replaces the repeated 5-line if/return block in destructive commands:
+ *
+ *   if (!decision.confirmed) {
+ *     logger.info(decision.message);
+ *     if (decision.reason === "non-tty") markCommandFailed();
+ *     return;
+ *   }
+ *
+ * Use: `if (!enforceOrCancel(decision)) return;`
+ *
+ * `markFailed` is injectable for testability; production callers omit it.
+ */
+export function enforceOrCancel(
+  decision: ConfirmationDecision,
+  markFailed: () => void = markCommandFailed,
+): boolean {
+  if (decision.confirmed) return true;
+  logger.info(decision.message);
+  if (decision.reason === "non-tty") markFailed();
+  return false;
+}
+
+/**
+ * TTY-only second-factor confirmation: prompt the user to re-type an
+ * expected string (e.g. the server name) and return `true` iff the
+ * trimmed input matches.
+ *
+ * Callers MUST filter non-TTY environments before calling this helper
+ * (e.g. gate on `process.stdin.isTTY` after a successful `confirmOrCancel`).
+ * In non-TTY mode this helper throws — it never silently accepts.
+ */
+export async function confirmTypedNameInTty(args: {
+  expected: string;
+  promptMessage: string;
+}): Promise<boolean> {
+  if (!process.stdin.isTTY) {
+    throw new Error(
+      "confirmTypedNameInTty requires an interactive TTY. " +
+        "Callers must filter non-TTY mode before invoking this helper.",
+    );
+  }
+  const { confirmName } = await inquirer.prompt([
+    {
+      type: "input",
+      name: "confirmName",
+      message: args.promptMessage,
+    },
+  ]);
+  return confirmName.trim() === args.expected;
 }

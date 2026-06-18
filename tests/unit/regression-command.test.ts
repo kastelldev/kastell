@@ -4,9 +4,13 @@ import * as promptsModule from "../../src/utils/prompts.js";
 import * as exitCodeModule from "../../src/utils/exitCode.js";
 
 jest.mock("fs");
-jest.mock("../../src/utils/prompts.js", () => ({
-  confirmOrCancel: jest.fn(),
-}));
+jest.mock("../../src/utils/prompts.js", () => {
+  const actual = jest.requireActual("../../src/utils/prompts.js");
+  return {
+    ...actual,
+    confirmOrCancel: jest.fn(),
+  };
+});
 jest.mock("../../src/utils/exitCode.js", () => ({
   markCommandFailed: jest.fn(),
 }));

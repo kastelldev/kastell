@@ -5,8 +5,7 @@ import { checkSshAvailable } from "../utils/ssh.js";
 import { logger, createSpinner } from "../utils/logger.js";
 import { mapSshError, classifyError } from "../utils/errorMapper.js";
 import { resolvePlatform } from "../adapters/factory.js";
-import { confirmOrCancel } from "../utils/prompts.js";
-import { markCommandFailed } from "../utils/exitCode.js";
+import { confirmOrCancel, enforceOrCancel } from "../utils/prompts.js";
 import type { ServerRecord } from "../types/index.js";
 import {
   formatTimestamp,
@@ -118,13 +117,7 @@ async function backupCleanupCommand(force?: boolean): Promise<void> {
       false,
       "Use --force to remove orphan backups in non-interactive mode.",
     );
-    if (!decision.confirmed) {
-      logger.info(decision.message);
-      if (decision.reason === "non-tty") {
-        markCommandFailed();
-      }
-      return;
-    }
+    if (!enforceOrCancel(decision)) return;
   }
 
   let removed = 0;

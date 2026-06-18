@@ -4,7 +4,7 @@ import { createProviderWithToken } from "../utils/providerFactory.js";
 import { getBareCloudInit } from "../utils/cloudInit.js";
 import { getAdapter } from "../adapters/factory.js";
 import { findLocalSshKey, generateSshKey, getSshKeyName } from "../utils/sshKey.js";
-import { saveServer, updateServer } from "../utils/config.js";
+import { saveServer, updateServer, saveServerAfterDuplicateIpVerification, getServers, type ConflictSnapshot } from "../utils/config.js";
 import { getTemplateDefaults } from "../utils/templates.js";
 import { getErrorMessage, mapProviderError } from "../utils/errorMapper.js";
 import { KastellError } from "../utils/errors.js";
@@ -14,6 +14,7 @@ import { debugLog } from "../utils/logger.js";
 import type { CloudProvider } from "../providers/base.js";
 import type { ServerRecord, Platform } from "../types/index.js";
 import { IP_WAIT, BOOT_WAIT, BOOT_WAIT_DEFAULT, invalidProviderError } from "../constants.js";
+import type { SupportedProvider } from "../constants.js";
 
 const BARE_SSH_WAIT_ATTEMPTS = 60;
 const BARE_SSH_WAIT_INTERVAL_MS = 5000;
@@ -49,6 +50,78 @@ export interface ProvisionResult {
   hint?: string;
 }
 
+/**
+ * Internal persistence result returned by provision steps. Two mutually
+ * exclusive cases:
+ *
+ *  - `created-persisted` — cloud resource exists AND the local record is
+ *    safely written. Caller may proceed to readiness checks.
+ *  - `created-orphan` — cloud resource was created on the provider but the
+ *    local persistence step failed. The cloud server may be billable and
+ *    must be surfaced to the user with recovery guidance. The typed `cause`
+ *    is internal-only; MCP boundary MUST project this through
+ *    {@link toProvisionPublicDto} so that error/stack/response body/token
+ *    fields never leak into the public payload.
+ *
+ * This type is a superset of the Task 2 `SaveServerResult` (persistence-step
+ * outcome only). It is the dedicated contract between `core/provision` and
+ * `mcp/tools/serverProvision` for the orphan-vs-persisted case.
+ */
+export type ProvisionPersistenceResult =
+  | { kind: "created-persisted"; server: ServerRecord; replacedStaleServer?: Readonly<ServerRecord> }
+  | {
+      kind: "created-orphan";
+      provider: SupportedProvider;
+      providerId: string;
+      name: string;
+      ip: string;
+      suggestedCommand: string;
+      cause: Error;
+    };
+
+/**
+ * Public, sanitized DTO for a {@link ProvisionPersistenceResult}.
+ *
+ * The orphan case carries a `cause: Error` internally for downstream
+ * diagnostics (logging, debugging). The public DTO strips `cause` AND any
+ * non-whitelisted fields the cause might have set on itself (e.g. response
+ * bodies, tokens, raw stack traces) so that nothing internal leaks to MCP
+ * clients.
+ *
+ * Whitelist (deliberate, exhaustive):
+ *  - `kind`
+ *  - `provider`, `providerId`, `name`, `ip` (orphan)
+ *  - `suggestedCommand` (orphan)
+ *  - `server`, `replacedStaleServer` (persisted)
+ *
+ * Anything else (cause, stack, responseBody, apiToken, …) is dropped.
+ */
+export function toProvisionPublicDto(
+  result: ProvisionPersistenceResult,
+): Record<string, unknown> {
+  if (result.kind === "created-persisted") {
+    const dto: Record<string, unknown> = {
+      kind: "created-persisted",
+      server: result.server,
+    };
+    if (result.replacedStaleServer !== undefined) {
+      dto.replacedStaleServer = result.replacedStaleServer;
+    }
+    return dto;
+  }
+  // created-orphan: explicit field projection — never spread `result` to
+  // avoid leaking the typed cause (which may carry response body / token /
+  // stack on its own properties).
+  return {
+    kind: "created-orphan",
+    provider: result.provider,
+    providerId: result.providerId,
+    name: result.name,
+    ip: result.ip,
+    suggestedCommand: result.suggestedCommand,
+  };
+}
+
 // ─── Errors ──────────────────────────────────────────────────────────────────
 
 export class ProvisionPersistenceError extends KastellError {
@@ -58,6 +131,14 @@ export class ProvisionPersistenceError extends KastellError {
   readonly ip: string;
   readonly warning: string;
   readonly recovery: string[];
+  /**
+   * Optional typed payload describing the persistence outcome. When set, the
+   * MCP boundary (`mcp/tools/serverProvision`) projects this through
+   * {@link toProvisionPublicDto} so internal `cause` data never leaks to
+   * clients. Omitted for callers that don't need a structured payload (CLI
+   * commands use the legacy error envelope instead).
+   */
+  readonly internalResult?: ProvisionPersistenceResult;
 
   constructor(
     details: {
@@ -67,6 +148,7 @@ export class ProvisionPersistenceError extends KastellError {
       ip: string;
     },
     cause: unknown,
+    options: { internalResult?: ProvisionPersistenceResult } = {},
   ) {
     super(
       `Cloud server "${details.serverName}" was created but could not be saved locally.`,
@@ -82,6 +164,7 @@ export class ProvisionPersistenceError extends KastellError {
       "Delete the resource through the provider dashboard or provider CLI if it is unwanted.",
       "Optionally use server_manage add for local visibility; manual registration does not preserve the original provider server ID.",
     ];
+    this.internalResult = options.internalResult;
     Object.setPrototypeOf(this, ProvisionPersistenceError.prototype);
   }
 }
@@ -90,6 +173,78 @@ export class ProvisionPersistenceError extends KastellError {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Detect a "Server already exists: IP <ip>" duplicate error and try to
+ * recover by replacing the stale local record with the freshly-created
+ * cloud server. Returns the persisted record on success, or undefined if
+ * the error was not a duplicate-IP conflict (caller should surface the
+ * original error as ProvisionPersistenceError).
+ *
+ * Recovery contract:
+ *  1. Snapshot the conflicting record id (one short config read).
+ *  2. Call provider.lookupServerResource(conflict.id) OUTSIDE the lock.
+ *  3. exists / unknown → reject recovery (caller surfaces original error).
+ *  4. not-found → saveServerAfterDuplicateIpVerification atomically replaces
+ *     the stale record. If the helper rejects (concurrent change), the
+ *     caller still surfaces the original error.
+ */
+async function tryRecoverDuplicateIp(params: {
+  record: ServerRecord;
+  provider: CloudProvider;
+  initialIp: string;
+  error: unknown;
+}): Promise<ServerRecord | undefined> {
+  const { record, provider, initialIp, error } = params;
+  if (!(error instanceof Error)) return undefined;
+  const dupMatch = /Server already exists: IP (\S+)/.exec(error.message);
+  if (!dupMatch) return undefined;
+  const duplicateIp = dupMatch[1];
+  if (duplicateIp !== initialIp) return undefined;
+
+  // Snapshot the conflicting record's immutable fields under a short config
+  // read. getServers() uses memoizeOnStat, so this is a fast cached read.
+  // The full snapshot (5 fields) is needed so the locked CAS can detect a
+  // concurrent rename/re-assignment of the conflict between snapshot and
+  // lock acquisition.
+  let conflictSnapshot: ConflictSnapshot | undefined;
+  try {
+    const conflict = getServers().find(
+      (server) => server.ip === duplicateIp,
+    );
+    if (conflict) {
+      conflictSnapshot = {
+        id: conflict.id,
+        name: conflict.name,
+        provider: conflict.provider,
+        ip: conflict.ip,
+        mode: (conflict.mode ?? "coolify") as ServerRecord["mode"],
+      };
+    }
+  } catch {
+    return undefined;
+  }
+  if (!conflictSnapshot) return undefined;
+
+  // Verify with the provider OUTSIDE the file lock.
+  let lookup;
+  try {
+    lookup = await provider.lookupServerResource(conflictSnapshot.id);
+  } catch {
+    // lookup itself threw — treat as transient/unknown.
+    return undefined;
+  }
+  if (lookup.status === "exists" || lookup.status === "unknown") {
+    return undefined;
+  }
+  // lookup.status === "not-found" — try the locked compare-and-swap.
+  try {
+    const result = await saveServerAfterDuplicateIpVerification(record, conflictSnapshot);
+    return result.server;
+  } catch {
+    return undefined;
+  }
 }
 
 function isPendingIp(ip: string): boolean {
@@ -271,15 +426,47 @@ export async function provisionServer(
   try {
     await saveServer(record);
   } catch (error) {
-    throw new ProvisionPersistenceError(
-      {
-        provider: config.provider,
-        serverId,
-        serverName: config.name,
-        ip: initialIp,
-      },
+    // Duplicate-IP path: if the local registry already holds a record for
+    // this concrete IP, this is likely a stale entry from a prior cloud
+    // resource that has since been destroyed. Verify with the provider
+    // and compare-and-swap to the new record. This MUST happen OUTSIDE
+    // the file lock so we don't hold config I/O while waiting on a
+    // network round trip.
+    const recovered = await tryRecoverDuplicateIp({
+      record,
+      provider,
+      initialIp,
       error,
-    );
+    });
+    if (recovered) {
+      record = recovered;
+    } else {
+      // Orphan case: the cloud resource exists but local persistence failed.
+      // Attach internalResult so the MCP boundary can project through the
+      // public DTO (DTO strips `cause` and any token-shaped property the
+      // cause may carry). The CLI path keeps the legacy error envelope —
+      // it ignores internalResult entirely.
+      throw new ProvisionPersistenceError(
+        {
+          provider: config.provider,
+          serverId,
+          serverName: config.name,
+          ip: initialIp,
+        },
+        error,
+        {
+          internalResult: {
+            kind: "created-orphan",
+            provider: config.provider as SupportedProvider,
+            providerId: serverId,
+            name: config.name,
+            ip: initialIp,
+            suggestedCommand: `kastell server_manage add --name ${config.name} --provider ${config.provider}`,
+            cause: error instanceof Error ? error : new Error(String(error)),
+          },
+        },
+      );
+    }
   }
 
   // Defer policy: skip ALL provider/IP/SSH polling. Caller will get the

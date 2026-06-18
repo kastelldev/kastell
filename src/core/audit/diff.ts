@@ -32,10 +32,10 @@ export function diffAudits(
   after: AuditResult,
   labels?: { before?: string; after?: string },
 ): AuditDiffResult {
-  const beforeMap = buildCheckMap(before);
-  const afterMap = buildCheckMap(after);
+  const { checkMap: beforeMap, stateMap: beforeStateMap } = buildCheckStateMaps(before);
+  const { checkMap: afterMap, stateMap: afterStateMap } = buildCheckStateMaps(after);
 
-  const allIds = new Set([...beforeMap.keys(), ...afterMap.keys()]);
+  const allIds = getAllCheckIds(before, after);
 
   const improvements: CheckDiffEntry[] = [];
   const regressions: CheckDiffEntry[] = [];
@@ -47,10 +47,12 @@ export function diffAudits(
   for (const id of allIds) {
     const b = beforeMap.get(id) ?? null;
     const a = afterMap.get(id) ?? null;
+    const bState = b ? beforeStateMap.get(id) ?? null : null;
+    const aState = a ? afterStateMap.get(id) ?? null : null;
 
     // Use whichever side exists for metadata (prefer after)
     const source = a ?? b!;
-    const status = classifyStatus(b, a);
+    const status = classifyStatus(b, a, bState, aState);
 
     const entry: CheckDiffEntry = {
       id,
@@ -58,8 +60,8 @@ export function diffAudits(
       category: source.category,
       severity: source.severity,
       status,
-      before: b ? getAuditCheckState(b) : null,
-      after: a ? getAuditCheckState(a) : null,
+      before: bState,
+      after: aState,
     };
 
     if (status === "improved") improvements.push(entry);
@@ -85,25 +87,40 @@ export function diffAudits(
   };
 }
 
-function buildCheckMap(audit: AuditResult): Map<string, AuditCheck> {
-  const map = new Map<string, AuditCheck>();
+function buildCheckStateMaps(audit: AuditResult): {
+  checkMap: Map<string, AuditCheck>;
+  stateMap: Map<string, AuditCheckState>;
+} {
+  const checkMap = new Map<string, AuditCheck>();
+  const stateMap = new Map<string, AuditCheckState>();
   for (const category of audit.categories) {
     for (const check of category.checks) {
-      map.set(check.id, check);
+      checkMap.set(check.id, check);
+      stateMap.set(check.id, getAuditCheckState(check));
     }
   }
-  return map;
+  return { checkMap, stateMap };
+}
+
+/** Union of check IDs present in either side of a diff. */
+function getAllCheckIds(before: AuditResult, after: AuditResult): Set<string> {
+  const ids = new Set<string>();
+  for (const id of buildCheckStateMaps(before).checkMap.keys()) ids.add(id);
+  for (const id of buildCheckStateMaps(after).checkMap.keys()) ids.add(id);
+  return ids;
 }
 
 function classifyStatus(
   before: AuditCheck | null,
   after: AuditCheck | null,
+  beforeState: AuditCheckState | null,
+  afterState: AuditCheckState | null,
 ): CheckDiffStatus {
   if (before === null) return "added";
   if (after === null) return "removed";
   // Skip transitions: either side is a structured skip → "skipped"
   // (does NOT classify as improved/regressed/unchanged)
-  if (getAuditCheckState(before) === "skipped" || getAuditCheckState(after) === "skipped") {
+  if (beforeState === "skipped" || afterState === "skipped") {
     return "skipped";
   }
   if (!before.passed && after.passed) return "improved";
@@ -147,9 +164,9 @@ export function diffAuditsFlat(
   scoreDelta: number;
   checks: FlatCheckDiffEntry[];
 } {
-  const beforeMap = buildCheckMap(before);
-  const afterMap = buildCheckMap(after);
-  const allIds = new Set([...beforeMap.keys(), ...afterMap.keys()]);
+  const { checkMap: beforeMap, stateMap: beforeStateMap } = buildCheckStateMaps(before);
+  const { checkMap: afterMap, stateMap: afterStateMap } = buildCheckStateMaps(after);
+  const allIds = getAllCheckIds(before, after);
 
   const checks: FlatCheckDiffEntry[] = [];
   for (const id of allIds) {
@@ -157,8 +174,8 @@ export function diffAuditsFlat(
     const a = afterMap.get(id) ?? null;
     if (b === null || a === null) continue; // skip added/removed — no A/B pair
     const source = a ?? b;
-    const bState = getAuditCheckState(b);
-    const aState = getAuditCheckState(a);
+    const bState = beforeStateMap.get(id) ?? null;
+    const aState = afterStateMap.get(id) ?? null;
     let status: FlatCheckDiffStatus;
     if (bState === "skipped" && aState === "skipped") status = "both_skip";
     else if (bState === "skipped") status = "B_skip"; // before is skipped, after is the real side

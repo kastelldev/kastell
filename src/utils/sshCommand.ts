@@ -78,3 +78,22 @@ export function subshell(command: SshCommand): SshCommand {
 export function buildCommandString(command: SshCommand): string {
   return command;
 }
+
+/**
+ * P143 Task 9: one-time-per-process TOFU warning.
+ * Returns true on the first call, false on every subsequent call.
+ * Used by `kastell ssh` to surface the SSH trust-on-first-use notice
+ * once per process — the automation path (`utils/ssh.ts`) never calls this.
+ */
+let tofuWarningConsumed = false;
+
+export function consumeTofuWarningOnce(): boolean {
+  if (tofuWarningConsumed) return false;
+  tofuWarningConsumed = true;
+  return true;
+}
+
+/** Test-only: reset the one-time TOFU warning flag between tests. */
+export function __resetSshCommandTofuWarning(): void {
+  tofuWarningConsumed = false;
+}

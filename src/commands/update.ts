@@ -7,7 +7,7 @@ import { markCommandFailed } from "../utils/exitCode.js";
 import { getAdapter, resolvePlatform } from "../adapters/factory.js";
 import { adapterDisplayName } from "../adapters/shared.js";
 import { updateServer } from "../core/update.js";
-import { confirmOrCancel } from "../utils/prompts.js";
+import { confirmOrCancel, enforceOrCancel } from "../utils/prompts.js";
 import type { ServerRecord, Platform } from "../types/index.js";
 
 interface UpdateOptions {
@@ -99,13 +99,7 @@ async function updateAll(options?: UpdateOptions): Promise<void> {
       false,
       "Use --force to update all in non-interactive mode.",
     );
-    if (!decision.confirmed) {
-      logger.info(decision.message);
-      if (decision.reason === "non-tty") {
-        markCommandFailed();
-      }
-      return;
-    }
+    if (!enforceOrCancel(decision)) return;
   }
 
   const tokenMap = await collectProviderTokens(servers);
@@ -189,13 +183,7 @@ export async function updateCommand(query?: string, options?: UpdateOptions): Pr
       false,
       "Use --force to update in non-interactive mode.",
     );
-    if (!decision.confirmed) {
-      logger.info(decision.message);
-      if (decision.reason === "non-tty") {
-        markCommandFailed();
-      }
-      return;
-    }
+    if (!enforceOrCancel(decision)) return;
   }
 
   const apiToken = server.id.startsWith("manual-") ? "" : await promptApiToken(server.provider);

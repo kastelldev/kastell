@@ -3,8 +3,7 @@ import { resolveServer } from "../utils/serverSelect.js";
 import { destroyCloudServer, removeServerRecord } from "../core/manage.js";
 import { logger, createSpinner } from "../utils/logger.js";
 import { listBackups, cleanupServerBackups } from "../core/backup.js";
-import { confirmOrCancel } from "../utils/prompts.js";
-import { markCommandFailed } from "../utils/exitCode.js";
+import { confirmOrCancel, enforceOrCancel, confirmTypedNameInTty } from "../utils/prompts.js";
 
 async function promptBackupCleanup(serverName: string, force?: boolean): Promise<void> {
   const backups = listBackups(serverName);
@@ -62,25 +61,15 @@ export async function destroyCommand(query?: string, options?: { dryRun?: boolea
       false,
       "Use --force to destroy in non-interactive mode.",
     );
-    if (!decision.confirmed) {
-      logger.info(decision.message);
-      if (decision.reason === "non-tty") {
-        markCommandFailed();
-      }
-      return;
-    }
+    if (!enforceOrCancel(decision)) return;
 
     // Second confirmation (interactive TTY only): type server name
     if (process.stdin.isTTY) {
-      const { confirmName } = await inquirer.prompt([
-        {
-          type: "input",
-          name: "confirmName",
-          message: `Type the server name "${server.name}" to confirm:`,
-        },
-      ]);
-
-      if (confirmName.trim() !== server.name) {
+      const nameMatches = await confirmTypedNameInTty({
+        expected: server.name,
+        promptMessage: `Type the server name "${server.name}" to confirm:`,
+      });
+      if (!nameMatches) {
         logger.error("Server name does not match. Destroy cancelled.");
         return;
       }

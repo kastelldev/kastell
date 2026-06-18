@@ -6,8 +6,19 @@ import * as sshKey from "../../src/utils/sshKey";
 import * as cloudInit from "../../src/utils/cloudInit";
 import * as templates from "../../src/utils/templates";
 import { provisionServer, uploadSshKeyBestEffort, ProvisionPersistenceError } from "../../src/core/provision";
-import { handleServerProvision } from "../../src/mcp/tools/serverProvision";
+import {
+  handleServerProvision,
+  serverProvisionOutputSchema,
+} from "../../src/mcp/tools/serverProvision";
+import {
+  toProvisionPublicDto,
+  type ProvisionPersistenceResult,
+} from "../../src/core/provision";
 import type { CloudProvider } from "../../src/providers/base";
+import {
+  normalizeObjectSchema,
+  safeParseAsync,
+} from "@modelcontextprotocol/sdk/server/zod-compat.js";
 
 jest.mock("../../src/utils/config");
 jest.mock("../../src/utils/ssh");
@@ -47,9 +58,19 @@ const createMockProvider = (): jest.Mocked<CloudProvider> => ({
   restoreSnapshot: jest.fn().mockResolvedValue(undefined),
   getSnapshotCostEstimate: jest.fn().mockReturnValue("$0.01/GB/month"),
   findServerByIp: jest.fn().mockResolvedValue(null),
+  lookupServerResource: jest.fn(),
 });
 
 let mockProvider: jest.Mocked<CloudProvider>;
+
+function mockMcpServer(elicitResult: unknown) {
+  const server = {
+    getClientCapabilities: jest.fn().mockReturnValue({ elicitation: {} }),
+    elicitInput: jest.fn().mockResolvedValue(elicitResult),
+    sendLoggingMessage: jest.fn().mockResolvedValue(undefined),
+  };
+  return { server };
+}
 
 // ─── Setup ───────────────────────────────────────────────────────────────────
 
@@ -465,6 +486,26 @@ describe("handleServerProvision — SAFE_MODE", () => {
     expect(result.isError).toBe(true);
     expect(data.error).toContain("SAFE_MODE");
     expect(data.hint).toContain("SAFE_MODE=false");
+  });
+});
+
+// ─── handleServerProvision — elicitation ─────────────────────────────────────
+
+describe("handleServerProvision — elicitation", () => {
+  it("validates cancelled elicitation structuredContent against serverProvision outputSchema", async () => {
+    const response = await handleServerProvision(
+      { provider: undefined as never, name: undefined as never },
+      mockMcpServer({ action: "decline" }) as never,
+    );
+
+    const parsed = await safeParseAsync(
+      normalizeObjectSchema(serverProvisionOutputSchema)!,
+      (response as { structuredContent?: unknown }).structuredContent,
+    );
+    expect(parsed.success).toBe(true);
+    expect(JSON.parse(response.content[0].text)).toEqual(
+      expect.objectContaining({ kind: "cancelled", status: "cancelled" }),
+    );
   });
 });
 
@@ -1154,5 +1195,367 @@ describe("handleServerProvision — ProvisionPersistenceError recovery branch", 
         expect.objectContaining({ command: expect.stringContaining("server_info") }),
       ]),
     );
+  });
+
+  it("projects orphan through DTO when handler catches ProvisionPersistenceError with internalResult (Task 3 wire-up)", async () => {
+    // Arrange: provisionServer throws ProvisionPersistenceError carrying an
+    // internalResult of kind "created-orphan". The cause holds a token-shaped
+    // property — the MCP boundary MUST project through the DTO so the token
+    // never reaches the response.
+    const tokenLeak = "hetzner_secret_xyz_42";
+    const leakyCause = Object.assign(new Error("disk full"), {
+      code: "ENOSPC",
+      apiToken: tokenLeak,
+      responseBody: "<html>secret</html>",
+    });
+    const internalResult: ProvisionPersistenceResult = {
+      kind: "created-orphan",
+      provider: "hetzner",
+      providerId: "provider-orphan-1",
+      name: "orphan-wire-srv",
+      ip: "203.0.113.99",
+      suggestedCommand:
+        "kastell server_manage add --name orphan-wire-srv --provider hetzner",
+      cause: leakyCause,
+    };
+
+    const persistenceError = new ProvisionPersistenceError(
+      {
+        provider: "hetzner",
+        serverId: "provider-orphan-1",
+        serverName: "orphan-wire-srv",
+        ip: "203.0.113.99",
+      },
+      leakyCause,
+    );
+    // Attach internalResult post-construction — the constructor does not take
+    // it as an arg, so we set it as a property. The handler MUST pick it up.
+    (persistenceError as unknown as { internalResult: ProvisionPersistenceResult }).internalResult =
+      internalResult;
+    provisionServerSpy.mockRejectedValueOnce(persistenceError);
+
+    // Act
+    const result = await handleServerProvision({
+      provider: "hetzner",
+      name: "orphan-wire-srv",
+      region: "nbg1",
+      size: "cax11",
+    });
+    const body = JSON.parse(result.content[0].text);
+
+    // Assert: response is a success-shaped orphan DTO, NOT an error envelope
+    expect(result.isError).toBeUndefined();
+    expect(body.kind).toBe("created-orphan");
+    expect(body.provider).toBe("hetzner");
+    expect(body.providerId).toBe("provider-orphan-1");
+    expect(body.name).toBe("orphan-wire-srv");
+    expect(body.ip).toBe("203.0.113.99");
+    expect(body.suggestedCommand).toContain("server_manage add");
+
+    // Assert: NO leakage of internal cause, token, or response body
+    expect(body).not.toHaveProperty("cause");
+    expect(body).not.toHaveProperty("apiToken");
+    expect(body).not.toHaveProperty("responseBody");
+    expect(body).not.toHaveProperty("stack");
+    const serialized = JSON.stringify(body);
+    expect(serialized).not.toContain(tokenLeak);
+    expect(serialized).not.toContain("responseBody");
+  });
+
+  it("validates orphan DTO structuredContent against serverProvision outputSchema", async () => {
+    const internalResult: ProvisionPersistenceResult = {
+      kind: "created-orphan",
+      provider: "hetzner",
+      providerId: "provider-orphan-schema",
+      name: "orphan-schema-srv",
+      ip: "203.0.113.100",
+      suggestedCommand:
+        "kastell server_manage add --name orphan-schema-srv --provider hetzner",
+      cause: new Error("EACCES"),
+    };
+    const persistenceError = new ProvisionPersistenceError(
+      {
+        provider: "hetzner",
+        serverId: "provider-orphan-schema",
+        serverName: "orphan-schema-srv",
+        ip: "203.0.113.100",
+      },
+      internalResult.cause,
+      { internalResult },
+    );
+    provisionServerSpy.mockRejectedValueOnce(persistenceError);
+
+    const response = await handleServerProvision({
+      provider: "hetzner",
+      name: "orphan-schema-srv",
+      region: "nbg1",
+      size: "cax11",
+    });
+
+    const parsed = await safeParseAsync(
+      normalizeObjectSchema(serverProvisionOutputSchema)!,
+      (response as { structuredContent?: unknown }).structuredContent,
+    );
+    expect(parsed.success).toBe(true);
+  });
+
+  it("falls back to legacy error envelope when ProvisionPersistenceError has no internalResult (backward compat)", async () => {
+    // Arrange: classic ProvisionPersistenceError (no internalResult). The
+    // handler MUST continue to surface provider/serverId/warning/recovery in
+    // the existing error shape, NOT regress to the orphan DTO branch.
+    const persistenceError = new ProvisionPersistenceError(
+      {
+        provider: "hetzner",
+        serverId: "provider-123",
+        serverName: "legacy-srv",
+        ip: "pending",
+      },
+      new Error("EACCES"),
+    );
+    provisionServerSpy.mockRejectedValueOnce(persistenceError);
+
+    // Act
+    const result = await handleServerProvision({
+      provider: "hetzner",
+      name: "legacy-srv",
+      region: "nbg1",
+      size: "cax11",
+    });
+    const body = JSON.parse(result.content[0].text);
+
+    // Assert: existing legacy envelope unchanged
+    expect(result.isError).toBe(true);
+    expect(body).toMatchObject({
+      provider: "hetzner",
+      serverId: "provider-123",
+      serverName: "legacy-srv",
+      ip: "pending",
+      warning: expect.stringMatching(/billable/i),
+      recovery: expect.arrayContaining([expect.stringMatching(/dashboard/i)]),
+    });
+    // Sanity: legacy envelope must not carry the orphan DTO field
+    expect(body.kind).toBeUndefined();
+  });
+});
+
+// ─── Task 2: P143-A Duplicate-IP Compare-And-Swap Recovery ───────────────
+
+describe("provisionServer — duplicate-IP recovery (Task 2)", () => {
+  const staleRecord = {
+    id: "stale-provider-id",
+    name: "stale-srv",
+    provider: "hetzner",
+    ip: "5.6.7.8",
+    region: "nbg1",
+    size: "cax11",
+    createdAt: "2026-01-01T00:00:00Z",
+    mode: "coolify" as const,
+  };
+
+  it("recovers via lookupServerResource='not-found' and saveServerAfterDuplicateIpVerification", async () => {
+    // Arrange: cloud creation succeeded, but the local config already has
+    // a record with the same concrete IP. saveServer rejects with the
+    // "IP 5.6.7.8" duplicate message.
+    mockedConfig.getServers.mockReturnValueOnce([staleRecord]);
+    mockProvider.lookupServerResource.mockResolvedValueOnce({
+      status: "not-found",
+      providerId: "stale-provider-id",
+    });
+    mockedConfig.saveServer.mockRejectedValueOnce(
+      Object.assign(new Error("Server already exists: IP 5.6.7.8")),
+    );
+    mockedConfig.saveServerAfterDuplicateIpVerification.mockResolvedValueOnce({
+      kind: "created-persisted",
+      server: {
+        id: "srv-123",
+        name: "recover-srv",
+        provider: "hetzner",
+        ip: "5.6.7.8",
+        region: "nbg1",
+        size: "cax11",
+        createdAt: "2026-06-16T00:00:00Z",
+        mode: "coolify",
+      },
+      replacedStaleServer: staleRecord,
+    });
+
+    // Act
+    const result = await provisionServer(
+      { provider: "hetzner", region: "nbg1", size: "cax11", name: "recover-srv" },
+      { readinessPolicy: "defer" },
+    );
+
+    // Assert
+    expect(result.success).toBe(true);
+    expect(result.server?.ip).toBe("5.6.7.8");
+    expect(mockProvider.lookupServerResource).toHaveBeenCalledWith("stale-provider-id");
+    expect(mockedConfig.saveServerAfterDuplicateIpVerification).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "srv-123", ip: "5.6.7.8" }),
+      {
+        id: "stale-provider-id",
+        name: "stale-srv",
+        provider: "hetzner",
+        ip: "5.6.7.8",
+        mode: "coolify",
+      },
+    );
+  });
+
+  it("rejects when lookupServerResource returns 'exists' (active conflict)", async () => {
+    // Arrange: another machine actually owns the IP — do not clobber.
+    mockedConfig.getServers.mockReturnValueOnce([staleRecord]);
+    mockProvider.lookupServerResource.mockResolvedValueOnce({
+      status: "exists",
+      providerId: "stale-provider-id",
+      ip: "5.6.7.8",
+    });
+    mockedConfig.saveServer.mockRejectedValueOnce(
+      Object.assign(new Error("Server already exists: IP 5.6.7.8")),
+    );
+
+    // Act + Assert: defer policy surfaces the original error as
+    // ProvisionPersistenceError; recovery was rejected (lookup said "exists").
+    await expect(
+      provisionServer(
+        { provider: "hetzner", region: "nbg1", size: "cax11", name: "active-conflict" },
+        { readinessPolicy: "defer" },
+      ),
+    ).rejects.toMatchObject({
+      name: "ProvisionPersistenceError",
+      provider: "hetzner",
+      serverName: "active-conflict",
+    });
+    expect(mockedConfig.saveServerAfterDuplicateIpVerification).not.toHaveBeenCalled();
+  });
+
+  it("rejects when lookupServerResource returns 'unknown' (transient)", async () => {
+    // Arrange: provider API was unreachable — cannot make a CAS decision.
+    mockedConfig.getServers.mockReturnValueOnce([staleRecord]);
+    mockProvider.lookupServerResource.mockResolvedValueOnce({
+      status: "unknown",
+      providerId: "stale-provider-id",
+      cause: new Error("network timeout"),
+    });
+    mockedConfig.saveServer.mockRejectedValueOnce(
+      Object.assign(new Error("Server already exists: IP 5.6.7.8")),
+    );
+
+    // Act + Assert
+    await expect(
+      provisionServer(
+        { provider: "hetzner", region: "nbg1", size: "cax11", name: "unknown-conflict" },
+        { readinessPolicy: "defer" },
+      ),
+    ).rejects.toMatchObject({
+      name: "ProvisionPersistenceError",
+      provider: "hetzner",
+      serverName: "unknown-conflict",
+    });
+    expect(mockedConfig.saveServerAfterDuplicateIpVerification).not.toHaveBeenCalled();
+  });
+});
+
+// ─── Task 3: P143-A Orphan Result DTO and Public Sanitization ───────────────
+
+describe("toProvisionPublicDto — orphan DTO sanitization (Task 3)", () => {
+  it("created-orphan internal result carries a typed Error cause", () => {
+    const cause = Object.assign(new Error("EACCES: config dir"), { code: "EACCES" });
+    const internal: ProvisionPersistenceResult = {
+      kind: "created-orphan",
+      provider: "hetzner",
+      providerId: "provider-123",
+      name: "orphan-srv",
+      ip: "5.6.7.8",
+      suggestedCommand: "kastell server_manage add --name orphan-srv --provider hetzner",
+      cause,
+    };
+
+    expect(internal.kind).toBe("created-orphan");
+    expect(internal.cause).toBeInstanceOf(Error);
+    expect((internal.cause as NodeJS.ErrnoException).code).toBe("EACCES");
+  });
+
+  it("public DTO strips the cause field while preserving provider, providerId, name, ip, and suggestedCommand", () => {
+    const cause = Object.assign(new Error("disk full"), { code: "ENOSPC" });
+    const internal: ProvisionPersistenceResult = {
+      kind: "created-orphan",
+      provider: "hetzner",
+      providerId: "provider-123",
+      name: "orphan-srv",
+      ip: "5.6.7.8",
+      suggestedCommand: "kastell server_manage add --name orphan-srv --provider hetzner",
+      cause,
+    };
+
+    const publicPayload = toProvisionPublicDto(internal) as Record<string, unknown>;
+
+    expect(publicPayload).not.toHaveProperty("cause");
+    expect(publicPayload).not.toHaveProperty("stack");
+    expect(publicPayload).toMatchObject({
+      kind: "created-orphan",
+      provider: "hetzner",
+      providerId: "provider-123",
+      name: "orphan-srv",
+      ip: "5.6.7.8",
+      suggestedCommand: expect.stringContaining("kastell"),
+    });
+  });
+
+  it("public DTO does not leak raw response body, token, or any error subclass field", () => {
+    const cause = Object.assign(new Error("403: token=hetzner_secret_abc"), {
+      code: "EAUTH",
+      responseBody: "<html>secret</html>",
+      apiToken: "hetzner_secret_abc",
+    });
+    const internal: ProvisionPersistenceResult = {
+      kind: "created-orphan",
+      provider: "digitalocean",
+      providerId: "do-999",
+      name: "leak-srv",
+      ip: "10.0.0.1",
+      suggestedCommand: "kastell server_info { action: 'list' }",
+      cause,
+    };
+
+    const publicPayload = toProvisionPublicDto(internal) as Record<string, unknown>;
+
+    // No raw cause, no response body, no token leak via any field name
+    expect(publicPayload.cause).toBeUndefined();
+    expect(publicPayload.responseBody).toBeUndefined();
+    expect(publicPayload.apiToken).toBeUndefined();
+    // Serialized JSON must not contain the token
+    const serialized = JSON.stringify(publicPayload);
+    expect(serialized).not.toContain("hetzner_secret_abc");
+    expect(serialized).not.toContain("responseBody");
+  });
+
+  it("created-persisted public DTO exposes server record without serverRecord.cause leakage", () => {
+    const internal: ProvisionPersistenceResult = {
+      kind: "created-persisted",
+      server: {
+        id: "srv-1",
+        name: "ok-srv",
+        provider: "hetzner",
+        ip: "5.6.7.8",
+        region: "nbg1",
+        size: "cax11",
+        createdAt: "2026-06-16T00:00:00Z",
+        mode: "coolify",
+      },
+    };
+
+    const publicPayload = toProvisionPublicDto(internal) as Record<string, unknown>;
+
+    expect(publicPayload.kind).toBe("created-persisted");
+    expect(publicPayload).not.toHaveProperty("cause");
+    expect(publicPayload).toMatchObject({
+      kind: "created-persisted",
+      server: expect.objectContaining({
+        id: "srv-1",
+        name: "ok-srv",
+        provider: "hetzner",
+        ip: "5.6.7.8",
+      }),
+    });
   });
 });

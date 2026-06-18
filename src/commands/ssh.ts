@@ -1,7 +1,10 @@
 import { resolveServer } from "../utils/serverSelect.js";
 import { checkSshAvailable, getHostKeyPolicy, getObservedHostFingerprint, sshConnect, sshExec } from "../utils/ssh.js";
-import { raw } from "../utils/sshCommand.js";
+import { consumeTofuWarningOnce, raw } from "../utils/sshCommand.js";
 import { logger } from "../utils/logger.js";
+
+// Re-export for test imports — state lives in utils/sshCommand.ts.
+export { __resetSshCommandTofuWarning } from "../utils/sshCommand.js";
 
 export async function sshCommand(query?: string, options?: { command?: string }): Promise<void> {
   if (!checkSshAvailable()) {
@@ -23,7 +26,7 @@ export async function sshCommand(query?: string, options?: { command?: string })
       logger.error(`Command exited with code ${result.code}`);
     }
   } else {
-    if (getHostKeyPolicy() === "accept-new") {
+    if (getHostKeyPolicy() === "accept-new" && consumeTofuWarningOnce()) {
       logger.warning(
         `First connection uses SSH trust-on-first-use (TOFU): this host has not been authenticated out of band.`,
       );

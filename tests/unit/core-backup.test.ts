@@ -17,14 +17,11 @@ import {
   scpUpload,
 } from "../../src/core/backup";
 
-jest.mock("fs", () => ({
-  mkdirSync: jest.fn(),
-  existsSync: jest.fn(),
-  writeFileSync: jest.fn(),
-  readFileSync: jest.fn(),
-  readdirSync: jest.fn(),
-  chmodSync: jest.fn(),
-}));
+jest.mock("fs", () => {
+  const { createFsMock } = require("../helpers/fsMock.js");
+  const mock = createFsMock();
+  return { ...mock, readdirSync: jest.fn() };
+});
 jest.mock("child_process", () => ({
   spawn: jest.fn(),
   execSync: jest.fn(),

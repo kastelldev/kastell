@@ -18,9 +18,13 @@ jest.mock("../../src/utils/ssh");
 jest.mock("../../src/core/guard");
 jest.mock("../../src/utils/serverSelect");
 jest.mock("../../src/utils/exitCode");
-jest.mock("../../src/utils/prompts", () => ({
-  confirmOrCancel: jest.fn(),
-}));
+jest.mock("../../src/utils/prompts", () => {
+  const actual = jest.requireActual("../../src/utils/prompts");
+  return {
+    ...actual,
+    confirmOrCancel: jest.fn(),
+  };
+});
 jest.mock("@inquirer/prompts", () => ({
   confirm: jest.fn(),
 }));

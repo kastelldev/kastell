@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { apiClient, stripSensitiveData, withProviderErrorHandling, assertValidServerId, uploadSshKeyWithConflict, type CloudProvider } from "./base.js";
+import { apiClient, defaultLookupServerResource, stripSensitiveData, withProviderErrorHandling, assertValidServerId, uploadSshKeyWithConflict, type CloudProvider, type ProviderResourceLookup } from "./base.js";
 import { withRetry } from "../utils/retry.js";
 import type { Region, ServerSize, ServerConfig, ServerResult, SnapshotInfo, ServerMode } from "../types/index.js";
 import { formatSnapshotCost } from "../constants.js";
@@ -343,5 +343,9 @@ export class DigitalOceanProvider implements CloudProvider {
       );
       return found ? found.id.toString() : null;
     }, extractDOError);
+  }
+
+  async lookupServerResource(serverId: string): Promise<ProviderResourceLookup> {
+    return defaultLookupServerResource(this, serverId);
   }
 }

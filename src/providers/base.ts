@@ -39,7 +39,19 @@ export interface CloudProvider {
   restoreSnapshot(serverId: string, snapshotId: string): Promise<void>;
   getSnapshotCostEstimate(serverId: string): Promise<string>;
   findServerByIp(ip: string): Promise<string | null>;
+  lookupServerResource(serverId: string): Promise<ProviderResourceLookup>;
 }
+
+/**
+ * Normalized server resource lookup result.
+ * - "exists": server is reachable and authoritative data is returned.
+ * - "not-found": server does not exist (404 / authoritative missing).
+ * - "unknown": failure is transient or unactionable (auth, rate-limit, timeout, malformed, transport).
+ */
+export type ProviderResourceLookup =
+  | { status: "exists"; providerId: string; ip?: string }
+  | { status: "not-found"; providerId: string }
+  | { status: "unknown"; providerId: string; cause: Error };
 
 /**
  * Sanitize axios response data — whitelist-only approach.
@@ -229,4 +241,35 @@ export function stripSensitiveData(error: unknown): void {
       error.response.headers = {} as typeof error.response.headers;
     }
   }
+}
+
+/**
+ * Default `lookupServerResource` implementation — shared by all 4 providers.
+ * Calls `provider.getServerDetails` and maps errors:
+ * - `BusinessError` with authoritative provider 404 → "not-found"
+ * - any other error → "unknown" with the cause attached
+ * - success → "exists" with the server IP
+ */
+export async function defaultLookupServerResource(
+  provider: { getServerDetails(id: string): Promise<{ ip: string }> },
+  serverId: string,
+): Promise<ProviderResourceLookup> {
+  try {
+    const details = await provider.getServerDetails(serverId);
+    return { status: "exists", providerId: serverId, ip: details.ip };
+  } catch (error: unknown) {
+    if (error instanceof BusinessError && providerErrorStatus(error) === 404) {
+      return { status: "not-found", providerId: serverId };
+    }
+    const cause = error instanceof Error ? error : new Error(String(error));
+    return { status: "unknown", providerId: serverId, cause };
+  }
+}
+
+function providerErrorStatus(error: Error): number | undefined {
+  const cause = (error as { cause?: unknown }).cause;
+  if (axios.isAxiosError(cause)) {
+    return cause.response?.status;
+  }
+  return undefined;
 }

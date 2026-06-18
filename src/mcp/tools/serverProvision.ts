@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { isSafeMode } from "../../core/manage.js";
 import { logSafeModeBlock } from "../../utils/safeMode.js";
-import { provisionServer, ProvisionPersistenceError } from "../../core/provision.js";
+import { provisionServer, ProvisionPersistenceError, toProvisionPublicDto } from "../../core/provision.js";
 import { mcpSuccess, mcpError, mcpLog, elicitMissingParams, ELICIT_PROVIDER_SCHEMA, ELICIT_SERVER_NAME_SCHEMA } from "../utils.js";
 import { getErrorMessage, sanitizeStderr } from "../../utils/errorMapper.js";
 import { SUPPORTED_PROVIDERS } from "../../constants.js";
@@ -11,27 +11,46 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 // ─── Output Schema ───────────────────────────────────────────────────────────
 
 
+const provisionServerRecordSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  provider: z.string(),
+  ip: z.string(),
+  region: z.string(),
+  size: z.string(),
+  mode: z.string(),
+  createdAt: z.string(),
+});
+
 export const serverProvisionOutputSchema = z.object({
-  result: z.object({
-    success: z.boolean(),
-    message: z.string(),
-    server: z.object({
-      id: z.string(),
-      name: z.string(),
-      provider: z.string(),
-      ip: z.string(),
-      region: z.string(),
-      size: z.string(),
-      mode: z.string(),
-      createdAt: z.string(),
-    }),
-    readiness: z.object({
-      status: z.enum(["pending", "ready", "unknown"]),
+  result: z.discriminatedUnion("kind", [
+    z.object({
+      kind: z.literal("created-persisted"),
+      success: z.boolean().optional(),
       message: z.string().optional(),
+      server: provisionServerRecordSchema,
+      replacedStaleServer: provisionServerRecordSchema.optional(),
+      readiness: z.object({
+        status: z.enum(["pending", "ready", "unknown"]),
+        message: z.string().optional(),
+      }).optional(),
+      hint: z.string().optional(),
+      suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })).optional(),
     }),
-    hint: z.string().optional(),
-    suggested_actions: z.array(z.object({ command: z.string(), reason: z.string() })),
-  }),
+    z.object({
+      kind: z.literal("created-orphan"),
+      provider: z.enum(SUPPORTED_PROVIDERS),
+      providerId: z.string(),
+      name: z.string(),
+      ip: z.string(),
+      suggestedCommand: z.string(),
+    }),
+    z.object({
+      kind: z.literal("cancelled"),
+      status: z.literal("cancelled"),
+      message: z.string(),
+    }),
+  ]),
 });
 
 export type ServerProvisionOutput = z.infer<typeof serverProvisionOutputSchema>;
@@ -103,7 +122,11 @@ export async function handleServerProvision(
     });
 
     if (elicit.status === "cancelled") {
-      return mcpSuccess({ status: "cancelled", message: "Provisioning cancelled by user." });
+      return mcpSuccess({
+        kind: "cancelled",
+        status: "cancelled",
+        message: "Provisioning cancelled by user.",
+      });
     }
     if (elicit.status === "unsupported") {
       const missing = [!provider && "provider", !name && "name"].filter(Boolean);
@@ -199,6 +222,7 @@ export async function handleServerProvision(
     await mcpLog(mcpServer, "Provision complete");
 
     const data = {
+      kind: "created-persisted" as const,
       success: true,
       message: `Server "${server.name}" cloud creation and local registration completed on ${server.provider}; readiness may remain pending.`,
       server: {
@@ -218,6 +242,14 @@ export async function handleServerProvision(
     return mcpSuccess(data);
   } catch (error: unknown) {
     if (error instanceof ProvisionPersistenceError) {
+      // Task 3 wire-up: when the core layer attaches an internalResult (the
+      // orphan case), project it through the public DTO. The DTO strips
+      // `cause` and any token/responseBody/apiToken properties the cause may
+      // carry, so nothing internal leaks to MCP clients. The success-shaped
+      // response carries a `kind` discriminator the client can switch on.
+      if (error.internalResult) {
+        return mcpSuccess(toProvisionPublicDto(error.internalResult));
+      }
       return {
         content: [{
           type: "text",

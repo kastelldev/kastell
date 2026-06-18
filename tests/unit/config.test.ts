@@ -7,8 +7,10 @@ import {
   removeServer,
   findServer,
   findServers,
+  saveServerAfterDuplicateIpVerification,
   SERVERS_FILE,
 } from "../../src/utils/config";
+import type { ServerRecord } from "../../src/types/index";
 import { KASTELL_DIR } from "../../src/utils/paths";
 import * as fs from "fs";
 import * as secureWriteModule from "../../src/utils/secureWrite";
@@ -706,6 +708,180 @@ describe("config", () => {
     it("should have correct config paths", () => {
       expect(KASTELL_DIR).toContain(".kastell");
       expect(SERVERS_FILE).toContain("servers.json");
+    });
+  });
+
+  describe("saveServerAfterDuplicateIpVerification", () => {
+    const staleIp = "203.0.113.50";
+    const staleRecord = {
+      id: "stale-provider-id",
+      name: "stale-srv",
+      provider: "hetzner" as const,
+      ip: staleIp,
+      region: "nbg1",
+      size: "cax11",
+      createdAt: "2026-01-01T00:00:00Z",
+      mode: "coolify" as const,
+    };
+    const newRecord: ServerRecord = {
+      id: "new-provider-id",
+      name: "new-srv",
+      provider: "hetzner",
+      ip: staleIp,
+      region: "nbg1",
+      size: "cax11",
+      createdAt: "2026-02-01T00:00:00Z",
+      mode: "coolify",
+    };
+
+    it("replaces stale record with matching immutable fields and reports replacedStaleServer", async () => {
+      mockedFs.existsSync.mockReturnValue(true);
+      mockedFs.readFileSync.mockReturnValue(JSON.stringify([staleRecord]));
+
+      const result = await saveServerAfterDuplicateIpVerification(newRecord, {
+        id: staleRecord.id,
+        name: staleRecord.name,
+        provider: staleRecord.provider,
+        ip: staleRecord.ip,
+        mode: staleRecord.mode,
+      });
+
+      expect(result).toEqual({
+        kind: "created-persisted",
+        server: newRecord,
+        replacedStaleServer: expect.objectContaining({ id: "stale-provider-id" }),
+      });
+      // Disk write happened with the new record (replaced)
+      const writes = (secureWriteFileSync as jest.Mock).mock.calls;
+      const lastWrite = JSON.parse(writes[writes.length - 1][1]);
+      expect(lastWrite).toHaveLength(1);
+      expect(lastWrite[0].id).toBe("new-provider-id");
+    });
+
+    it("rejects when a different active record holds the IP (active conflict)", async () => {
+      const activeRecord = { ...staleRecord, id: "active-other-id", name: "active-srv" };
+      mockedFs.existsSync.mockReturnValue(true);
+      mockedFs.readFileSync.mockReturnValue(JSON.stringify([activeRecord]));
+
+      await expect(
+        saveServerAfterDuplicateIpVerification(newRecord, {
+          id: "stale-provider-id",
+          name: "stale-srv",
+          provider: "hetzner",
+          ip: staleIp,
+          mode: "coolify",
+        }),
+      ).rejects.toThrow(/IP|exists|conflict|mismatch/i);
+      // No disk modification
+      expect(secureWriteFileSync).not.toHaveBeenCalled();
+    });
+
+    it("rejects when verifiedMissingProviderId is omitted (unknown lookup)", async () => {
+      mockedFs.existsSync.mockReturnValue(true);
+      mockedFs.readFileSync.mockReturnValue(JSON.stringify([staleRecord]));
+
+      await expect(
+        saveServerAfterDuplicateIpVerification(newRecord),
+      ).rejects.toThrow(/lookup|verify|missing/i);
+      expect(secureWriteFileSync).not.toHaveBeenCalled();
+    });
+
+    it("rejects when conflict's immutable fields no longer match the captured snapshot (concurrent registry change)", async () => {
+      // Disk has changed since snapshot was captured: ip differs
+      const mutated = { ...staleRecord, ip: "198.51.100.99" };
+      mockedFs.existsSync.mockReturnValue(true);
+      mockedFs.readFileSync.mockReturnValue(JSON.stringify([mutated]));
+
+      await expect(
+        saveServerAfterDuplicateIpVerification(newRecord, {
+          id: staleRecord.id,
+          name: staleRecord.name,
+          provider: staleRecord.provider,
+          ip: staleRecord.ip,
+          mode: staleRecord.mode,
+        }),
+      ).rejects.toThrow(/mismatch|snapshot|change/i);
+      expect(secureWriteFileSync).not.toHaveBeenCalled();
+    });
+
+    it("rejects when conflict name changes between snapshot and CAS (concurrent rename)", async () => {
+      // Disk has been concurrently renamed since the snapshot was captured.
+      // The locked CAS re-reads the conflict, sees the new name, and the
+      // 5-field fingerprint (which includes `name`) detects the mismatch.
+      const renamedRecord = { ...staleRecord, name: "renamed-srv" };
+      mockedFs.existsSync.mockReturnValue(true);
+      mockedFs.readFileSync.mockReturnValue(JSON.stringify([renamedRecord]));
+
+      await expect(
+        saveServerAfterDuplicateIpVerification(newRecord, {
+          id: "stale-provider-id",
+          name: "stale-srv",
+          provider: "hetzner",
+          ip: staleIp,
+          mode: "coolify",
+        }),
+      ).rejects.toThrow(/mismatch|snapshot|change/i);
+      expect(secureWriteFileSync).not.toHaveBeenCalled();
+    });
+
+    it("rejects when conflict provider changes between snapshot and CAS (concurrent provider change)", async () => {
+      // Disk has been concurrently re-assigned to a different provider.
+      const mutated = { ...staleRecord, provider: "digitalocean" };
+      mockedFs.existsSync.mockReturnValue(true);
+      mockedFs.readFileSync.mockReturnValue(JSON.stringify([mutated]));
+
+      await expect(
+        saveServerAfterDuplicateIpVerification(newRecord, {
+          id: "stale-provider-id",
+          name: "stale-srv",
+          provider: "hetzner",
+          ip: staleIp,
+          mode: "coolify",
+        }),
+      ).rejects.toThrow(/mismatch|snapshot|change/i);
+      expect(secureWriteFileSync).not.toHaveBeenCalled();
+    });
+
+    it("supports concurrent CAS race: exactly one save succeeds, the other rejects", async () => {
+      // Race fixture: first call to getServers() sees the stale record.
+      // The first CAS replaces it and writes a new file (mtime bump).
+      // The second call, after the lock releases, must re-read the file
+      // (mtime invalidates cache) and see the just-written record — the
+      // snapshot no longer matches, so the second CAS rejects.
+      mockedFs.statSync
+        .mockReturnValueOnce(asStats({ mtimeMs: 1704067200000, dev: 1 })) // before CAS #1
+        .mockReturnValueOnce(asStats({ mtimeMs: 1704067300000, dev: 1 })) // after CAS #1, before CAS #2
+        .mockReturnValue(asStats({ mtimeMs: 1704067300000, dev: 1 }));
+      mockedFs.existsSync.mockReturnValue(true);
+      mockedFs.readFileSync
+        .mockReturnValueOnce(JSON.stringify([staleRecord]))
+        .mockReturnValueOnce(JSON.stringify([{ ...newRecord, id: "provider-A" }]));
+
+      const recordA: ServerRecord = { ...newRecord, id: "provider-A" };
+      const recordB: ServerRecord = { ...newRecord, id: "provider-B" };
+      const sharedSnapshot = {
+        id: staleRecord.id,
+        name: staleRecord.name,
+        provider: staleRecord.provider,
+        ip: staleRecord.ip,
+        mode: staleRecord.mode,
+      };
+
+      const [first, second] = await Promise.allSettled([
+        saveServerAfterDuplicateIpVerification(recordA, sharedSnapshot),
+        saveServerAfterDuplicateIpVerification(recordB, sharedSnapshot),
+      ]);
+
+      const statuses = [first.status, second.status].sort();
+      expect(statuses).toEqual(["fulfilled", "rejected"]);
+
+      // Exactly one record (either A or B) holds the IP after the race.
+      // The on-disk state is whatever the winning CAS wrote.
+      const writes = (secureWriteFileSync as jest.Mock).mock.calls;
+      expect(writes).toHaveLength(1); // the loser never wrote
+      const finalOnDisk = JSON.parse(writes[writes.length - 1][1]);
+      expect(finalOnDisk.filter((server: ServerRecord) => server.ip === staleIp)).toHaveLength(1);
+      expect(["provider-A", "provider-B"]).toContain(finalOnDisk[0].id);
     });
   });
 });

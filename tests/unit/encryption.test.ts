@@ -17,6 +17,15 @@ jest.mock("os", () => {
 });
 
 // Partial fs mock — readFileSync, existsSync, writeFileSync, mkdirSync
+/**
+ * P143-C EXEMPTION: minimal-5
+ * Reason: factory uses `jest.requireActual<typeof import("fs")>("fs")` to
+ *   delegate `readFileSync` to real fs while mocking exists/write/mkdir. The
+ *   encryption SUT reads a real key file path; createFsMock() cannot provide
+ *   this partial delegation pattern.
+ * Verified: cannot migrate — encryption needs real readFileSync for valid key
+ *   parsing; createFsMock() returns jest.fn() with no real-fs passthrough.
+ */
 const actualFs = jest.requireActual<typeof import("fs")>("fs");
 jest.mock("fs", () => {
   const actual = jest.requireActual<typeof import("fs")>("fs");

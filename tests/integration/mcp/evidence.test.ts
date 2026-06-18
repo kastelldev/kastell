@@ -4,14 +4,10 @@
  */
 
 // Mock I/O boundaries before imports
-jest.mock("fs", () => ({
-  existsSync: jest.fn().mockReturnValue(false),
-  mkdirSync: jest.fn(),
-  writeFileSync: jest.fn(),
-  renameSync: jest.fn(),
-  rmSync: jest.fn(),
-  chmodSync: jest.fn(),
-}));
+jest.mock("fs", () => {
+  const { createFsMock } = require("../../helpers/fsMock.js");
+  return { ...createFsMock(), rmSync: jest.fn() };
+});
 jest.mock("fs/promises", () => ({
   mkdir: jest.fn().mockResolvedValue(undefined),
   writeFile: jest.fn().mockResolvedValue(undefined),

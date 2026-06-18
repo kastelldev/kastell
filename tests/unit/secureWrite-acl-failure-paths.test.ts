@@ -11,6 +11,15 @@
 import { writeFileSync, appendFileSync, mkdirSync, chmodSync } from "fs";
 import { spawnSync } from "child_process";
 
+/**
+ * P143-C EXEMPTION: minimal-2
+ * Reason: same as `secureWrite.test.ts` — spreads `jest.requireActual("fs")` to
+ *   retain real Stats/Dirent/constants; selectively mocks write/append/mkdir/chmod.
+ *   createFsMock() lacks appendFileSync and fs module-level exports.
+ * Verified: tests fail-path ACL behavior (whoami empty status, icacls /grant fail);
+ *   cannot reach P143-C Linux parity path because mock factory is identical
+ *   structure to sibling secureWrite.test.ts.
+ */
 jest.mock("fs", () => {
   const actual = jest.requireActual<typeof import("fs")>("fs");
   return {

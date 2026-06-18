@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { apiClient, stripSensitiveData, withProviderErrorHandling, assertValidServerId, uploadSshKeyWithConflict, type CloudProvider } from "./base.js";
+import { apiClient, defaultLookupServerResource, stripSensitiveData, withProviderErrorHandling, assertValidServerId, uploadSshKeyWithConflict, type CloudProvider, type ProviderResourceLookup } from "./base.js";
 import { withRetry } from "../utils/retry.js";
 import type { Region, ServerSize, ServerConfig, ServerResult, SnapshotInfo, ServerMode } from "../types/index.js";
 import { formatSnapshotCost } from "../constants.js";
@@ -359,5 +359,9 @@ export class HetznerProvider implements CloudProvider {
       const found = servers.find((server) => server.public_net?.ipv4?.ip === ip);
       return found ? found.id.toString() : null;
     }, extractHetznerError);
+  }
+
+  async lookupServerResource(serverId: string): Promise<ProviderResourceLookup> {
+    return defaultLookupServerResource(this, serverId);
   }
 }

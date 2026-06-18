@@ -9,6 +9,7 @@ import type { AuditResult, Severity } from "../types.js";
 import { describeCheckSkip, isSkippedCheck, isFailedCheck, isPassedCheck } from "../types.js";
 import { calculateComplianceScores } from "../compliance/scoring.js";
 import { scoreColor, progressBar } from "./shared.js";
+import { getCheckCounts } from "./counts.js";
 
 /** Severity emoji indicators */
 const SEVERITY_EMOJI: Record<Severity, string> = {
@@ -67,9 +68,7 @@ export function formatTerminal(result: AuditResult, options?: { explain?: boolea
   // Stats header: total / passed / failed / skipped counts, VPS-adjusted count when applicable
   const allChecks = result.categories.flatMap((c) => c.checks);
   const totalChecks = allChecks.length;
-  const passedChecks = allChecks.filter(isPassedCheck).length;
-  const failedChecks = allChecks.filter(isFailedCheck).length;
-  const skippedChecks = allChecks.filter(isSkippedCheck).length;
+  const { passed: passedChecks, failed: failedChecks, skipped: skippedChecks } = getCheckCounts(allChecks);
   const adjusted = result.vpsAdjustedCount ?? 0;
 
   let statsLine = `Checks: ${totalChecks} total | ${passedChecks} passed | ${failedChecks} failed | ${skippedChecks} skipped`;

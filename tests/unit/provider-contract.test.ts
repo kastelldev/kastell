@@ -16,6 +16,7 @@ import { DigitalOceanProvider } from "../../src/providers/digitalocean";
 import { VultrProvider } from "../../src/providers/vultr";
 import { LinodeProvider } from "../../src/providers/linode";
 import type { CloudProvider } from "../../src/providers/base";
+import { TransientError } from "../../src/utils/errors.js";
 
 // --- Mock setup ---
 // axios is auto-mocked via tests/__mocks__/axios.ts.
@@ -228,6 +229,60 @@ describe.each(PROVIDERS)("CloudProvider contract — $providerName", ({ factory 
       mockedAxios.get.mockResolvedValueOnce({ data: FIND_BY_IP_EMPTY[provider.name] });
       const result = await provider.findServerByIp(fixture.ip);
       expect(result).toBeNull();
+    });
+  });
+
+  // ─── lookupServerResource contract (P143-A) ──────────────────────────────
+
+  describe("lookupServerResource contract", () => {
+    it("returns { status: 'exists', providerId, ip } when server is found", async () => {
+      mockedAxios.get.mockResolvedValueOnce({
+        data: CREATE_MOCK_DATA[provider.name],
+      });
+      const result = await provider.lookupServerResource("active-1");
+      expect(result).toEqual({
+        status: "exists",
+        providerId: "active-1",
+        ip: expect.any(String),
+      });
+    });
+
+    it("returns { status: 'not-found', providerId } on authoritative 404", async () => {
+      const axiosLike404 = Object.assign(new Error("Request failed with status code 404"), {
+        isAxiosError: true,
+        response: { status: 404, data: {} },
+      });
+      mockedAxios.get.mockRejectedValueOnce(axiosLike404);
+      const result = await provider.lookupServerResource("missing-1");
+      expect(result).toEqual({
+        status: "not-found",
+        providerId: "missing-1",
+      });
+    });
+
+    it("returns { status: 'unknown', providerId, cause } on non-missing business errors", async () => {
+      const axiosLike409 = Object.assign(new Error("Request failed with status code 409"), {
+        isAxiosError: true,
+        response: { status: 409, data: { message: "conflict" } },
+      });
+      mockedAxios.get.mockRejectedValueOnce(axiosLike409);
+      const result = await provider.lookupServerResource("conflict-1");
+      expect(result.status).toBe("unknown");
+      expect(result.providerId).toBe("conflict-1");
+      if (result.status === "unknown") {
+        expect(result.cause).toBeInstanceOf(Error);
+      }
+    });
+
+    it("returns { status: 'unknown', providerId, cause: Error } on transport failure", async () => {
+      const transportError: TransientError = new TransientError("timeout");
+      mockedAxios.get.mockRejectedValueOnce(transportError);
+      const result = await provider.lookupServerResource("timeout-1");
+      expect(result.status).toBe("unknown");
+      expect(result.providerId).toBe("timeout-1");
+      if (result.status === "unknown") {
+        expect(result.cause).toBeInstanceOf(Error);
+      }
     });
   });
 });

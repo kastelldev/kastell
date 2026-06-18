@@ -71,6 +71,7 @@ jest.mock("../../src/core/audit/regression.js", () => ({
   hasRegression: jest.fn(() => false),
   shouldUpdateBaseline: jest.fn(() => true),
   extractPassedCheckIds: jest.fn(() => []),
+  extractFailedCheckIds: jest.fn(() => []),
   formatRegressionSummary: jest.fn(() => []),
 }));
 

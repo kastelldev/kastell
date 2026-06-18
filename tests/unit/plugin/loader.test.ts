@@ -2,6 +2,14 @@ import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 import { clearPluginRegistry, getPluginRegistry } from "../../../src/plugin/registry.js";
 
 // Mock fs for directory scanning
+/**
+ * P143-C EXEMPTION: minimal-7
+ * Reason: spreads `jest.requireActual("fs")` for plugin loader — selectively
+ *   mocks existsSync/readdirSync/readFileSync only. createFsMock() cannot
+ *   preserve real-fs behavior needed for plugin discovery.
+ * Verified: plugin loader requires real-fs `Stats`/`Dirent` types; partial
+ *   mock is intentional and not migratable.
+ */
 jest.mock("fs", () => {
   const actual = jest.requireActual<typeof import("fs")>("fs");
   return {

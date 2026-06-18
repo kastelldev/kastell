@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { apiClient, stripSensitiveData, withProviderErrorHandling, assertValidServerId, uploadSshKeyWithConflict, type CloudProvider } from "./base.js";
+import { apiClient, defaultLookupServerResource, stripSensitiveData, withProviderErrorHandling, assertValidServerId, uploadSshKeyWithConflict, type CloudProvider, type ProviderResourceLookup } from "./base.js";
 import { withRetry } from "../utils/retry.js";
 
 import type { Region, ServerSize, ServerConfig, ServerResult, SnapshotInfo, ServerMode } from "../types/index.js";
@@ -330,5 +330,9 @@ export class VultrProvider implements CloudProvider {
       const found = instances.find((instance) => instance.main_ip === ip);
       return found ? found.id : null;
     }, extractVultrError);
+  }
+
+  async lookupServerResource(serverId: string): Promise<ProviderResourceLookup> {
+    return defaultLookupServerResource(this, serverId);
   }
 }

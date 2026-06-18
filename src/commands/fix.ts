@@ -20,14 +20,13 @@ import {
   type ScoredFixCheck,
   type FixPreview,
 } from "../core/audit/fix.js";
-import { isFailedCheck } from "../core/audit/types.js";
 import { tryHandlerDispatch, type CollectedDiff } from "../core/audit/handlers/index.js";
 import { buildImpactContext } from "../core/audit/scoring.js";
 import { filterChecksByProfile, isValidProfile, listAllProfileNames } from "../core/audit/profiles.js";
 import { writeFixReport } from "../utils/fixReport.js";
 import { backupServer } from "../core/backup.js";
 import { classifyError } from "../utils/errorMapper.js";
-import { confirmOrCancel } from "../utils/prompts.js";
+import { confirmOrCancel, enforceOrCancel } from "../utils/prompts.js";
 import {
   loadFixHistory,
   saveFixHistory,
@@ -39,7 +38,7 @@ import {
   rollbackAllFixes,
   rollbackToFix,
 } from "../core/audit/fix-history.js";
-import { saveBaselineSafe, loadBaseline, checkRegression, formatRegressionSummary, extractPassedCheckIds, shouldUpdateBaseline, hasRegression } from "../core/audit/regression.js";
+import { saveBaselineSafe, loadBaseline, checkRegression, formatRegressionSummary, extractPassedCheckIds, extractFailedCheckIds, shouldUpdateBaseline, hasRegression } from "../core/audit/regression.js";
 import { getPluginBackupPaths, getAppliedPluginNames, buildFixHistorySource } from "../core/audit/pluginFix.js";
 
 const FORBIDDEN_BLOCK_HEADER = "=== FORBIDDEN fixes (skipped, manual review required) ===";
@@ -312,13 +311,7 @@ export async function fixSafeCommand(
         force,
         "Regression detected. Use --force to proceed in non-interactive mode.",
       );
-      if (!decision.confirmed) {
-        logger.info(decision.message);
-        if (decision.reason === "non-tty") {
-          markCommandFailed();
-        }
-        return;
-      }
+      if (!enforceOrCancel(decision)) return;
     }
   }
 
@@ -473,7 +466,7 @@ export async function fixSafeCommand(
   const fixCommands = fixCommandsFromChecks(selectedChecks);
   const remoteBackupSpinner = createSpinner("Creating remote file backup...");
   remoteBackupSpinner.start();
-  const failedCheckIds = auditResult.categories.flatMap((c) => c.checks.filter(isFailedCheck).map((ch) => ch.id));
+  const failedCheckIds = extractFailedCheckIds(auditResult);
   const pluginBackupPaths = getPluginBackupPaths(failedCheckIds);
   const remoteBackupPath = await backupFilesBeforeFix(ip, fixId, fixCommands, pluginBackupPaths);
   remoteBackupSpinner.stop();

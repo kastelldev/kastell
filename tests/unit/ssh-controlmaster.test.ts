@@ -19,16 +19,12 @@ jest.mock("child_process", () => ({
   spawnSync: jest.fn(),
 }));
 
-jest.mock("fs", () => ({
-  existsSync: jest.fn().mockReturnValue(false),
-  mkdirSync: jest.fn(),
-  writeFileSync: jest.fn(),
-  readFileSync: jest.fn(),
-  statSync: jest.fn(() => ({ mtimeMs: Date.now(), dev: 0 })),
-  // applyPosixPermissions calls chmodSync on non-Windows; mock is a no-op
-  // (LESSONS: v2.2.6 chmodSync mock gap — Win32 no-op branch masked locally)
-  chmodSync: jest.fn(),
-}));
+jest.mock("fs", () => {
+  const { createFsMock } = require("../helpers/fsMock.js");
+  return createFsMock({
+    statSync: jest.fn(() => ({ mtimeMs: Date.now(), dev: 0 })),
+  });
+});
 
 const mockedSpawn = spawn as jest.MockedFunction<typeof spawn>;
 const mockedSpawnSync = spawnSync as jest.MockedFunction<typeof spawnSync>;

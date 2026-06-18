@@ -116,6 +116,7 @@ const mockProvider: CloudProvider = {
   restoreSnapshot: jest.fn(),
   getSnapshotCostEstimate: jest.fn(),
   findServerByIp: jest.fn().mockResolvedValue(null),
+  lookupServerResource: jest.fn(),
 };
 
 function createMockProcess(code: number = 0, stderrData: string = "") {

@@ -5,12 +5,13 @@ import { checkSshAvailable } from "../utils/ssh.js";
 import { logger, createSpinner } from "../utils/logger.js";
 import { mapProviderError, classifyError } from "../utils/errorMapper.js";
 import { createProviderWithToken } from "../utils/providerFactory.js";
-import { isBareServer, requireManagedMode } from "../utils/modeGuard.js";
 import { markCommandFailed } from "../utils/exitCode.js";
-import { confirmOrCancel } from "../utils/prompts.js";
+import { confirmOrCancel, enforceOrCancel } from "../utils/prompts.js";
 import type { ServerRecord } from "../types/index.js";
 import {
+  canMaintain,
   maintainServer,
+  type MaintainDecision,
   type MaintainResult,
   type StepResult,
 } from "../core/maintain.js";
@@ -25,8 +26,8 @@ interface MaintainOptions {
   force?: boolean;
 }
 
-function showDryRun(server: ServerRecord, skipReboot: boolean): void {
-  const platform = resolvePlatform(server);
+function showDryRun(server: ServerRecord, skipReboot: boolean, decision?: MaintainDecision): void {
+  const platform = decision?.platform ?? resolvePlatform(server);
   const displayName = platform ? adapterDisplayName(getAdapter(platform)) : "Platform";
 
   logger.title("Dry Run: Maintenance Steps");
@@ -190,18 +191,18 @@ async function maintainAll(options: MaintainOptions): Promise<void> {
 
   if (options.dryRun) {
     for (const server of servers) {
-      if (isBareServer(server)) {
+      const decision = canMaintain(server, { dryRun: true, force: options.force });
+      if (decision.kind === "skip-bare") {
         logger.warning(
           `Skipping ${server.name}: update command is not available for bare servers.`,
         );
         continue;
       }
-      const serverPlatform = resolvePlatform(server);
-      if (!serverPlatform) {
+      if (!decision.platform) {
         logger.warning(`Skipping ${server.name}: no platform detected.`);
         continue;
       }
-      showDryRun(server, !!options.skipReboot);
+      showDryRun(server, !!options.skipReboot, decision);
     }
     return;
   }
@@ -212,20 +213,15 @@ async function maintainAll(options: MaintainOptions): Promise<void> {
     !!options.force,
     "Use --force to run maintenance on all servers in non-interactive mode.",
   );
-  if (!guard.confirmed) {
-    logger.info(guard.message);
-    if (guard.reason === "non-tty") {
-      markCommandFailed();
-    }
-    return;
-  }
+  if (!enforceOrCancel(guard)) return;
 
   const tokenMap = await collectProviderTokens(servers);
   const results: MaintainResult[] = [];
   let failed = 0;
 
   for (const server of servers) {
-    if (isBareServer(server)) {
+    const decision = canMaintain(server, { dryRun: false, force: options.force });
+    if (decision.kind === "skip-bare") {
       logger.warning(
         `Bare server detected: ${server.name}. The 'maintain' command requires a platform adapter (Coolify or Dokploy).`,
       );
@@ -245,11 +241,6 @@ async function maintainAll(options: MaintainOptions): Promise<void> {
       logger.warning(`Skipping ${server.name}: no API token available for provider "${server.provider}".`);
       console.log();
       failed += 1;
-      continue;
-    }
-
-    if (options.dryRun) {
-      showDryRun(server, !!options.skipReboot);
       continue;
     }
 
@@ -282,9 +273,11 @@ export async function maintainCommand(query?: string, options?: MaintainOptions)
   const server = await resolveServer(query, "Select a server to maintain:");
   if (!server) return;
 
-  const modeError = requireManagedMode(server, "maintain");
-  if (modeError) {
-    logger.error(modeError);
+  const decision = canMaintain(server, { dryRun: !!options?.dryRun, force: !!options?.force });
+  if (decision.kind === "skip-bare") {
+    logger.error(
+      `The "maintain" command is not available for bare servers. This command requires a managed platform (Coolify or Dokploy).`,
+    );
     markCommandFailed();
     return;
   }
@@ -300,13 +293,7 @@ export async function maintainCommand(query?: string, options?: MaintainOptions)
     !!options?.force,
     "Use --force to run maintenance in non-interactive mode.",
   );
-  if (!guard.confirmed) {
-    logger.info(guard.message);
-    if (guard.reason === "non-tty") {
-      markCommandFailed();
-    }
-    return;
-  }
+  if (!enforceOrCancel(guard)) return;
 
   const apiToken = await promptApiToken(server.provider);
   const result = await runMaintain(server, apiToken, options ?? {});

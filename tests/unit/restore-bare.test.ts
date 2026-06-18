@@ -36,6 +36,9 @@ const mockedInquirer = inquirer as jest.Mocked<typeof inquirer>;
 const mockedConfirmOrCancel = prompts.confirmOrCancel as jest.MockedFunction<
   typeof prompts.confirmOrCancel
 >;
+const mockedConfirmTypedNameInTty = prompts.confirmTypedNameInTty as jest.MockedFunction<
+  typeof prompts.confirmTypedNameInTty
+>;
 const mockedExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;
 const mockedReadFileSync = readFileSync as jest.MockedFunction<typeof readFileSync>;
 
@@ -98,6 +101,16 @@ describe("restoreCommand — bare mode routing", () => {
     // confirmed=true so the existing test setup reaches the typed-name path.
     mockedConfirmOrCancel.mockReset();
     mockedConfirmOrCancel.mockResolvedValue({ confirmed: true, source: "prompt" });
+    mockedConfirmTypedNameInTty.mockReset();
+    mockedConfirmTypedNameInTty.mockResolvedValue(true);
+    // enforceOrCancel is auto-mocked; make it call through to the real
+    // implementation so the destructive-guard chain (decision -> enforce ->
+    // markFailed) preserves its end-to-end behavior. markCommandFailed is
+    // mocked by jest.mock("../../src/utils/exitCode") callers if needed.
+    const realPrompts = jest.requireActual("../../src/utils/prompts");
+    (prompts.enforceOrCancel as jest.MockedFunction<typeof prompts.enforceOrCancel>).mockImplementation(
+      realPrompts.enforceOrCancel,
+    );
     mockedCoreBackup.getBackupDir.mockReturnValue("/home/user/.kastell/backups/bare-test");
     // Default: manifest exists
     mockedExistsSync.mockReturnValue(true);

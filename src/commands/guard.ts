@@ -2,8 +2,7 @@ import chalk from "chalk";
 import { resolveServer } from "../utils/serverSelect.js";
 import { checkSshAvailable } from "../utils/ssh.js";
 import { logger, createSpinner } from "../utils/logger.js";
-import { confirmOrCancel } from "../utils/prompts.js";
-import { markCommandFailed } from "../utils/exitCode.js";
+import { confirmOrCancel, enforceOrCancel } from "../utils/prompts.js";
 import { startGuard, stopGuard, guardStatus, dispatchGuardBreaches, checkAuditScoreDrop } from "../core/guard.js";
 
 export async function guardCommand(
@@ -27,13 +26,7 @@ export async function guardCommand(
         false,
         "Use --force to install guard in non-interactive mode.",
       );
-      if (!decision.confirmed) {
-        logger.info(decision.message);
-        if (decision.reason === "non-tty") {
-          markCommandFailed();
-        }
-        return;
-      }
+      if (!enforceOrCancel(decision)) return;
     }
 
     const spinner = createSpinner("Installing guard daemon...");
@@ -67,13 +60,7 @@ export async function guardCommand(
         false,
         "Use --force to remove guard in non-interactive mode.",
       );
-      if (!decision.confirmed) {
-        logger.info(decision.message);
-        if (decision.reason === "non-tty") {
-          markCommandFailed();
-        }
-        return;
-      }
+      if (!enforceOrCancel(decision)) return;
     }
 
     const spinner = createSpinner("Removing guard daemon...");

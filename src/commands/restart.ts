@@ -7,8 +7,7 @@ import { resolvePlatform } from "../adapters/factory.js";
 import { platformDefaults } from "../core/domain.js";
 import { logger, debugLog, createSpinner } from "../utils/logger.js";
 import { RESTART_DELAY_MS } from "../constants.js";
-import { confirmOrCancel } from "../utils/prompts.js";
-import { markCommandFailed } from "../utils/exitCode.js";
+import { confirmOrCancel, enforceOrCancel } from "../utils/prompts.js";
 
 function showDryRun(server: { name: string; ip: string; provider: string }): void {
   logger.title("Dry Run: Restart Server");
@@ -36,13 +35,7 @@ export async function restartCommand(query?: string, options?: { dryRun?: boolea
     !!options?.force,
     "Use --force to restart in non-interactive mode.",
   );
-  if (!decision.confirmed) {
-    logger.info(decision.message);
-    if (decision.reason === "non-tty") {
-      markCommandFailed();
-    }
-    return;
-  }
+  if (!enforceOrCancel(decision)) return;
 
   const spinner = createSpinner("Rebooting server...");
   spinner.start();
