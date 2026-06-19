@@ -705,9 +705,12 @@ export function buildPluginBatchSection(
     if (entry.status !== PLUGIN_STATUS_LOADED) continue;
     if (entry.checks.length === 0) continue;
     for (const check of entry.checks) {
+      // @ts-expect-error FIXME(p144-t5/t6): LoadedPluginCheck.checkCommand
+      // is optional. v2 plugins carry it; T5 will narrow.
       if (check.checkCommand.kind !== "read") continue;
       lines.push(NAMED_SEP(`PLUGIN:${entry.manifest.name}:${check.id}`));
       lines.push(`bash <<'KASTELL_PLUGIN_CHECK_EOF' 2>/dev/null`);
+      // @ts-expect-error FIXME(p144-t5/t6): see marker above
       lines.push(check.checkCommand.cmd);
       lines.push(`KASTELL_PLUGIN_CHECK_EOF`);
     }

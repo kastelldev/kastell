@@ -150,6 +150,18 @@ export type NormalizedReadCheck = PluginReadDefinition;
 
 export type NormalizedActiveProbe = ActiveProbeDefinition;
 
+/**
+ * Unified runtime check shape produced by `validateAndNormalizeChecks`.
+ * Unified structural type: v2 fields (`checkCommand`, `passPattern`, etc.)
+ * are present on v2-normalized checks and absent on v3 ones. v3 adds
+ * `read` and `activeProbe`. The `sourceApiVersion` discriminator lets
+ * post-validation consumers narrow where needed.
+ *
+ * FIXME(p144-t5/t6): tighten LoadedPluginCheck to a v2/v3 discriminated
+ * union so pluginAudit.ts/buildPluginBatchSection can narrow by
+ * sourceApiVersion. v2-specific fields are kept optional here so existing
+ * consumer code keeps compiling.
+ */
 export interface LoadedPluginCheck {
   id: string;
   name: string;
@@ -161,6 +173,11 @@ export interface LoadedPluginCheck {
   activeProbe?: ActiveProbeDefinition;
   explain?: PluginExplain;
   complianceRefs?: PluginComplianceRef[];
+  checkCommand?: PluginCheckCommand;
+  passPattern?: string;
+  failPattern?: string;
+  fixCommand?: string;
+  safeToAutoFix?: PluginFixTier;
 }
 
 interface PluginManifestBase {

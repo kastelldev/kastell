@@ -1,7 +1,7 @@
 import { listPlugins, validatePlugins } from "../../../src/core/plugin.js";
 import { getPluginRegistry, clearPluginRegistry, registerPlugin, registerFailedPlugin, registerDisabledPlugin } from "../../../src/plugin/registry.js";
 import { toFailedPluginDescriptor } from "../../../src/plugin/failedDescriptor.js";
-import type { PluginManifest, PluginCheck } from "../../../src/plugin/sdk/types.js";
+import type { PluginManifest, LoadedPluginCheck } from "../../../src/plugin/sdk/types.js";
 
 jest.mock("child_process", () => ({
   spawn: jest.fn(),
@@ -37,13 +37,14 @@ const makeManifest = (overrides?: Partial<PluginManifest>): PluginManifest => ({
   ...overrides,
 });
 
-const makeCheck = (id: string): PluginCheck => ({
+const makeCheck = (id: string): LoadedPluginCheck => ({
   id,
   name: `Check ${id}`,
   category: "Test",
   severity: "warning",
   description: `Test check ${id}`,
-  checkCommand: { kind: "read", cmd: "echo ok" },
+  sourceApiVersion: "2",
+  read: { cmd: "echo ok" },
 });
 
 beforeEach(() => {

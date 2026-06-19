@@ -4,10 +4,21 @@ import { z } from "zod";
 import { ValidationError } from "../utils/errors.js";
 import { secureWriteFileSync, secureMkdirSync } from "../utils/secureWrite.js";
 import { KASTELL_DIR, PLUGINS_NODE_MODULES } from "../utils/paths.js";
-import type { PluginManifest, PluginCheck, PluginCommand, PluginMcpTool, PluginFix } from "./sdk/types.js";
+import type {
+  PluginManifest,
+  PluginCommand,
+  PluginMcpTool,
+  PluginFix,
+  LoadedPluginCheck,
+  NormalizedReadCheck,
+} from "./sdk/types.js";
 import { debugLog } from "../utils/logger.js";
 import { PLUGIN_NAME_PREFIX, PLUGIN_TOOL_PREFIX } from "./sdk/constants.js";
 import type { FailedPluginDescriptor } from "./failedDescriptor.js";
+import type {
+  RegisteredActiveProbe,
+  ValidatedActiveProbeModule,
+} from "./activeProbeLoader.js";
 
 const PLUGIN_CACHE_PATH = join(KASTELL_DIR, "plugin-manifests.json");
 
@@ -24,22 +35,26 @@ export const PLUGIN_STATUS_DISABLED = "disabled" as const;
 // ─── PluginRegistryEntry discriminated union ───────────────────────────────────
 // Each variant shares `manifest`; status narrows what else is accessible.
 
+export type PluginReadCheck = LoadedPluginCheck & { read: NormalizedReadCheck };
+
 export type PluginRegistryEntry =
   | ({
       status: "loaded";
       manifest: PluginManifest;
-      checks: PluginCheck[];
+      checks: LoadedPluginCheck[];
+      readChecks: PluginReadCheck[];
       commands?: PluginCommand[];
       mcpTools?: PluginMcpTool[];
-      checksById: ReadonlyMap<string, PluginCheck>;
+      checksById: ReadonlyMap<string, LoadedPluginCheck>;
       fixesByCheckId: ReadonlyMap<string, PluginFix>;
-      activeProbesByCheckId: ReadonlyMap<string, never>;
+      activeProbesByCheckId: ReadonlyMap<string, RegisteredActiveProbe>;
     })
   | ({
       status: "failed";
       descriptor: FailedPluginDescriptor;
       reason: string;
       checks: [];
+      readChecks: [];
       checksById: ReadonlyMap<string, never>;
       activeProbesByCheckId: ReadonlyMap<string, never>;
       fixesByCheckId: ReadonlyMap<string, never>;
@@ -48,6 +63,7 @@ export type PluginRegistryEntry =
       status: "disabled";
       manifest: PluginManifest;
       checks: [];
+      readChecks: [];
       checksById: ReadonlyMap<string, never>;
       activeProbesByCheckId: ReadonlyMap<string, never>;
       fixesByCheckId: ReadonlyMap<string, never>;
@@ -61,17 +77,20 @@ type DisabledEntry = Extract<PluginRegistryEntry, { status: "disabled" }>;
 // don't need `as unknown as PluginRegistryEntry` (P139 simplify C3).
 function createLoadedEntry(
   manifest: PluginManifest,
-  checks: PluginCheck[],
-  checksById: ReadonlyMap<string, PluginCheck>,
+  checks: LoadedPluginCheck[],
+  readChecks: PluginReadCheck[],
+  checksById: ReadonlyMap<string, LoadedPluginCheck>,
   fixesById: ReadonlyMap<string, PluginFix>,
+  activeProbesByCheckId: ReadonlyMap<string, RegisteredActiveProbe>,
 ): LoadedEntry {
   return {
     status: "loaded",
     manifest,
     checks,
+    readChecks,
     checksById,
     fixesByCheckId: fixesById,
-    activeProbesByCheckId: new Map<string, never>(),
+    activeProbesByCheckId,
     commands: manifest.commands,
     mcpTools: manifest.mcpTools,
   };
@@ -83,6 +102,7 @@ function createFailedEntry(descriptor: FailedPluginDescriptor, reason: string): 
     descriptor,
     reason,
     checks: [],
+    readChecks: [],
     checksById: new Map<string, never>(),
     activeProbesByCheckId: new Map<string, never>(),
     fixesByCheckId: new Map<string, never>(),
@@ -94,6 +114,7 @@ function createDisabledEntry(manifest: PluginManifest): DisabledEntry {
     status: "disabled",
     manifest,
     checks: [],
+    readChecks: [],
     checksById: new Map<string, never>(),
     activeProbesByCheckId: new Map<string, never>(),
     fixesByCheckId: new Map<string, never>(),
@@ -106,7 +127,8 @@ const usedCheckIds: Set<string> = new Set();
 
 export function registerPlugin(
   manifest: PluginManifest,
-  checks: PluginCheck[],
+  checks: LoadedPluginCheck[],
+  activeProbeModulesByCheckId: ReadonlyMap<string, ValidatedActiveProbeModule> = new Map(),
 ): void {
   if (PLUGIN_REGISTRY.has(manifest.name)) {
     throw new ValidationError(
@@ -139,7 +161,7 @@ export function registerPlugin(
     usedCheckIds.add(check.id);
   }
 
-  const checksById = new Map<string, PluginCheck>();
+  const checksById = new Map<string, LoadedPluginCheck>();
   for (const check of checks) checksById.set(check.id, check);
 
   const fixesByCheckId = new Map<string, PluginFix>();
@@ -147,7 +169,37 @@ export function registerPlugin(
     for (const fix of manifest.fixes) fixesByCheckId.set(fix.checkId, fix);
   }
 
-  PLUGIN_REGISTRY.set(manifest.name, createLoadedEntry(manifest, checks, checksById, fixesByCheckId));
+  const readChecks: PluginReadCheck[] = [];
+  for (const check of checks) {
+    if (check.read) readChecks.push(check as PluginReadCheck);
+  }
+
+  const activeProbesByCheckId = new Map<string, RegisteredActiveProbe>();
+  for (const check of checks) {
+    if (!check.activeProbe) continue;
+    const module = activeProbeModulesByCheckId.get(check.id);
+    if (!module) {
+      throw new ValidationError(
+        `Validated Active Probe module missing for ${check.id}`,
+      );
+    }
+    activeProbesByCheckId.set(check.id, {
+      definition: check.activeProbe,
+      module,
+    });
+  }
+
+  PLUGIN_REGISTRY.set(
+    manifest.name,
+    createLoadedEntry(
+      manifest,
+      checks,
+      readChecks,
+      checksById,
+      fixesByCheckId,
+      activeProbesByCheckId,
+    ),
+  );
 }
 
 export function registerFailedPlugin(

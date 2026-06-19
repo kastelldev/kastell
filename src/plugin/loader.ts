@@ -13,8 +13,10 @@ import {
   savePluginCache,
   toPluginCacheEntry,
 } from "./registry.js";
-import type { PluginCheck, PluginManifest, PluginCommand, PluginMcpTool, PluginFix } from "./sdk/types.js";
+import type { LoadedPluginCheck, PluginManifest, PluginCommand, PluginMcpTool, PluginFix, PluginCheckV2, PluginCheckV3 } from "./sdk/types.js";
 import { toFailedPluginDescriptor } from "./failedDescriptor.js";
+import { validateAndNormalizeChecks } from "./normalize.js";
+import { loadActiveProbeModule } from "./activeProbeLoader.js";
 
 interface LoadPluginsOptions {
   importer?: (path: string) => Promise<unknown>;
@@ -104,23 +106,24 @@ export async function loadPlugins(
         );
       }
 
-      let checks: PluginCheck[];
+      let parsedChecks: (PluginCheckV2 | PluginCheckV3)[];
       try {
-        const parsed = validateChecks(
+        parsedChecks = validateChecks(
           moduleObj.checks,
           manifest.checkPrefix,
           manifest.apiVersion,
           manifest.name,
         );
-        // T2 foundation: registry still consumes the v2 PluginCheck[] shape.
-        // v3 activeProbe checks will be wired in a later task once registry/audit
-        // consumers are migrated to LoadedPluginCheck.
-        checks = parsed as PluginCheck[];
       } catch (err: unknown) {
         const msg = extractReason(err);
         registerFailedPlugin(failedDescriptor(manifest), msg);
         throw new Error(`${dir.name}: check validation failed — ${msg}`, { cause: err });
       }
+
+      const checks: LoadedPluginCheck[] = validateAndNormalizeChecks(
+        parsedChecks,
+        manifest.apiVersion,
+      );
 
       const enrichedManifest: PluginManifest = {
         ...manifest,
@@ -158,7 +161,34 @@ export async function loadPlugins(
         }
       }
 
-      registerPlugin(enrichedManifest, checks);
+      // Resolve and validate any Active Probe modules declared by the plugin's
+      // checks. The loader discovers the realpath-resolved handler file,
+      // rejects traversal/escape, computes a SHA-256, and type-checks the
+      // lifecycle exports. The map is consumed by registerPlugin to build
+      // the activeProbesByCheckId runtime index.
+      const activeProbeModulesByCheckId = new Map<
+        string,
+        Awaited<ReturnType<typeof loadActiveProbeModule>>
+      >();
+      for (const check of checks) {
+        if (!check.activeProbe) continue;
+        try {
+          const validated = await loadActiveProbeModule(
+            resolvedDir,
+            check.activeProbe.handler,
+          );
+          activeProbeModulesByCheckId.set(check.id, validated);
+        } catch (err: unknown) {
+          const msg = extractReason(err);
+          registerFailedPlugin(failedDescriptor(manifest), msg);
+          throw new Error(
+            `${dir.name}: active probe validation failed — ${msg}`,
+            { cause: err },
+          );
+        }
+      }
+
+      registerPlugin(enrichedManifest, checks, activeProbeModulesByCheckId);
       return manifest.name;
     }),
   );

@@ -22,7 +22,7 @@ import {
   PLUGIN_STATUS_LOADED,
 } from "../../../src/plugin/registry.js";
 import { resolvePluginHandler } from "../../../src/plugin/handlerResolver.js";
-import type { PluginManifest, PluginCheck, PluginFixHandler } from "../../../src/plugin/sdk/types.js";
+import type { PluginManifest, LoadedPluginCheck, PluginFixHandler } from "../../../src/plugin/sdk/types.js";
 
 const mockSshExec = sshExec as jest.MockedFunction<typeof sshExec>;
 const mockResolvePluginHandler = resolvePluginHandler as jest.MockedFunction<typeof resolvePluginHandler>;
@@ -31,7 +31,7 @@ function makeLoadedPlugin(
   name: string,
   fixes: PluginManifest["fixes"],
   checkIds: string[],
-): { manifest: PluginManifest; checks: PluginCheck[] } {
+): { manifest: PluginManifest; checks: LoadedPluginCheck[] } {
   const manifest: PluginManifest = {
     name,
     version: "1.0.0",
@@ -42,13 +42,14 @@ function makeLoadedPlugin(
     entry: "./index.js",
     fixes,
   };
-  const checks: PluginCheck[] = checkIds.map((id) => ({
+  const checks: LoadedPluginCheck[] = checkIds.map((id) => ({
     id,
     name: `Check ${id}`,
     category: "SSH",
     severity: "info" as const,
     description: "test",
-    checkCommand: { kind: "read", cmd: `echo ${id}` },
+    sourceApiVersion: "2",
+    read: { cmd: `echo ${id}` },
   }));
   return { manifest, checks };
 }

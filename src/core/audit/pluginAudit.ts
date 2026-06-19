@@ -2,7 +2,7 @@ import { debugLog } from "../../utils/logger.js";
 import { PLUGIN_STATUS_LOADED } from "../../plugin/registry.js";
 import { getShortName } from "../../plugin/registry.js";
 import type { PluginRegistryEntry } from "../../plugin/registry.js";
-import type { PluginCheck } from "../../plugin/sdk/types.js";
+import type { LoadedPluginCheck, PluginCheck } from "../../plugin/sdk/types.js";
 import type { AuditCategory, AuditCheck, Severity, FixTier, ComplianceRef, PluginCheckSkipReason } from "./types.js";
 
 export function mapPluginComplianceRefs(refs?: Array<{ framework: string; ref: string }>): ComplianceRef[] {
@@ -23,7 +23,11 @@ export function getSkippedMutatingPluginWarnings(
   for (const [pluginName, entry] of registry) {
     if (entry.status !== PLUGIN_STATUS_LOADED) continue;
     for (const check of entry.checks) {
+      // @ts-expect-error FIXME(p144-t5/t6): LoadedPluginCheck.checkCommand is
+      // optional. v2 plugins still carry v2 fields; T5 will narrow by
+      // sourceApiVersion and migrate to the new index shape.
       if (check.checkCommand.kind !== "read") {
+        // @ts-expect-error FIXME(p144-t5/t6): see marker above
         warnings.push(`Plugin ${pluginName} check ${check.id} is ${check.checkCommand.kind} and is not run by kastell audit`);
       }
     }
@@ -45,14 +49,14 @@ export function hasLoadedPluginChecks(
   return false;
 }
 
-function evaluateCheck(output: string, check: PluginCheck): boolean {
+function evaluateCheck(output: string, check: LoadedPluginCheck): boolean {
   if (check.failPattern && new RegExp(check.failPattern).test(output)) return false;
   if (check.passPattern) return new RegExp(check.passPattern).test(output);
   return true;
 }
 
 function buildAuditCheck(
-  checkDef: PluginCheck,
+  checkDef: LoadedPluginCheck,
   state: { passed: boolean; currentValue: string; skip?: PluginCheckSkipReason },
   entry?: PluginRegistryEntry,
 ): AuditCheck {
@@ -155,12 +159,17 @@ export function parsePluginBatchOutput(
       if (section) {
         const passed = evaluateCheck(section.body, checkDef);
         checks.push(buildAuditCheck(checkDef, { passed, currentValue: section.body }, entry));
-      } else if (checkDef.checkCommand.kind !== "read") {
+      } else if (
+        // @ts-expect-error FIXME(p144-t5/t6): LoadedPluginCheck.checkCommand
+        // is optional. v2 plugins carry it; T5 will narrow.
+        checkDef.checkCommand.kind !== "read"
+      ) {
         // P142 Task 2: structured skip metadata replaces sentinel currentValue.
         // Audit consumers gate on check.skip !== undefined (isSkippedCheck).
         const skip: PluginCheckSkipReason = {
           code: "legacy-mutating",
           apiVersion: "2",
+          // @ts-expect-error FIXME(p144-t5/t6): see marker above
           kind: checkDef.checkCommand.kind,
         };
         checks.push(

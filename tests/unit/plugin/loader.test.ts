@@ -34,7 +34,7 @@ jest.mock("../../../src/utils/version.js", () => ({
 
 import { existsSync, readdirSync, readFileSync } from "fs";
 import { loadPlugins } from "../../../src/plugin/loader.js";
-import type { PluginCheck } from "../../../src/plugin/sdk/types.js";
+import type { LoadedPluginCheck } from "../../../src/plugin/sdk/types.js";
 
 const mockManifestJson = JSON.stringify({
   name: "kastell-plugin-test",
@@ -46,14 +46,15 @@ const mockManifestJson = JSON.stringify({
   entry: "index.js",
 });
 
-const mockChecks: PluginCheck[] = [
+const mockChecks: LoadedPluginCheck[] = [
   {
     id: "TST-EXAMPLE",
     name: "Test Example",
     category: "Test",
     severity: "info",
     description: "Test check",
-    checkCommand: { kind: "read", cmd: "echo test" },
+    sourceApiVersion: "2",
+    read: { cmd: "echo test" },
   },
 ];
 
@@ -90,7 +91,18 @@ describe("plugin/loader", () => {
     (readFileSync as jest.Mock).mockReturnValue(mockManifestJson);
 
     const mockImporter = jest.fn<(path: string) => Promise<unknown>>();
-    mockImporter.mockResolvedValue({ checks: mockChecks });
+    mockImporter.mockResolvedValue({
+      checks: [
+        {
+          id: "TST-EXAMPLE",
+          name: "Test Example",
+          category: "Test",
+          severity: "info",
+          description: "Test check",
+          checkCommand: { kind: "read", cmd: "echo test" },
+        },
+      ],
+    });
 
     const result = await loadPlugins({ importer: mockImporter });
     expect(result.loaded).toEqual(["kastell-plugin-test"]);
@@ -113,7 +125,18 @@ describe("plugin/loader", () => {
     });
 
     const mockImporter = jest.fn<(path: string) => Promise<unknown>>();
-    mockImporter.mockResolvedValue({ checks: mockChecks });
+    mockImporter.mockResolvedValue({
+      checks: [
+        {
+          id: "TST-001",
+          name: "Good",
+          category: "test",
+          severity: "info",
+          description: "x",
+          checkCommand: { kind: "read", cmd: "echo" },
+        },
+      ],
+    });
 
     const result = await loadPlugins({ importer: mockImporter });
     expect(result.loaded).toContain("kastell-plugin-good");
@@ -150,8 +173,15 @@ describe("plugin/loader", () => {
       mockManifestJson.replace("kastell-plugin-test", "kastell-plugin-bad-prefix"),
     );
 
-    const badChecks: PluginCheck[] = [
-      { ...mockChecks[0], id: "WRONG-PREFIX-CHECK" },
+    const badChecks: Array<Record<string, unknown>> = [
+      {
+        id: "WRONG-PREFIX-CHECK",
+        name: "Bad",
+        category: "test",
+        severity: "info",
+        description: "x",
+        checkCommand: { kind: "read", cmd: "echo" },
+      },
     ];
     const mockImporter = jest.fn<(path: string) => Promise<unknown>>();
     mockImporter.mockResolvedValue({ checks: badChecks });
@@ -223,7 +253,18 @@ describe("plugin/loader", () => {
     (readFileSync as jest.Mock).mockReturnValue(mockManifestJson);
 
     const mockImporter = jest.fn<(path: string) => Promise<unknown>>();
-    mockImporter.mockResolvedValue({ checks: mockChecks });
+    mockImporter.mockResolvedValue({
+      checks: [
+        {
+          id: "TST-EXAMPLE",
+          name: "Test Example",
+          category: "Test",
+          severity: "info",
+          description: "Test check",
+          checkCommand: { kind: "read", cmd: "echo test" },
+        },
+      ],
+    });
 
     await loadPlugins({ importer: mockImporter });
     const calledPath = mockImporter.mock.calls[0]?.[0] ?? "";

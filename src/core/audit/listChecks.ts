@@ -73,12 +73,15 @@ export function listAllChecks(filter?: ListChecksFilter): CheckCatalogEntry[] {
   for (const [, entry] of getPluginRegistry()) {
     if (entry.status === PLUGIN_STATUS_LOADED) {
       for (const check of entry.checks) {
+        // FIXME(p144-t5/t6): T1 marked explain ?? "" for migration. The
+        // LoadedPluginCheck.explain is now PluginExplain (string | object);
+        // catalog consumers assume string. T5/T6 will narrow this.
         const pluginEntry: CheckCatalogEntry = {
           id: check.id,
           category: check.category,
           name: check.name,
           severity: check.severity as Severity,
-          explain: check.explain ?? "",
+          explain: typeof check.explain === "string" ? check.explain : "",
           complianceRefs: mapPluginComplianceRefs(check.complianceRefs),
         };
         if (filterCats && !filterCats.includes(pluginEntry.category.toLowerCase())) continue;
