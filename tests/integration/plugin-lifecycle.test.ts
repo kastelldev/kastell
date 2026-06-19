@@ -83,8 +83,9 @@ describe("Plugin Lifecycle Integration", () => {
     expect(registry.has(pluginName)).toBe(true);
     const entry = registry.get(pluginName)!;
     expect(entry.status).toBe("loaded");
-    expect(entry.checks).toHaveLength(2);
-    expect(entry.manifest.checkPrefix).toBe("MOCK");
+    const loaded = entry as Extract<typeof entry, { status: "loaded" }>;
+    expect(loaded.checks).toHaveLength(2);
+    expect(loaded.manifest.checkPrefix).toBe("MOCK");
 
     const listed = listPlugins();
     expect(listed).toHaveLength(1);

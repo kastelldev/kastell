@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 import { clearPluginRegistry, getPluginRegistry } from "../../../src/plugin/registry.js";
+import { toFailedPluginDescriptor } from "../../../src/plugin/failedDescriptor.js";
 
 // Mock fs for directory scanning
 /**
@@ -178,6 +179,20 @@ describe("plugin/loader", () => {
     if (entry && entry.status === "failed") {
       expect(entry.reason).toContain("invalid JSON");
     }
+  });
+
+  it("registers invalid JSON with a safe directory-name descriptor", async () => {
+    (existsSync as jest.Mock).mockReturnValue(true);
+    (readdirSync as jest.Mock).mockReturnValue([
+      { name: "kastell-plugin-bad", isDirectory: () => true },
+    ]);
+    (readFileSync as jest.Mock).mockReturnValue("{invalid");
+    const result = await loadPlugins();
+    expect(result.errors).toHaveLength(1);
+    expect(getPluginRegistry().get("kastell-plugin-bad")).toMatchObject({
+      status: "failed",
+      descriptor: { name: "kastell-plugin-bad" },
+    });
   });
 
   it("registers plugin as failed when manifest file is missing", async () => {
@@ -413,6 +428,23 @@ describe("loader capability expansion", () => {
       if (entry && entry.status === "loaded") {
         expect(entry.manifest.fixes).toHaveLength(1);
       }
+    });
+  });
+});
+
+describe("toFailedPluginDescriptor", () => {
+  it("extracts only lexically valid primitive identity hints", () => {
+    expect(toFailedPluginDescriptor("kastell-plugin-dir", {
+      name: "kastell-plugin-safe",
+      version: "1.2.3",
+      apiVersion: "7",
+      checkPrefix: "SAFE",
+      nested: { token: "secret" },
+    })).toEqual({
+      name: "kastell-plugin-safe",
+      version: "1.2.3",
+      declaredApiVersion: "7",
+      checkPrefix: "SAFE",
     });
   });
 });

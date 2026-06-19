@@ -14,16 +14,24 @@ function makeEntry(name: string, checks: PluginCheck[], s: "loaded" | "failed" =
   };
   if (s === "failed") {
     return {
-      manifest,
+      descriptor: { name: manifest.name },
       status: "failed",
       reason: "test reason",
       checks: [],
       checksById: new Map(),
+      activeProbesByCheckId: new Map(),
       fixesByCheckId: new Map(),
     } as unknown as PluginRegistryEntry;
   }
   const checksById = new Map(checks.map((c) => [c.id, c]));
-  return { manifest, checks, status: "loaded", checksById, fixesByCheckId: new Map() } as unknown as PluginRegistryEntry;
+  return {
+    manifest,
+    checks,
+    status: "loaded",
+    checksById,
+    fixesByCheckId: new Map(),
+    activeProbesByCheckId: new Map(),
+  } as unknown as PluginRegistryEntry;
 }
 
 function check(

@@ -13,7 +13,8 @@ jest.mock("../../../src/utils/secureWrite.js", () => ({
 // === mevcut import'lar ===
 import { readFileSync, existsSync } from "fs";
 import { secureWriteFileSync, secureMkdirSync } from "../../../src/utils/secureWrite.js";
-import { registerPlugin, clearPluginRegistry, getPluginRegistry, loadPluginCache, savePluginCache, deletePlugin, mapRegistryPlugins, getPluginCommands, getPluginMcpTools, registerFailedPlugin, registerDisabledPlugin, PLUGIN_STATUS_LOADED, PLUGIN_STATUS_FAILED, PLUGIN_STATUS_DISABLED } from "../../../src/plugin/registry.js";
+import { registerPlugin, clearPluginRegistry, getPluginRegistry, loadPluginCache, savePluginCache, deletePlugin, mapRegistryPlugins, getPluginCommands, getPluginMcpTools, registerFailedPlugin, registerDisabledPlugin, PLUGIN_STATUS_LOADED, PLUGIN_STATUS_FAILED, PLUGIN_STATUS_DISABLED, toPluginCacheEntry } from "../../../src/plugin/registry.js";
+import { toFailedPluginDescriptor } from "../../../src/plugin/failedDescriptor.js";
 import type { PluginManifest, PluginCheck, PluginCapability } from "../../../src/plugin/sdk/types.js";
 
 const mockManifest: PluginManifest = {
@@ -50,8 +51,9 @@ describe("plugin/registry", () => {
       const entry = registry.get("kastell-plugin-wordpress");
       expect(entry).toBeDefined();
       expect(entry!.status).toBe("loaded");
-      expect(entry!.checks).toHaveLength(1);
-      expect(entry!.manifest.checkPrefix).toBe("WP");
+      const loaded = entry as Extract<typeof entry, { status: "loaded" }>;
+      expect(loaded.checks).toHaveLength(1);
+      expect(loaded.manifest.checkPrefix).toBe("WP");
     });
 
     it("rejects duplicate plugin name", () => {
@@ -245,7 +247,7 @@ describe("getPluginCommands", () => {
   });
 
   it("skips failed plugins", () => {
-    registerFailedPlugin(mockManifest, "load error");
+    registerFailedPlugin(toFailedPluginDescriptor(mockManifest.name, mockManifest), "load error");
     expect(getPluginCommands()).toEqual([]);
   });
 });
@@ -280,7 +282,7 @@ describe("getPluginMcpTools", () => {
   });
 
   it("skips failed plugins", () => {
-    registerFailedPlugin(mockManifest, "load error");
+    registerFailedPlugin(toFailedPluginDescriptor(mockManifest.name, mockManifest), "load error");
     expect(getPluginMcpTools()).toEqual([]);
   });
 });
@@ -292,6 +294,38 @@ describe("registerDisabledPlugin", () => {
     expect(entry).toBeDefined();
     expect(entry!.status).toBe("disabled");
     expect(entry!.checks).toEqual([]);
+  });
+});
+
+describe("loadPluginCache strict metadata schema", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("drops invalid cache entries and executable fields", () => {
+    (existsSync as jest.Mock).mockReturnValue(true);
+    (readFileSync as jest.Mock).mockReturnValue(JSON.stringify([
+      {
+        name: "kastell-plugin-safe",
+        version: "1.0.0",
+        apiVersion: "3",
+        kastell: ">=2.3.1",
+        capabilities: ["audit"],
+        checkPrefix: "SAFE",
+        entry: "./index.js",
+        checks: [{ id: "SHOULD-NOT-CACHE" }],
+      },
+      { name: "../../escape", apiVersion: "3" },
+    ]));
+    expect(loadPluginCache()).toEqual([{
+      name: "kastell-plugin-safe",
+      version: "1.0.0",
+      apiVersion: "3",
+      kastell: ">=2.3.1",
+      capabilities: ["audit"],
+      checkPrefix: "SAFE",
+      entry: "./index.js",
+    }]);
   });
 });
 
@@ -326,12 +360,13 @@ describe("plugin cache", () => {
   });
 
   describe("savePluginCache", () => {
-    it("writes manifests with secureWriteFileSync", () => {
-      savePluginCache([mockManifest]);
+    it("writes cache entries with secureWriteFileSync", () => {
+      const entry = toPluginCacheEntry(mockManifest);
+      savePluginCache([entry]);
       expect(secureMkdirSync).toHaveBeenCalled();
       expect(secureWriteFileSync).toHaveBeenCalledWith(
         expect.stringContaining("plugin-manifests.json"),
-        JSON.stringify([mockManifest], null, 2),
+        JSON.stringify([entry], null, 2),
       );
     });
   });

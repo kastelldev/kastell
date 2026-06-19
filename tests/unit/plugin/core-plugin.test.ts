@@ -1,5 +1,6 @@
 import { listPlugins, validatePlugins } from "../../../src/core/plugin.js";
 import { getPluginRegistry, clearPluginRegistry, registerPlugin, registerFailedPlugin, registerDisabledPlugin } from "../../../src/plugin/registry.js";
+import { toFailedPluginDescriptor } from "../../../src/plugin/failedDescriptor.js";
 import type { PluginManifest, PluginCheck } from "../../../src/plugin/sdk/types.js";
 
 jest.mock("child_process", () => ({
@@ -74,7 +75,7 @@ describe("listPlugins", () => {
 
   it("includes failed plugins with reason", () => {
     const manifest = makeManifest({ name: "kastell-plugin-broken", checkPrefix: "BRK" });
-    registerFailedPlugin(manifest, "invalid manifest");
+    registerFailedPlugin(toFailedPluginDescriptor(manifest.name, manifest), "invalid manifest");
     const result = listPlugins();
     expect(result).toHaveLength(1);
     expect(result[0]).toEqual({
@@ -86,6 +87,22 @@ describe("listPlugins", () => {
       mcpTools: [],
       status: "failed",
       reason: "invalid manifest",
+    });
+  });
+
+  it("renders 'unknown' for missing version and checkPrefix on failed entries", () => {
+    registerFailedPlugin(toFailedPluginDescriptor("kastell-plugin-unknown-state"), "no manifest");
+    const result = listPlugins();
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual({
+      name: "kastell-plugin-unknown-state",
+      version: "unknown",
+      prefix: "unknown",
+      checks: 0,
+      commands: [],
+      mcpTools: [],
+      status: "failed",
+      reason: "no manifest",
     });
   });
 
@@ -107,8 +124,9 @@ describe("listPlugins", () => {
 
   it("returns mixed loaded/failed/disabled entries in one call", () => {
     registerPlugin(makeManifest(), [makeCheck("TST-ONE")]);
+    const brokenManifest = makeManifest({ name: "kastell-plugin-broken", checkPrefix: "BRK" });
     registerFailedPlugin(
-      makeManifest({ name: "kastell-plugin-broken", checkPrefix: "BRK" }),
+      toFailedPluginDescriptor(brokenManifest.name, brokenManifest),
       "load error",
     );
     registerDisabledPlugin(
@@ -136,7 +154,7 @@ describe("validatePlugins", () => {
 
   it("returns invalid for failed plugin with reason", () => {
     const manifest = makeManifest({ name: "kastell-plugin-broken", checkPrefix: "BRK" });
-    registerFailedPlugin(manifest, "module does not export checks array");
+    registerFailedPlugin(toFailedPluginDescriptor(manifest.name, manifest), "module does not export checks array");
     const result = validatePlugins();
     expect(result).toHaveLength(1);
     expect(result[0]).toEqual({

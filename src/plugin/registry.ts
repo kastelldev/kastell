@@ -1,11 +1,13 @@
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
+import { z } from "zod";
 import { ValidationError } from "../utils/errors.js";
 import { secureWriteFileSync, secureMkdirSync } from "../utils/secureWrite.js";
 import { KASTELL_DIR, PLUGINS_NODE_MODULES } from "../utils/paths.js";
 import type { PluginManifest, PluginCheck, PluginCommand, PluginMcpTool, PluginFix } from "./sdk/types.js";
 import { debugLog } from "../utils/logger.js";
 import { PLUGIN_NAME_PREFIX, PLUGIN_TOOL_PREFIX } from "./sdk/constants.js";
+import type { FailedPluginDescriptor } from "./failedDescriptor.js";
 
 const PLUGIN_CACHE_PATH = join(KASTELL_DIR, "plugin-manifests.json");
 
@@ -31,13 +33,15 @@ export type PluginRegistryEntry =
       mcpTools?: PluginMcpTool[];
       checksById: ReadonlyMap<string, PluginCheck>;
       fixesByCheckId: ReadonlyMap<string, PluginFix>;
+      activeProbesByCheckId: ReadonlyMap<string, never>;
     })
   | ({
       status: "failed";
-      manifest: PluginManifest;
+      descriptor: FailedPluginDescriptor;
       reason: string;
       checks: [];
       checksById: ReadonlyMap<string, never>;
+      activeProbesByCheckId: ReadonlyMap<string, never>;
       fixesByCheckId: ReadonlyMap<string, never>;
     })
   | ({
@@ -45,6 +49,7 @@ export type PluginRegistryEntry =
       manifest: PluginManifest;
       checks: [];
       checksById: ReadonlyMap<string, never>;
+      activeProbesByCheckId: ReadonlyMap<string, never>;
       fixesByCheckId: ReadonlyMap<string, never>;
     });
 
@@ -66,18 +71,20 @@ function createLoadedEntry(
     checks,
     checksById,
     fixesByCheckId: fixesById,
+    activeProbesByCheckId: new Map<string, never>(),
     commands: manifest.commands,
     mcpTools: manifest.mcpTools,
   };
 }
 
-function createFailedEntry(manifest: PluginManifest, reason: string): FailedEntry {
+function createFailedEntry(descriptor: FailedPluginDescriptor, reason: string): FailedEntry {
   return {
     status: "failed",
-    manifest,
+    descriptor,
     reason,
     checks: [],
     checksById: new Map<string, never>(),
+    activeProbesByCheckId: new Map<string, never>(),
     fixesByCheckId: new Map<string, never>(),
   };
 }
@@ -88,6 +95,7 @@ function createDisabledEntry(manifest: PluginManifest): DisabledEntry {
     manifest,
     checks: [],
     checksById: new Map<string, never>(),
+    activeProbesByCheckId: new Map<string, never>(),
     fixesByCheckId: new Map<string, never>(),
   };
 }
@@ -143,10 +151,10 @@ export function registerPlugin(
 }
 
 export function registerFailedPlugin(
-  manifest: PluginManifest,
+  descriptor: FailedPluginDescriptor,
   reason: string,
 ): void {
-  PLUGIN_REGISTRY.set(manifest.name, createFailedEntry(manifest, reason));
+  PLUGIN_REGISTRY.set(descriptor.name, createFailedEntry(descriptor, reason));
 }
 
 export function registerDisabledPlugin(
@@ -159,7 +167,11 @@ export function deletePlugin(name: string): void {
   const entry = PLUGIN_REGISTRY.get(name);
   if (!entry) return;
 
-  usedPrefixes.delete(entry.manifest.checkPrefix);
+  if (entry.status === PLUGIN_STATUS_LOADED || entry.status === PLUGIN_STATUS_DISABLED) {
+    usedPrefixes.delete(entry.manifest.checkPrefix);
+  } else if (entry.status === PLUGIN_STATUS_FAILED && entry.descriptor.checkPrefix) {
+    usedPrefixes.delete(entry.descriptor.checkPrefix);
+  }
   for (const check of entry.checks) {
     usedCheckIds.delete(check.id);
   }
@@ -234,23 +246,88 @@ export function getPluginRegistry(): ReadonlyMap<string, PluginRegistryEntry> {
   return PLUGIN_REGISTRY;
 }
 
-export function loadPluginCache(): PluginManifest[] {
+// Strict cache schema — only discovery metadata. Executable fields
+// (commands, mcpTools, fixes, checks, activeProbe definitions) MUST NOT
+// appear in plugin-manifests.json — they belong to plugin source code.
+export const PluginCacheEntrySchema = z
+  .object({
+    name: z.string().regex(/^kastell-plugin-[a-z0-9-]+$/),
+    version: z.string().min(1),
+    apiVersion: z.union([z.literal("2"), z.literal("3")]),
+    kastell: z.string().min(1),
+    capabilities: z.array(z.enum(["audit", "command", "mcp-tool", "fix"])).min(1),
+    checkPrefix: z.string().regex(/^[A-Z]{2,6}$/),
+    entry: z.string().min(1),
+  })
+  .strict();
+
+export type PluginCacheEntry = z.infer<typeof PluginCacheEntrySchema>;
+
+export function toPluginCacheEntry(manifest: PluginManifest): PluginCacheEntry {
+  return {
+    name: manifest.name,
+    version: manifest.version,
+    apiVersion: manifest.apiVersion,
+    kastell: manifest.kastell,
+    capabilities: manifest.capabilities,
+    checkPrefix: manifest.checkPrefix,
+    entry: manifest.entry,
+  };
+}
+
+export function loadPluginCache(): PluginCacheEntry[] {
   if (!existsSync(PLUGIN_CACHE_PATH)) {
     return [];
   }
+  let raw: string;
   try {
-    const raw = readFileSync(PLUGIN_CACHE_PATH, "utf-8");
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed as PluginManifest[];
+    raw = readFileSync(PLUGIN_CACHE_PATH, "utf-8");
   } catch (error) {
-    debugLog?.("plugin registry read failed, creating new", { cause: error });
+    debugLog?.("plugin cache read failed, creating new", { cause: error });
     return [];
   }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    debugLog?.("plugin cache JSON parse failed, creating new", { cause: error });
+    return [];
+  }
+  if (!Array.isArray(parsed)) return [];
+  const valid: PluginCacheEntry[] = [];
+  for (const item of parsed) {
+    // Strip executable fields before strict schema validation -- these
+    // should never have been written by savePluginCache but legacy caches
+    // or hand-edited files may contain them.
+    const sanitized = sanitizeCacheItem(item);
+    const result = PluginCacheEntrySchema.safeParse(sanitized);
+    if (result.success) {
+      valid.push(result.data);
+    }
+  }
+  return valid;
 }
 
-export function savePluginCache(manifests: PluginManifest[]): void {
-  const content = JSON.stringify(manifests, null, 2);
+function sanitizeCacheItem(item: unknown): unknown {
+  if (item === null || typeof item !== "object") return item;
+  const value = item as Record<string, unknown>;
+  const allowed: Record<string, unknown> = {};
+  for (const key of [
+    "name",
+    "version",
+    "apiVersion",
+    "kastell",
+    "capabilities",
+    "checkPrefix",
+    "entry",
+  ]) {
+    if (key in value) allowed[key] = value[key];
+  }
+  return allowed;
+}
+
+export function savePluginCache(entries: PluginCacheEntry[]): void {
+  const content = JSON.stringify(entries, null, 2);
   if (existsSync(PLUGIN_CACHE_PATH)) {
     try {
       const existing = readFileSync(PLUGIN_CACHE_PATH, "utf-8");

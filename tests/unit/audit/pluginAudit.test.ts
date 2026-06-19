@@ -21,24 +21,29 @@ function loadedEntry(name: string, checks: PluginCheck[], fixes?: PluginFix[]): 
   };
   const checksById = new Map(checks.map((c) => [c.id, c]));
   const fixesByCheckId = new Map((fixes ?? []).map((f) => [f.checkId, f]));
-  return { manifest, checks, status: PLUGIN_STATUS_LOADED, checksById, fixesByCheckId };
+  return {
+    manifest,
+    checks,
+    status: PLUGIN_STATUS_LOADED,
+    checksById,
+    fixesByCheckId,
+    activeProbesByCheckId: new Map<string, never>(),
+  };
 }
 
 function failedEntry(name: string): PluginRegistryEntry {
   return {
     status: PLUGIN_STATUS_FAILED,
-    manifest: {
+    descriptor: {
       name,
       version: "1.0.0",
-      apiVersion: "2",
-      kastell: "*",
-      capabilities: ["audit"],
       checkPrefix: "VP",
-      entry: "./index.js",
+      declaredApiVersion: "2",
     },
     reason: "test failure",
     checks: [],
     checksById: new Map<string, never>(),
+    activeProbesByCheckId: new Map<string, never>(),
     fixesByCheckId: new Map<string, never>(),
   };
 }

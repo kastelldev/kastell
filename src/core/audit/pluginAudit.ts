@@ -71,7 +71,7 @@ function buildAuditCheck(
     ...(state.skip ? { skip: state.skip } : {}),
   };
 
-  if (!state.passed && entry) {
+  if (!state.passed && entry && entry.status === PLUGIN_STATUS_LOADED) {
     const fixDef = entry.fixesByCheckId.get(checkDef.id);
     if (fixDef) {
       check.safeToAutoFix = fixDef.tier as FixTier;
@@ -181,8 +181,12 @@ export function parsePluginBatchOutput(
   for (const [pluginName, checks] of byPlugin) {
     if (checks.length === 0) continue;
     const entry = registry.get(pluginName)!;
+    const shortName =
+      entry.status === "failed"
+        ? entry.descriptor.name
+        : entry.manifest.name;
     categories.push({
-      name: `Plugin: ${getShortName(entry.manifest.name)}`,
+      name: `Plugin: ${getShortName(shortName)}`,
       checks,
       score: 0,
       maxScore: 0,

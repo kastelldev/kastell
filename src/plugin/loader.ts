@@ -1,4 +1,3 @@
-import { FAILED_PLUGIN_PREFIX } from "./sdk/constants.js";
 import { PLUGIN_STATUS_LOADED } from "./registry.js";
 import { existsSync, readdirSync, readFileSync } from "fs";
 import { join, resolve, sep } from "path";
@@ -12,8 +11,10 @@ import {
   clearPluginRegistry,
   mapRegistryPlugins,
   savePluginCache,
+  toPluginCacheEntry,
 } from "./registry.js";
 import type { PluginCheck, PluginManifest, PluginCommand, PluginMcpTool, PluginFix } from "./sdk/types.js";
+import { toFailedPluginDescriptor } from "./failedDescriptor.js";
 
 interface LoadPluginsOptions {
   importer?: (path: string) => Promise<unknown>;
@@ -51,21 +52,14 @@ export async function loadPlugins(
       const pluginDir = join(PLUGINS_NODE_MODULES, dir.name);
       const manifestPath = join(pluginDir, "kastell-plugin.json");
 
-      const failedManifest = (): PluginManifest => ({
-        name: dir.name,
-        version: "0.0.0",
-        apiVersion: "2",
-        kastell: "*",
-        capabilities: ["audit"],
-        checkPrefix: FAILED_PLUGIN_PREFIX,
-        entry: "",
-      });
+      const failedDescriptor = (parsed?: unknown) =>
+        toFailedPluginDescriptor(dir.name, parsed);
 
       let manifestRaw: string;
       try {
         manifestRaw = readFileSync(manifestPath, "utf-8");
       } catch {
-        registerFailedPlugin(failedManifest(), `cannot read kastell-plugin.json`);
+        registerFailedPlugin(failedDescriptor(), `cannot read kastell-plugin.json`);
         throw new Error(`${dir.name}: cannot read kastell-plugin.json`);
       }
 
@@ -73,7 +67,7 @@ export async function loadPlugins(
       try {
         manifestParsed = JSON.parse(manifestRaw);
       } catch {
-        registerFailedPlugin(failedManifest(), `invalid JSON in kastell-plugin.json`);
+        registerFailedPlugin(failedDescriptor(), `invalid JSON in kastell-plugin.json`);
         throw new Error(`${dir.name}: invalid JSON in kastell-plugin.json`);
       }
 
@@ -82,7 +76,7 @@ export async function loadPlugins(
       const resolvedDir = resolve(pluginDir);
       const resolvedEntry = resolve(resolvedDir, manifest.entry);
       if (!resolvedEntry.startsWith(resolvedDir + sep) && resolvedEntry !== resolvedDir) {
-        registerFailedPlugin(manifest, `entry escapes plugin directory: ${manifest.entry}`);
+        registerFailedPlugin(failedDescriptor(manifest), `entry escapes plugin directory: ${manifest.entry}`);
         throw new Error(`${dir.name}: entry escapes plugin directory: ${manifest.entry}`);
       }
 
@@ -93,7 +87,7 @@ export async function loadPlugins(
         mod = await importer(entryUrl);
       } catch (err: unknown) {
         const msg = extractReason(err);
-        registerFailedPlugin(manifest, msg);
+        registerFailedPlugin(failedDescriptor(manifest), msg);
         throw new Error(`${dir.name}: import failed — ${msg}`, { cause: err });
       }
 
@@ -102,7 +96,7 @@ export async function loadPlugins(
       const moduleObj = (ns.default ?? ns["module.exports"] ?? ns) as Record<string, unknown>;
       if (!Array.isArray(moduleObj.checks)) {
         registerFailedPlugin(
-          manifest,
+          failedDescriptor(manifest),
           "module does not export checks array",
         );
         throw new Error(
@@ -124,7 +118,7 @@ export async function loadPlugins(
         checks = parsed as PluginCheck[];
       } catch (err: unknown) {
         const msg = extractReason(err);
-        registerFailedPlugin(manifest, msg);
+        registerFailedPlugin(failedDescriptor(manifest), msg);
         throw new Error(`${dir.name}: check validation failed — ${msg}`, { cause: err });
       }
 
@@ -180,7 +174,7 @@ export async function loadPlugins(
   const manifests = mapRegistryPlugins((_, entry) =>
     entry.status === PLUGIN_STATUS_LOADED ? entry.manifest : null,
   ).filter((m): m is PluginManifest => m !== null);
-  savePluginCache(manifests);
+  savePluginCache(manifests.map(toPluginCacheEntry));
 
   return { loaded, errors };
 }
