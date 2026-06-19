@@ -51,10 +51,111 @@ export type PluginCheckCommand =
   | { kind: "mutate-local"; cmd: string }
   | { kind: "mutate-global"; cmd: string };
 
-export interface PluginManifest {
+export type PluginExplainObject = { why: string; fix: string };
+export type PluginExplain = string | PluginExplainObject;
+
+export interface PluginReadDefinition {
+  cmd: string;
+  passPattern?: string;
+  failPattern?: string;
+}
+
+export type PluginProbeRisk = "low" | "medium" | "high";
+
+export interface ActiveProbeDefinition {
+  handler: string;
+  risk: PluginProbeRisk;
+  timeoutMs: number;
+}
+
+export interface PluginProbeTarget {
+  serverId: string;
+  provider: string;
+  cloudId?: string;
+  ip: string;
+}
+
+export interface PluginProbeContext {
+  readonly target: PluginProbeTarget;
+  readonly sessionId: string;
+  readonly pluginName: string;
+  readonly checkId: string;
+  readonly signal: AbortSignal;
+  readonly deadlineMs: number;
+  ssh: (command: string, options?: { timeoutMs?: number }) => Promise<{ stdout: string; stderr: string; code: number }>;
+  logger: { info: (msg: string) => void; warn: (msg: string) => void; error: (msg: string) => void };
+}
+
+export interface PluginProbeVerification {
+  passed: boolean;
+  summary?: string;
+  data?: Record<string, unknown>;
+}
+
+export interface PluginProbeRollbackResult {
+  success: boolean;
+  summary?: string;
+  data?: Record<string, unknown>;
+}
+
+export interface ActiveProbeModule {
+  prepare: (ctx: PluginProbeContext) => Promise<void>;
+  execute: (ctx: PluginProbeContext) => Promise<void>;
+  verify: (ctx: PluginProbeContext) => Promise<PluginProbeVerification>;
+  rollback: (ctx: PluginProbeContext) => Promise<PluginProbeRollbackResult>;
+}
+
+export interface PluginComplianceRef {
+  framework: string;
+  ref: string;
+}
+
+interface PluginCheckBase {
+  id: string;
+  name: string;
+  category: string;
+  severity: PluginSeverity;
+  description: string;
+  complianceRefs?: PluginComplianceRef[];
+}
+
+export interface PluginCheckV2 extends PluginCheckBase {
+  checkCommand: PluginCheckCommand;
+  passPattern?: string;
+  failPattern?: string;
+  fixCommand?: string;
+  safeToAutoFix?: PluginFixTier;
+  explain?: string;
+}
+
+export interface PluginCheckV3 extends PluginCheckBase {
+  read?: PluginReadDefinition;
+  activeProbe?: ActiveProbeDefinition;
+  explain?: PluginExplain;
+}
+
+export type PluginCheck = PluginCheckV2;
+
+export type NormalizedReadCheck = PluginReadDefinition;
+
+export type NormalizedActiveProbe = ActiveProbeDefinition;
+
+export interface LoadedPluginCheck {
+  id: string;
+  name: string;
+  category: string;
+  severity: PluginSeverity;
+  description: string;
+  sourceApiVersion: PluginApiVersion;
+  read?: PluginReadDefinition;
+  activeProbe?: ActiveProbeDefinition;
+  explain?: PluginExplain;
+  complianceRefs?: PluginComplianceRef[];
+}
+
+interface PluginManifestBase {
   name: string;
   version: string;
-  apiVersion: PluginApiVersion;
   kastell: string;
   capabilities: PluginCapability[];
   checkPrefix: string;
@@ -64,20 +165,9 @@ export interface PluginManifest {
   fixes?: PluginFix[];
 }
 
-export interface PluginCheck {
-  id: string;
-  name: string;
-  category: string;
-  severity: PluginSeverity;
-  description: string;
-  checkCommand: PluginCheckCommand;
-  passPattern?: string;
-  failPattern?: string;
-  fixCommand?: string;
-  safeToAutoFix?: PluginFixTier;
-  explain?: string;
-  complianceRefs?: Array<{ framework: string; ref: string }>;
-}
+export type PluginManifest =
+  | (PluginManifestBase & { apiVersion: "2" })
+  | (PluginManifestBase & { apiVersion: "3" });
 
 export interface PluginFixContext {
   ip: string;
