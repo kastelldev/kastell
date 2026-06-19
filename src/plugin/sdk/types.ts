@@ -144,8 +144,6 @@ export interface PluginCheckV3 extends PluginCheckBase {
   explain?: PluginExplain;
 }
 
-export type PluginCheck = PluginCheckV2;
-
 export type NormalizedReadCheck = PluginReadDefinition;
 
 export type NormalizedActiveProbe = ActiveProbeDefinition;

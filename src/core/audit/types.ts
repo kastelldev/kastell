@@ -22,6 +22,9 @@ export type PluginCheckSkipReason = {
   code: "legacy-mutating";
   apiVersion: "2";
   kind: "mutate-local" | "mutate-global";
+} | {
+  code: "probe-only";
+  apiVersion: "3";
 };
 
 export interface AuditCheck {
@@ -72,7 +75,11 @@ export function getAuditCheckState(check: AuditCheck): AuditCheckState {
  * (TS2741) if a new code is added to the union without an entry here.
  */
 const SKIP_REASON_DESCRIPTIONS: Record<PluginCheckSkipReason["code"], (skip: PluginCheckSkipReason) => string> = {
-  "legacy-mutating": (skip) => `Skipped: legacy v2 mutating check (${skip.kind}) is not run by audit`,
+  "legacy-mutating": (skip) =>
+    skip.code === "legacy-mutating"
+      ? `Skipped: legacy v2 mutating check (${skip.kind}) is not run by audit`
+      : "",
+  "probe-only": () => `Skipped: v3 active-probe-only check is not run by kastell audit`,
 };
 
 /** Render a structured skip reason as a human-readable display string. */

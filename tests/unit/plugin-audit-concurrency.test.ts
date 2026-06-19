@@ -18,6 +18,10 @@ describe("executePluginChecks concurrency", () => {
     jest.resetAllMocks();
   });
 
+  // P144 T5: executePluginChecks now consumes registry-normalized read
+  // checks (PluginReadCheck = LoadedPluginCheck & { read }). Fixture shape
+  // uses `read.cmd` instead of legacy `checkCommand.cmd`.
+
   test("read checks use default cap", async () => {
     let capturedConcurrency = 0;
     const checks = Array.from({ length: 6 }, (_, i) => ({
@@ -26,7 +30,7 @@ describe("executePluginChecks concurrency", () => {
       category: "test",
       severity: "info" as const,
       description: "test",
-      checkCommand: { kind: "read" as const, cmd: "echo" },
+      read: { cmd: "echo" },
     }));
     const ssh = jest.fn(async () => ({ stdout: "ok", stderr: "", code: 0 }));
 
@@ -35,54 +39,46 @@ describe("executePluginChecks concurrency", () => {
       return items.map(() => ({ checkId: "x", status: "pass" as const }));
     });
 
-    const result = await executePluginChecks(checks, { ssh });
+    const result = await executePluginChecks(checks as never, { ssh });
 
     expect(capturedConcurrency).toBe(3);
     expect(result.results).toHaveLength(6);
   });
 
-  test("mutate-local check forces cap=1", async () => {
+  test("normalized reads always run at default parallelism (no kind branching)", async () => {
+    // P144 T5: kind-branching is gone — even reads that were "mutate-*"
+    // would not appear in `readChecks` upstream. executePluginChecks no
+    // longer inspects check shape, only the concurrency env override.
     const checks = [
-      { id: "c0", name: "check0", category: "test", severity: "info" as const, description: "test", checkCommand: { kind: "mutate-local" as const, cmd: "systemctl restart nginx" } },
+      { id: "c0", name: "check0", category: "test", severity: "info" as const, description: "test", read: { cmd: "echo" } },
     ];
     const ssh = jest.fn(async () => ({ stdout: "ok", stderr: "", code: 0 }));
     mockChunkConcurrent.mockImplementation(async () => []);
 
-    await executePluginChecks(checks, { ssh });
+    await executePluginChecks(checks as never, { ssh });
 
-    expect(mockChunkConcurrent).toHaveBeenCalledWith(expect.any(Array), 1, expect.any(Function));
+    expect(mockChunkConcurrent).toHaveBeenCalledWith(expect.any(Array), expect.any(Number), expect.any(Function));
+    expect(mockChunkConcurrent.mock.calls[0][1]).toBeGreaterThan(1);
   });
 
-  test("mutate-global check forces cap=1", async () => {
+  test("passes read.cmd to ssh", async () => {
     const checks = [
-      { id: "c0", name: "check0", category: "test", severity: "info" as const, description: "test", checkCommand: { kind: "mutate-global" as const, cmd: "hcloud firewall apply-to-resource" } },
-    ];
-    const ssh = jest.fn(async () => ({ stdout: "ok", stderr: "", code: 0 }));
-    mockChunkConcurrent.mockImplementation(async () => []);
-
-    await executePluginChecks(checks, { ssh });
-
-    expect(mockChunkConcurrent).toHaveBeenCalledWith(expect.any(Array), 1, expect.any(Function));
-  });
-
-  test("passes checkCommand.cmd to ssh", async () => {
-    const checks = [
-      { id: "c0", name: "check0", category: "test", severity: "info" as const, description: "test", checkCommand: { kind: "read" as const, cmd: "echo exact" } },
+      { id: "c0", name: "check0", category: "test", severity: "info" as const, description: "test", read: { cmd: "echo exact" } },
     ];
     const ssh: jest.Mock = jest.fn(async () => ({ stdout: "ok", stderr: "", code: 0 }));
     mockChunkConcurrent.mockImplementation(async (items: unknown[], _concurrency: number, worker: (item: unknown) => Promise<unknown>) =>
       Promise.all(items.map(worker)),
     );
 
-    await executePluginChecks(checks, { ssh });
+    await executePluginChecks(checks as never, { ssh });
 
     expect(ssh).toHaveBeenCalledWith("echo exact", expect.objectContaining({ timeoutMs: 15000 }));
   });
 
   test("partial failure — error results returned with error status", async () => {
     const checks = [
-      { id: "ok-1", name: "ok", category: "test", severity: "info" as const, description: "test", checkCommand: { kind: "read" as const, cmd: "echo" } },
-      { id: "fail-1", name: "fail", category: "test", severity: "info" as const, description: "test", checkCommand: { kind: "read" as const, cmd: "false" } },
+      { id: "ok-1", name: "ok", category: "test", severity: "info" as const, description: "test", read: { cmd: "echo" } },
+      { id: "fail-1", name: "fail", category: "test", severity: "info" as const, description: "test", read: { cmd: "false" } },
     ];
     const ssh = jest.fn(async (_cmd: string) => {
       if (_cmd.includes("false")) return { stdout: "", stderr: "command failed", code: 1 };
@@ -90,13 +86,13 @@ describe("executePluginChecks concurrency", () => {
     });
 
     mockChunkConcurrent.mockImplementation(async (items: unknown[]) => {
-      return (items as Array<{ id: string; checkCommand: { cmd: string } }>).map((item) => ({
+      return (items as Array<{ id: string; read: { cmd: string } }>).map((item) => ({
         checkId: item.id,
-        status: item.checkCommand.cmd.includes("false") ? "error" as const : "pass" as const,
+        status: item.read.cmd.includes("false") ? "error" as const : "pass" as const,
       }));
     });
 
-    const result = await executePluginChecks(checks, { ssh });
+    const result = await executePluginChecks(checks as never, { ssh });
 
     expect(result.results.find(r => r.checkId === "ok-1")?.status).toBe("pass");
     expect(result.results.find(r => r.checkId === "fail-1")?.status).toBe("error");
@@ -104,14 +100,14 @@ describe("executePluginChecks concurrency", () => {
 
   test("clearTimeout called on success (no leaked timer handle)", async () => {
     const clearTimeoutSpy = jest.spyOn(global, "clearTimeout");
-    const checks = [{ id: "c0", name: "check0", category: "test", severity: "info" as const, description: "test", checkCommand: { kind: "read" as const, cmd: "echo" } }];
+    const checks = [{ id: "c0", name: "check0", category: "test", severity: "info" as const, description: "test", read: { cmd: "echo" } }];
     const ssh = jest.fn(async () => ({ stdout: "ok", stderr: "", code: 0 }));
 
     mockChunkConcurrent.mockImplementation(async () => [
       { checkId: "c0", status: "pass" as const },
     ]);
 
-    await executePluginChecks(checks, { ssh });
+    await executePluginChecks(checks as never, { ssh });
 
     expect(clearTimeoutSpy).toHaveBeenCalled();
     clearTimeoutSpy.mockRestore();
@@ -121,8 +117,8 @@ describe("executePluginChecks concurrency", () => {
     jest.useFakeTimers();
     try {
       const checks = [
-        { id: "slow-1", name: "slow", category: "test", severity: "info" as const, description: "test", checkCommand: { kind: "read" as const, cmd: "sleep 999" } },
-        { id: "slow-2", name: "slow", category: "test", severity: "info" as const, description: "test", checkCommand: { kind: "read" as const, cmd: "sleep 999" } },
+        { id: "slow-1", name: "slow", category: "test", severity: "info" as const, description: "test", read: { cmd: "sleep 999" } },
+        { id: "slow-2", name: "slow", category: "test", severity: "info" as const, description: "test", read: { cmd: "sleep 999" } },
       ];
       const capturedSignals: AbortSignal[] = [];
       const wrappedSsh = (_cmd: string, opts?: { signal?: AbortSignal }): Promise<{ stdout: string; stderr: string; code: number }> => {
@@ -143,7 +139,7 @@ describe("executePluginChecks concurrency", () => {
         return out;
       });
 
-      const promise = executePluginChecks(checks, { ssh: wrappedSsh });
+      const promise = executePluginChecks(checks as never, { ssh: wrappedSsh });
       await Promise.resolve();
       await Promise.resolve();
 

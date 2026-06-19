@@ -24,8 +24,11 @@ describe("runAudit — plugin batch integration", () => {
       entry: "./index.js",
     };
     const checks: LoadedPluginCheck[] = [
-      { id: "T-001", category: "Test", name: "T1", severity: "warning", description: "", sourceApiVersion: "2", checkCommand: { kind: "read", cmd: "echo ok" }, passPattern: "^ok$" },
-      { id: "T-002", category: "Test", name: "T2", severity: "info", description: "", sourceApiVersion: "2", checkCommand: { kind: "read", cmd: "echo bad" }, passPattern: "^ok$" },
+      // P144 T5: post-normalization shape carries `read.cmd` so the
+      // registry builds entry.readChecks. Legacy checkCommand is kept
+      // for the structured-skip code path on mutating variants.
+      { id: "T-001", category: "Test", name: "T1", severity: "warning", description: "", sourceApiVersion: "2", checkCommand: { kind: "read", cmd: "echo ok" }, read: { cmd: "echo ok", passPattern: "^ok$" }, passPattern: "^ok$" },
+      { id: "T-002", category: "Test", name: "T2", severity: "info", description: "", sourceApiVersion: "2", checkCommand: { kind: "read", cmd: "echo bad" }, read: { cmd: "echo bad", passPattern: "^ok$" }, passPattern: "^ok$" },
     ];
     registerPlugin(manifest, checks);
   }
@@ -133,7 +136,7 @@ describe("runAudit — plugin batch integration", () => {
       entry: "./index.js",
     };
     const checks: LoadedPluginCheck[] = [
-      { id: "T-READ", category: "Test", name: "Read", severity: "warning", description: "", sourceApiVersion: "2", checkCommand: { kind: "read", cmd: "echo ok" }, passPattern: "^ok$" },
+      { id: "T-READ", category: "Test", name: "Read", severity: "warning", description: "", sourceApiVersion: "2", checkCommand: { kind: "read", cmd: "echo ok" }, read: { cmd: "echo ok", passPattern: "^ok$" }, passPattern: "^ok$" },
       { id: "T-MUT", category: "Test", name: "Mutating", severity: "warning", description: "", sourceApiVersion: "2", checkCommand: { kind: "mutate-local", cmd: "systemctl restart nginx" } },
     ];
     registerPlugin(manifest, checks);
@@ -216,7 +219,7 @@ describe("runAudit — plugin batch integration", () => {
       entry: "./index.js",
     };
     const checks: LoadedPluginCheck[] = [
-      { id: "X-READ", category: "Test", name: "Read", severity: "warning", description: "", sourceApiVersion: "2", checkCommand: { kind: "read", cmd: "echo ok" }, passPattern: "^ok$" },
+      { id: "X-READ", category: "Test", name: "Read", severity: "warning", description: "", sourceApiVersion: "2", checkCommand: { kind: "read", cmd: "echo ok" }, read: { cmd: "echo ok", passPattern: "^ok$" }, passPattern: "^ok$" },
       { id: "X-MUT", category: "Test", name: "Mut", severity: "warning", description: "", sourceApiVersion: "2", checkCommand: { kind: "mutate-local", cmd: "systemctl restart nginx" } },
     ];
     registerPlugin(manifest, checks);
@@ -249,7 +252,7 @@ describe("runAudit — plugin batch integration", () => {
       entry: "./index.js",
     };
     const checks: LoadedPluginCheck[] = [
-      { id: "R-001", category: "Test", name: "Read", severity: "warning", description: "", sourceApiVersion: "2", checkCommand: { kind: "read", cmd: "echo ok" }, passPattern: "^ok$" },
+      { id: "R-001", category: "Test", name: "Read", severity: "warning", description: "", sourceApiVersion: "2", checkCommand: { kind: "read", cmd: "echo ok" }, read: { cmd: "echo ok", passPattern: "^ok$" }, passPattern: "^ok$" },
     ];
     registerPlugin(manifest, checks);
     const spy = jest.spyOn(ssh, "sshExec").mockImplementation(async () => ({ stdout: "", stderr: "", code: 0 }));
@@ -267,6 +270,142 @@ describe("runAudit — plugin batch integration", () => {
       // Read check must NOT carry skip metadata
       expect(pluginCat!.checks[0].skip).toBeUndefined();
       expect(pluginCat!.checks[0].currentValue).toBe("Unable to determine");
+    }
+  });
+});
+
+// P144 Task 5: runAudit end-to-end v3 normalized-read execution with
+// ordered traversal across v2 + v3 read + v3 combined + v3 probe-only.
+describe("runAudit — v3 normalized plugin batch (P144 T5)", () => {
+  function v3Check(
+    id: string,
+    opts: { read?: { cmd: string; passPattern?: string }; activeProbe?: boolean } = {},
+  ): LoadedPluginCheck {
+    return {
+      id,
+      category: "Test",
+      name: id,
+      severity: "warning",
+      description: "",
+      sourceApiVersion: "3",
+      ...(opts.read !== undefined ? { read: opts.read } : {}),
+      ...(opts.activeProbe ? { activeProbe: { handler: "./probe.js", risk: "low", timeoutMs: 5000 } } : {}),
+    };
+  }
+
+  function stubActiveProbeModule() {
+    return {
+      prepare: async () => ({}),
+      execute: async () => ({}),
+      verify: async () => ({ passed: true }),
+      rollback: async () => ({ success: true }),
+      absolutePath: "/tmp/fake.js",
+      sha256: "0000000000000000000000000000000000000000000000000000000000000000",
+    };
+  }
+
+  it("preserves check order (v2 read, v3 read, v3 combined, v3 probe-only)", async () => {
+    const manifest: PluginManifest = {
+      name: "kastell-plugin-mixv3",
+      version: "1.0.0",
+      apiVersion: "3",
+      kastell: "*",
+      capabilities: ["audit"],
+      checkPrefix: "M",
+      entry: "./index.js",
+    };
+    const checks: LoadedPluginCheck[] = [
+      v3Check("M-V2", { read: { cmd: "v2 read command", passPattern: "^ok$" } }),
+      v3Check("M-V3", { read: { cmd: "v3 read command", passPattern: "^ok$" } }),
+      v3Check("M-BOTH", {
+        read: { cmd: "combined read command", passPattern: "^ok$" },
+        activeProbe: true,
+      }),
+      v3Check("M-PROBE", { activeProbe: true }),
+    ];
+    const probeModules = new Map([
+      ["M-BOTH", stubActiveProbeModule()],
+      ["M-PROBE", stubActiveProbeModule()],
+    ]);
+    registerPlugin(manifest, checks, probeModules);
+    const spy = jest.spyOn(ssh, "sshExec").mockImplementation(async () => ({ stdout: "", stderr: "", code: 0 }));
+    spy.mockImplementationOnce(async () => ({ stdout: "", stderr: "", code: 0 })); // fast
+    spy.mockImplementationOnce(async () => ({ stdout: "", stderr: "", code: 0 })); // medium
+    spy.mockImplementationOnce(async () => ({ stdout: "", stderr: "", code: 0 })); // slow
+    spy.mockImplementationOnce(async () => ({
+      stdout:
+        "---SECTION:PLUGIN:kastell-plugin-mixv3:M-V2---\nok\n" +
+        "---SECTION:PLUGIN:kastell-plugin-mixv3:M-V3---\nok\n" +
+        "---SECTION:PLUGIN:kastell-plugin-mixv3:M-BOTH---\nok",
+      stderr: "",
+      code: 0,
+    }));
+
+    const result = await runAudit("1.2.3.4", "test-server", "coolify");
+    expect(result.success).toBe(true);
+    if (result.success && result.data) {
+      const cat = result.data.categories.find((c) => c.name === "Plugin: mixv3");
+      expect(cat).toBeDefined();
+      expect(cat!.checks.map((c) => c.id)).toEqual([
+        "M-V2",
+        "M-V3",
+        "M-BOTH",
+        "M-PROBE",
+      ]);
+      // probe-only check gets structured skip
+      expect(cat!.checks[3].skip).toEqual({
+        code: "probe-only",
+        apiVersion: "3",
+      });
+      expect(cat!.checks[3].currentValue).toBe("");
+    }
+  });
+
+  it("preserves category order across multiple plugins in registry iteration order", async () => {
+    const manifestZ: PluginManifest = {
+      name: "kastell-plugin-zeta",
+      version: "1.0.0",
+      apiVersion: "3",
+      kastell: "*",
+      capabilities: ["audit"],
+      checkPrefix: "Z",
+      entry: "./index.js",
+    };
+    const manifestA: PluginManifest = {
+      name: "kastell-plugin-alpha",
+      version: "1.0.0",
+      apiVersion: "3",
+      kastell: "*",
+      capabilities: ["audit"],
+      checkPrefix: "A",
+      entry: "./index.js",
+    };
+    registerPlugin(manifestZ, [
+      v3Check("Z-001", { read: { cmd: "echo z", passPattern: "^z$" } }),
+    ]);
+    registerPlugin(manifestA, [
+      v3Check("A-001", { read: { cmd: "echo a", passPattern: "^a$" } }),
+    ]);
+    const spy = jest.spyOn(ssh, "sshExec").mockImplementation(async () => ({ stdout: "", stderr: "", code: 0 }));
+    spy.mockImplementationOnce(async () => ({ stdout: "", stderr: "", code: 0 }));
+    spy.mockImplementationOnce(async () => ({ stdout: "", stderr: "", code: 0 }));
+    spy.mockImplementationOnce(async () => ({ stdout: "", stderr: "", code: 0 }));
+    spy.mockImplementationOnce(async () => ({
+      stdout:
+        "---SECTION:PLUGIN:kastell-plugin-zeta:Z-001---\nz\n" +
+        "---SECTION:PLUGIN:kastell-plugin-alpha:A-001---\na",
+      stderr: "",
+      code: 0,
+    }));
+
+    const result = await runAudit("1.2.3.4", "test-server", "coolify");
+    expect(result.success).toBe(true);
+    if (result.success && result.data) {
+      const names = result.data.categories.map((c) => c.name);
+      const zetaIdx = names.indexOf("Plugin: zeta");
+      const alphaIdx = names.indexOf("Plugin: alpha");
+      expect(zetaIdx).toBeGreaterThanOrEqual(0);
+      expect(alphaIdx).toBeGreaterThan(zetaIdx);
     }
   });
 });

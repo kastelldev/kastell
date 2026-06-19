@@ -267,3 +267,92 @@ describe("parsePluginBatchOutput — mutating-skip behavior", () => {
     expect(result[0].name).toBe("Plugin: real");
   });
 });
+
+// P144 Task 5: v3 normalized-read execution + ordered plugin/category traversal.
+describe("parsePluginBatchOutput — v3 normalized read execution (P144 T5)", () => {
+  function v3Check(
+    id: string,
+    opts: { read?: { cmd: string; passPattern?: string }; activeProbe?: boolean } = {},
+  ): LoadedPluginCheck {
+    return {
+      id,
+      category: "Test",
+      name: id,
+      severity: "warning",
+      description: "",
+      sourceApiVersion: "3",
+      ...(opts.read !== undefined ? { read: opts.read } : {}),
+      ...(opts.activeProbe ? { activeProbe: { handler: "./probe.js", risk: "low", timeoutMs: 5000 } } : {}),
+    };
+  }
+
+  it("preserves entry.checks iteration order across v2 + v3 read + v3 combined + v3 probe-only", () => {
+    const reg = new Map<string, PluginRegistryEntry>();
+    reg.set("kastell-plugin-mix", loadedEntry("kastell-plugin-mix", [
+      v3Check("T-V2", { read: { cmd: "v2 read command", passPattern: "^ok$" } }),
+      v3Check("T-V3", { read: { cmd: "v3 read command", passPattern: "^ok$" } }),
+      v3Check("T-BOTH", {
+        read: { cmd: "combined read command", passPattern: "^ok$" },
+        activeProbe: true,
+      }),
+      v3Check("T-PROBE", { activeProbe: true }),
+    ]));
+    const stdout =
+      "---SECTION:PLUGIN:kastell-plugin-mix:T-V2---\nok\n" +
+      "---SECTION:PLUGIN:kastell-plugin-mix:T-V3---\nok\n" +
+      "---SECTION:PLUGIN:kastell-plugin-mix:T-BOTH---\nok";
+    const result = parsePluginBatchOutput(stdout, reg);
+    expect(result).toHaveLength(1);
+    expect(result[0].checks.map((c) => c.id)).toEqual([
+      "T-V2",
+      "T-V3",
+      "T-BOTH",
+      "T-PROBE",
+    ]);
+    // read-bearing checks get evaluated
+    expect(result[0].checks[0].passed).toBe(true);
+    expect(result[0].checks[1].passed).toBe(true);
+    expect(result[0].checks[2].passed).toBe(true);
+    // probe-only check carries structured skip
+    expect(result[0].checks[3].skip).toEqual({
+      code: "probe-only",
+      apiVersion: "3",
+    });
+    expect(result[0].checks[3].currentValue).toBe("");
+    expect(isSkippedCheck(result[0].checks[3])).toBe(true);
+  });
+
+  it("emits probe-only skip for v3 active-probe-only check (no batch section emitted)", () => {
+    // T-PROBE never appears in registry.readChecks → buildPluginBatchSection
+    // would skip it; parser still surfaces it as a structured skip.
+    const reg = new Map<string, PluginRegistryEntry>();
+    reg.set("kastell-plugin-probe", loadedEntry("kastell-plugin-probe", [
+      v3Check("T-READ", { read: { cmd: "echo r", passPattern: "^r$" } }),
+      v3Check("T-PROBE", { activeProbe: true }),
+    ]));
+    const stdout = "---SECTION:PLUGIN:kastell-plugin-probe:T-READ---\nr";
+    const result = parsePluginBatchOutput(stdout, reg);
+    expect(result).toHaveLength(1);
+    expect(result[0].checks).toHaveLength(2);
+    expect(result[0].checks[0].passed).toBe(true);
+    expect(result[0].checks[1].skip).toEqual({
+      code: "probe-only",
+      apiVersion: "3",
+    });
+  });
+
+  it("preserves registry iteration order across multiple plugins (category order)", () => {
+    const reg = new Map<string, PluginRegistryEntry>();
+    reg.set("kastell-plugin-z", loadedEntry("kastell-plugin-z", [
+      v3Check("Z-001", { read: { cmd: "echo z", passPattern: "^z$" } }),
+    ]));
+    reg.set("kastell-plugin-a", loadedEntry("kastell-plugin-a", [
+      v3Check("A-001", { read: { cmd: "echo a", passPattern: "^a$" } }),
+    ]));
+    const stdout =
+      "---SECTION:PLUGIN:kastell-plugin-z:Z-001---\nz\n" +
+      "---SECTION:PLUGIN:kastell-plugin-a:A-001---\na";
+    const result = parsePluginBatchOutput(stdout, reg);
+    expect(result.map((c) => c.name)).toEqual(["Plugin: z", "Plugin: a"]);
+  });
+});

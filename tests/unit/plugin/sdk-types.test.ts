@@ -10,7 +10,6 @@ import {
   PLUGIN_CHECK_COMMAND_KINDS,
   type ActiveProbeDefinition,
   type LoadedPluginCheck,
-  type PluginCheck,
   type PluginCheckCommand,
   type PluginCheckV2,
   type PluginCheckV3,
@@ -75,8 +74,8 @@ describe("Plugin SDK Types", () => {
     expect(manifest.apiVersion).toBe("3");
   });
 
-  it("PluginCheck accepts valid check with required + optional fields", () => {
-    const check: PluginCheck = {
+  it("PluginCheckV2 accepts valid check with required + optional fields", () => {
+    const check: PluginCheckV2 = {
       id: "WP-FILE-PERMS",
       name: "WordPress file permissions",
       category: "WordPress",
@@ -115,8 +114,8 @@ describe("Plugin SDK Types", () => {
     expect([t1, t2, t3]).toHaveLength(3);
   });
 
-  it("PluginCheck works with minimal fields (no optionals)", () => {
-    const check: PluginCheck = {
+  it("PluginCheckV2 works with minimal fields (no optionals)", () => {
+    const check: PluginCheckV2 = {
       id: "AUD-001",
       name: "Minimal check",
       category: "Auditor",
@@ -328,8 +327,11 @@ describe("LoadedPluginCheck normalized shape", () => {
     expect(normalized.read?.cmd).toBe("echo ok");
   });
 
-  it("PluginCheck migration shim still resolves to PluginCheckV2", () => {
-    const check: PluginCheck = {
+  it("PluginCheck alias removed: consumers must use PluginCheckV2 directly", () => {
+    // P144 T5: deprecated `PluginCheck = PluginCheckV2` alias was removed.
+    // Migration target is explicit PluginCheckV2 (and PluginCheckV3 for
+    // the new v3 plugin shape).
+    const check: PluginCheckV2 = {
       id: "WP-1",
       name: "wp",
       category: "WP",

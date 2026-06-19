@@ -301,4 +301,68 @@ describe("parsePluginBatchOutput", () => {
       expect(result[0].checks[0].currentValue).toBe("Unable to determine");
     });
   });
+
+  // P144 Task 5: v3 plugin check ordering and probe-only skip emission.
+  describe("v3 plugin checks (P144 T5)", () => {
+    function v3Check(
+      id: string,
+      opts: { read?: { cmd: string; passPattern?: string }; activeProbe?: boolean } = {},
+    ): LoadedPluginCheck {
+      return {
+        id,
+        category: "WordPress",
+        name: id,
+        severity: "warning",
+        description: "",
+        sourceApiVersion: "3",
+        ...(opts.read !== undefined ? { read: opts.read } : {}),
+        ...(opts.activeProbe ? { activeProbe: { handler: "./probe.js", risk: "low", timeoutMs: 5000 } } : {}),
+      };
+    }
+
+    it("preserves order: v2 read, v3 read, v3 combined, v3 probe-only", () => {
+      const reg = new Map<string, PluginRegistryEntry>();
+      reg.set("kastell-plugin-mix", entry("kastell-plugin-mix", [
+        v3Check("T-V2", { read: { cmd: "v2 read command", passPattern: "^ok$" } }),
+        v3Check("T-V3", { read: { cmd: "v3 read command", passPattern: "^ok$" } }),
+        v3Check("T-BOTH", {
+          read: { cmd: "combined read command", passPattern: "^ok$" },
+          activeProbe: true,
+        }),
+        v3Check("T-PROBE", { activeProbe: true }),
+      ]));
+      const stdout =
+        "---SECTION:PLUGIN:kastell-plugin-mix:T-V2---\nok\n" +
+        "---SECTION:PLUGIN:kastell-plugin-mix:T-V3---\nok\n" +
+        "---SECTION:PLUGIN:kastell-plugin-mix:T-BOTH---\nok";
+      const result = parsePluginBatchOutput(stdout, reg);
+      expect(result).toHaveLength(1);
+      expect(result[0].checks.map((c) => c.id)).toEqual([
+        "T-V2",
+        "T-V3",
+        "T-BOTH",
+        "T-PROBE",
+      ]);
+      expect(result[0].checks[3].skip).toEqual({
+        code: "probe-only",
+        apiVersion: "3",
+      });
+      expect(result[0].checks[3].currentValue).toBe("");
+    });
+
+    it("preserves category order across multiple plugins in registry iteration order", () => {
+      const reg = new Map<string, PluginRegistryEntry>();
+      reg.set("kastell-plugin-z", entry("kastell-plugin-z", [
+        v3Check("Z-001", { read: { cmd: "echo z", passPattern: "^z$" } }),
+      ]));
+      reg.set("kastell-plugin-a", entry("kastell-plugin-a", [
+        v3Check("A-001", { read: { cmd: "echo a", passPattern: "^a$" } }),
+      ]));
+      const stdout =
+        "---SECTION:PLUGIN:kastell-plugin-z:Z-001---\nz\n" +
+        "---SECTION:PLUGIN:kastell-plugin-a:A-001---\na";
+      const result = parsePluginBatchOutput(stdout, reg);
+      expect(result.map((c) => c.name)).toEqual(["Plugin: z", "Plugin: a"]);
+    });
+  });
 });

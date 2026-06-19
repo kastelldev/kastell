@@ -3,7 +3,7 @@ import { PLUGIN_STATUS_LOADED } from "../../plugin/registry.js";
 import { getShortName } from "../../plugin/registry.js";
 import type { PluginRegistryEntry } from "../../plugin/registry.js";
 import type { LoadedPluginCheck } from "../../plugin/sdk/types.js";
-import type { AuditCategory, AuditCheck, Severity, FixTier, ComplianceRef, PluginCheckSkipReason } from "./types.js";
+import type { AuditCategory, AuditCheck, Severity, FixTier, PluginCheckSkipReason, ComplianceRef } from "./types.js";
 
 export function mapPluginComplianceRefs(refs?: Array<{ framework: string; ref: string }>): ComplianceRef[] {
   if (!refs || refs.length === 0) return [];
@@ -16,6 +16,11 @@ export function mapPluginComplianceRefs(refs?: Array<{ framework: string; ref: s
   }));
 }
 
+/**
+ * Collect human-readable warnings for v2 mutating checks (legacy), v3
+ * probe-only checks. Walks the registry in iteration order so the warning
+ * stream matches the audit category order (P144 T5).
+ */
 export function getSkippedMutatingPluginWarnings(
   registry: ReadonlyMap<string, PluginRegistryEntry>,
 ): string[] {
@@ -23,12 +28,10 @@ export function getSkippedMutatingPluginWarnings(
   for (const [pluginName, entry] of registry) {
     if (entry.status !== PLUGIN_STATUS_LOADED) continue;
     for (const check of entry.checks) {
-      // @ts-expect-error FIXME(p144-t5/t6): LoadedPluginCheck.checkCommand is
-      // optional. v2 plugins still carry v2 fields; T5 will narrow by
-      // sourceApiVersion and migrate to the new index shape.
-      if (check.checkCommand.kind !== "read") {
-        // @ts-expect-error FIXME(p144-t5/t6): see marker above
+      if (check.sourceApiVersion === "2" && check.checkCommand && check.checkCommand.kind !== "read") {
         warnings.push(`Plugin ${pluginName} check ${check.id} is ${check.checkCommand.kind} and is not run by kastell audit`);
+      } else if (check.sourceApiVersion === "3" && !check.read && check.activeProbe) {
+        warnings.push(`Plugin ${pluginName} check ${check.id} is probe-only and is not run by kastell audit`);
       }
     }
   }
@@ -36,9 +39,10 @@ export function getSkippedMutatingPluginWarnings(
 }
 
 /**
- * Gates runAudit's plugin-batch parse: a mutating-only plugin produces no
- * batch (buildPluginBatchSection returns null) but parsePluginBatchOutput
- * must still surface its skipped checks for visibility.
+ * Gates runAudit's plugin-batch parse: a mutating-only or probe-only
+ * plugin produces no batch (buildPluginBatchSection returns null) but
+ * parsePluginBatchOutput must still surface its skipped checks for
+ * visibility.
  */
 export function hasLoadedPluginChecks(
   registry: ReadonlyMap<string, PluginRegistryEntry>,
@@ -148,7 +152,9 @@ export function parsePluginBatchOutput(
     sectionsByPluginCheck.set(`${section.pluginName}:${section.checkId}`, section);
   }
 
-  const byPlugin = new Map<string, AuditCheck[]>();
+  const categories: AuditCategory[] = [];
+  // Single ordered registry traversal: preserve Map iteration order so
+  // categories surface in registration order (P144 T5).
   for (const [pluginName, entry] of registry) {
     if (entry.status !== PLUGIN_STATUS_LOADED) continue;
     if (entry.checks.length === 0) continue;
@@ -159,18 +165,23 @@ export function parsePluginBatchOutput(
       if (section) {
         const passed = evaluateCheck(section.body, checkDef);
         checks.push(buildAuditCheck(checkDef, { passed, currentValue: section.body }, entry));
-      } else if (
-        // @ts-expect-error FIXME(p144-t5/t6): LoadedPluginCheck.checkCommand
-        // is optional. v2 plugins carry it; T5 will narrow.
-        checkDef.checkCommand.kind !== "read"
-      ) {
+      } else if (checkDef.sourceApiVersion === "2" && checkDef.checkCommand && checkDef.checkCommand.kind !== "read") {
         // P142 Task 2: structured skip metadata replaces sentinel currentValue.
         // Audit consumers gate on check.skip !== undefined (isSkippedCheck).
         const skip: PluginCheckSkipReason = {
           code: "legacy-mutating",
           apiVersion: "2",
-          // @ts-expect-error FIXME(p144-t5/t6): see marker above
           kind: checkDef.checkCommand.kind,
+        };
+        checks.push(
+          buildAuditCheck(checkDef, { passed: false, currentValue: "", skip }, entry),
+        );
+      } else if (checkDef.sourceApiVersion === "3" && !checkDef.read && checkDef.activeProbe) {
+        // P144 T5: v3 active-probe-only check (no `read.cmd`) never produces
+        // a batch section → surface as structured skip.
+        const skip: PluginCheckSkipReason = {
+          code: "probe-only",
+          apiVersion: "3",
         };
         checks.push(
           buildAuditCheck(checkDef, { passed: false, currentValue: "", skip }, entry),
@@ -183,19 +194,8 @@ export function parsePluginBatchOutput(
         );
       }
     }
-    byPlugin.set(pluginName, checks);
-  }
-
-  const categories: AuditCategory[] = [];
-  for (const [pluginName, checks] of byPlugin) {
-    if (checks.length === 0) continue;
-    const entry = registry.get(pluginName)!;
-    const shortName =
-      entry.status === "failed"
-        ? entry.descriptor.name
-        : entry.manifest.name;
     categories.push({
-      name: `Plugin: ${getShortName(shortName)}`,
+      name: `Plugin: ${getShortName(entry.manifest.name)}`,
       checks,
       score: 0,
       maxScore: 0,
