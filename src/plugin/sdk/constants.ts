@@ -7,5 +7,5 @@ export const SUPPORTED_PLUGIN_API_VERSIONS = ["2", "3"] as const;
 export const CURRENT_PLUGIN_API_VERSION = "3" as const;
 export type PluginApiVersion = (typeof SUPPORTED_PLUGIN_API_VERSIONS)[number];
 
-/** @deprecated Task 2 migration shim; remove after validation dispatch moves. */
+/** @deprecated Task 2 migration shim; remove after T5 finalizes v2 retirement. */
 export const PLUGIN_API_VERSION = "2" as const;

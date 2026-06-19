@@ -112,7 +112,16 @@ export async function loadPlugins(
 
       let checks: PluginCheck[];
       try {
-        checks = validateChecks(moduleObj.checks, manifest.checkPrefix);
+        const parsed = validateChecks(
+          moduleObj.checks,
+          manifest.checkPrefix,
+          manifest.apiVersion,
+          manifest.name,
+        );
+        // T2 foundation: registry still consumes the v2 PluginCheck[] shape.
+        // v3 activeProbe checks will be wired in a later task once registry/audit
+        // consumers are migrated to LoadedPluginCheck.
+        checks = parsed as PluginCheck[];
       } catch (err: unknown) {
         const msg = extractReason(err);
         registerFailedPlugin(manifest, msg);

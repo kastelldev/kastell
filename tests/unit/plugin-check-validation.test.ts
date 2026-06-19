@@ -47,16 +47,16 @@ describe("validateChecks", () => {
     expect(() => validateChecks([{ ...valid, id: "XX-001" }], "WP")).toThrow(/prefix/);
   });
 
-  it("accepts mutate-local command kind", () => {
+  it("rejects mutate-local command kind with migration path (p144 T2)", () => {
     expect(() =>
       validateChecks([{ ...valid, checkCommand: { kind: "mutate-local", cmd: "systemctl restart nginx" } }], "WP"),
-    ).not.toThrow();
+    ).toThrow(/WP-001.*mutate-local.*docs\/plugin-sdk-migration-v3\.md/);
   });
 
-  it("accepts mutate-global command kind", () => {
+  it("rejects mutate-global command kind with migration path (p144 T2)", () => {
     expect(() =>
       validateChecks([{ ...valid, checkCommand: { kind: "mutate-global", cmd: "hcloud firewall apply-to-resource" } }], "WP"),
-    ).not.toThrow();
+    ).toThrow(/WP-001.*mutate-global.*docs\/plugin-sdk-migration-v3\.md/);
   });
 
   it("rejects legacy string checkCommand", () => {

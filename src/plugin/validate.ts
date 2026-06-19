@@ -2,8 +2,12 @@ import { z } from "zod";
 import semver from "semver";
 import { ValidationError } from "../utils/errors.js";
 import { KASTELL_VERSION } from "../utils/version.js";
-import type { PluginManifest, PluginCheck } from "./sdk/types.js";
-import { PLUGIN_NAME_PATTERN, PLUGIN_API_VERSION } from "./sdk/constants.js";
+import type {
+  PluginManifest,
+  PluginCheckV2,
+  PluginCheckV3,
+} from "./sdk/types.js";
+import { PLUGIN_NAME_PATTERN, type PluginApiVersion } from "./sdk/constants.js";
 import { PLUGIN_CHECK_COMMAND_KINDS } from "./sdk/types.js";
 
 const HANDLER_PATH_PATTERN = /^\.\/(?!.*\.\.)(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]+\.js$/;
@@ -27,7 +31,18 @@ const PluginFixSchema = z.object({
   backupPaths: z.array(z.string().regex(/^\//, "Backup path must be absolute")).optional(),
 });
 
-const PluginCheckCommandSchema = z
+const checkIdSchema = z
+  .string()
+  .regex(/^[A-Z][A-Z0-9_-]{1,63}$/, "Check id must be uppercase alphanumeric/underscore/dash, 2-64 chars");
+
+const severitySchema = z.enum(["critical", "warning", "info"]);
+
+const complianceRefsSchema = z
+  .array(z.object({ framework: z.string(), ref: z.string() }))
+  .optional();
+
+// v2 checkCommand: keep current shell-injection guards
+const PluginCheckCommandV2Schema = z
   .object({
     kind: z.enum(PLUGIN_CHECK_COMMAND_KINDS, {
       error: `checkCommand.kind must be one of: ${PLUGIN_CHECK_COMMAND_KINDS.join(", ")}`,
@@ -41,35 +56,77 @@ const PluginCheckCommandSchema = z
   })
   .strict();
 
-const PluginCheckSchema = z.object({
-  id: z
-    .string()
-    .regex(/^[A-Z][A-Z0-9_-]{1,63}$/, "Check id must be uppercase alphanumeric/underscore/dash, 2-64 chars"),
-  category: z.string().min(1),
-  name: z.string().min(1),
-  severity: z.enum(["critical", "warning", "info"]),
-  description: z.string().optional(),
-  checkCommand: PluginCheckCommandSchema,
-  passPattern: z.string().optional(),
-  failPattern: z.string().optional(),
-  fixCommand: z.string().optional(),
-  safeToAutoFix: z.enum(["SAFE", "GUARDED", "FORBIDDEN"]).optional(),
-  explain: z
-    .union([
-      z.string(),
-      z.object({ why: z.string(), fix: z.string() }),
-    ])
-    .optional(),
-  complianceRefs: z
-    .array(z.object({ framework: z.string(), ref: z.string() }))
-    .optional(),
-});
+// v3 read object — same dangerous-token guards as v2 cmd
+const PluginReadV3Schema = z
+  .object({
+    cmd: z
+      .string()
+      .min(1)
+      .refine((s) => !s.includes("---SECTION:"), "read.cmd must not contain '---SECTION:'")
+      .refine((s) => !s.includes("KASTELL_PLUGIN_CHECK_EOF"), "read.cmd must not contain heredoc tag 'KASTELL_PLUGIN_CHECK_EOF'")
+      .refine((s) => !/\r/.test(s), "read.cmd must not contain CR characters"),
+    passPattern: z.string().optional(),
+    failPattern: z.string().optional(),
+  })
+  .strict();
+
+const PluginActiveProbeV3Schema = z
+  .object({
+    handler: z.string().regex(HANDLER_PATH_PATTERN, "Active Probe handler must be relative ./path.js"),
+    risk: z.enum(["low", "medium", "high"]),
+    timeoutMs: z.number().int().min(5_000).max(300_000),
+  })
+  .strict();
+
+const PluginCheckV2Schema = z
+  .object({
+    id: checkIdSchema,
+    category: z.string().min(1),
+    name: z.string().min(1),
+    severity: severitySchema,
+    description: z.string().optional(),
+    checkCommand: PluginCheckCommandV2Schema,
+    passPattern: z.string().optional(),
+    failPattern: z.string().optional(),
+    fixCommand: z.string().optional(),
+    safeToAutoFix: z.enum(["SAFE", "GUARDED", "FORBIDDEN"]).optional(),
+    // PluginCheckV2.explain is string-only at the type level (see FIXME in
+    // sdk/types.ts). Accept the union at validation time but coerce the
+    // object form to its string representation for backward compatibility
+    // with audit/listChecks consumers.
+    explain: z
+      .union([z.string(), z.object({ why: z.string(), fix: z.string() })])
+      .optional()
+      .transform((v) => (typeof v === "string" ? v : v === undefined ? undefined : `${v.why} — ${v.fix}`)),
+    complianceRefs: complianceRefsSchema,
+  })
+  .strict();
+
+const PluginCheckV3Schema = z
+  .object({
+    id: checkIdSchema,
+    category: z.string().min(1),
+    name: z.string().min(1),
+    severity: severitySchema,
+    description: z.string().min(1),
+    read: PluginReadV3Schema.optional(),
+    activeProbe: PluginActiveProbeV3Schema.optional(),
+    explain: z
+      .union([z.string(), z.object({ why: z.string(), fix: z.string() })])
+      .optional(),
+    complianceRefs: complianceRefsSchema,
+  })
+  .strict()
+  .refine(
+    (check) => check.read !== undefined || check.activeProbe !== undefined,
+    { message: "Plugin API v3 check requires read and/or activeProbe" },
+  );
 
 const PluginManifestSchema = z
   .object({
     name: z.string().regex(PLUGIN_NAME_PATTERN, "Name must match kastell-plugin-<lowercase>"),
     version: z.string().regex(/^\d+\.\d+\.\d+$/, "Version must be semver (X.Y.Z)"),
-    apiVersion: z.literal(PLUGIN_API_VERSION),
+    apiVersion: z.union([z.literal("2"), z.literal("3")]),
     kastell: z.string().min(1, "Kastell version range required"),
     capabilities: z.array(z.enum(["audit", "command", "mcp-tool", "fix"])).min(1),
     checkPrefix: z.string().regex(/^[A-Z]{2,6}$/, "checkPrefix must be 2-6 uppercase letters"),
@@ -143,18 +200,53 @@ export function validateManifest(manifest: unknown): PluginManifest {
   return parsed.data;
 }
 
-export function validateChecks(checks: unknown, checkPrefix: string): PluginCheck[] {
+export function validateChecks(
+  checks: unknown,
+  checkPrefix: string,
+  apiVersion?: PluginApiVersion,
+  pluginName?: string,
+): (PluginCheckV2 | PluginCheckV3)[];
+export function validateChecks(checks: unknown, checkPrefix: string): PluginCheckV2[];
+export function validateChecks(
+  checks: unknown,
+  checkPrefix: string,
+  apiVersion: PluginApiVersion = "2",
+  pluginName: string = "<unknown>",
+): (PluginCheckV2 | PluginCheckV3)[] {
   if (!Array.isArray(checks)) {
     throw new ValidationError("Plugin checks must be an array");
   }
-  const parsed: PluginCheck[] = [];
+  const parsed: (PluginCheckV2 | PluginCheckV3)[] = [];
   const seen = new Set<string>();
   for (let i = 0; i < checks.length; i++) {
-    const result = PluginCheckSchema.safeParse(checks[i]);
+    const result =
+      apiVersion === "2"
+        ? PluginCheckV2Schema.safeParse(checks[i])
+        : PluginCheckV3Schema.safeParse(checks[i]);
     if (!result.success) {
       throw new ValidationError(`Invalid plugin check at index ${i}: ${result.error.message}`);
     }
     const check = result.data;
+
+    // v2-specific guards: mutate-* and raw fixCommand are rejected with
+    // migration guidance toward docs/plugin-sdk-migration-v3.md
+    if (apiVersion === "2") {
+      const v2Check = check as PluginCheckV2;
+      if (
+        v2Check.checkCommand.kind === "mutate-local" ||
+        v2Check.checkCommand.kind === "mutate-global"
+      ) {
+        throw new ValidationError(
+          `Plugin "${pluginName}" check "${v2Check.id}" uses checkCommand.kind "${v2Check.checkCommand.kind}"; mutate-* is not allowed in Plugin API v2 — migrate to v3 (see docs/plugin-sdk-migration-v3.md).`,
+        );
+      }
+      if (v2Check.fixCommand !== undefined) {
+        throw new ValidationError(
+          `Plugin "${pluginName}" check "${v2Check.id}" defines raw fixCommand; v2 fixCommand is removed — migrate to v3 (see docs/plugin-sdk-migration-v3.md).`,
+        );
+      }
+    }
+
     if (!check.id.startsWith(checkPrefix + "-")) {
       throw new ValidationError(
         `Check id "${check.id}" must start with plugin prefix "${checkPrefix}-"`,
@@ -164,7 +256,7 @@ export function validateChecks(checks: unknown, checkPrefix: string): PluginChec
       throw new ValidationError(`Duplicate check id "${check.id}" within plugin`);
     }
     seen.add(check.id);
-    parsed.push(check as PluginCheck);
+    parsed.push(check as PluginCheckV2 | PluginCheckV3);
   }
   return parsed;
 }
