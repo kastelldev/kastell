@@ -2,7 +2,7 @@ import { debugLog } from "../../utils/logger.js";
 import { PLUGIN_STATUS_LOADED } from "../../plugin/registry.js";
 import { getShortName } from "../../plugin/registry.js";
 import type { PluginRegistryEntry } from "../../plugin/registry.js";
-import type { LoadedPluginCheck, PluginCheck } from "../../plugin/sdk/types.js";
+import type { LoadedPluginCheck } from "../../plugin/sdk/types.js";
 import type { AuditCategory, AuditCheck, Severity, FixTier, ComplianceRef, PluginCheckSkipReason } from "./types.js";
 
 export function mapPluginComplianceRefs(refs?: Array<{ framework: string; ref: string }>): ComplianceRef[] {

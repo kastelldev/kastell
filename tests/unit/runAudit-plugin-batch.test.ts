@@ -1,7 +1,7 @@
 import { runAudit } from "../../src/core/audit/index.js";
 import * as ssh from "../../src/utils/ssh.js";
 import { registerPlugin, clearPluginRegistry } from "../../src/plugin/registry.js";
-import type { PluginManifest, PluginCheck } from "../../src/plugin/sdk/types.js";
+import type { PluginManifest, LoadedPluginCheck } from "../../src/plugin/sdk/types.js";
 
 describe("runAudit — plugin batch integration", () => {
   beforeEach(() => {
@@ -23,9 +23,9 @@ describe("runAudit — plugin batch integration", () => {
       checkPrefix: "T",
       entry: "./index.js",
     };
-    const checks: PluginCheck[] = [
-      { id: "T-001", category: "Test", name: "T1", severity: "warning", description: "", checkCommand: { kind: "read", cmd: "echo ok" }, passPattern: "^ok$" },
-      { id: "T-002", category: "Test", name: "T2", severity: "info", description: "", checkCommand: { kind: "read", cmd: "echo bad" }, passPattern: "^ok$" },
+    const checks: LoadedPluginCheck[] = [
+      { id: "T-001", category: "Test", name: "T1", severity: "warning", description: "", sourceApiVersion: "2", checkCommand: { kind: "read", cmd: "echo ok" }, passPattern: "^ok$" },
+      { id: "T-002", category: "Test", name: "T2", severity: "info", description: "", sourceApiVersion: "2", checkCommand: { kind: "read", cmd: "echo bad" }, passPattern: "^ok$" },
     ];
     registerPlugin(manifest, checks);
   }
@@ -97,8 +97,8 @@ describe("runAudit — plugin batch integration", () => {
       checkPrefix: "T",
       entry: "./index.js",
     };
-    const checks: PluginCheck[] = [
-      { id: "T-MUT", category: "Test", name: "Mutating", severity: "warning", description: "", checkCommand: { kind: "mutate-local", cmd: "systemctl restart nginx" } },
+    const checks: LoadedPluginCheck[] = [
+      { id: "T-MUT", category: "Test", name: "Mutating", severity: "warning", description: "", sourceApiVersion: "2", checkCommand: { kind: "mutate-local", cmd: "systemctl restart nginx" } },
     ];
     registerPlugin(manifest, checks);
     const spy = jest.spyOn(ssh, "sshExec").mockImplementation(async () => ({ stdout: "", stderr: "", code: 0 }));
@@ -132,9 +132,9 @@ describe("runAudit — plugin batch integration", () => {
       checkPrefix: "T",
       entry: "./index.js",
     };
-    const checks: PluginCheck[] = [
-      { id: "T-READ", category: "Test", name: "Read", severity: "warning", description: "", checkCommand: { kind: "read", cmd: "echo ok" }, passPattern: "^ok$" },
-      { id: "T-MUT", category: "Test", name: "Mutating", severity: "warning", description: "", checkCommand: { kind: "mutate-local", cmd: "systemctl restart nginx" } },
+    const checks: LoadedPluginCheck[] = [
+      { id: "T-READ", category: "Test", name: "Read", severity: "warning", description: "", sourceApiVersion: "2", checkCommand: { kind: "read", cmd: "echo ok" }, passPattern: "^ok$" },
+      { id: "T-MUT", category: "Test", name: "Mutating", severity: "warning", description: "", sourceApiVersion: "2", checkCommand: { kind: "mutate-local", cmd: "systemctl restart nginx" } },
     ];
     registerPlugin(manifest, checks);
     const spy = jest.spyOn(ssh, "sshExec").mockImplementation(async () => ({ stdout: "", stderr: "", code: 0 }));
@@ -175,9 +175,9 @@ describe("runAudit — plugin batch integration", () => {
       checkPrefix: "M",
       entry: "./index.js",
     };
-    const checks: PluginCheck[] = [
-      { id: "M-LOCAL", category: "Test", name: "Local", severity: "warning", description: "", checkCommand: { kind: "mutate-local", cmd: "systemctl restart nginx" } },
-      { id: "M-GLOBAL", category: "Test", name: "Global", severity: "warning", description: "", checkCommand: { kind: "mutate-global", cmd: "iptables -F" } },
+    const checks: LoadedPluginCheck[] = [
+      { id: "M-LOCAL", category: "Test", name: "Local", severity: "warning", description: "", sourceApiVersion: "2", checkCommand: { kind: "mutate-local", cmd: "systemctl restart nginx" } },
+      { id: "M-GLOBAL", category: "Test", name: "Global", severity: "warning", description: "", sourceApiVersion: "2", checkCommand: { kind: "mutate-global", cmd: "iptables -F" } },
     ];
     registerPlugin(manifest, checks);
     const spy = jest.spyOn(ssh, "sshExec").mockImplementation(async () => ({ stdout: "", stderr: "", code: 0 }));
@@ -215,9 +215,9 @@ describe("runAudit — plugin batch integration", () => {
       checkPrefix: "X",
       entry: "./index.js",
     };
-    const checks: PluginCheck[] = [
-      { id: "X-READ", category: "Test", name: "Read", severity: "warning", description: "", checkCommand: { kind: "read", cmd: "echo ok" }, passPattern: "^ok$" },
-      { id: "X-MUT", category: "Test", name: "Mut", severity: "warning", description: "", checkCommand: { kind: "mutate-local", cmd: "systemctl restart nginx" } },
+    const checks: LoadedPluginCheck[] = [
+      { id: "X-READ", category: "Test", name: "Read", severity: "warning", description: "", sourceApiVersion: "2", checkCommand: { kind: "read", cmd: "echo ok" }, passPattern: "^ok$" },
+      { id: "X-MUT", category: "Test", name: "Mut", severity: "warning", description: "", sourceApiVersion: "2", checkCommand: { kind: "mutate-local", cmd: "systemctl restart nginx" } },
     ];
     registerPlugin(manifest, checks);
     const spy = jest.spyOn(ssh, "sshExec").mockImplementation(async () => ({ stdout: "", stderr: "", code: 0 }));
@@ -248,8 +248,8 @@ describe("runAudit — plugin batch integration", () => {
       checkPrefix: "R",
       entry: "./index.js",
     };
-    const checks: PluginCheck[] = [
-      { id: "R-001", category: "Test", name: "Read", severity: "warning", description: "", checkCommand: { kind: "read", cmd: "echo ok" }, passPattern: "^ok$" },
+    const checks: LoadedPluginCheck[] = [
+      { id: "R-001", category: "Test", name: "Read", severity: "warning", description: "", sourceApiVersion: "2", checkCommand: { kind: "read", cmd: "echo ok" }, passPattern: "^ok$" },
     ];
     registerPlugin(manifest, checks);
     const spy = jest.spyOn(ssh, "sshExec").mockImplementation(async () => ({ stdout: "", stderr: "", code: 0 }));

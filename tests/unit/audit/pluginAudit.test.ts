@@ -6,9 +6,9 @@ import {
 import { isSkippedCheck } from "../../../src/core/audit/types.js";
 import { PLUGIN_STATUS_FAILED, PLUGIN_STATUS_LOADED } from "../../../src/plugin/registry.js";
 import type { PluginRegistryEntry } from "../../../src/plugin/registry.js";
-import type { PluginCheck, PluginFix, PluginManifest, PluginCheckCommandKind } from "../../../src/plugin/sdk/types.js";
+import type { LoadedPluginCheck, PluginFix, PluginManifest, PluginCheckCommandKind } from "../../../src/plugin/sdk/types.js";
 
-function loadedEntry(name: string, checks: PluginCheck[], fixes?: PluginFix[]): PluginRegistryEntry {
+function loadedEntry(name: string, checks: LoadedPluginCheck[], fixes?: PluginFix[]): PluginRegistryEntry {
   const manifest: PluginManifest = {
     name,
     version: "1.0.0",
@@ -21,9 +21,11 @@ function loadedEntry(name: string, checks: PluginCheck[], fixes?: PluginFix[]): 
   };
   const checksById = new Map(checks.map((c) => [c.id, c]));
   const fixesByCheckId = new Map((fixes ?? []).map((f) => [f.checkId, f]));
+  const readChecks = checks.filter((c): c is LoadedPluginCheck & { read: NonNullable<LoadedPluginCheck["read"]> } => c.read !== undefined);
   return {
     manifest,
     checks,
+    readChecks,
     status: PLUGIN_STATUS_LOADED,
     checksById,
     fixesByCheckId,
@@ -42,19 +44,21 @@ function failedEntry(name: string): PluginRegistryEntry {
     },
     reason: "test failure",
     checks: [],
+    readChecks: [],
     checksById: new Map<string, never>(),
     activeProbesByCheckId: new Map<string, never>(),
     fixesByCheckId: new Map<string, never>(),
   };
 }
 
-function check(id: string, kind: PluginCheckCommandKind = "read"): PluginCheck {
+function check(id: string, kind: PluginCheckCommandKind = "read"): LoadedPluginCheck {
   return {
     id,
     category: "Test",
     name: id,
     severity: "warning",
     description: "",
+    sourceApiVersion: "2",
     checkCommand: { kind, cmd: "echo ok" },
   };
 }
