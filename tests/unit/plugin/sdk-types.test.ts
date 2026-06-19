@@ -62,6 +62,19 @@ describe("Plugin SDK Types", () => {
     expect(manifest.checkPrefix).toBe("WP");
   });
 
+  it("PluginManifest accepts v3 apiVersion discriminator", () => {
+    const manifest: PluginManifest = {
+      name: "kastell-plugin-v3",
+      version: "1.0.0",
+      apiVersion: "3",
+      kastell: ">=2.3.0",
+      capabilities: ["audit"],
+      checkPrefix: "V3",
+      entry: "dist/index.js",
+    };
+    expect(manifest.apiVersion).toBe("3");
+  });
+
   it("PluginCheck accepts valid check with required + optional fields", () => {
     const check: PluginCheck = {
       id: "WP-FILE-PERMS",

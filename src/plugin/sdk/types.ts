@@ -99,10 +99,18 @@ export interface PluginProbeRollbackResult {
 }
 
 export interface ActiveProbeModule {
-  prepare: (ctx: PluginProbeContext) => Promise<void>;
-  execute: (ctx: PluginProbeContext) => Promise<void>;
-  verify: (ctx: PluginProbeContext) => Promise<PluginProbeVerification>;
-  rollback: (ctx: PluginProbeContext) => Promise<PluginProbeRollbackResult>;
+  prepare: (ctx: PluginProbeContext) => Promise<unknown>;
+  execute: (ctx: PluginProbeContext, prepared: unknown) => Promise<unknown>;
+  verify: (
+    ctx: PluginProbeContext,
+    prepared: unknown,
+    executed: unknown,
+  ) => Promise<PluginProbeVerification>;
+  rollback: (
+    ctx: PluginProbeContext,
+    prepared: unknown,
+    executed?: unknown,
+  ) => Promise<PluginProbeRollbackResult>;
 }
 
 export interface PluginComplianceRef {
