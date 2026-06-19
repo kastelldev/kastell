@@ -133,6 +133,7 @@ export interface PluginCheckV2 extends PluginCheckBase {
   failPattern?: string;
   fixCommand?: string;
   safeToAutoFix?: PluginFixTier;
+  // FIXME(p144-t5/t6): widen to PluginExplain union after listChecks/audit consumers migrate
   explain?: string;
 }
 
