@@ -478,6 +478,52 @@ describe("validateChecks — v2/v3 version dispatch", () => {
       }], "WP", "2", "kastell-plugin-wordpress"))
         .toThrow(/WP-FIX.*fixCommand.*migration/i);
     });
+
+    it("rejects v2 explain object form with migration message", () => {
+      expect(() => validateChecks([{
+        id: "WP-OBJ", name: "object form", category: "WP", severity: "warning",
+        checkCommand: { kind: "read", cmd: "echo ok" },
+        explain: { why: "because", fix: "do this" },
+      }], "WP", "2", "kastell-plugin-wordpress"))
+        .toThrow(/PluginCheckV2\.explain must be a string[\s\S]*PluginCheckV3[\s\S]*plugin-sdk-migration-v3/);
+    });
+
+    it("accepts v2 explain as string", () => {
+      const checks = validateChecks([{
+        id: "WP-STR", name: "string form", category: "WP", severity: "info",
+        checkCommand: { kind: "read", cmd: "echo ok" },
+        explain: "because reasons",
+      }], "WP", "2", "kastell-plugin-wordpress");
+      expect(checks[0].explain).toBe("because reasons");
+    });
+  });
+
+  describe("2-arg overload backward compat", () => {
+    it("dispatches to v2 and accepts a v2-shaped check", () => {
+      const v2Shaped = [{
+        id: "WP-V2", name: "v", category: "WP", severity: "info",
+        checkCommand: { kind: "read", cmd: "echo ok" },
+      }];
+      const checks = validateChecks(v2Shaped, "WP");
+      expect(checks).toHaveLength(1);
+    });
+
+    it("2-arg overload rejects v3-shaped input (read field unknown in v2 strict schema)", () => {
+      const v3Shaped = [{
+        id: "WP-V3", name: "v", category: "WP", severity: "info",
+        description: "v3", read: { cmd: "echo ok" },
+      }];
+      expect(() => validateChecks(v3Shaped, "WP")).toThrow();
+    });
+
+    it("2-arg overload applies v2 rules (rejects v2 raw fixCommand)", () => {
+      expect(() => validateChecks([{
+        id: "WP-FIX", name: "raw fix", category: "WP", severity: "warning",
+        checkCommand: { kind: "read", cmd: "echo bad" },
+        fixCommand: "systemctl restart nginx",
+      }] as never, "WP"))
+        .toThrow(/fixCommand.*migration/i);
+    });
   });
 
   describe("v3 acceptance", () => {

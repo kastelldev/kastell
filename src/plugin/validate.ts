@@ -56,19 +56,37 @@ const PluginCheckCommandV2Schema = z
   })
   .strict();
 
-// v3 read object — same dangerous-token guards as v2 cmd
+// v3 read object -- same dangerous-token guards as v2 cmd
 const PluginReadV3Schema = z
   .object({
-    cmd: z
-      .string()
-      .min(1)
-      .refine((s) => !s.includes("---SECTION:"), "read.cmd must not contain '---SECTION:'")
-      .refine((s) => !s.includes("KASTELL_PLUGIN_CHECK_EOF"), "read.cmd must not contain heredoc tag 'KASTELL_PLUGIN_CHECK_EOF'")
-      .refine((s) => !/\r/.test(s), "read.cmd must not contain CR characters"),
+    cmd: z.string().min(1),
     passPattern: z.string().optional(),
     failPattern: z.string().optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, ctx) => {
+    if (value.cmd.includes("---SECTION:")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "read.cmd must not contain '---SECTION:'",
+        path: ["cmd"],
+      });
+    }
+    if (value.cmd.includes("KASTELL_PLUGIN_CHECK_EOF")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "read.cmd must not contain heredoc tag 'KASTELL_PLUGIN_CHECK_EOF'",
+        path: ["cmd"],
+      });
+    }
+    if (value.cmd.includes("\r")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "read.cmd must not contain CR characters",
+        path: ["cmd"],
+      });
+    }
+  });
 
 const PluginActiveProbeV3Schema = z
   .object({
@@ -91,13 +109,23 @@ const PluginCheckV2Schema = z
     fixCommand: z.string().optional(),
     safeToAutoFix: z.enum(["SAFE", "GUARDED", "FORBIDDEN"]).optional(),
     // PluginCheckV2.explain is string-only at the type level (see FIXME in
-    // sdk/types.ts). Accept the union at validation time but coerce the
-    // object form to its string representation for backward compatibility
-    // with audit/listChecks consumers.
+    // sdk/types.ts). v3 retains the rich {why, fix} union. Reject the object
+    // form in v2 with a migration message to avoid silent data loss between
+    // plugin author contract and audit/listChecks consumers.
     explain: z
       .union([z.string(), z.object({ why: z.string(), fix: z.string() })])
       .optional()
-      .transform((v) => (typeof v === "string" ? v : v === undefined ? undefined : `${v.why} — ${v.fix}`)),
+      .superRefine((value, ctx) => {
+        if (value !== undefined && typeof value !== "string") {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message:
+              "PluginCheckV2.explain must be a string. Use PluginCheckV3 for structured explain (docs/plugin-sdk-migration-v3.md).",
+            path: ["explain"],
+          });
+        }
+      })
+      .transform((v) => (typeof v === "string" ? v : undefined)),
     complianceRefs: complianceRefsSchema,
   })
   .strict();
@@ -200,6 +228,18 @@ export function validateManifest(manifest: unknown): PluginManifest {
   return parsed.data;
 }
 
+/**
+ * Validates plugin checks.
+ *
+ * @param checks - Raw check array from plugin manifest
+ * @param checkPrefix - Plugin check prefix (registry validation)
+ * @param apiVersion - Plugin API version (required for v2/v3 dispatch)
+ * @param pluginName - Plugin name (used in error messages)
+ *
+ * The 2-arg form `(checks, checkPrefix)` is backward-compat only and
+ * dispatches to v2. New code MUST pass `apiVersion` and `pluginName`
+ * to receive v3 acceptance and migration-path rejection.
+ */
 export function validateChecks(
   checks: unknown,
   checkPrefix: string,
