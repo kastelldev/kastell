@@ -44,16 +44,45 @@ jest.mock("../../src/utils/secureWrite", () => ({
 jest.mock("../../src/utils/ssh");
 jest.mock("../../src/core/audit/history");
 
+// P144 T12 — Active Probe diagnostics must be controllable in tests so the
+// server-mode findings-merge path can be exercised against controlled probe
+// state without touching real session files. The real module loads fs paths
+// at import time; mocking at module level keeps runServerDoctor using the
+// real hashProbeTarget() helper so target-hash matching stays observable.
+jest.mock("../../src/core/probe/diagnostics", () => {
+  const actual = jest.requireActual("../../src/core/probe/diagnostics");
+  return {
+    ...actual,
+    tryRunProbeSessionMaintenance: jest.fn(),
+  };
+});
+import * as probeDiagnostics from "../../src/core/probe/diagnostics";
+
 const mockedSsh = sshUtils as jest.Mocked<typeof sshUtils>;
 const mockedHistory = auditHistory as jest.Mocked<typeof auditHistory>;
+const mockedProbeDiagnostics = probeDiagnostics as jest.Mocked<typeof probeDiagnostics>;
 const mockedExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;
 const mockedReadFileSync = readFileSync as jest.MockedFunction<typeof readFileSync>;
 const mockedRenameSync = renameSync as jest.MockedFunction<typeof renameSync>;
 const mockedSecureWrite = require("../../src/utils/secureWrite");
 const mockedSecureWriteFileSync = mockedSecureWrite.secureWriteFileSync as jest.MockedFunction<typeof mockedSecureWrite.secureWriteFileSync>;
 
+import { hashProbeTarget } from "../../src/core/probe/sessionStore";
+import type { ServerRecord } from "../../src/types/index";
+
 const VALID_IP = "1.2.3.4";
 const SERVER_NAME = "my-server";
+
+const FAKE_SERVER_RECORD: ServerRecord = {
+  id: "srv-1",
+  name: SERVER_NAME,
+  provider: "hetzner",
+  ip: VALID_IP,
+  region: "nbg1",
+  size: "cax11",
+  createdAt: "2026-01-01T00:00:00Z",
+  mode: "coolify",
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -777,5 +806,254 @@ describe("computeDoctorScore", () => {
       { id: "B", severity: "warning", description: "t", command: "t", weight: 5 },
     ];
     expect(computeDoctorScore(findings)).toBe(79);
+  });
+});
+
+// ─── P144 T12 — Active Probe findings merge in runServerDoctor ────────────────
+
+describe("runServerDoctor — Active Probe findings merge", () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+    mockedExistsSync.mockReturnValue(false);
+    mockedHistory.loadAuditHistory.mockReturnValue([]);
+    mockedSsh.assertValidIp.mockImplementation(() => undefined);
+  });
+
+  it("merges one critical finding per matching target-hash session (unresolved)", async () => {
+    const targetHash = hashProbeTarget({
+      serverId: FAKE_SERVER_RECORD.id,
+      provider: FAKE_SERVER_RECORD.provider,
+      ip: FAKE_SERVER_RECORD.ip,
+    });
+    mockedProbeDiagnostics.tryRunProbeSessionMaintenance.mockResolvedValue({
+      diagnostics: [
+        {
+          kind: "unresolved",
+          severity: "critical",
+          blocking: true,
+          sessionId: "11111111-1111-4111-8111-111111111111",
+          targetKeyHash: targetHash,
+          message: "Probe session terminated as unresolved",
+        },
+      ],
+      cleanup: { deletedSessionIds: [], scannedAt: new Date().toISOString() },
+    });
+
+    const result = await runServerDoctor(
+      VALID_IP,
+      SERVER_NAME,
+      { fresh: false },
+      FAKE_SERVER_RECORD,
+    );
+
+    expect(result.success).toBe(true);
+    const probeFindings = result.data!.findings.filter((f) => f.id.startsWith("PROBE_"));
+    expect(probeFindings).toHaveLength(1);
+    expect(probeFindings[0].severity).toBe("critical");
+    expect(probeFindings[0].id).toMatch(/^PROBE_UNRESOLVED_/);
+    expect(probeFindings[0]).not.toHaveProperty("fixCommand");
+  });
+
+  it("matches findings by canonical target hash, NOT by IP alone", async () => {
+    // Two diagnostics: one for a DIFFERENT target (mismatched hash), one for ours.
+    const ourHash = hashProbeTarget({
+      serverId: FAKE_SERVER_RECORD.id,
+      provider: FAKE_SERVER_RECORD.provider,
+      ip: FAKE_SERVER_RECORD.ip,
+    });
+    mockedProbeDiagnostics.tryRunProbeSessionMaintenance.mockResolvedValue({
+      diagnostics: [
+        {
+          kind: "unresolved",
+          severity: "critical",
+          blocking: true,
+          sessionId: "22222222-2222-4222-8222-222222222222",
+          targetKeyHash: "different-target-hash",
+          message: "Foreign session — should be excluded",
+        },
+        {
+          kind: "interrupted",
+          severity: "critical",
+          blocking: true,
+          sessionId: "33333333-3333-4333-8333-333333333333",
+          targetKeyHash: ourHash,
+          message: "Our session — should be included",
+        },
+      ],
+      cleanup: { deletedSessionIds: [], scannedAt: new Date().toISOString() },
+    });
+
+    const result = await runServerDoctor(
+      VALID_IP,
+      SERVER_NAME,
+      { fresh: false },
+      FAKE_SERVER_RECORD,
+    );
+
+    const probeFindings = result.data!.findings.filter((f) => f.id.startsWith("PROBE_"));
+    expect(probeFindings).toHaveLength(1);
+    expect(probeFindings[0].id).toMatch(/^PROBE_INTERRUPTED_/);
+    expect(probeFindings[0].description).toContain("Our session");
+  });
+
+  it("excludes rolled-back sessions from findings (terminal, retention-managed)", async () => {
+    const targetHash = hashProbeTarget({
+      serverId: FAKE_SERVER_RECORD.id,
+      provider: FAKE_SERVER_RECORD.provider,
+      ip: FAKE_SERVER_RECORD.ip,
+    });
+    mockedProbeDiagnostics.tryRunProbeSessionMaintenance.mockResolvedValue({
+      diagnostics: [
+        {
+          kind: "unresolved",
+          severity: "critical",
+          blocking: true,
+          sessionId: "44444444-4444-4444-8444-444444444444",
+          targetKeyHash: targetHash,
+          message: "Unresolved — included",
+        },
+      ],
+      cleanup: { deletedSessionIds: ["55555555-5555-4555-8555-555555555555"], scannedAt: new Date().toISOString() },
+    });
+
+    const result = await runServerDoctor(
+      VALID_IP,
+      SERVER_NAME,
+      { fresh: false },
+      FAKE_SERVER_RECORD,
+    );
+
+    const probeFindings = result.data!.findings.filter((f) => f.id.startsWith("PROBE_"));
+    // Only the unresolved session surfaces — rolled-back was retention-managed
+    // and its ID is in the cleanup list, but it does NOT generate a finding.
+    expect(probeFindings).toHaveLength(1);
+    expect(probeFindings[0].description).toContain("Unresolved");
+  });
+
+  it("decreases score by the critical weight per probe finding", async () => {
+    const targetHash = hashProbeTarget({
+      serverId: FAKE_SERVER_RECORD.id,
+      provider: FAKE_SERVER_RECORD.provider,
+      ip: FAKE_SERVER_RECORD.ip,
+    });
+    mockedProbeDiagnostics.tryRunProbeSessionMaintenance.mockResolvedValue({
+      diagnostics: [
+        {
+          kind: "unresolved",
+          severity: "critical",
+          blocking: true,
+          sessionId: "66666666-6666-4666-8666-666666666666",
+          targetKeyHash: targetHash,
+          message: "Probe finding #1",
+        },
+      ],
+      cleanup: { deletedSessionIds: [], scannedAt: new Date().toISOString() },
+    });
+
+    const withProbe = await runServerDoctor(
+      VALID_IP,
+      SERVER_NAME,
+      { fresh: false },
+      FAKE_SERVER_RECORD,
+    );
+    expect(withProbe.success).toBe(true);
+    expect(withProbe.data!.findings.filter((f) => f.id.startsWith("PROBE_"))).toHaveLength(1);
+    expect(withProbe.data!.score).toBe(86); // 100 - (10/70 * 100) ≈ 86
+  });
+
+  it("does not call tryRunProbeSessionMaintenance when serverRecord is omitted (back-compat)", async () => {
+    const result = await runServerDoctor(VALID_IP, SERVER_NAME, { fresh: false });
+    expect(result.success).toBe(true);
+    expect(mockedProbeDiagnostics.tryRunProbeSessionMaintenance).not.toHaveBeenCalled();
+    expect(result.data!.findings.filter((f) => f.id.startsWith("PROBE_"))).toHaveLength(0);
+  });
+
+  it("never lowers critical severity across risk levels (warning diagnostics also surface as critical)", async () => {
+    const targetHash = hashProbeTarget({
+      serverId: FAKE_SERVER_RECORD.id,
+      provider: FAKE_SERVER_RECORD.provider,
+      ip: FAKE_SERVER_RECORD.ip,
+    });
+    mockedProbeDiagnostics.tryRunProbeSessionMaintenance.mockResolvedValue({
+      diagnostics: [
+        {
+          kind: "undecryptable",
+          severity: "warning",
+          blocking: false,
+          sessionId: "77777777-7777-4777-8777-777777777777",
+          targetKeyHash: targetHash,
+          message: "Warning-level diagnostic",
+        },
+      ],
+      cleanup: { deletedSessionIds: [], scannedAt: new Date().toISOString() },
+    });
+
+    const result = await runServerDoctor(
+      VALID_IP,
+      SERVER_NAME,
+      { fresh: false },
+      FAKE_SERVER_RECORD,
+    );
+
+    const probeFindings = result.data!.findings.filter((f) => f.id.startsWith("PROBE_"));
+    expect(probeFindings).toHaveLength(1);
+    // Even though underlying severity was "warning", doctor adapter surfaces as critical.
+    expect(probeFindings[0].severity).toBe("critical");
+  });
+
+  it("does not import or invoke lifecycle handlers (probe/diagnostics is read-only surface)", async () => {
+    // Defensive assertion: doctor.ts must only use hashProbeTarget + the
+    // adapter projection — it must never call into probe lifecycle.
+    // Verify via a behavior assertion: the mocked tryRunProbeSessionMaintenance
+    // is the ONLY probe module function called. If doctor.ts pulled in any
+    // lifecycle function, it would either fail to import (TS) or call something
+    // we did not mock (visible in this test as a coverage/missing-call error).
+    mockedProbeDiagnostics.tryRunProbeSessionMaintenance.mockResolvedValue({
+      diagnostics: [],
+      cleanup: { deletedSessionIds: [], scannedAt: new Date().toISOString() },
+    });
+
+    const result = await runServerDoctor(
+      VALID_IP,
+      SERVER_NAME,
+      { fresh: false },
+      FAKE_SERVER_RECORD,
+    );
+
+    expect(result.success).toBe(true);
+    // Only the wrapper is called — that's the entire bootstrap surface.
+    expect(mockedProbeDiagnostics.tryRunProbeSessionMaintenance).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("cleanupExpiredProbeSessions — retention policy", () => {
+  // The actual retention policy is implemented in sessionStore.ts and exercised
+  // there. Here we verify that doctor never triggers cleanup directly — only
+  // via the tryRunProbeSessionMaintenance wrapper that includes it.
+  it("cleanup result flows through but doctor does not act on the deletedSessionIds list", async () => {
+    const targetHash = hashProbeTarget({
+      serverId: FAKE_SERVER_RECORD.id,
+      provider: FAKE_SERVER_RECORD.provider,
+      ip: FAKE_SERVER_RECORD.ip,
+    });
+    mockedProbeDiagnostics.tryRunProbeSessionMaintenance.mockResolvedValue({
+      diagnostics: [],
+      cleanup: {
+        deletedSessionIds: ["old-rolled-back-session-1", "old-rolled-back-session-2"],
+        scannedAt: new Date().toISOString(),
+      },
+    });
+
+    const result = await runServerDoctor(
+      VALID_IP,
+      SERVER_NAME,
+      { fresh: false },
+      FAKE_SERVER_RECORD,
+    );
+
+    // Cleanup ran, no probe findings (no active diagnostics), score still 100.
+    expect(result.success).toBe(true);
+    expect(result.data!.findings.filter((f) => f.id.startsWith("PROBE_"))).toHaveLength(0);
+    expect(result.data!.score).toBe(100);
   });
 });

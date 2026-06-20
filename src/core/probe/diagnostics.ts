@@ -39,6 +39,26 @@ import {
   PROBE_TARGETS_DIR,
 } from "../../utils/paths.js";
 import { logSecurityEvent } from "../../utils/securityLogger.js";
+import type { Severity } from "../../types/severity.js";
+import type { CheckResult } from "../doctor-local.js";
+
+// Lightweight local mirror of the doctor severity-weight constant. Kept in
+// sync with `src/core/doctor.ts` to avoid a runtime circular import (this
+// module is imported by doctor.ts's bootstrap path).
+export const DOCTOR_SEVERITY_WEIGHTS: Record<Severity, number> = {
+  critical: 10,
+  warning: 5,
+  info: 1,
+};
+
+export interface DoctorFinding {
+  id: string;
+  severity: Severity;
+  description: string;
+  command: string;
+  fixCommand?: string;
+  weight: number;
+}
 
 // ─── Diagnostic kinds ──────────────────────────────────────────────────────
 
@@ -329,4 +349,77 @@ function redactError(cause: unknown): RedactedProbeError {
     code: "PROBE_MAINTENANCE_ERROR",
     message: typeof cause === "string" ? cause : "Unknown maintenance failure",
   };
+}
+
+// ─── Doctor adapter (read-only) ─────────────────────────────────────────────
+//
+// Surface probe diagnostics into DoctorFinding for local, server, CLI, and
+// MCP doctor paths. This module NEVER imports or invokes lifecycle handlers —
+// it is a pure projection over `classifyProbeSessions` output. All probe
+// findings are reported as `critical` regardless of the underlying diagnostic
+// severity, and `fixCommand` is absent because probe findings require operator
+// investigation (no auto-fix surface).
+
+const SHORT_SESSION_ID_LEN = 8;
+
+/** Stable, human-distinguishable suffix from a probe session UUID. */
+export function shortSessionId(sessionId: string): string {
+  if (typeof sessionId !== "string" || sessionId.length === 0) {
+    return "UNKNOWN";
+  }
+  // Strip non-[A-Za-z0-9_-] so the resulting ID is safe to embed in a
+  // finding ID and shell-renderable.
+  const cleaned = sessionId.replace(/[^A-Za-z0-9_-]/g, "");
+  if (cleaned.length === 0) return "UNKNOWN";
+  return cleaned.length > SHORT_SESSION_ID_LEN
+    ? cleaned.slice(0, SHORT_SESSION_ID_LEN)
+    : cleaned;
+}
+
+/**
+ * Adapter: project a single `ProbeDiagnostic` into the public `DoctorFinding`
+ * shape. ALL probe findings are surfaced as `critical` (warning diagnostics
+ * like `corrupt` and `undecryptable` are still surfaced because they block
+ * resume — operator must investigate). `fixCommand` is intentionally absent:
+ * no auto-fix path is offered for probe diagnostics.
+ */
+export function probeDiagnosticToDoctorFinding(
+  diagnostic: ProbeDiagnostic,
+): DoctorFinding {
+  const sessionId = typeof diagnostic.sessionId === "string"
+    ? diagnostic.sessionId
+    : "UNKNOWN";
+  const inspectionCommand = `kastell probe inspect ${sessionId}`;
+  return {
+    id: `PROBE_${diagnostic.kind.toUpperCase()}_${shortSessionId(sessionId)}`,
+    severity: "critical",
+    description: diagnostic.message,
+    command: inspectionCommand,
+    weight: DOCTOR_SEVERITY_WEIGHTS.critical,
+  };
+}
+
+/**
+ * Adapter: project probe diagnostics into local-doctor `CheckResult[]`.
+ * One failed check per unresolved/interrupted/corrupt record. Rolled-back
+ * records (terminal, handled by retention cleanup) produce NO finding. This
+ * is the local-path counterpart to the server-path findings merge.
+ */
+export async function runLocalProbeDoctorChecks(): Promise<CheckResult[]> {
+  const result = await tryRunProbeSessionMaintenance();
+  const out: CheckResult[] = [];
+  for (const diagnostic of result.diagnostics) {
+    if (
+      diagnostic.kind === "unresolved" ||
+      diagnostic.kind === "interrupted" ||
+      diagnostic.kind === "corrupt"
+    ) {
+      out.push({
+        name: `Probe Session (${diagnostic.kind})`,
+        status: "fail",
+        detail: diagnostic.message,
+      });
+    }
+  }
+  return out;
 }

@@ -79,7 +79,7 @@ export async function handleServerDoctor(params: {
     }
 
     const fresh = params.fresh ?? false;
-    const result = await runServerDoctor(server.ip, server.name, { fresh });
+    const result = await runServerDoctor(server.ip, server.name, { fresh }, server);
 
     if (!result.success || !result.data) {
       return mcpError(result.error ?? "Doctor analysis failed", result.hint);

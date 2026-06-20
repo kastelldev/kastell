@@ -15,7 +15,14 @@ import { raw } from "../utils/sshCommand.js";
 import { MS_PER_DAY } from "../utils/dates.js";
 import { loadAuditHistory } from "./audit/history.js";
 import { extractReason } from "../utils/errors.js";
-import type { MetricSnapshot, KastellResult } from "../types/index.js";
+import {
+  hashProbeTarget,
+} from "./probe/sessionStore.js";
+import {
+  tryRunProbeSessionMaintenance,
+  probeDiagnosticToDoctorFinding,
+} from "./probe/diagnostics.js";
+import type { ServerRecord, MetricSnapshot, KastellResult } from "../types/index.js";
 import type { AuditHistoryEntry } from "./audit/types.js";
 import type { Severity } from "../types/severity.js";
 
@@ -352,11 +359,18 @@ const CMD_DOCKER =
  *
  * Default (fresh=false): reads cached metrics + local audit history, no SSH.
  * With fresh=true: SSHes to collect a live MetricSnapshot and live probe data.
+ *
+ * When `serverRecord` is supplied, Active Probe diagnostics are merged into
+ * the findings list. Target matching is performed via `hashProbeTarget()`
+ * against the resolved server record — IP alone is NEVER used as identity.
+ * Each probe finding is surfaced as `critical` (operator investigation),
+ * and no auto-fix is offered (no `fixCommand` is set).
  */
 export async function runServerDoctor(
   ip: string,
   serverName: string,
   options: { fresh?: boolean },
+  serverRecord?: ServerRecord,
 ): Promise<KastellResult<DoctorResult>> {
   try {
     assertValidIp(ip);
@@ -424,7 +438,25 @@ export async function runServerDoctor(
     dockerDfOutput !== undefined ? checkDockerDisk(dockerDfOutput) : null,
   ];
 
-  const findings = (rawFindings.filter(Boolean) as DoctorFinding[]).sort(
+  const baseFindings = (rawFindings.filter(Boolean) as DoctorFinding[]);
+
+  // Active Probe diagnostics merge — only when a resolved ServerRecord is
+  // supplied. The `tryRun` wrapper is non-throwing; bootstrap failure must
+  // never block doctor output.
+  let probeFindings: DoctorFinding[] = [];
+  if (serverRecord) {
+    const bootstrap = await tryRunProbeSessionMaintenance();
+    const targetHash = hashProbeTarget({
+      serverId: serverRecord.id,
+      provider: serverRecord.provider,
+      ip: serverRecord.ip,
+    });
+    probeFindings = bootstrap.diagnostics
+      .filter((d) => d.targetKeyHash === targetHash)
+      .map(probeDiagnosticToDoctorFinding);
+  }
+
+  const findings = [...baseFindings, ...probeFindings].sort(
     (a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity],
   );
 

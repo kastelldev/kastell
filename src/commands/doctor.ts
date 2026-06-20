@@ -2,7 +2,11 @@ import { resolveServer } from "../utils/serverSelect.js";
 import { logger, createSpinner } from "../utils/logger.js";
 import { runServerDoctor } from "../core/doctor.js";
 import { runDoctorFix } from "../core/doctor-fix.js";
-import { runDoctorChecks, checkProviderTokens } from "../core/doctor-local.js";
+import {
+  runDoctorChecks,
+  checkProviderTokens,
+  runLocalProbeDoctorChecks,
+} from "../core/doctor-local.js";
 import { scoreColor } from "../core/audit/formatters/shared.js";
 import { installLocalCron } from "../core/scheduleManager.js";
 import { tryRunProbeSessionMaintenance } from "../core/probe/diagnostics.js";
@@ -105,7 +109,7 @@ export async function doctorCommand(
     const spinner = createSpinner(`Running doctor analysis on ${resolved.name}...`);
     spinner.start();
 
-    const result = await runServerDoctor(resolved.ip, resolved.name, { fresh: useFresh });
+    const result = await runServerDoctor(resolved.ip, resolved.name, { fresh: useFresh }, resolved);
 
     spinner.stop();
 
@@ -228,7 +232,9 @@ export async function doctorCommand(
   // ── Local mode ───────────────────────────────────────────────────────────────
   logger.title("Kastell Doctor");
 
-  const results = runDoctorChecks(version);
+  const baseResults = runDoctorChecks(version);
+  const probeResults = await runLocalProbeDoctorChecks();
+  const results = [...baseResults, ...probeResults];
 
   for (const result of results) {
     const colorFn =
