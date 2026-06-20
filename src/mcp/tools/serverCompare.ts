@@ -38,6 +38,9 @@ export const serverCompareOutputSchema = z.object({
     z.object({
       format: z.literal("check"),
       ...serverCompareBaseFields,
+      // Public compatibility:
+      // A_skip = after side is skipped
+      // B_skip = before side is skipped
       checks: z.array(z.object({
         id: z.string(),
         name: z.string(),
