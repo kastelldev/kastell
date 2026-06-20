@@ -214,4 +214,76 @@ describe("atomicWriteFileSync", () => {
     );
     expect(mockedUnlinkSync).toHaveBeenCalledWith("/state/fallback-ok.json.tmp");
   });
+
+  // ─── P144 T9: allowCopyFallback: false (Active Probe writes) ────────────────
+
+  it("should throw a 'rename'-stage exhaustion diagnostic when allowCopyFallback is false and rename retries exhaust on permission errors", () => {
+    const renameCause = Object.assign(new Error("rename EPERM"), { code: "EPERM" });
+    mockedRenameSync.mockImplementation(() => {
+      throw renameCause;
+    });
+
+    let caught: (Error & { [k: string]: unknown }) | undefined;
+    try {
+      atomicWriteFileSync("/state/probe-session.json", "{}", {
+        attempts: 2,
+        delayMs: 0,
+        allowCopyFallback: false,
+      });
+    } catch (e) {
+      caught = e as Error & { [k: string]: unknown };
+    }
+
+    expect(caught).toBeDefined();
+    expect(caught!.name).toBe("AtomicWriteExhaustedError");
+    expect(caught!.target).toBe("/state/probe-session.json");
+    expect(caught!.stage).toBe("rename");
+    expect(caught!.attempts).toBe(2);
+    expect(caught!.finalCode).toBe("EPERM");
+    expect(caught!.cause).toBe(renameCause);
+    // copyFileSync MUST NOT be called when copy fallback is disabled
+    expect(mockedCopyFileSync).not.toHaveBeenCalled();
+    // Temp file MUST be cleaned up
+    expect(mockedUnlinkSync).toHaveBeenCalledWith("/state/probe-session.json.tmp");
+  });
+
+  it("should propagate non-permission rename errors unchanged when allowCopyFallback is false (no diagnostic wrapper)", () => {
+    const cause = Object.assign(new Error("rename ENOSPC"), { code: "ENOSPC" });
+    mockedRenameSync.mockImplementation(() => {
+      throw cause;
+    });
+
+    let caught: Error | undefined;
+    try {
+      atomicWriteFileSync("/state/probe-oversized.json", "{}", {
+        attempts: 2,
+        delayMs: 0,
+        allowCopyFallback: false,
+      });
+    } catch (e) {
+      caught = e as Error;
+    }
+
+    expect(caught).toBeDefined();
+    expect(caught).toBe(cause);
+    expect((caught as NodeJS.ErrnoException).code).toBe("ENOSPC");
+    expect(mockedCopyFileSync).not.toHaveBeenCalled();
+  });
+
+  it("should default allowCopyFallback to true (existing call sites retain the copy fallback)", () => {
+    mockedRenameSync.mockImplementation(() => {
+      throw fsError("EACCES");
+    });
+
+    // No allowCopyFallback option → copy fallback still runs (no throw).
+    expect(() =>
+      atomicWriteFileSync("/state/default-true.json", "[]", { attempts: 2, delayMs: 0 }),
+    ).not.toThrow();
+
+    expect(mockedCopyFileSync).toHaveBeenCalledWith(
+      "/state/default-true.json.tmp",
+      "/state/default-true.json",
+    );
+    expect(mockedUnlinkSync).toHaveBeenCalledWith("/state/default-true.json.tmp");
+  });
 });
