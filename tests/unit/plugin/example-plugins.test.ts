@@ -180,10 +180,16 @@ describe("example probe: kastell-plugin-auditor/probes/tmp-mode-round-trip", () 
 
   it("has no top-level side effects (no immediate shell invocation)", () => {
     const source = readFileSync(probePath, "utf-8");
-    // The module body must only define functions; the import must not run
-    // any ssh/side-effecting call at top level. We assert the absence of
-    // top-level await / immediate invocation patterns.
-    expect(source).not.toMatch(/^(?!\s*(?:\/\/|import|export|function|const|let|var|if|for|while|try|return|\}|\)|\s*$)).*ctx\.ssh/m);
+    // Strip the body of every `function`/`export ... function` declaration
+    // (anything between the opening `{` and the matching `}`). The probe
+    // is allowed to call `ctx.ssh` inside the four lifecycle functions;
+    // the assertion is that no `ctx.ssh` reference survives at module
+    // scope outside those function bodies.
+    const withoutFunctionBodies = source.replace(
+      /(?:export\s+)?(?:async\s+)?function\s+[A-Za-z_$][\w$]*\s*\([^)]*\)\s*\{[\s\S]*?\n\}/g,
+      "/* fn-body-stripped */",
+    );
+    expect(withoutFunctionBodies).not.toMatch(/ctx\.ssh/);
   });
 });
 

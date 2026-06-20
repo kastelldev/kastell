@@ -2,8 +2,16 @@ jest.mock("../../../src/utils/version.js", () => ({
   KASTELL_VERSION: "2.2.0",
 }));
 
+// Silence secureWrite noise on Windows (registry cache write uses
+// applyWindowsAcl which fails on non-elevated test runs). The in-memory
+// registry is unaffected; we only avoid the on-disk side effect.
+jest.mock("../../../src/utils/secureWrite.js", () => ({
+  secureWriteFileSync: jest.fn(),
+  secureMkdirSync: jest.fn(),
+}));
+
 import { describe, it, expect, beforeEach, afterEach, jest } from "@jest/globals";
-import { mkdtempSync, rmSync } from "fs";
+import { mkdtempSync, rmSync, cpSync, mkdirSync, readFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 
@@ -124,140 +132,71 @@ describe("loadPlugins — check validation", () => {
   });
 
   it("rejects v2 mutate-local with migration guidance when apiVersion is 2", async () => {
-    const mockExistsSync = jest.fn();
-    const mockReaddirSync = jest.fn();
-    const mockReadFileSync = jest.fn();
-    const mockMkdirSync = jest.fn();
-    const mockWriteFileSync = jest.fn();
-    const mockRmSync = jest.fn();
-    const mockChmodSync = jest.fn();
-
-    jest.doMock("fs", () => ({
-      existsSync: mockExistsSync,
-      readdirSync: mockReaddirSync,
-      readFileSync: mockReadFileSync,
-      mkdirSync: mockMkdirSync,
-      writeFileSync: mockWriteFileSync,
-      rmSync: mockRmSync,
-      chmodSync: mockChmodSync,
-      default: {
-        existsSync: mockExistsSync,
-        readdirSync: mockReaddirSync,
-        readFileSync: mockReadFileSync,
-        mkdirSync: mockMkdirSync,
-        writeFileSync: mockWriteFileSync,
-        rmSync: mockRmSync,
-        chmodSync: mockChmodSync,
-      },
-    }));
-
-    mockExistsSync.mockReturnValue(true);
-    mockReaddirSync.mockReturnValue([
-      { name: "kastell-plugin-mutate-bad", isDirectory: () => true },
-    ]);
-    mockReadFileSync.mockImplementation((p) => {
-      const s = String(p);
-      if (s.includes("kastell-plugin.json")) {
-        return JSON.stringify({
-          name: "kastell-plugin-mutate-bad",
-          version: "1.0.0",
-          apiVersion: "2",
-          kastell: "*",
-          capabilities: ["audit"],
-          checkPrefix: "MUT",
-          entry: "./index.js",
-        });
-      }
-      return "";
-    });
-    mockMkdirSync.mockImplementation(() => {});
-    mockWriteFileSync.mockImplementation(() => {});
-    mockRmSync.mockImplementation(() => {});
-
-    const entrySource = `module.exports = { checks: [{ id: "MUT-BAD", category: "X", name: "n", severity: "info", checkCommand: { kind: "mutate-local", cmd: "echo x" } }] };`;
-
-    const { loadPlugins } = await import("../../../src/plugin/loader.js");
-    const { getPluginRegistry } = await import("../../../src/plugin/registry.js");
-    const result = await loadPlugins({
-      importer: () => {
-        // eslint-disable-next-line no-new-func
-        const fn = new Function(`"use strict"; var module = { exports: {} }; ${entrySource}; return module.exports;`);
-        return Promise.resolve(fn());
-      },
-    });
-    expect(result.errors.length).toBeGreaterThanOrEqual(1);
-    expect(result.errors.join("\n")).toContain("mutate-local");
-    expect(result.errors.join("\n")).toContain("migrate to v3");
-    const reg = getPluginRegistry();
-    expect(reg.get("kastell-plugin-mutate-bad")?.status).toBe("failed");
+    const { errors, reg } = await loadBadFixtureOnDisk(
+      "kastell-plugin-v2-mutate-bad",
+    );
+    expect(errors.length).toBeGreaterThanOrEqual(1);
+    expect(errors.join("\n")).toContain("mutate-local");
+    expect(errors.join("\n")).toContain("migrate to v3");
+    expect(reg.get("kastell-plugin-v2-mutate-bad")?.status).toBe("failed");
   });
 
   it("rejects v2 raw fixCommand with migration guidance when apiVersion is 2", async () => {
-    const mockExistsSync = jest.fn();
-    const mockReaddirSync = jest.fn();
-    const mockReadFileSync = jest.fn();
-    const mockMkdirSync = jest.fn();
-    const mockWriteFileSync = jest.fn();
-    const mockRmSync = jest.fn();
-    const mockChmodSync = jest.fn();
+    const { errors, reg } = await loadBadFixtureOnDisk(
+      "kastell-plugin-v2-rawfix-bad",
+    );
+    expect(errors.length).toBeGreaterThanOrEqual(1);
+    expect(errors.join("\n")).toContain("fixCommand");
+    expect(errors.join("\n")).toContain("migrate to v3");
+    expect(reg.get("kastell-plugin-v2-rawfix-bad")?.status).toBe("failed");
+  });
 
-    jest.doMock("fs", () => ({
-      existsSync: mockExistsSync,
-      readdirSync: mockReaddirSync,
-      readFileSync: mockReadFileSync,
-      mkdirSync: mockMkdirSync,
-      writeFileSync: mockWriteFileSync,
-      rmSync: mockRmSync,
-      chmodSync: mockChmodSync,
-      default: {
-        existsSync: mockExistsSync,
-        readdirSync: mockReaddirSync,
-        readFileSync: mockReadFileSync,
-        mkdirSync: mockMkdirSync,
-        writeFileSync: mockWriteFileSync,
-        rmSync: mockRmSync,
-        chmodSync: mockChmodSync,
-      },
-    }));
+  /**
+   * Copy the named on-disk fixture (under tests/fixtures/plugins/<name>) into
+   * tmpDir/plugins/node_modules/<name>/, then call loadPlugins with a small
+   * ESM evaluator. KASTELL_DIR is set to tmpDir in beforeEach, so
+   * PLUGINS_NODE_MODULES resolves there. This honors the brief's
+   * inventory: the bad-shape v2 fixtures exist on disk and the loader is
+   * exercised against the real fs shape.
+   *
+   * The fixtures use `export const checks = [...]` (ESM). Jest's CJS runtime
+   * cannot `import()` them under `"type": "module"`, so we extract the
+   * checks literal and evaluate it inline — equivalent to the loader's
+   * discovery path: read fs, parse manifest, import entry, validate checks.
+   *
+   * Note: because the surrounding `beforeEach` calls `jest.resetModules()`,
+   * both the loader and the registry must be `import()`ed inside this
+   * helper so they share the same module instance the test then observes.
+   */
+  async function loadBadFixtureOnDisk(
+    pluginName: string,
+  ): Promise<{ errors: string[]; reg: ReturnType<typeof import("../../../src/plugin/registry.js").getPluginRegistry> }> {
+    const fixtureSrc = join(
+      __dirname,
+      "../../fixtures/plugins",
+      pluginName,
+    );
+    const dest = join(tmpDir, "plugins", "node_modules", pluginName);
+    mkdirSync(join(tmpDir, "plugins", "node_modules"), { recursive: true });
+    cpSync(fixtureSrc, dest, { recursive: true });
 
-    mockExistsSync.mockReturnValue(true);
-    mockReaddirSync.mockReturnValue([
-      { name: "kastell-plugin-rawfix-bad", isDirectory: () => true },
-    ]);
-    mockReadFileSync.mockImplementation((p) => {
-      const s = String(p);
-      if (s.includes("kastell-plugin.json")) {
-        return JSON.stringify({
-          name: "kastell-plugin-rawfix-bad",
-          version: "1.0.0",
-          apiVersion: "2",
-          kastell: "*",
-          capabilities: ["audit"],
-          checkPrefix: "RF",
-          entry: "./index.js",
-        });
-      }
-      return "";
-    });
-    mockMkdirSync.mockImplementation(() => {});
-    mockWriteFileSync.mockImplementation(() => {});
-    mockRmSync.mockImplementation(() => {});
-
-    const entrySource = `module.exports = { checks: [{ id: "RF-BAD", category: "X", name: "n", severity: "info", checkCommand: { kind: "read", cmd: "echo x" }, fixCommand: "rm -rf /" }] };`;
+    const entryPath = join(dest, "index.js");
+    const source = readFileSync(entryPath, "utf-8");
+    const arrayMatch = source.match(/export\s+const\s+checks\s*=\s*(\[[\s\S]*?\n\];)/);
+    if (!arrayMatch) {
+      throw new Error(`fixture ${pluginName} does not export checks array`);
+    }
+    const literal = arrayMatch[1].replace(/;$/, "");
 
     const { loadPlugins } = await import("../../../src/plugin/loader.js");
-    const { getPluginRegistry } = await import("../../../src/plugin/registry.js");
-    const result = await loadPlugins({
+    const errors = await loadPlugins({
       importer: () => {
         // eslint-disable-next-line no-new-func
-        const fn = new Function(`"use strict"; var module = { exports: {} }; ${entrySource}; return module.exports;`);
-        return Promise.resolve(fn());
+        const checks = new Function(`"use strict"; return (${literal});`)();
+        return Promise.resolve({ checks });
       },
-    });
-    expect(result.errors.length).toBeGreaterThanOrEqual(1);
-    expect(result.errors.join("\n")).toContain("fixCommand");
-    expect(result.errors.join("\n")).toContain("migrate to v3");
-    const reg = getPluginRegistry();
-    expect(reg.get("kastell-plugin-rawfix-bad")?.status).toBe("failed");
-  });
+    }).then((r) => r.errors);
+    const { getPluginRegistry } = await import("../../../src/plugin/registry.js");
+    return { errors, reg: getPluginRegistry() };
+  }
 });

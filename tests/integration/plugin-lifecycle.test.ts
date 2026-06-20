@@ -81,7 +81,20 @@ async function importEsmModule(filePath: string): Promise<Record<string, unknown
   }
   const source = readFileSync(realPath, "utf-8");
   const namespace: Record<string, unknown> = {};
-  // match `export const NAME = ...;` and `export function NAME(...)` patterns
+  // Match `export const NAME = ...;` declarations. Constraint: the
+  // declaration's terminator `;` must appear on its own line, immediately
+  // followed by a newline. This is a deliberate, documented limitation of
+  // the regex-based extractor:
+  //   - Single-line initializers (`export const x = 1;`) match.
+  //   - Multi-line initializers (`export const x = [ ... ];` where the
+  //     closing `];` is followed by `;\n` on its own line) match.
+  //   - Initializers whose terminator is NOT on its own line break the
+  //     match (e.g. `export const x = 1;` with the next statement on the
+  //     same line).
+  // All Kastell v3 fixtures and example plugins follow the constrained
+  // format, so the extractor is sufficient for the integration test
+  // surface. If we ever need to parse arbitrary ESM, switch to
+  // `@babel/parser` or `acorn`.
   const constRe = /export\s+const\s+([A-Za-z_$][\w$]*)\s*=\s*([\s\S]*?);\n/g;
   let m: RegExpExecArray | null;
   while ((m = constRe.exec(source)) !== null) {
@@ -139,11 +152,10 @@ describe("Plugin Lifecycle Integration", () => {
     expect(installResult.success).toBe(true);
     expect(installResult.name).toBe(pluginName);
 
-    // Re-load with the custom ESM importer so the v3 fixture is evaluated
-    // through `importEsmModule` (Jest's CJS dynamic import throws
-    // "Unexpected token 'export'" without --experimental-vm-modules).
-    await loadPlugins({ importer: (p: string) => importEsmModule(p) });
-
+    // installPlugin internally called loadPlugins (mocked above to route
+    // through `importEsmModule` so the v3 fixture is evaluated under
+    // Jest's CJS runtime). The registry is already populated; no second
+    // load call is needed.
     const registry = getPluginRegistry();
     expect(registry.has(pluginName)).toBe(true);
     const entry = registry.get(pluginName)!;
