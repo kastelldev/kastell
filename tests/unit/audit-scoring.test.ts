@@ -105,6 +105,30 @@ describe("calculateCategoryScore", () => {
     expect(result.maxScore).toBe(100);
     expect(result.score).toBe(100);
   });
+
+  // P144 T6: Active Probe skip is also score-neutral (excluded from denominator)
+  it("P144 T6: all-skipped category with active-probe variant returns { score: 0, maxScore: 0 }", () => {
+    // v3 active-probe skipped checks are also excluded from scoring.
+    const checks: AuditCheck[] = [
+      makeCheck({ id: "P-01", severity: "critical", passed: false, currentValue: "", skip: { code: "active-probe", apiVersion: "3" } }),
+      makeCheck({ id: "P-02", severity: "warning", passed: false, currentValue: "", skip: { code: "active-probe", apiVersion: "3" } }),
+    ];
+    const result = calculateCategoryScore(checks);
+    expect(result.score).toBe(0);
+    expect(result.maxScore).toBe(0);
+  });
+
+  it("P144 T6: mixed category excludes active-probe check severity weight from denominator", () => {
+    // One passed read check (warning, weight 2) + one skipped active-probe
+    // check (critical, weight 3). Score-neutral: skipped excluded, score = 100.
+    const checks: AuditCheck[] = [
+      makeCheck({ id: "M-01", severity: "warning", passed: true, currentValue: "ok" }),
+      makeCheck({ id: "M-02", severity: "critical", passed: false, currentValue: "", skip: { code: "active-probe", apiVersion: "3" } }),
+    ];
+    const result = calculateCategoryScore(checks);
+    expect(result.maxScore).toBe(100);
+    expect(result.score).toBe(100);
+  });
 });
 
 describe("calculateOverallScore", () => {

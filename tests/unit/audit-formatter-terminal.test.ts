@@ -269,6 +269,41 @@ describe("formatTerminal", () => {
     expect(output).toContain("1 failed");
     expect(output).toContain("1 skipped");
   });
+
+  // P144 T6: active-probe skip is also rendered as skipped (variant-agnostic)
+  it("P144 T6: terminal stats header counts active-probe skipped check separately", async () => {
+    const { formatTerminal } = await import("../../src/core/audit/formatters/terminal");
+    const resultWithActiveProbeSkip: AuditResult = {
+      ...mockResult,
+      categories: [
+        {
+          name: "Plugin",
+          checks: [
+            {
+              id: "PROBE-01",
+              category: "Plugin",
+              name: "Active Probe",
+              severity: "info",
+              passed: false,
+              currentValue: "n/a",
+              expectedValue: "n/a",
+              skip: { code: "active-probe", apiVersion: "3" },
+            },
+          ],
+          score: 100,
+          maxScore: 100,
+        },
+      ],
+      quickWins: [],
+    };
+    const output = formatTerminal(resultWithActiveProbeSkip);
+
+    // Stats line must show all three counts (active-probe counts as skipped)
+    expect(output).toMatch(/Checks:.*passed.*failed.*skipped/);
+    expect(output).toContain("0 passed");
+    expect(output).toContain("0 failed");
+    expect(output).toContain("1 skipped");
+  });
 });
 
 describe("P142: structured skip rendering in terminal", () => {

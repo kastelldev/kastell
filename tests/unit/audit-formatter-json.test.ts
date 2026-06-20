@@ -153,4 +153,41 @@ describe("formatJson", () => {
     expect(parsed.categories[0].checks[0].skip?.apiVersion).toBe("2");
     expect(parsed.categories[0].checks[0].skip?.kind).toBe("mutate-local");
   });
+
+  // P144 T6: JSON output preserves active-probe skip object (variant-agnostic)
+  it("P144 T6: JSON output preserves the active-probe skip object on skipped checks", async () => {
+    const resultWithActiveProbeSkip: AuditResult = {
+      ...mockResult,
+      categories: [
+        {
+          name: "Plugin",
+          checks: [
+            {
+              id: "PROBE-01",
+              category: "Plugin",
+              name: "Active Probe",
+              severity: "info",
+              passed: false,
+              currentValue: "n/a",
+              expectedValue: "n/a",
+              skip: { code: "active-probe", apiVersion: "3" },
+            },
+          ],
+          score: 100,
+          maxScore: 100,
+        },
+      ],
+      quickWins: [],
+    };
+
+    const { formatJson } = await import("../../src/core/audit/formatters/json");
+    const output = formatJson(resultWithActiveProbeSkip);
+    const parsed = JSON.parse(output) as {
+      categories: Array<{ checks: Array<{ skip?: { code: string; apiVersion: string } }> }>;
+    };
+
+    expect(parsed.categories[0].checks[0].skip).toBeDefined();
+    expect(parsed.categories[0].checks[0].skip?.code).toBe("active-probe");
+    expect(parsed.categories[0].checks[0].skip?.apiVersion).toBe("3");
+  });
 });

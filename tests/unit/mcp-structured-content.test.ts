@@ -392,4 +392,37 @@ describe("P142: skip Zod schema strict validation", () => {
     const parseResult = await safeParseAsync(normalized!, response.structuredContent);
     expect(parseResult.success).toBe(true);
   });
+
+  // P144 T6: active-probe skip variant round-trips through MCP outputSchema
+  it("P144 T6: serverAudit outputSchema round-trip with active-probe skip variant", async () => {
+    const activeProbeSkipCheck = {
+      id: "PROBE-01",
+      category: "Plugin",
+      name: "Active Probe",
+      severity: "info",
+      passed: false,
+      currentValue: "n/a",
+      expectedValue: "n/a",
+      skip: { code: "active-probe", apiVersion: "3" },
+    };
+    const auditData = {
+      format: "json" as const,
+      server: "test",
+      ip: "1.2.3.4",
+      overallScore: 100,
+      categories: [
+        {
+          name: "Plugin",
+          score: 100,
+          maxScore: 100,
+          checks: [activeProbeSkipCheck],
+        },
+      ],
+    };
+    const response = mcpSuccess(auditData, { largeResult: true });
+    const normalized = normalizeObjectSchema(serverAuditOutputSchema);
+    expect(normalized).toBeDefined();
+    const parseResult = await safeParseAsync(normalized!, response.structuredContent);
+    expect(parseResult.success).toBe(true);
+  });
 });

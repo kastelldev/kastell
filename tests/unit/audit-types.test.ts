@@ -249,6 +249,13 @@ describe("AuditCheck with complianceRefs and tags", () => {
       expect(text.toLowerCase()).toContain("not run by audit");
     });
 
+    it("renders active-probe with exact brief-mandated message text", () => {
+      const text = describeCheckSkip(ACTIVE_PROBE_SKIP);
+      expect(text).toBe(
+        "Skipped: Active Probe requires explicit guarded execution and is not run by audit"
+      );
+    });
+
     it("tri-state helpers treat active-probe as skipped", () => {
       const check: AuditCheck = {
         id: "P", category: "Plugin", name: "p", severity: "info",

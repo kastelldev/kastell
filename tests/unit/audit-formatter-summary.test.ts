@@ -260,4 +260,36 @@ describe("P142: structured skip rendering in summary", () => {
     expect(output).toContain("Plugin");
     expect(output).toContain("100");
   });
+
+  // P144 T6: active-probe skip is also rendered as skipped (variant-agnostic)
+  it("P144 T6: summary handles active-probe skipped-only category without showing FAIL", () => {
+    const skipOnlyActiveProbeResult: AuditResult = {
+      ...mockResult,
+      categories: [
+        {
+          name: "Plugin",
+          checks: [
+            {
+              id: "PROBE-01",
+              category: "Plugin",
+              name: "Active Probe",
+              severity: "info",
+              passed: false,
+              currentValue: "n/a",
+              expectedValue: "n/a",
+              skip: { code: "active-probe", apiVersion: "3" },
+            },
+          ],
+          score: 100,
+          maxScore: 100,
+        },
+      ],
+      quickWins: [],
+    };
+    const output = formatSummary(skipOnlyActiveProbeResult);
+    // Category score is 100 (all active-probe skipped) — should not show "0" or "FAIL"
+    expect(output).toContain("Plugin");
+    expect(output).toContain("100");
+    expect(output).not.toMatch(/FAIL.*PROBE-01/);
+  });
 });

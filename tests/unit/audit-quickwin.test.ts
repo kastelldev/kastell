@@ -294,6 +294,55 @@ describe("calculateQuickWins", () => {
     expect(wins).toEqual([]);
   });
 
+  // P144 T6: active-probe skip is also excluded from quick wins (score-neutral)
+  it("P144 T6: active-probe skipped checks are excluded from quick wins", () => {
+    const result = makeResult([
+      makeCategory("Test", [
+        makeCheck({
+          id: "T-REAL-AP",
+          category: "Test",
+          name: "Real Fix",
+          severity: "warning",
+          passed: false,
+          fixCommand: "fix-real-ap",
+        }),
+        makeCheck({
+          id: "T-PROBE",
+          category: "Test",
+          name: "Active Probe",
+          severity: "critical",
+          passed: false,
+          fixCommand: "fix-probe",
+          currentValue: "",
+          skip: { code: "active-probe", apiVersion: "3" },
+        }),
+      ]),
+    ]);
+    const wins = calculateQuickWins(result);
+    const winIds = wins.map((w) => w.id);
+    expect(winIds).toContain("T-REAL-AP");
+    expect(winIds).not.toContain("T-PROBE");
+  });
+
+  it("P144 T6: all-active-probe-skipped category produces no quick wins", () => {
+    const result = makeResult([
+      makeCategory("Test", [
+        makeCheck({
+          id: "T-AP-01",
+          category: "Test",
+          name: "Probe Skip",
+          severity: "warning",
+          passed: false,
+          fixCommand: "fix-it",
+          currentValue: "",
+          skip: { code: "active-probe", apiVersion: "3" },
+        }),
+      ]),
+    ]);
+    const wins = calculateQuickWins(result);
+    expect(wins).toEqual([]);
+  });
+
   it("should not inflate projected score with compliance boost", () => {
     // Both checks have complianceRefs — projected score should use baseImpact not effectiveImpact
     const result = makeResult([
