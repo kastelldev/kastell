@@ -31,11 +31,17 @@ const complianceRefSchema = z.object({
   level: z.enum(["L1", "L2"]).optional(),
 });
 
-const skipReasonSchema = z.object({
-  code: z.literal("legacy-mutating"),
-  apiVersion: z.literal("2"),
-  kind: z.enum(["mutate-local", "mutate-global"]),
-});
+const skipReasonSchema = z.discriminatedUnion("code", [
+  z.object({
+    code: z.literal("legacy-mutating"),
+    apiVersion: z.literal("2"),
+    kind: z.enum(["mutate-local", "mutate-global"]),
+  }),
+  z.object({
+    code: z.literal("active-probe"),
+    apiVersion: z.literal("3"),
+  }),
+]);
 
 export const auditCheckSchema = z.object({
   id: z.string(),

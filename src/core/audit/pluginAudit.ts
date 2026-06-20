@@ -180,7 +180,7 @@ export function parsePluginBatchOutput(
         // P144 T5: v3 active-probe-only check (no `read.cmd`) never produces
         // a batch section → surface as structured skip.
         const skip: PluginCheckSkipReason = {
-          code: "probe-only",
+          code: "active-probe",
           apiVersion: "3",
         };
         checks.push(

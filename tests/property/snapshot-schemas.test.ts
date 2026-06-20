@@ -11,6 +11,8 @@ import {
   categoryArb,
   quickWinArb,
   snapshotV2Arb,
+  activeProbeSkipArb,
+  legacyMutatingSkipArb,
 } from "./schema-arbitraries.js";
 
 describe("Property-based: Snapshot Schemas", () => {
@@ -99,6 +101,47 @@ describe("Property-based: Snapshot Schemas", () => {
         // must not crash on the new field
         expect(result.error).toBeDefined();
       }
+    });
+
+    // P144 T6: both skip variants round-trip through the schema
+    it("accepts legacy-mutating skip variant", () => {
+      fc.assert(
+        fc.property(legacyMutatingSkipArb, (skip) => {
+          const check = {
+            id: "SSH-001",
+            category: "SSH",
+            name: "skip-test",
+            severity: "warning" as const,
+            passed: false,
+            currentValue: "n/a",
+            expectedValue: "n/a",
+            skip,
+          };
+          const result = auditCheckSchema.safeParse(check);
+          return result.success;
+        }),
+        { numRuns: 50 },
+      );
+    });
+
+    it("accepts active-probe skip variant (P144 T6)", () => {
+      fc.assert(
+        fc.property(activeProbeSkipArb, (skip) => {
+          const check = {
+            id: "PROBE-001",
+            category: "Plugin",
+            name: "probe-skip-test",
+            severity: "info" as const,
+            passed: false,
+            currentValue: "",
+            expectedValue: "",
+            skip,
+          };
+          const result = auditCheckSchema.safeParse(check);
+          return result.success;
+        }),
+        { numRuns: 50 },
+      );
     });
   });
 

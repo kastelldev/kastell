@@ -235,4 +235,30 @@ describe("AuditCheck with complianceRefs and tags", () => {
       expect(getAuditCheckState(check)).toBe("skipped");
     });
   });
+
+  // P144 T6: Active Probe skip variant (v3 score-neutral)
+  describe("describeCheckSkip — active-probe variant (P144 T6)", () => {
+    const ACTIVE_PROBE_SKIP: PluginCheckSkipReason = {
+      code: "active-probe",
+      apiVersion: "3",
+    };
+
+    it("renders active-probe with author-facing 'requires explicit Active Probe execution' message", () => {
+      const text = describeCheckSkip(ACTIVE_PROBE_SKIP);
+      expect(text).toContain("Active Probe");
+      expect(text.toLowerCase()).toContain("not run by audit");
+    });
+
+    it("tri-state helpers treat active-probe as skipped", () => {
+      const check: AuditCheck = {
+        id: "P", category: "Plugin", name: "p", severity: "info",
+        passed: false, currentValue: "", expectedValue: "",
+        skip: ACTIVE_PROBE_SKIP,
+      };
+      expect(isSkippedCheck(check)).toBe(true);
+      expect(isPassedCheck(check)).toBe(false);
+      expect(isFailedCheck(check)).toBe(false);
+      expect(getAuditCheckState(check)).toBe("skipped");
+    });
+  });
 });

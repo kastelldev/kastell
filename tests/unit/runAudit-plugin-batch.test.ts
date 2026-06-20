@@ -352,9 +352,9 @@ describe("runAudit — v3 normalized plugin batch (P144 T5)", () => {
         "M-BOTH",
         "M-PROBE",
       ]);
-      // probe-only check gets structured skip
+      // active-probe check gets structured skip
       expect(cat!.checks[3].skip).toEqual({
-        code: "probe-only",
+        code: "active-probe",
         apiVersion: "3",
       });
       expect(cat!.checks[3].currentValue).toBe("");

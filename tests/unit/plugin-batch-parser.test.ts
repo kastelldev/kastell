@@ -344,7 +344,7 @@ describe("parsePluginBatchOutput", () => {
         "T-PROBE",
       ]);
       expect(result[0].checks[3].skip).toEqual({
-        code: "probe-only",
+        code: "active-probe",
         apiVersion: "3",
       });
       expect(result[0].checks[3].currentValue).toBe("");
