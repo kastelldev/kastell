@@ -188,6 +188,70 @@ describe("MCP bootstrap — bootstrap integration in src/mcp/server.ts", () => {
   });
 });
 
+describe("CLI Doctor bootstrap — bootstrap integration in src/commands/doctor.ts", () => {
+  it("src/commands/doctor.ts awaits the maintenance wrapper at the top of doctorCommand", async () => {
+    const doctorSource = readFileSync(
+      join(process.cwd(), "src", "commands", "doctor.ts"),
+      "utf8",
+    );
+    expect(doctorSource).toMatch(/tryRunProbeSessionMaintenance/);
+    // The CALL must appear inside doctorCommand, BEFORE any diagnostic work
+    // (resolveServer / runServerDoctor / runDoctorChecks).
+    const importIdx = doctorSource.indexOf(
+      'import { tryRunProbeSessionMaintenance } from "../core/probe/diagnostics.js";',
+    );
+    const callIdx = doctorSource.indexOf("await tryRunProbeSessionMaintenance()");
+    const resolveServerIdx = doctorSource.indexOf("await resolveServer(");
+    const runDoctorChecksIdx = doctorSource.indexOf("runDoctorChecks(");
+    expect(importIdx).toBeGreaterThanOrEqual(0);
+    expect(callIdx).toBeGreaterThan(importIdx);
+    expect(callIdx).toBeLessThan(resolveServerIdx);
+    expect(callIdx).toBeLessThan(runDoctorChecksIdx);
+  });
+
+  it("awaits the wrapper exactly once per doctor invocation", async () => {
+    const doctorSource = readFileSync(
+      join(process.cwd(), "src", "commands", "doctor.ts"),
+      "utf8",
+    );
+    const matches = doctorSource.match(/await tryRunProbeSessionMaintenance\(\)/g);
+    expect(matches).not.toBeNull();
+    expect(matches?.length).toBe(1);
+  });
+});
+
+describe("MCP Doctor bootstrap — bootstrap integration in src/mcp/tools/serverDoctor.ts", () => {
+  it("src/mcp/tools/serverDoctor.ts awaits the maintenance wrapper at the top of handleServerDoctor", async () => {
+    const toolSource = readFileSync(
+      join(process.cwd(), "src", "mcp", "tools", "serverDoctor.ts"),
+      "utf8",
+    );
+    expect(toolSource).toMatch(/tryRunProbeSessionMaintenance/);
+    // The CALL must appear BEFORE any doctor core work
+    // (getServers / resolveServerForMcp / runServerDoctor).
+    const importIdx = toolSource.indexOf(
+      'import { tryRunProbeSessionMaintenance } from "../../core/probe/diagnostics.js";',
+    );
+    const callIdx = toolSource.indexOf("await tryRunProbeSessionMaintenance()");
+    const getServersIdx = toolSource.indexOf("getServers()");
+    const runServerDoctorIdx = toolSource.indexOf("runServerDoctor(");
+    expect(importIdx).toBeGreaterThanOrEqual(0);
+    expect(callIdx).toBeGreaterThan(importIdx);
+    expect(callIdx).toBeLessThan(getServersIdx);
+    expect(callIdx).toBeLessThan(runServerDoctorIdx);
+  });
+
+  it("awaits the wrapper exactly once per server_doctor invocation", async () => {
+    const toolSource = readFileSync(
+      join(process.cwd(), "src", "mcp", "tools", "serverDoctor.ts"),
+      "utf8",
+    );
+    const matches = toolSource.match(/await tryRunProbeSessionMaintenance\(\)/g);
+    expect(matches).not.toBeNull();
+    expect(matches?.length).toBe(1);
+  });
+});
+
 describe("probe-bootstrap integration — runtime check", () => {
   it("verifies KASTELL_DIR layout matches expectations (PROBE_SESSIONS_DIR exists)", async () => {
     const env = createIsolatedKastellEnv();
