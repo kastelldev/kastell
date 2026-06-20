@@ -21,7 +21,7 @@
 // the reservation last while holding the reservation critical section.
 
 import { randomUUID } from "crypto";
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "fs";
 import { join } from "path";
 import { createHash } from "crypto";
 
@@ -38,6 +38,11 @@ import type {
   ProbeSessionTransition,
   ProbeTargetIdentity,
 } from "./types.js";
+
+// Re-exported for diagnostics / retention callers that need the full record
+// type — T10 introduces the public `record` alias on `ProbeSessionLoadResult`,
+// and T11 lifecycle callers will type their session argument against this.
+export type { ProbeSessionRecord };
 
 // ─── UUID dependency injection (test seam) ───────────────────────────────────
 //
@@ -81,6 +86,12 @@ export interface ProbeTransitionUpdate {
 export interface ProbeSessionLoadResult {
   sessionId: string;
   loaded: ProbeSessionRecord | null;
+  /**
+   * Alias of `loaded`. T10 callers (diagnostics, retention) prefer the
+   * `record` shape; T9 callers (and the loader itself) populate `loaded`.
+   * The two refer to the same underlying value.
+   */
+  record?: ProbeSessionRecord | null;
   reason?: string;
 }
 
@@ -521,9 +532,9 @@ export function listProbeSessions(): ProbeSessionLoadResult[] {
     const sessionId = entry.slice(0, -".session.json".length);
     const record = loadSessionById(sessionId);
     if (record) {
-      results.push({ sessionId, loaded: record });
+      results.push({ sessionId, loaded: record, record });
     } else {
-      results.push({ sessionId, loaded: null, reason: "json-parse-failed" });
+      results.push({ sessionId, loaded: null, record: null, reason: "json-parse-failed" });
     }
   }
   return results;
@@ -575,3 +586,155 @@ export const _internal = {
   sessionPathFor,
   MAX_UUID_REVISION,
 };
+
+// ─── Retention (T10) ────────────────────────────────────────────────────────
+//
+// Retention policy: only `rolled-back` sessions older than 30 days delete.
+// Every other durable state (preparing, executing, executed, verifying,
+// verified, rollback-pending, rolling-back, unresolved) is security-relevant
+// evidence and is NEVER deleted by retention. Corrupt records (json-parse
+// failures) are reported as diagnostics and never auto-deleted.
+//
+// Cleanup acquires the per-session file lock and the per-target reservation
+// lock, re-reads the session under the lock, and only deletes when:
+//   - state is still "rolled-back" (re-read under lock);
+//   - targetKeyHash matches a live reservation belonging to the same session;
+//   - terminalAt is parseable, in the past, and strictly older than 30 days.
+
+const MS_PER_DAY_RETENTION = 24 * 60 * 60 * 1000;
+const RETENTION_DAYS = 30;
+const RETENTION_THRESHOLD_MS = MS_PER_DAY_RETENTION * RETENTION_DAYS;
+
+export interface ProbeCleanupResult {
+  deletedSessionIds: string[];
+  scannedAt: string;
+}
+
+function isRetentionEligible(record: ProbeSessionRecord, now: Date): boolean {
+  if (record.state !== "rolled-back") return false;
+  if (typeof record.terminalAt !== "string") return false;
+  const ts = Date.parse(record.terminalAt);
+  if (Number.isNaN(ts)) return false;
+  // Strictly older than 30 days. Exactly 30 days is NOT eligible.
+  return now.getTime() - ts > RETENTION_THRESHOLD_MS;
+}
+
+export function cleanupExpiredProbeSessions(now: Date = new Date()): ProbeCleanupResult {
+  const scannedAt = now.toISOString();
+  const deletedSessionIds: string[] = [];
+
+  ensureSessionDirs();
+  const results = listProbeSessions();
+
+  for (const entry of results) {
+    if (!entry.record) continue;
+    if (!isRetentionEligible(entry.record, now)) continue;
+
+    // Drain each candidate under its own short per-record locks. We never
+    // acquire a directory-global or lifecycle-length lock — concurrent
+    // probe writers must continue to make progress.
+    const deleted = drainRetentionCandidate(
+      entry.record.sessionId,
+      entry.record.targetKeyHash,
+      now,
+    );
+    if (deleted) {
+      deletedSessionIds.push(entry.record.sessionId);
+      logSecurityEvent({
+        level: "info",
+        action: "probe_session_retention_deleted",
+        category: "plugin-probe",
+        result: "success",
+        reason: `rolled-back older than ${RETENTION_DAYS} days`,
+      });
+    }
+  }
+
+  return { deletedSessionIds, scannedAt };
+}
+
+/**
+ * Drain a single retention candidate under the per-session AND per-reservation
+ * locks. Re-reads the session record under the lock; if state has changed
+ * (e.g. a concurrent writer resumed the probe), the record is left alone.
+ * Returns true only when BOTH the session and the reservation were deleted.
+ *
+ * Synchronous — uses mkdirSync as an atomic lock primitive. The brief
+ * requires `cleanupExpiredProbeSessions` to be a sync function; we trade
+ * async reclaim semantics for the synchronous public API. Concurrent probe
+ * writers that hold the same lock will block on mkdirSync EEXIST briefly.
+ */
+function drainRetentionCandidate(
+  sessionId: string,
+  targetKeyHash: string,
+  now: Date,
+): boolean {
+  const sessionPath = sessionPathFor(sessionId);
+  const reservationPath = reservationPathFor(targetKeyHash);
+  const reservationLockDir = reservationPath + ".lock";
+  const sessionLockDir = sessionPath + ".lock";
+
+  // Acquire reservation lock FIRST — matches canonical write ordering.
+  if (!acquireSyncLock(reservationLockDir)) return false;
+  try {
+    if (!acquireSyncLock(sessionLockDir)) return false;
+    try {
+      // Re-read under lock — a concurrent writer may have flipped the state.
+      const current = loadSessionById(sessionId);
+      if (!current) return false;
+      if (!isRetentionEligible(current, now)) return false;
+
+      // The reservation may have already been released by the rolled-back
+      // transition (the canonical lifecycle releases it before we delete).
+      // We tolerate both cases: either the reservation is gone, or it
+      // belongs to THIS session. A foreign reservation is left alone — that
+      // means a newer writer won the target while we were queued, so we
+      // do NOT delete (the newer writer's session is its own concern).
+      const reservation = loadReservation(targetKeyHash);
+      if (reservation && reservation.sessionId !== sessionId) return false;
+
+      // Delete session first. Reservation may or may not exist — only
+      // remove it if present and ours.
+      unlinkProbeSecret(sessionPath);
+      if (reservation) {
+        unlinkProbeSecret(reservationPath);
+      }
+      return true;
+    } finally {
+      releaseSyncLock(sessionLockDir);
+    }
+  } finally {
+    releaseSyncLock(reservationLockDir);
+  }
+}
+
+/**
+ * Synchronous mkdir-based lock. Returns true if the lock was acquired,
+ * false if another holder exists. mkdirSync is atomic on POSIX and on
+ * Windows (CreateDirectoryW returns ERROR_ALREADY_EXISTS). Stale lock
+ * reclamation matches the async withFileLock threshold (30s).
+ */
+const SYNC_LOCK_STALE_MS = 30_000;
+
+function acquireSyncLock(lockDir: string): boolean {
+  try {
+    mkdirSync(lockDir);
+    return true;
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code !== "EEXIST") return false;
+    // Stale lock reclaim — if lock is older than threshold, remove it.
+    try {
+      const stat = statSync(lockDir);
+      if (Date.now() - stat.mtimeMs > SYNC_LOCK_STALE_MS) {
+        try { rmSync(lockDir, { recursive: true, force: true }); } catch { /* ignore */ }
+        try { mkdirSync(lockDir); return true; } catch { return false; }
+      }
+    } catch { /* lock dir disappeared */ }
+    return false;
+  }
+}
+
+function releaseSyncLock(lockDir: string): void {
+  try { rmSync(lockDir, { recursive: true, force: true }); } catch { /* ignore */ }
+}

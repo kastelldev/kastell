@@ -312,6 +312,11 @@ describe("securityLogger", () => {
       expect(["destructive", "auth", "ssh", "mcp", "config"]).toContain(category);
     });
 
+    it("SecurityLogCategory accepts the new 'plugin-probe' value", () => {
+      const category: SecurityLogCategory = "plugin-probe";
+      expect(["destructive", "auth", "ssh", "mcp", "config", "plugin-probe"]).toContain(category);
+    });
+
     it("SecurityLogCaller type is usable", () => {
       const caller: SecurityLogCaller = "cli";
       expect(["cli", "mcp"]).toContain(caller);

@@ -5,7 +5,13 @@ import { secureAppendFileSync } from "./secureWrite.js";
 import { DEFAULT_PERMISSION_RETRY_ATTEMPTS, DEFAULT_PERMISSION_RETRY_DELAY_MS, retryOnPermission } from "./fsRetry.js";
 
 export type SecurityLogLevel = "info" | "warn" | "error";
-export type SecurityLogCategory = "destructive" | "auth" | "ssh" | "mcp" | "config";
+export type SecurityLogCategory =
+  | "destructive"
+  | "auth"
+  | "ssh"
+  | "mcp"
+  | "config"
+  | "plugin-probe";
 export type SecurityLogCaller = "cli" | "mcp";
 export type SecurityLogResult = "allow" | "block" | "success" | "failure";
 
@@ -20,6 +26,24 @@ export interface SecurityLogEntry {
   reason?: string;
   caller: SecurityLogCaller;
   duration_ms?: number;
+}
+
+// ─── Test seam ─────────────────────────────────────────────────────────────
+// `getSecurityLogEntriesForTesting` returns a structured view of recent log
+// entries the test process observed. The internal buffer is module-local so
+// cross-test pollution is avoided via `resetSecurityLogForTesting`.
+const SECURITY_LOG_TEST_BUFFER: Array<Record<string, unknown>> = [];
+
+function captureTestEntry(entry: SecurityLogEntry): void {
+  SECURITY_LOG_TEST_BUFFER.push({ ...entry });
+}
+
+export function getSecurityLogEntriesForTesting(): Array<Record<string, unknown>> {
+  return SECURITY_LOG_TEST_BUFFER.slice();
+}
+
+export function resetSecurityLogForTesting(): void {
+  SECURITY_LOG_TEST_BUFFER.length = 0;
 }
 
 const DEFAULT_MAX_BYTES = 10 * 1024 * 1024; // 10MB
@@ -60,6 +84,8 @@ export function logSecurityEvent(
       caller: detectCaller(),
       ...entry,
     };
+
+    captureTestEntry(fullEntry);
 
     secureAppendFileSync(SECURITY_LOG, JSON.stringify(fullEntry) + "\n", {
       encoding: "utf8",

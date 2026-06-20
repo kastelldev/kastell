@@ -22,6 +22,7 @@ import { serverPluginSchema, handleServerPlugin, serverPluginOutputSchema } from
 import { getPluginMcpTools } from "../plugin/registry.js";
 import { registerPluginMcpTools } from "./pluginTools.js";
 import { setMcpVersion } from "./utils.js";
+import { tryRunProbeSessionMaintenance } from "../core/probe/diagnostics.js";
 import { readCheckCatalog, readCheckDetail } from "./resources/checks.js";
 import { readServerList, readServerAudit } from "./resources/servers.js";
 import { hardenPrompt, diagnosePrompt, setupPrompt } from "./prompts/workflows.js";
@@ -312,6 +313,9 @@ export const ALL_MCP_TOOLS: McpToolEntry[] = [
 
 export async function createMcpServer(): Promise<McpServer> {
   await loadPlugins();
+  // Best-effort Active Probe maintenance — must NOT block McpServer
+  // construction. Classification + retention only; no probe lifecycle.
+  await tryRunProbeSessionMaintenance();
   setMcpVersion(KASTELL_VERSION);
   const server = new McpServer(
     { name: "kastell", version: KASTELL_VERSION },
