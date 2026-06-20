@@ -83,13 +83,21 @@ export function _resetConfigCache(): void {
   _cachedMaxBytes = null;
 }
 
+export interface SafeModeLogOptions {
+  category?: SecurityLogCategory;
+  server?: string;
+  ip?: string;
+  /** T11: Active Probe hashed target identity. Server ID + IP never used here. */
+  targetHash?: string;
+  /** T11: plugin name for "plugin-probe" blocks. */
+  plugin?: string;
+  /** T11: check ID for "plugin-probe" blocks. */
+  checkId?: string;
+}
+
 export function logSafeModeBlock(
   action: string,
-  options?: {
-    category?: SecurityLogCategory;
-    server?: string;
-    ip?: string;
-  },
+  options?: SafeModeLogOptions,
 ): void {
   const maxBytes = getSecurityLogMaxBytes();
   logSecurityEvent(

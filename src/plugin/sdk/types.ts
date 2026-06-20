@@ -83,7 +83,16 @@ export interface PluginProbeContext {
   readonly signal: AbortSignal;
   readonly deadlineMs: number;
   ssh: (command: string, options?: { timeoutMs?: number }) => Promise<{ stdout: string; stderr: string; code: number }>;
-  logger: { info: (msg: string) => void; warn: (msg: string) => void; error: (msg: string) => void };
+  /**
+   * Logger accepts a structured-fields second argument. The runtime
+   * implementation in src/core/probe/context.ts serializes fields
+   * through the bounded `safeStringify` redactor before forwarding.
+   */
+  logger: {
+    info: (msg: string, fields?: unknown) => void;
+    warn: (msg: string, fields?: unknown) => void;
+    error: (msg: string, fields?: unknown) => void;
+  };
 }
 
 export interface PluginProbeVerification {

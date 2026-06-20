@@ -33,6 +33,7 @@ import { logSecurityEvent } from "../../utils/securityLogger.js";
 import { assertProbeSessionEnvelopeSize } from "./payload.js";
 import type {
   ActiveProbeRisk,
+  EncryptedProbePayload,
   ProbeSessionRecord,
   ProbeSessionState,
   ProbeSessionTransition,
@@ -80,7 +81,14 @@ export interface ProbeTransitionUpdate {
   toState: ProbeSessionState;
   reason?: string;
   expectedTerminal?: boolean;
+  /**
+   * Marker that the caller intends to write a payload slot on this
+   * transition. The slot field is passed through {@link payload}; the
+   * store writes the encrypted envelope onto the durable record.
+   */
   setHistory?: boolean;
+  /** T11: encrypted payload slot to write on this transition. */
+  payload?: { slot: "prepared" | "executed" | "verification" | "rollback"; encrypted: EncryptedProbePayload };
 }
 
 export interface ProbeSessionLoadResult {
@@ -462,6 +470,10 @@ export async function transitionProbeSession(
       updatedAt: now,
       history,
       ...(TERMINAL_STATES.has(update.toState) ? { terminalAt: now } : {}),
+      ...(update.payload
+        ? { [update.payload.slot]: update.payload.encrypted }
+        : {}),
+      ...(update.reason ? { lastError: { code: "PROBE_EXEC", message: update.reason } } : {}),
     };
     assertProbeSessionEnvelopeSize(next);
     persistSessionRecord(next);

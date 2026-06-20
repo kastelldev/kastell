@@ -26,6 +26,16 @@ export interface SecurityLogEntry {
   reason?: string;
   caller: SecurityLogCaller;
   duration_ms?: number;
+  // ─── Active Probe fields (T11) ────────────────────────────────────────
+  // Reuses the canonical `category` (set to "plugin-probe"). NO payload,
+  // command, stdout, stderr, IP, or token fields are introduced — the
+  // brief requires structured metadata only.
+  session_id?: string;
+  plugin?: string;
+  check_id?: string;
+  target_hash?: string;
+  transition?: string;
+  risk?: "low" | "medium" | "high";
 }
 
 // ─── Test seam ─────────────────────────────────────────────────────────────
