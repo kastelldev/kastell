@@ -1,7 +1,7 @@
 {
   "name": "kastell-plugin-mock",
-  "version": "0.1.0",
-  "apiVersion": "2",
+  "version": "0.2.0",
+  "apiVersion": "3",
   "kastell": ">=2.0.0",
   "capabilities": ["audit"],
   "checkPrefix": "MOCK",

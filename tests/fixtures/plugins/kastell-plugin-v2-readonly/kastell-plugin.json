@@ -1,0 +1,9 @@
+{
+  "name": "kastell-plugin-v2-readonly",
+  "version": "1.0.0",
+  "apiVersion": "2",
+  "kastell": ">=2.0.0",
+  "capabilities": ["audit"],
+  "checkPrefix": "VROR",
+  "entry": "index.js"
+}

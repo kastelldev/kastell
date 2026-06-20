@@ -114,6 +114,17 @@ Release-time version bumps remain owned by `/release minor`; `package.json` and 
 ### Changed
 - **QuickWin JSON now includes `id` and `severity`** — `kastell audit --json` and `server_audit` MCP responses include stable `id` (check ID) and `severity` fields on every QuickWin entry in addition to the human-readable description, making QuickWins programmatically consumable without re-parsing the description field.
 
+### Plugin SDK v3
+- **Plugin API v3 contract** — v3 manifests declare `apiVersion: "3"`. A v3 check declares `read` (read-only) and/or `activeProbe` (lifecycle-driven) blocks. v2 read-only plugins (`apiVersion: "2"`, `checkCommand.kind: "read"`) continue to load. v2 mutating checks (`checkCommand.kind: "mutate-local"` / `"mutate-global"`) and raw `fixCommand` strings are now rejected at load time with migration guidance pointing at [`docs/plugin-sdk-v3.md`](docs/plugin-sdk-v3.md) and [`docs/plugin-sdk-migration-v3.md`](docs/plugin-sdk-migration-v3.md). See "Plugin Authoring Breaking Change" below.
+- **Active Probe lifecycle** — `prepare` → `execute` → `verify` → `rollback`. Each stage receives a `PluginProbeContext` with `ctx.ssh`, `ctx.sessionId`, `ctx.signal`, and `ctx.deadlineMs`. The probe is confined to a session-scoped path derived from a SHA-256 of `ctx.sessionId`; `rollback` refuses to remove paths outside the probe prefix. Active Probes never run during a normal audit — they require an explicit `kastell probe run` invocation or the equivalent MCP call.
+- **Probe session storage** — completed probe sessions are encrypted with AES-256-GCM under the Kastell data-encryption key and written to `~/.kastell/probe-sessions/`. Payload size is bounded by `PLUGIN_PROBE_PAYLOAD_MAX_BYTES` (default 16 KiB). Doctor reports any unresolved probe sessions.
+- **Maintained examples migrated to v3** — `kastell-plugin-wordpress` (1.1.0, 3 read-only checks) and `kastell-plugin-auditor` (1.2.0, 1 read-only + 1 combined read+probe check backed by `probes/tmp-mode-round-trip.js`). Both plugins are now authored as ESM with named exports (`export const checks = [...]`; `export async function handler(args, ctx) { ... }`).
+- **New test fixture `kastell-plugin-v2-readonly`** — exercises the v2 read-only compatibility path (`apiVersion: "2"`, `checkCommand: { kind: "read" }`, no `fixCommand`, no `activeProbe`).
+
+### Plugin Authoring Breaking Change
+- **v2 mutating checks and raw `fixCommand` are rejected.** A v2 plugin that declares `checkCommand: { kind: "mutate-local" | "mutate-global" }` or a top-level `fixCommand: "<shell string>"` is loaded with status `failed`; the loader emits a migration guidance error. The audit pipeline never reaches the mutating or fixing command.
+- **Migrating** — see [`docs/plugin-sdk-migration-v3.md`](docs/plugin-sdk-migration-v3.md) for mutating → Active Probe and raw fix → v3 lifecycle recipes, and a manual lifecycle redesign checklist. Kastell does **not** automatically rewrite installed plugins; the user (or the plugin author) re-releases the plugin and the user re-installs it.
+
 ## [2.2.7] - 2026-05-16
 
 ### Fixed
