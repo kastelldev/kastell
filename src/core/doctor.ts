@@ -45,11 +45,21 @@ export interface DoctorFinding {
   weight: number;
 }
 
-export function computeDoctorScore(findings: DoctorFinding[]): number {
-  if (findings.length === 0) return 100;
-  // 7 checks × max weight 10 = 70 total possible penalty
-  const maxPenalty = 70;
-  const totalPenalty = findings.reduce((sum, f) => sum + f.weight, 0);
+export function computeDoctorScore(
+  baseFindings: DoctorFinding[],
+  probeFindings: DoctorFinding[] = [],
+): number {
+  // Dynamic maxPenalty (T12 review): the original 7 base checks contributed
+  // 7 × 10 = 70 total possible penalty. With P144 T12, Active Probe
+  // findings are merged in; the denominator is now base × 10 + probe × 10.
+  // Per-finding impact is preserved: each critical finding (weight 10)
+  // deducts exactly 10 points regardless of how many other findings exist.
+  const maxPenalty = baseFindings.length * 10 + probeFindings.length * 10;
+  if (maxPenalty === 0) return 100;
+  const totalPenalty = [...baseFindings, ...probeFindings].reduce(
+    (sum, f) => sum + f.weight,
+    0,
+  );
   return Math.max(0, Math.round(100 - (totalPenalty / maxPenalty) * 100));
 }
 
@@ -442,7 +452,10 @@ export async function runServerDoctor(
 
   // Active Probe diagnostics merge — only when a resolved ServerRecord is
   // supplied. The `tryRun` wrapper is non-throwing; bootstrap failure must
-  // never block doctor output.
+  // never block doctor output. Doctor-actionable kinds (T12 review, Option
+  // A) match the local path: unresolved | interrupted | corrupt. Forensic
+  // kinds (undecryptable, handler-mismatch, orphan-reservation) are
+  // excluded — they surface via the dedicated probe commands, not doctor.
   let probeFindings: DoctorFinding[] = [];
   if (serverRecord) {
     const bootstrap = await tryRunProbeSessionMaintenance();
@@ -453,6 +466,12 @@ export async function runServerDoctor(
     });
     probeFindings = bootstrap.diagnostics
       .filter((d) => d.targetKeyHash === targetHash)
+      .filter(
+        (d) =>
+          d.kind === "unresolved" ||
+          d.kind === "interrupted" ||
+          d.kind === "corrupt",
+      )
       .map(probeDiagnosticToDoctorFinding);
   }
 
@@ -460,7 +479,7 @@ export async function runServerDoctor(
     (a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity],
   );
 
-  const score = computeDoctorScore(findings);
+  const score = computeDoctorScore(baseFindings, probeFindings);
 
   return {
     success: true,

@@ -41,24 +41,20 @@ import {
 import { logSecurityEvent } from "../../utils/securityLogger.js";
 import type { Severity } from "../../types/severity.js";
 import type { CheckResult } from "../doctor-local.js";
+import type { DoctorFinding } from "../doctor.js";
 
-// Lightweight local mirror of the doctor severity-weight constant. Kept in
-// sync with `src/core/doctor.ts` to avoid a runtime circular import (this
-// module is imported by doctor.ts's bootstrap path).
+// Local mirror of the doctor severity-weight constant. Kept in sync with
+// `src/core/doctor.ts`. `import type` cannot carry a runtime value, and a
+// runtime import creates a circular dependency (doctor.ts → diagnostics.ts
+// → doctor.ts) where the const resolves to undefined mid-load. The local
+// mirror avoids the cycle. The `DoctorFinding` type is type-only — that
+// import is safe and removes the verbatim duplication called out in T12
+// review (Important 1).
 export const DOCTOR_SEVERITY_WEIGHTS: Record<Severity, number> = {
   critical: 10,
   warning: 5,
   info: 1,
 };
-
-export interface DoctorFinding {
-  id: string;
-  severity: Severity;
-  description: string;
-  command: string;
-  fixCommand?: string;
-  weight: number;
-}
 
 // ─── Diagnostic kinds ──────────────────────────────────────────────────────
 
@@ -402,24 +398,42 @@ export function probeDiagnosticToDoctorFinding(
 /**
  * Adapter: project probe diagnostics into local-doctor `CheckResult[]`.
  * One failed check per unresolved/interrupted/corrupt record. Rolled-back
- * records (terminal, handled by retention cleanup) produce NO finding. This
- * is the local-path counterpart to the server-path findings merge.
+ * records (terminal, handled by retention cleanup) produce NO finding.
+ *
+ * Doctor-actionable kinds (T12 review, Option A): unresolved | interrupted
+ * | corrupt. The forensic kinds (`undecryptable`, `handler-mismatch`,
+ * `orphan-reservation`) are intentionally excluded — they surface via the
+ * dedicated probe commands, not doctor. This matches the server path.
+ *
+ * When `targetKeyHash` is provided, only diagnostics for that hash are
+ * surfaced (server-identity filter — the same canonical hash that
+ * `runServerDoctor` uses to scope findings to one server). When omitted,
+ * all sessions across all configured servers are listed (CLI default).
  */
-export async function runLocalProbeDoctorChecks(): Promise<CheckResult[]> {
+export async function runLocalProbeDoctorChecks(
+  targetKeyHash?: string,
+): Promise<CheckResult[]> {
   const result = await tryRunProbeSessionMaintenance();
   const out: CheckResult[] = [];
   for (const diagnostic of result.diagnostics) {
     if (
-      diagnostic.kind === "unresolved" ||
-      diagnostic.kind === "interrupted" ||
-      diagnostic.kind === "corrupt"
+      diagnostic.kind !== "unresolved" &&
+      diagnostic.kind !== "interrupted" &&
+      diagnostic.kind !== "corrupt"
     ) {
-      out.push({
-        name: `Probe Session (${diagnostic.kind})`,
-        status: "fail",
-        detail: diagnostic.message,
-      });
+      continue;
     }
+    if (
+      targetKeyHash !== undefined &&
+      diagnostic.targetKeyHash !== targetKeyHash
+    ) {
+      continue;
+    }
+    out.push({
+      name: `Probe Session (${diagnostic.kind})`,
+      status: "fail",
+      detail: diagnostic.message,
+    });
   }
   return out;
 }

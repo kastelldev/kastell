@@ -58,6 +58,46 @@ jest.mock("../../src/core/doctor-fix", () => ({
   runDoctorFix: jest.fn(),
 }));
 
+jest.mock("../../src/core/probe/diagnostics", () => {
+  const actual = jest.requireActual("../../src/core/probe/diagnostics");
+  const stub = jest.fn();
+  // Wrap runLocalProbeDoctorChecks so its internal call to
+  // tryRunProbeSessionMaintenance routes through the stub (the real
+  // implementation captures the local binding at module load, which
+  // bypasses the jest.mock on the namespace). The wrapper re-imports
+  // from the mocked namespace and forwards all args.
+  const wrappedRunLocal = async (targetKeyHash?: string) => {
+    const result = (await stub()) ?? { diagnostics: [] };
+    const out: Array<{ name: string; status: "fail"; detail: string }> = [];
+    for (const diagnostic of result.diagnostics) {
+      if (
+        diagnostic.kind !== "unresolved" &&
+        diagnostic.kind !== "interrupted" &&
+        diagnostic.kind !== "corrupt"
+      ) {
+        continue;
+      }
+      if (
+        targetKeyHash !== undefined &&
+        diagnostic.targetKeyHash !== targetKeyHash
+      ) {
+        continue;
+      }
+      out.push({
+        name: `Probe Session (${diagnostic.kind})`,
+        status: "fail",
+        detail: diagnostic.message,
+      });
+    }
+    return out;
+  };
+  return {
+    ...actual,
+    tryRunProbeSessionMaintenance: stub,
+    runLocalProbeDoctorChecks: wrappedRunLocal,
+  };
+});
+
 // Mock ora so spinner.start/stop don't throw in tests
 jest.mock("ora", () => {
   const spinner = { start: jest.fn().mockReturnThis(), stop: jest.fn().mockReturnThis() };
@@ -937,5 +977,51 @@ describe("runLocalProbeDoctorChecks — adapter", () => {
     const checks = await runLocalProbeDoctorChecks();
     // No probes configured in tests → empty array
     expect(Array.isArray(checks)).toBe(true);
+  });
+
+  it("filters by targetKeyHash when provided (T12 review, server-identity filter)", async () => {
+    // T12 review (Critical 1): when invoked with a targetKeyHash, only
+    // diagnostics for that hash are surfaced. IP alone is never identity.
+    // The probe/diagnostics module is mocked at file scope (jest.mock
+    // factory) — this test sets the bootstrap wrapper's return value to
+    // exercise the filter logic in `runLocalProbeDoctorChecks`.
+    const diagnostics = jest.requireMock("../../src/core/probe/diagnostics") as {
+      tryRunProbeSessionMaintenance: jest.Mock;
+    };
+    diagnostics.tryRunProbeSessionMaintenance.mockResolvedValue({
+      diagnostics: [
+        {
+          kind: "unresolved",
+          severity: "critical",
+          blocking: true,
+          sessionId: "s1",
+          targetKeyHash: "hash-A",
+          message: "Server A session",
+        },
+        {
+          kind: "unresolved",
+          severity: "critical",
+          blocking: true,
+          sessionId: "s2",
+          targetKeyHash: "hash-B",
+          message: "Server B session",
+        },
+      ],
+      cleanup: { deletedSessionIds: [], scannedAt: new Date().toISOString() },
+    });
+
+    const checksForA = await runLocalProbeDoctorChecks("hash-A");
+    expect(checksForA).toHaveLength(1);
+    expect(checksForA[0].detail).toBe("Server A session");
+
+    const checksForB = await runLocalProbeDoctorChecks("hash-B");
+    expect(checksForB).toHaveLength(1);
+    expect(checksForB[0].detail).toBe("Server B session");
+
+    const checksForNone = await runLocalProbeDoctorChecks("hash-C");
+    expect(checksForNone).toHaveLength(0);
+
+    const checksAll = await runLocalProbeDoctorChecks();
+    expect(checksAll).toHaveLength(2);
   });
 });

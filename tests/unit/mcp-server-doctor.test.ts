@@ -306,19 +306,20 @@ describe("MCP server_doctor — Active Probe findings (T12)", () => {
     expect(criticalLines[0]).toContain("kastell probe inspect");
   });
 
-  it("never invokes probe lifecycle handlers — only read-only diagnostic adapter", async () => {
-    // Static guard: the MCP tool source must not import or invoke lifecycle.
-    const fs = require("fs");
-    const path = require("path");
+  it("never imports probe lifecycle or handlers modules (static import scan)", () => {
+    // T12 review (Critical 2): the MCP tool must not import or invoke probe
+    // lifecycle. Static-import scan reads serverDoctor.ts and asserts NO
+    // import of probe lifecycle or handlers modules. (A list of forbidden
+    // function names is weaker — a future new lifecycle function would
+    // pass the test until manually added.)
+    const fs = jest.requireActual("fs") as typeof import("fs");
+    const path = jest.requireActual("path") as typeof import("path");
     const toolSource = fs.readFileSync(
       path.join(__dirname, "..", "..", "src", "mcp", "tools", "serverDoctor.ts"),
       "utf8",
     );
-    expect(toolSource).not.toMatch(/reserveProbeTarget/);
-    expect(toolSource).not.toMatch(/transitionProbeSession/);
-    expect(toolSource).not.toMatch(/runProbeLifecycle/);
-    expect(toolSource).not.toMatch(/createProbeSessionFacade/);
-    expect(toolSource).not.toMatch(/executeProbeHandler/);
+    const forbiddenImport = /from\s+["'](\.\.\/)*core\/probe\/(lifecycle|handlers)/;
+    expect(toolSource).not.toMatch(forbiddenImport);
   });
 
   it("autoFix=true with probe-only findings: returns early with no-fixable message (probe findings have no fixCommand)", async () => {

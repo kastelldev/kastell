@@ -782,30 +782,58 @@ describe("saveMetricsHistory mutation-killer", () => {
 // ─── computeDoctorScore ─────────────────────────────────────────────────────────
 
 describe("computeDoctorScore", () => {
-  it("returns 100 for no findings", () => {
-    expect(computeDoctorScore([])).toBe(100);
+  it("returns 100 for no findings (empty base + empty probe)", () => {
+    expect(computeDoctorScore([], [])).toBe(100);
   });
 
-  it("deducts proportionally for single warning", () => {
+  it("deducts per-finding weight from a single base warning (denom scales with base count)", () => {
+    // T12 review: maxPenalty = base.length * 10 + probe.length * 10.
+    // 1 base warning: denom = 10, penalty = 5, score = 100 - (5/10)*100 = 50.
     const finding: DoctorFinding = {
       id: "TEST", severity: "warning", description: "t", command: "t", weight: 5,
     };
-    expect(computeDoctorScore([finding])).toBe(93);
+    expect(computeDoctorScore([finding], [])).toBe(50);
   });
 
-  it("returns 0 when all checks are critical", () => {
+  it("returns 0 when 7 base critical findings (denom = 70, penalty = 70)", () => {
     const findings: DoctorFinding[] = Array.from({ length: 7 }, (_, i) => ({
       id: `T${i}`, severity: "critical" as const, description: "t", command: "t", weight: 10,
     }));
-    expect(computeDoctorScore(findings)).toBe(0);
+    expect(computeDoctorScore(findings, [])).toBe(0);
   });
 
-  it("calculates mixed severity correctly", () => {
+  it("calculates mixed base severity correctly (2 base, denom = 20)", () => {
+    // 1 critical + 1 warning: denom = 20, penalty = 15, score = 100 - 75 = 25.
     const findings: DoctorFinding[] = [
       { id: "A", severity: "critical", description: "t", command: "t", weight: 10 },
       { id: "B", severity: "warning", description: "t", command: "t", weight: 5 },
     ];
-    expect(computeDoctorScore(findings)).toBe(79);
+    expect(computeDoctorScore(findings, [])).toBe(25);
+  });
+
+  it("per-finding impact preserved: 1 critical probe finding deducts 10 points (denom = 10, 0 base)", () => {
+    // T12 review: 1 probe finding with weight 10 → denom = 0*10 + 1*10 = 10.
+    // Penalty = 10 → score = 100 - 100 = 0. The per-finding impact is the
+    // full critical weight in isolation; adding more base findings re-dilutes
+    // the relative impact (preserves the original arithmetic).
+    const probe: DoctorFinding = {
+      id: "PROBE_UNRESOLVED_X", severity: "critical", description: "p", command: "c", weight: 10,
+    };
+    expect(computeDoctorScore([], [probe])).toBe(0);
+  });
+
+  it("per-finding impact preserved: 0 base + 1 critical probe + 9 base other = 10/100 score", () => {
+    // T12 review: a single critical probe finding alongside 9 clean base
+    // checks deducts 10/100 of the score (10 points). This is the
+    // per-finding-impact contract the brief calls out.
+    const probe: DoctorFinding = {
+      id: "PROBE_UNRESOLVED_X", severity: "critical", description: "p", command: "c", weight: 10,
+    };
+    // 9 base + 1 probe → denom = 90 + 10 = 100. Penalty = 10. Score = 90.
+    const base: DoctorFinding[] = Array.from({ length: 9 }, (_, i) => ({
+      id: `B${i}`, severity: "info" as const, description: "b", command: "c", weight: 0,
+    }));
+    expect(computeDoctorScore(base, [probe])).toBe(90);
   });
 });
 
@@ -958,7 +986,11 @@ describe("runServerDoctor — Active Probe findings merge", () => {
     );
     expect(withProbe.success).toBe(true);
     expect(withProbe.data!.findings.filter((f) => f.id.startsWith("PROBE_"))).toHaveLength(1);
-    expect(withProbe.data!.score).toBe(86); // 100 - (10/70 * 100) ≈ 86
+    // T12 review (Important 2): maxPenalty is now dynamic. 0 base + 1 probe
+    // → denom = 0*10 + 1*10 = 10. Penalty = 10. Score = 100 - 100 = 0.
+    // The per-finding impact is preserved: a single critical probe finding
+    // (weight 10) deducts the full critical weight in isolation.
+    expect(withProbe.data!.score).toBe(0);
   });
 
   it("does not call tryRunProbeSessionMaintenance when serverRecord is omitted (back-compat)", async () => {
@@ -968,7 +1000,11 @@ describe("runServerDoctor — Active Probe findings merge", () => {
     expect(result.data!.findings.filter((f) => f.id.startsWith("PROBE_"))).toHaveLength(0);
   });
 
-  it("never lowers critical severity across risk levels (warning diagnostics also surface as critical)", async () => {
+  it("surfaces doctor-actionable kinds only (unresolved | interrupted | corrupt); forensic kinds are excluded", async () => {
+    // T12 review (Important 3, Option A): the server path must filter to
+    // doctor-actionable kinds only. Forensic kinds (undecryptable,
+    // handler-mismatch, orphan-reservation) surface via the dedicated
+    // probe commands, not doctor. Symmetric with the local path.
     const targetHash = hashProbeTarget({
       serverId: FAKE_SERVER_RECORD.id,
       provider: FAKE_SERVER_RECORD.provider,
@@ -977,12 +1013,28 @@ describe("runServerDoctor — Active Probe findings merge", () => {
     mockedProbeDiagnostics.tryRunProbeSessionMaintenance.mockResolvedValue({
       diagnostics: [
         {
-          kind: "undecryptable",
+          kind: "undecryptable", // FORENSIC — must be excluded
           severity: "warning",
           blocking: false,
           sessionId: "77777777-7777-4777-8777-777777777777",
           targetKeyHash: targetHash,
-          message: "Warning-level diagnostic",
+          message: "Forensic — should not surface",
+        },
+        {
+          kind: "handler-mismatch", // FORENSIC — must be excluded
+          severity: "critical",
+          blocking: true,
+          sessionId: "88888888-8888-4888-8888-888888888888",
+          targetKeyHash: targetHash,
+          message: "Forensic — should not surface",
+        },
+        {
+          kind: "interrupted", // DOCTOR-ACTIONABLE — must surface
+          severity: "critical",
+          blocking: true,
+          sessionId: "99999999-9999-4999-8999-999999999999",
+          targetKeyHash: targetHash,
+          message: "Actionable — should surface",
         },
       ],
       cleanup: { deletedSessionIds: [], scannedAt: new Date().toISOString() },
@@ -997,17 +1049,33 @@ describe("runServerDoctor — Active Probe findings merge", () => {
 
     const probeFindings = result.data!.findings.filter((f) => f.id.startsWith("PROBE_"));
     expect(probeFindings).toHaveLength(1);
-    // Even though underlying severity was "warning", doctor adapter surfaces as critical.
+    expect(probeFindings[0].id).toMatch(/^PROBE_INTERRUPTED_/);
+    // Even though underlying severity was "warning" in some classifications,
+    // the doctor adapter surfaces doctor-actionable kinds as critical.
     expect(probeFindings[0].severity).toBe("critical");
   });
 
-  it("does not import or invoke lifecycle handlers (probe/diagnostics is read-only surface)", async () => {
-    // Defensive assertion: doctor.ts must only use hashProbeTarget + the
-    // adapter projection — it must never call into probe lifecycle.
-    // Verify via a behavior assertion: the mocked tryRunProbeSessionMaintenance
-    // is the ONLY probe module function called. If doctor.ts pulled in any
-    // lifecycle function, it would either fail to import (TS) or call something
-    // we did not mock (visible in this test as a coverage/missing-call error).
+  it("does not import or invoke lifecycle handlers (static import scan)", () => {
+    // T12 review (Critical 2): a behavior assertion is too weak — it only
+    // catches lifecycle calls that the mock would intercept, not imports
+    // that bypass the mock. Static-import scan reads doctor.ts and asserts
+    // NO import of probe lifecycle or handlers modules. Uses
+    // jest.requireActual("fs") to bypass the test's fs mock (which only
+    // fakes the metrics history file paths).
+    const fs = jest.requireActual("fs") as typeof import("fs");
+    const path = jest.requireActual("path") as typeof import("path");
+    const source = fs.readFileSync(
+      path.join(__dirname, "..", "..", "src", "core", "doctor.ts"),
+      "utf8",
+    );
+    const forbiddenImport = /from\s+["'](\.\.\/)*core\/probe\/(lifecycle|handlers)/;
+    expect(source).not.toMatch(forbiddenImport);
+  });
+
+  it("uses only the read-only probe adapter surface (behavior assertion)", async () => {
+    // Behavior complement to the static-import scan above. The mocked
+    // tryRunProbeSessionMaintenance is the ONLY probe module function
+    // called by doctor.ts — that's the entire bootstrap surface.
     mockedProbeDiagnostics.tryRunProbeSessionMaintenance.mockResolvedValue({
       diagnostics: [],
       cleanup: { deletedSessionIds: [], scannedAt: new Date().toISOString() },
@@ -1021,7 +1089,6 @@ describe("runServerDoctor — Active Probe findings merge", () => {
     );
 
     expect(result.success).toBe(true);
-    // Only the wrapper is called — that's the entire bootstrap surface.
     expect(mockedProbeDiagnostics.tryRunProbeSessionMaintenance).toHaveBeenCalledTimes(1);
   });
 });
