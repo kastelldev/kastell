@@ -79,7 +79,7 @@ async function importEsmModule(filePath: string): Promise<Record<string, unknown
     const { fileURLToPath } = await import("url");
     realPath = fileURLToPath(filePath);
   }
-  const source = readFileSync(realPath, "utf-8");
+  const source = readFileSync(realPath, "utf-8").replace(/\r\n/g, "\n");
   const namespace: Record<string, unknown> = {};
   // Match `export const NAME = ...;` declarations. Constraint: the
   // declaration's terminator `;` must appear on its own line, immediately

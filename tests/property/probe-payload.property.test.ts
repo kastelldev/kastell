@@ -45,7 +45,10 @@ describe("Property: serializeProbePayload", () => {
         leafJsonArb,
         (value) => {
           const json = serializeProbePayload(value);
-          expect(JSON.parse(json)).toEqual(value);
+          // JSON.stringify(-0) yields "0", so Jest's deep equality sees a
+          // mismatch on the sign bit. Compare via stringified form, matching
+          // the nested round-trip test below.
+          expect(JSON.stringify(JSON.parse(json))).toBe(JSON.stringify(value));
         },
       ),
       { numRuns: 100 },
