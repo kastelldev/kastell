@@ -475,15 +475,13 @@ async function rollbackAfterQuiescence(
   const { session: inputSession, dependencies: deps } = input;
   const rollbackController = new AbortController();
   const nowFn = deps.now ?? Date.now;
-  // Rollback budget is min(60_000, request.timeoutMs). The forward
-  // `timeoutMs` is not on the context directly; we re-derive it from
-  // the deadline so the budget remains bound even when the wall clock
-  // has drifted. boundedBudgetMs is the only budget used for the
-  // rollback timer AND for the rollback context's deadline.
-  const boundedBudgetMs = Math.min(
-    ROLLBACK_BUDGET_CAP_MS,
-    Math.max(0, input.context.deadlineMs - 0),
-  );
+  // Rollback budget is capped at ROLLBACK_BUDGET_CAP_MS. We do not
+  // re-derive it from the forward deadline because the forward deadline
+  // is an absolute epoch timestamp (Date.now() at the start of the
+  // forward step) and has no meaningful relationship to the rollback
+  // wall-clock budget. boundedBudgetMs is the only budget used for
+  // the rollback timer AND for the rollback context's deadline.
+  const boundedBudgetMs = ROLLBACK_BUDGET_CAP_MS;
 
   // Build a rollback-only context. The target/session/plugin identity
   // is preserved; the signal is the fresh rollback controller; the

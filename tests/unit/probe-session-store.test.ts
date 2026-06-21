@@ -798,3 +798,64 @@ describe("paths constants", () => {
     expect(paths.PROBE_TARGETS_DIR).toBe(join(paths.PROBE_SESSIONS_DIR, "targets"));
   });
 });
+
+describe("transitionProbeSession — lastError message redaction (review P144 Important #1)", () => {
+  let env: IsolatedKastellEnv;
+  let mod: ModuleUnderTest;
+  let paths: ModulePaths;
+  let queue: UUIDQueue;
+
+  beforeEach(async () => {
+    env = createIsolatedKastellEnv();
+    ({ mod, paths, queue } = await loadModules(env));
+    withUUID(mod, queue);
+  });
+
+  afterEach(() => {
+    mod.resetRandomUUIDDependencyForTesting();
+    env.cleanup();
+  });
+
+  const JWT = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJzZWNyZXQifQ.signature_part_here";
+
+  it("redacts JWTs from the persisted lastError.message before encryption", async () => {
+    queue.push(VALID_UUID_A);
+    const session = await mod.reserveProbeTarget(buildInput());
+    const next = await mod.transitionProbeSession(
+      session.sessionId,
+      { state: "preparing", revision: session.revision },
+      { toState: "prepared", reason: `probe-startup failed: token=${JWT}` },
+    );
+    // The JWT must not survive into lastError.message verbatim.
+    expect(next.lastError?.message).toBeDefined();
+    expect(next.lastError?.message).not.toContain(JWT);
+    expect(next.lastError?.message).toContain("[REDACTED]");
+    expect(next.lastError?.message).toContain("probe-startup failed");
+  });
+
+  it("redacts JWT-prefixed strings embedded in a longer reason (substring match)", async () => {
+    queue.push(VALID_UUID_B);
+    const session = await mod.reserveProbeTarget(buildInput());
+    const inner = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyMSJ9.signature_part_two";
+    const next = await mod.transitionProbeSession(
+      session.sessionId,
+      { state: "preparing", revision: session.revision },
+      { toState: "prepared", reason: `embedded credential: ${inner} end` },
+    );
+    expect(next.lastError?.message).not.toContain(inner);
+    expect(next.lastError?.message).toContain("[REDACTED]");
+    expect(next.lastError?.message).toContain("embedded credential:");
+    expect(next.lastError?.message).toContain("end");
+  });
+
+  it("preserves plain reason strings (no false positives)", async () => {
+    queue.push(VALID_UUID_C);
+    const session = await mod.reserveProbeTarget(buildInput());
+    const next = await mod.transitionProbeSession(
+      session.sessionId,
+      { state: "preparing", revision: session.revision },
+      { toState: "prepared", reason: "payload written" },
+    );
+    expect(next.lastError?.message).toBe("payload written");
+  });
+});

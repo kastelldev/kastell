@@ -30,7 +30,7 @@ import { atomicWriteFileSync } from "../../utils/atomicWrite.js";
 import { KASTELL_DIR, PROBE_SESSIONS_DIR, PROBE_TARGETS_DIR } from "../../utils/paths.js";
 import { withFileLock } from "../../utils/fileLock.js";
 import { logSecurityEvent } from "../../utils/securityLogger.js";
-import { assertProbeSessionEnvelopeSize } from "./payload.js";
+import { assertProbeSessionEnvelopeSize, redactProbeDiagnostic } from "./payload.js";
 import type {
   ActiveProbeRisk,
   EncryptedProbePayload,
@@ -473,7 +473,19 @@ export async function transitionProbeSession(
       ...(update.payload
         ? { [update.payload.slot]: update.payload.encrypted }
         : {}),
-      ...(update.reason ? { lastError: { code: "PROBE_EXEC", message: update.reason } } : {}),
+      ...(update.reason
+        ? {
+            lastError: {
+              code: "PROBE_EXEC",
+              // Defense-in-depth: redact secrets from the persisted
+              // lastError.message even though the envelope is encrypted at
+              // rest. The redactor strips JWTs, Bearer tokens, and
+              // sensitive keys (token, password, secret, apiKey, ...).
+              // review: P144 review Important #1.
+              message: redactProbeDiagnostic(update.reason) as string,
+            },
+          }
+        : {}),
     };
     assertProbeSessionEnvelopeSize(next);
     persistSessionRecord(next);
