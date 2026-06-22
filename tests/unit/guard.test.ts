@@ -174,6 +174,16 @@ describe("buildInstallGuardCronCommand", () => {
   it("uses crontab -l 2>/dev/null to handle empty crontab", () => {
     expect(buildInstallGuardCronCommand()).toContain("crontab -l 2>/dev/null");
   });
+
+  it("does not throw given the hardcoded valid GUARD_CRON_EXPR", () => {
+    expect(buildInstallGuardCronCommand()).toBeDefined();
+  });
+
+  it("returns a command string containing the full cron entry", () => {
+    const cmd = buildInstallGuardCronCommand();
+    // The full entry format: "*/5 * * * * /root/kastell-guard.sh # kastell-guard"
+    expect(cmd).toContain(`${GUARD_CRON_EXPR} ${GUARD_SCRIPT_PATH} ${GUARD_MARKER}`);
+  });
 });
 
 // ─── buildRemoveGuardCronCommand ──────────────────────────────────────────────
