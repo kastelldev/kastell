@@ -9,7 +9,6 @@ const {
   existsSync,
   unlinkSync,
   rmdirSync,
-  mkdirSync,
 } = fs;
 
 // Mock paths module before importing securityLogger
@@ -26,6 +25,15 @@ jest.mock("../../src/utils/paths.js", () => ({
     return join(mockKastellDir, "security.log");
   },
 }));
+
+// P145: mock logger.debugLog so catch branches can verify silent-fail path
+jest.mock("../../src/utils/logger.js", () => {
+  const actual = jest.requireActual("../../src/utils/logger.js");
+  return {
+    ...actual,
+    debugLog: jest.fn(),
+  };
+});
 
 import {
   logSecurityEvent,
@@ -414,6 +422,113 @@ describe("securityLogger", () => {
     it("SecurityLogResult type is usable", () => {
       const result: SecurityLogResult = "success";
       expect(["allow", "block", "success", "failure"]).toContain(result);
+    });
+  });
+
+  // ---- P145: silent-fail catch branches ----
+
+  describe("logSecurityEvent — silent fail catch branches", () => {
+    let mockedDebugLog: jest.Mock;
+
+    beforeEach(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports -- logger.js is CJS, require() for isolated mock access
+      const loggerModule = require("../../src/utils/logger.js");
+      mockedDebugLog = loggerModule.debugLog as jest.Mock;
+      mockedDebugLog.mockReset();
+    });
+
+    it("should silently fail when renameSync throws beyond retry budget (L68)", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports -- isolateModules needs require() for CJS interop
+      const isolatedFs = require("fs") as typeof fs;
+      const logPath = join(mockKastellDir, "security.log");
+      writeFileSync(logPath, "x".repeat(60) + "\n");
+
+      // eslint-disable-next-line @typescript-eslint/no-require-imports -- isolateModules needs require() for CJS interop
+      const mod = require("../../src/utils/securityLogger.js") as typeof import("../../src/utils/securityLogger.js");
+
+      // Mock fs.renameSync to always throw non-EPERM (not retryable)
+      const err = Object.assign(new Error("EROFS"), { code: "EROFS" }) as NodeJS.ErrnoException;
+      const renameSpy = jest
+        .spyOn(isolatedFs, "renameSync")
+        .mockImplementation(() => {
+          throw err;
+        });
+
+      expect(() => mod.logSecurityEvent(baseEntry, { maxBytes: 50 })).not.toThrow();
+      expect(renameSpy).toHaveBeenCalled();
+      expect(mockedDebugLog).toHaveBeenCalledWith(
+        "security log rotation failed",
+        expect.objectContaining({ cause: err }),
+      );
+    });
+
+    it("should silently fail when statSync throws (L80)", () => {
+      const logPath = join(mockKastellDir, "security.log");
+      writeFileSync(logPath, "x".repeat(60) + "\n");
+
+      const statErr = Object.assign(new Error("EACCES"), { code: "EACCES" }) as NodeJS.ErrnoException;
+
+      let isolatedLogSecurityEvent: typeof logSecurityEvent;
+
+      jest.isolateModules(() => {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports -- isolateModules needs require() for CJS interop
+        const isolatedFs = require("fs") as typeof fs;
+        // eslint-disable-next-line @typescript-eslint/no-require-imports -- isolateModules needs require() for CJS interop
+        const mod = require("../../src/utils/securityLogger.js") as typeof import("../../src/utils/securityLogger.js");
+        jest.spyOn(isolatedFs, "statSync").mockImplementation(() => {
+          throw statErr;
+        });
+        isolatedLogSecurityEvent = mod.logSecurityEvent;
+      });
+
+      expect(() => isolatedLogSecurityEvent!(baseEntry, { maxBytes: 50 })).not.toThrow();
+      expect(mockedDebugLog).toHaveBeenCalledWith(
+        "security log rotation check failed",
+        expect.objectContaining({ cause: statErr }),
+      );
+    });
+
+    it("should silently fail when secureAppendFileSync throws (L105)", () => {
+      let isolatedLogSecurityEvent: typeof logSecurityEvent;
+
+      jest.isolateModules(() => {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports -- isolateModules needs require() for CJS interop
+        const secureWrite = require("../../src/utils/secureWrite.js") as typeof import("../../src/utils/secureWrite.js");
+        jest.spyOn(secureWrite, "secureAppendFileSync").mockImplementation(() => {
+          throw new Error("disk full");
+        });
+        // eslint-disable-next-line @typescript-eslint/no-require-imports -- isolateModules needs require() for CJS interop
+        const mod = require("../../src/utils/securityLogger.js") as typeof import("../../src/utils/securityLogger.js");
+        isolatedLogSecurityEvent = mod.logSecurityEvent;
+      });
+
+      expect(() => isolatedLogSecurityEvent!(baseEntry)).not.toThrow();
+      expect(mockedDebugLog).toHaveBeenCalledWith(
+        "security log write failed",
+        expect.anything(),
+      );
+    });
+
+    it("should silently fail when console.warn throws in SecurityLogger.warn (L120)", () => {
+      let isolatedSecurityLogger: typeof import("../../src/utils/securityLogger.js");
+
+      jest.isolateModules(() => {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports -- isolateModules needs require() for CJS interop
+        isolatedSecurityLogger = require("../../src/utils/securityLogger.js") as typeof import("../../src/utils/securityLogger.js");
+      });
+
+      const consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => {
+        throw new Error("console warn blocked");
+      });
+
+      expect(() => isolatedSecurityLogger!.SecurityLogger.warn("test", { server: "x" })).not.toThrow();
+      expect(consoleWarnSpy).toHaveBeenCalled();
+      expect(mockedDebugLog).toHaveBeenCalledWith(
+        "security log flush failed",
+        expect.anything(),
+      );
+
+      consoleWarnSpy.mockRestore();
     });
   });
 });
