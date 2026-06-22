@@ -33,28 +33,17 @@ import {
   type ProbeSessionLoadResult,
   type ProbeCleanupResult,
 } from "./sessionStore.js";
+import { redactProbeDiagnostic } from "./payload.js";
 import type { ProbeSessionRecord, RedactedProbeError } from "./types.js";
 import {
   KASTELL_DIR,
   PROBE_TARGETS_DIR,
 } from "../../utils/paths.js";
 import { logSecurityEvent } from "../../utils/securityLogger.js";
-import type { Severity } from "../../types/severity.js";
+import { secureMkdirSync } from "../../utils/secureWrite.js";
+import { DOCTOR_SEVERITY_WEIGHTS } from "../../types/severity.js";
 import type { CheckResult } from "../doctor-local.js";
 import type { DoctorFinding } from "../doctor.js";
-
-// Local mirror of the doctor severity-weight constant. Kept in sync with
-// `src/core/doctor.ts`. `import type` cannot carry a runtime value, and a
-// runtime import creates a circular dependency (doctor.ts → diagnostics.ts
-// → doctor.ts) where the const resolves to undefined mid-load. The local
-// mirror avoids the cycle. The `DoctorFinding` type is type-only — that
-// import is safe and removes the verbatim duplication called out in T12
-// review (Important 1).
-export const DOCTOR_SEVERITY_WEIGHTS: Record<Severity, number> = {
-  critical: 10,
-  warning: 5,
-  info: 1,
-};
 
 // ─── Diagnostic kinds ──────────────────────────────────────────────────────
 
@@ -67,6 +56,17 @@ export type ProbeDiagnosticKind =
   | "orphan-reservation";
 
 export type ProbeDiagnosticSeverity = "critical" | "warning";
+
+/**
+ * Probe kinds that surface as doctor findings (T12 review Option A).
+ * Forensic kinds (`undecryptable`, `handler-mismatch`, `orphan-reservation`)
+ * surface via dedicated probe commands, not doctor.
+ */
+export const DOCTOR_ACTIONABLE_KINDS: ReadonlySet<ProbeDiagnosticKind> = new Set([
+  "unresolved",
+  "interrupted",
+  "corrupt",
+]);
 
 export interface ProbeDiagnostic {
   kind: ProbeDiagnosticKind;
@@ -282,7 +282,7 @@ function findOrphanReservations(
 
 function ensureKastellDir(): void {
   try {
-    mkdirSync(KASTELL_DIR, { recursive: true });
+    secureMkdirSync(KASTELL_DIR);
   } catch {
     // best-effort — caller is best-effort too
   }
@@ -337,13 +337,15 @@ function redactError(cause: unknown): RedactedProbeError {
   if (cause instanceof Error) {
     return {
       code: (cause as Error & { code?: string }).code ?? "PROBE_MAINTENANCE_ERROR",
-      message: cause.message,
+      // Pass the raw message through the canonical probe redactor so JWTs,
+      // Bearer tokens, and sensitive-key substrings never escape to logs.
+      message: String(redactProbeDiagnostic(cause.message) ?? ""),
       stack: typeof cause.stack === "string" ? cause.stack.split("\n").slice(0, 3).join("\n") : undefined,
     };
   }
   return {
     code: "PROBE_MAINTENANCE_ERROR",
-    message: typeof cause === "string" ? cause : "Unknown maintenance failure",
+    message: typeof cause === "string" ? String(redactProbeDiagnostic(cause) ?? cause) : "Unknown maintenance failure",
   };
 }
 
@@ -360,11 +362,9 @@ const SHORT_SESSION_ID_LEN = 8;
 
 /** Stable, human-distinguishable suffix from a probe session UUID. */
 export function shortSessionId(sessionId: string): string {
-  if (typeof sessionId !== "string" || sessionId.length === 0) {
-    return "UNKNOWN";
-  }
   // Strip non-[A-Za-z0-9_-] so the resulting ID is safe to embed in a
-  // finding ID and shell-renderable.
+  // finding ID and shell-renderable. Empty/all-special input collapses to
+  // "UNKNOWN" so consumers always get a non-empty, shell-safe token.
   const cleaned = sessionId.replace(/[^A-Za-z0-9_-]/g, "");
   if (cleaned.length === 0) return "UNKNOWN";
   return cleaned.length > SHORT_SESSION_ID_LEN
@@ -416,11 +416,7 @@ export async function runLocalProbeDoctorChecks(
   const result = await tryRunProbeSessionMaintenance();
   const out: CheckResult[] = [];
   for (const diagnostic of result.diagnostics) {
-    if (
-      diagnostic.kind !== "unresolved" &&
-      diagnostic.kind !== "interrupted" &&
-      diagnostic.kind !== "corrupt"
-    ) {
+    if (!DOCTOR_ACTIONABLE_KINDS.has(diagnostic.kind)) {
       continue;
     }
     if (
