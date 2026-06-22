@@ -22,6 +22,16 @@ export function validateAndNormalizeChecks(
   return (checks as PluginCheckV3[]).map(normalizeV3Check);
 }
 
+/** Spread `key: value` only when value !== undefined — avoids `key: undefined` JSON. */
+function pickOptional<V extends Record<string, unknown>>(obj: V): Partial<V> {
+  const out: Partial<V> = {};
+  for (const key of Object.keys(obj) as (keyof V)[]) {
+    const value = obj[key];
+    if (value !== undefined) out[key] = value;
+  }
+  return out;
+}
+
 function normalizeV2Check(check: PluginCheckV2): LoadedPluginCheck {
   return {
     id: check.id,
@@ -32,11 +42,9 @@ function normalizeV2Check(check: PluginCheckV2): LoadedPluginCheck {
     sourceApiVersion: "2",
     read: {
       cmd: check.checkCommand.cmd,
-      ...(check.passPattern !== undefined ? { passPattern: check.passPattern } : {}),
-      ...(check.failPattern !== undefined ? { failPattern: check.failPattern } : {}),
+      ...pickOptional({ passPattern: check.passPattern, failPattern: check.failPattern }),
     },
-    ...(check.explain !== undefined ? { explain: check.explain } : {}),
-    ...(check.complianceRefs !== undefined ? { complianceRefs: check.complianceRefs } : {}),
+    ...pickOptional({ explain: check.explain, complianceRefs: check.complianceRefs }),
   };
 }
 
@@ -48,9 +56,11 @@ function normalizeV3Check(check: PluginCheckV3): LoadedPluginCheck {
     severity: check.severity,
     description: check.description,
     sourceApiVersion: "3",
-    ...(check.read !== undefined ? { read: check.read } : {}),
-    ...(check.activeProbe !== undefined ? { activeProbe: check.activeProbe } : {}),
-    ...(check.explain !== undefined ? { explain: check.explain } : {}),
-    ...(check.complianceRefs !== undefined ? { complianceRefs: check.complianceRefs } : {}),
+    ...pickOptional({
+      read: check.read,
+      activeProbe: check.activeProbe,
+      explain: check.explain,
+      complianceRefs: check.complianceRefs,
+    }),
   };
 }
