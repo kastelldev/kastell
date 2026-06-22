@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { PluginMcpToolEntry } from "../plugin/registry.js";
 import { debugLog } from "../utils/logger.js";
 import { mcpSuccess, mcpError } from "./utils.js";
+import type { McpResponse } from "./utils.js";
 import { resolvePluginHandler } from "../plugin/handlerResolver.js";
 import { PLUGIN_TOOL_PREFIX } from "../plugin/sdk/constants.js";
 
@@ -35,7 +36,7 @@ export function registerPluginMcpTools(
         idempotentHint: false,
         openWorldHint: true,
       },
-    }, async (params) => {
+    }, async (params): Promise<McpResponse> => {
       try {
         const handler = await resolvePluginHandler(entry.pluginDir, entry.tool.handler);
         const result = await handler(params, {
@@ -49,7 +50,13 @@ export function registerPluginMcpTools(
             return mcpError("SSH not available in MCP context — use server_audit or server_fix for SSH operations");
           },
         });
-        return mcpSuccess(result as Record<string, unknown>);
+        const isMcpResponse = (
+          typeof result === "object" &&
+          result !== null &&
+          "content" in result &&
+          Array.isArray((result as Record<string, unknown>).content)
+        );
+        return (isMcpResponse ? result : mcpSuccess(result as Record<string, unknown>)) as McpResponse;
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         return mcpError(`Plugin tool error: ${msg}`);
