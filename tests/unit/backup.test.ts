@@ -15,7 +15,6 @@ import {
   scpDownload,
   listBackups,
   listOrphanBackups,
-  cleanupServerBackups,
 } from "../../src/core/backup";
 import { backupCommand } from "../../src/commands/backup";
 
@@ -62,9 +61,32 @@ jest.mock("../../src/adapters/factory", () => ({
   getAdapter: jest.fn(),
 }));
 
+// Mock core/backupSchedule so handleScheduleOption branches are testable
+jest.mock("../../src/core/backupSchedule", () => ({
+  scheduleBackup: jest.fn(),
+  listBackupSchedule: jest.fn(),
+  removeBackupSchedule: jest.fn(),
+  validateCronExpr: jest.fn(),
+}));
+
+// Mock errorMapper so we can control classifyError isTyped + hint path
+jest.mock("../../src/utils/errorMapper", () => ({
+  classifyError: jest.fn(),
+  mapSshError: jest.fn(),
+  mapProviderError: jest.fn(),
+  mapFileSystemError: jest.fn(),
+}));
+
 import ora from "ora";
 import { backupServer } from "../../src/core/backup";
 import { resolvePlatform } from "../../src/adapters/factory";
+import {
+  listBackupSchedule,
+  removeBackupSchedule,
+  scheduleBackup,
+  validateCronExpr,
+} from "../../src/core/backupSchedule";
+import { classifyError, mapSshError } from "../../src/utils/errorMapper";
 import { MockChildProcess } from "../helpers/ssh-factories.js";
 import { createMockProcess as createMockChildProcess } from "../helpers/mockProcess.js";
 import { createConsoleSpy } from "../helpers/consoleSpy.js";
@@ -72,6 +94,8 @@ import { createConsoleSpy } from "../helpers/consoleSpy.js";
 const mockedOra = ora as jest.MockedFunction<typeof ora>;
 const mockedBackupServer = backupServer as jest.MockedFunction<typeof backupServer>;
 const mockedResolvePlatform = resolvePlatform as jest.MockedFunction<typeof resolvePlatform>;
+const mockedClassifyError = classifyError as jest.MockedFunction<typeof classifyError>;
+const mockedMapSshError = mapSshError as jest.MockedFunction<typeof mapSshError>;
 const mockedConfig = config as jest.Mocked<typeof config>;
 const mockedSsh = sshUtils as jest.Mocked<typeof sshUtils>;
 const mockedServerSelect = serverSelect as jest.Mocked<typeof serverSelect>;
@@ -129,6 +153,12 @@ describe("backup", () => {
       fail: jest.fn().mockReturnThis(),
       stop: jest.fn().mockReturnThis(),
     } as unknown as ReturnType<typeof ora>);
+    // P145: errorMapper defaults so tests that don't override still work
+    mockedClassifyError.mockImplementation((err: unknown) => ({
+      message: err instanceof Error ? err.message : String(err),
+      isTyped: false,
+    }));
+    mockedMapSshError.mockReturnValue("");
   });
 
   afterEach(() => {
@@ -283,7 +313,7 @@ describe("backup", () => {
     it("should show error when SSH not available", async () => {
       mockedSsh.checkSshAvailable.mockReturnValue(false);
       await backupCommand();
-      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c) => c.join(" ")).join("\n");
       expect(output).toContain("SSH client not found");
     });
 
@@ -304,7 +334,7 @@ describe("backup", () => {
 
       await backupCommand("1.2.3.4", { dryRun: true });
 
-      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c) => c.join(" ")).join("\n");
       expect(output).toContain("Dry Run");
       expect(output).toContain("No changes applied");
       expect(mockedBackupServer).not.toHaveBeenCalled();
@@ -317,7 +347,7 @@ describe("backup", () => {
 
       await backupCommand("1.2.3.4", { dryRun: true });
 
-      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c) => c.join(" ")).join("\n");
       expect(output).toContain("Dry Run");
       expect(output).toContain("bare-config.tar.gz");
       expect(mockedBackupServer).not.toHaveBeenCalled();
@@ -341,7 +371,7 @@ describe("backup", () => {
       await backupCommand("1.2.3.4");
 
       expect(mockedBackupServer).toHaveBeenCalledWith(sampleServer);
-      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c) => c.join(" ")).join("\n");
       expect(output).toContain("Backup saved to");
       expect(output).toContain("Platform version: 4.0.0");
     });
@@ -357,7 +387,7 @@ describe("backup", () => {
 
       await backupCommand("1.2.3.4");
 
-      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c) => c.join(" ")).join("\n");
       expect(output).toContain("pg_dump failed");
       expect(output).toContain("Check postgres container");
     });
@@ -369,7 +399,7 @@ describe("backup", () => {
 
       await backupCommand("1.2.3.4");
 
-      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c) => c.join(" ")).join("\n");
       expect(output).toContain("Connection lost");
     });
   });
@@ -383,7 +413,7 @@ describe("backup", () => {
 
       await backupCommand("cleanup");
 
-      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c) => c.join(" ")).join("\n");
       expect(output).toContain("No orphan backups found");
     });
 
@@ -403,7 +433,7 @@ describe("backup", () => {
 
       await backupCommand("cleanup");
 
-      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c) => c.join(" ")).join("\n");
       expect(output).toContain("old-server");
       expect(output).toContain("Operation cancelled");
     });
@@ -422,7 +452,7 @@ describe("backup", () => {
 
       await backupCommand("cleanup");
 
-      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c) => c.join(" ")).join("\n");
       expect(output).toContain("old-server");
       // rmSync should be called to remove the directory
       const { rmSync } = require("fs");
@@ -438,7 +468,7 @@ describe("backup", () => {
 
       await backupCommand("list");
 
-      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c) => c.join(" ")).join("\n");
       expect(output).toContain("No servers registered");
     });
 
@@ -448,7 +478,7 @@ describe("backup", () => {
 
       await backupCommand("list");
 
-      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c) => c.join(" ")).join("\n");
       expect(output).toContain("No backups found for any server");
     });
 
@@ -463,7 +493,7 @@ describe("backup", () => {
 
       await backupCommand("list");
 
-      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c) => c.join(" ")).join("\n");
       expect(output).toContain("coolify-test");
       expect(output).toContain("2026-03-01_00-00-00-000");
     });
@@ -501,7 +531,7 @@ describe("backup", () => {
 
       await backupCommand("test-server", { schedule: "list" });
 
-      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c) => c.join(" ")).join("\n");
       expect(output).toContain("SSH client not found");
     });
 
@@ -537,7 +567,7 @@ describe("backup", () => {
 
       await backupCommand("1.2.3.4");
 
-      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c) => c.join(" ")).join("\n");
       expect(output).toContain("Provider: hetzner");
       expect(output).toContain("Platform: coolify");
     });
@@ -560,7 +590,7 @@ describe("backup", () => {
 
       await backupCommand("1.2.3.4");
 
-      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c) => c.join(" ")).join("\n");
       expect(output).not.toContain("Platform:");
     });
 
@@ -574,7 +604,7 @@ describe("backup", () => {
 
       await backupCommand("1.2.3.4");
 
-      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c) => c.join(" ")).join("\n");
       expect(output).toContain("Database dump failed");
     });
   });
@@ -587,7 +617,7 @@ describe("backup", () => {
 
       await backupCommand(undefined, { all: true });
 
-      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c) => c.join(" ")).join("\n");
       expect(output).toContain("SSH client not found");
     });
 
@@ -597,7 +627,7 @@ describe("backup", () => {
 
       await backupCommand(undefined, { all: true });
 
-      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c) => c.join(" ")).join("\n");
       expect(output).toContain("No servers found");
     });
 
@@ -619,7 +649,7 @@ describe("backup", () => {
       await backupCommand(undefined, { all: true });
 
       expect(mockedBackupServer).toHaveBeenCalledTimes(2);
-      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c) => c.join(" ")).join("\n");
       expect(output).toContain("All 2 server(s) backed up successfully");
     });
 
@@ -636,7 +666,7 @@ describe("backup", () => {
 
       await backupCommand(undefined, { all: true });
 
-      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c) => c.join(" ")).join("\n");
       expect(output).toContain("1 succeeded");
       expect(output).toContain("1 failed");
     });
@@ -647,7 +677,7 @@ describe("backup", () => {
 
       await backupCommand(undefined, { all: true, dryRun: true });
 
-      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c) => c.join(" ")).join("\n");
       // In --all dry-run, backupSingleServer logs dry-run message per server
       expect(output).toContain("Dry run");
       expect(mockedBackupServer).not.toHaveBeenCalled();
@@ -664,8 +694,164 @@ describe("backup", () => {
 
       await backupCommand(undefined, { all: true });
 
-      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c) => c.join(" ")).join("\n");
       expect(output).toContain("All 1 server(s) backed up successfully");
+    });
+  });
+
+  // ---- P145: backupSingleServer catch branch (L50) ----
+
+  describe("backupSingleServer — catch path", () => {
+    it("should catch error from backupServer in --all mode", async () => {
+      mockedClassifyError.mockImplementation((err: unknown) => ({
+        message: err instanceof Error ? err.message : String(err),
+        isTyped: false,
+      }));
+      mockedSsh.checkSshAvailable.mockReturnValue(true);
+      mockedConfig.getServers.mockReturnValue([sampleServer]);
+      mockedBackupServer.mockRejectedValueOnce(new Error("boom"));
+
+      await backupCommand(undefined, { all: true });
+
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c) => c.join(" ")).join("\n");
+      expect(output).toContain("boom");
+    });
+
+    it("should catch error and log ssh hint via mapSshError when untyped", async () => {
+      mockedClassifyError.mockImplementation((err: unknown) => ({
+        message: err instanceof Error ? err.message : String(err),
+        isTyped: false,
+      }));
+      mockedMapSshError.mockReturnValueOnce("connection refused");
+      mockedSsh.checkSshAvailable.mockReturnValue(true);
+      mockedConfig.getServers.mockReturnValue([sampleServer]);
+      mockedBackupServer.mockRejectedValueOnce(new Error("econnrefused"));
+
+      await backupCommand(undefined, { all: true });
+
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c) => c.join(" ")).join("\n");
+      expect(output).toContain("connection refused");
+    });
+  });
+
+  // ---- P145: backupCleanupCommand — plural ternary (L109) ----
+
+  describe("backupCleanupCommand — plural branch", () => {
+    it("should pluralize 'backups' when orphan has multiple backups", async () => {
+      mockedConfig.getServers.mockReturnValue([sampleServer]);
+      mockedExistsSync.mockImplementation((p) => {
+        const path = String(p);
+        if (path.includes("backups") && !path.includes("old-server")) return true;
+        if (path.includes("old-server")) return true;
+        return path.includes("manifest.json");
+      });
+      mockedReaddirSync
+        .mockReturnValueOnce(["old-server"] as unknown as ReturnType<typeof mockedReaddirSync>)
+        .mockReturnValueOnce(["b1", "b2"] as unknown as ReturnType<typeof mockedReaddirSync>);
+
+      await backupCommand("cleanup");
+
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c) => c.join(" ")).join("\n");
+      expect(output).toContain("2 backups");
+    });
+  });
+
+  // ---- P145: handleScheduleOption — list/remove branches ----
+
+  describe("handleScheduleOption — list/remove branches", () => {
+    beforeEach(() => {
+      (listBackupSchedule as jest.Mock).mockReset();
+      (removeBackupSchedule as jest.Mock).mockReset();
+      (scheduleBackup as jest.Mock).mockReset();
+      (validateCronExpr as jest.Mock).mockReset();
+      mockedSsh.checkSshAvailable.mockReturnValue(true);
+      mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+    });
+
+    it("should log error when listBackupSchedule returns success=false", async () => {
+      (listBackupSchedule as jest.Mock).mockResolvedValue({ success: false, error: "schedule list failed" });
+
+      await backupCommand("test-server", { schedule: "list" });
+
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c) => c.join(" ")).join("\n");
+      expect(output).toContain("schedule list failed");
+    });
+
+    it("should log local record when localCronExpr differs", async () => {
+      (listBackupSchedule as jest.Mock).mockResolvedValue({ success: true, cronExpr: "0 2 * * *", localCronExpr: "0 3 * * *" });
+
+      await backupCommand("test-server", { schedule: "list" });
+
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c) => c.join(" ")).join("\n");
+      expect(output).toContain("Local record: 0 3 * * *");
+    });
+
+    it("should log hint when removeBackupSchedule returns hint", async () => {
+      (removeBackupSchedule as jest.Mock).mockResolvedValue({ success: false, error: "remove failed", hint: "check cron daemon" });
+
+      await backupCommand("test-server", { schedule: "remove" });
+
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c) => c.join(" ")).join("\n");
+      expect(output).toContain("check cron daemon");
+    });
+
+    it("should log invalid cron error", async () => {
+      (validateCronExpr as jest.Mock).mockReturnValue({ valid: false, error: "bad cron" });
+
+      await backupCommand("test-server", { schedule: "bad cron" });
+
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c) => c.join(" ")).join("\n");
+      expect(output).toContain("Invalid cron expression");
+    });
+  });
+
+  // ---- P145: main backupCommand catch branches (L296, L303, L306) ----
+
+  describe("main backupCommand — error branches", () => {
+    it("should log result.error without hint when backupServer returns success=false", async () => {
+      mockedSsh.checkSshAvailable.mockReturnValue(true);
+      mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+      mockedBackupServer.mockResolvedValueOnce({
+        success: false,
+        error: "Database dump failed",
+      });
+
+      await backupCommand("1.2.3.4");
+
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c) => c.join(" ")).join("\n");
+      expect(output).toContain("Database dump failed");
+    });
+
+    it("should log classified.hint when backupServer throws typed error", async () => {
+      mockedClassifyError.mockReturnValueOnce({
+        message: "Connection lost",
+        hint: "check network",
+        isTyped: true,
+      });
+      mockedSsh.checkSshAvailable.mockReturnValue(true);
+      mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+      mockedBackupServer.mockRejectedValueOnce(new Error("Connection lost"));
+
+      await backupCommand("1.2.3.4");
+
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c) => c.join(" ")).join("\n");
+      expect(output).toContain("check network");
+    });
+
+    it("should log mapSshError hint when error is untyped", async () => {
+      mockedClassifyError.mockReturnValueOnce({
+        message: "raw error",
+        isTyped: false,
+      });
+      mockedMapSshError.mockReturnValueOnce("SSH connection refused");
+      mockedSsh.checkSshAvailable.mockReturnValue(true);
+      mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+      mockedBackupServer.mockRejectedValueOnce(new Error("boom"));
+
+      await backupCommand("1.2.3.4");
+
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c) => c.join(" ")).join("\n");
+      expect(output).toContain("SSH connection refused");
     });
   });
 });
