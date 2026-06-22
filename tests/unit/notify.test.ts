@@ -16,7 +16,9 @@ import {
   testChannel,
 } from "../../src/core/notify.js";
 import type { NotifyConfig } from "../../src/core/notify.js";
-import { loadNotifyChannels } from "../../src/core/notifyStore.js";
+import { loadNotifyChannels, saveNotifyChannel, removeNotifyChannel } from "../../src/core/notifyStore.js";
+import { secureWriteFileSync, secureMkdirSync } from "../../src/utils/secureWrite";
+import { notifyCommand } from "../../src/commands/notify.js";
 
 jest.mock("fs", () => ({
   readFileSync: jest.fn(),
@@ -52,7 +54,10 @@ const mockedInquirerPrompt = inquirer.prompt as unknown as jest.Mock;
 const mockedExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;
 const mockedReadFileSync = readFileSync as jest.MockedFunction<typeof readFileSync>;
 const mockedWriteFileSync = writeFileSync as jest.MockedFunction<typeof writeFileSync>;
-const mockedSecureWriteFileSync = require("../../src/utils/secureWrite").secureWriteFileSync as jest.Mock;
+const mockedSecureWriteFileSync = secureWriteFileSync as jest.Mock;
+const mockedSecureMkdirSync = secureMkdirSync as jest.Mock;
+const mockedSaveNotifyChannel = saveNotifyChannel as jest.Mock;
+const mockedRemoveNotifyChannel = removeNotifyChannel as jest.Mock;
 const mockedAxiosPost = axios.post as jest.Mock;
 const mockedLoadNotifyChannels = loadNotifyChannels as jest.Mock;
 
@@ -426,8 +431,7 @@ describe("loadCooldownState / saveCooldownState", () => {
   });
 
   it("saveCooldownState writes to notify-cooldown.json with mode 0o600", () => {
-    const mockedSecureMkdirSync = require("../../src/utils/secureWrite").secureMkdirSync as jest.Mock;
-    const state = { "web:disk": new Date().toISOString() };
+        const state = { "web:disk": new Date().toISOString() };
 
     saveCooldownState(state);
 
@@ -502,16 +506,14 @@ describe("sendTelegram — invalid token rejection", () => {
 
 describe("removeChannel", () => {
   it("calls removeNotifyChannel with the channel name", () => {
-    const mockedRemoveNotifyChannel = require("../../src/core/notifyStore.js").removeNotifyChannel as jest.Mock;
-
+    
     removeChannel("discord");
 
     expect(mockedRemoveNotifyChannel).toHaveBeenCalledWith("discord");
   });
 
   it("does not call removeNotifyChannel for invalid channel name", () => {
-    const mockedRemoveNotifyChannel = require("../../src/core/notifyStore.js").removeNotifyChannel as jest.Mock;
-
+    
     removeChannel("invalid-channel");
 
     expect(mockedRemoveNotifyChannel).not.toHaveBeenCalled();
@@ -522,8 +524,7 @@ describe("removeChannel", () => {
 
 describe("addChannel — invalid channel", () => {
   it("returns early when channel name is not valid (notexist)", async () => {
-    const mockedSaveNotifyChannel = require("../../src/core/notifyStore.js").saveNotifyChannel as jest.Mock;
-
+    
     await addChannel("notexist", { force: true, webhookUrl: "https://x.com" });
 
     expect(mockedSaveNotifyChannel).not.toHaveBeenCalled();
@@ -532,8 +533,7 @@ describe("addChannel — invalid channel", () => {
 
 describe("addChannel — force mode", () => {
   it("skips mockedInquirerPrompt when force=true for telegram", async () => {
-    const mockedSaveNotifyChannel = require("../../src/core/notifyStore.js").saveNotifyChannel as jest.Mock;
-
+    
     await addChannel("telegram", {
       force: true,
       botToken: "123456:ABCdef_GHI-jkl",
@@ -548,8 +548,7 @@ describe("addChannel — force mode", () => {
   });
 
   it("skips mockedInquirerPrompt when force=true for discord", async () => {
-    const mockedSaveNotifyChannel = require("../../src/core/notifyStore.js").saveNotifyChannel as jest.Mock;
-
+    
     await addChannel("discord", {
       force: true,
       webhookUrl: "https://discord.com/api/webhooks/1/abc",
@@ -562,8 +561,7 @@ describe("addChannel — force mode", () => {
   });
 
   it("skips mockedInquirerPrompt when force=true for slack", async () => {
-    const mockedSaveNotifyChannel = require("../../src/core/notifyStore.js").saveNotifyChannel as jest.Mock;
-
+    
     await addChannel("slack", {
       force: true,
       webhookUrl: "https://hooks.slack.com/services/T/B/secret",
@@ -576,24 +574,21 @@ describe("addChannel — force mode", () => {
   });
 
   it("returns early when force=true for telegram but botToken is missing", async () => {
-    const mockedSaveNotifyChannel = require("../../src/core/notifyStore.js").saveNotifyChannel as jest.Mock;
-
+    
     await addChannel("telegram", { force: true, chatId: "-100123456" });
 
     expect(mockedSaveNotifyChannel).not.toHaveBeenCalled();
   });
 
   it("returns early when force=true for telegram but chatId is missing", async () => {
-    const mockedSaveNotifyChannel = require("../../src/core/notifyStore.js").saveNotifyChannel as jest.Mock;
-
+    
     await addChannel("telegram", { force: true, botToken: "123456:ABC" });
 
     expect(mockedSaveNotifyChannel).not.toHaveBeenCalled();
   });
 
   it("returns early when force=true for discord but webhookUrl is missing", async () => {
-    const mockedSaveNotifyChannel = require("../../src/core/notifyStore.js").saveNotifyChannel as jest.Mock;
-
+    
     await addChannel("discord", { force: true });
 
     expect(mockedSaveNotifyChannel).not.toHaveBeenCalled();
@@ -602,8 +597,7 @@ describe("addChannel — force mode", () => {
 
 describe("addChannel — interactive mode (inquirer)", () => {
   it("prompts for botToken and chatId when adding telegram without force", async () => {
-    const mockedSaveNotifyChannel = require("../../src/core/notifyStore.js").saveNotifyChannel as jest.Mock;
-    (mockedInquirerPrompt as unknown as jest.Mock).mockResolvedValueOnce({
+        (mockedInquirerPrompt as unknown as jest.Mock).mockResolvedValueOnce({
       botToken: "999888:ValidToken_xyz",
       chatId: "-100456",
     });
@@ -621,8 +615,7 @@ describe("addChannel — interactive mode (inquirer)", () => {
   });
 
   it("prompts for webhookUrl when adding discord without force", async () => {
-    const mockedSaveNotifyChannel = require("../../src/core/notifyStore.js").saveNotifyChannel as jest.Mock;
-    (mockedInquirerPrompt as unknown as jest.Mock).mockResolvedValueOnce({
+        (mockedInquirerPrompt as unknown as jest.Mock).mockResolvedValueOnce({
       webhookUrl: "https://discord.com/api/webhooks/2/xyz",
     });
 
@@ -637,8 +630,7 @@ describe("addChannel — interactive mode (inquirer)", () => {
   });
 
   it("prompts for webhookUrl when adding slack without force", async () => {
-    const mockedSaveNotifyChannel = require("../../src/core/notifyStore.js").saveNotifyChannel as jest.Mock;
-    (mockedInquirerPrompt as unknown as jest.Mock).mockResolvedValueOnce({
+        (mockedInquirerPrompt as unknown as jest.Mock).mockResolvedValueOnce({
       webhookUrl: "https://hooks.slack.com/services/X/Y/secret",
     });
 
@@ -751,5 +743,118 @@ describe.skip("testChannel — slack success", () => {
       { text: "[Kastell] Test notification - your slack integration is working!" },
       expect.objectContaining({ timeout: 10_000, maxRedirects: 0, proxy: false }),
     );
+  });
+});
+
+// ─── notifyCommand (src/commands/notify.ts) ─────────────────────────────────────
+
+// axios must be mocked before notifyCommand can be loaded — addChannel action path
+// calls sendTelegram which calls axios.post (even though in force mode saveChannel
+// is called and axios is not reached, the module load triggers the import chain).
+jest.mock("axios", () => ({ post: jest.fn() }));
+
+describe("notifyCommand", () => {
+  let mockProgram: {
+    command: jest.Mock;
+    description: jest.Mock;
+    option: jest.Mock;
+    action: jest.Mock;
+  };
+
+  // Capture action callbacks to invoke them directly (covers action body lines)
+  let capturedAddAction: ((channel: string, options: Record<string, unknown>) => Promise<void>) | null = null;
+  let capturedTestAction: ((channel: string) => Promise<void>) | null = null;
+  let capturedRemoveAction: ((channel: string) => void) | null = null;
+
+  beforeEach(() => {
+    capturedAddAction = null;
+    capturedTestAction = null;
+    capturedRemoveAction = null;
+
+    mockProgram = {
+      command: jest.fn().mockReturnThis(),
+      description: jest.fn().mockReturnThis(),
+      option: jest.fn().mockReturnThis(),
+      action: jest.fn().mockImplementation(function (cb: unknown) {
+        // The first call to action() is for "notify add <channel>"
+        if (!capturedAddAction) {
+          capturedAddAction = cb as typeof capturedAddAction;
+        } else if (!capturedTestAction) {
+          capturedTestAction = cb as typeof capturedTestAction;
+        } else {
+          capturedRemoveAction = cb as typeof capturedRemoveAction;
+        }
+        return mockProgram;
+      }),
+    };
+  });
+
+  it("registers the notify command as a subcommand of program (NOTF-CMD)", () => {
+        notifyCommand(mockProgram as unknown as import("commander").Command);
+
+    expect(mockProgram.command).toHaveBeenCalledWith("notify");
+  });
+
+  it("notify command has correct description (NOTF-CMD)", () => {
+        notifyCommand(mockProgram as unknown as import("commander").Command);
+
+    expect(mockProgram.description).toHaveBeenCalledWith("Manage notification channels");
+  });
+
+  it("add <channel> subcommand has correct description (NOTF-CMD)", () => {
+        notifyCommand(mockProgram as unknown as import("commander").Command);
+
+    // notify command is the return of program.command("notify")
+    // then add is registered on that
+    expect(mockProgram.command).toHaveBeenCalledWith("add <channel>");
+  });
+
+  it("add <channel> subcommand registers --bot-token, --chat-id, --webhook-url, --force options (NOTF-CMD)", () => {
+        notifyCommand(mockProgram as unknown as import("commander").Command);
+
+    // The notify command was set up; now add subcommand options
+    expect(mockProgram.option).toHaveBeenCalledWith("--bot-token <token>", "Telegram bot token");
+    expect(mockProgram.option).toHaveBeenCalledWith("--chat-id <id>", "Telegram chat ID");
+    expect(mockProgram.option).toHaveBeenCalledWith("--webhook-url <url>", "Discord or Slack webhook URL");
+    expect(mockProgram.option).toHaveBeenCalledWith("--force", "Skip interactive prompts, use CLI args directly");
+  });
+
+  it("test <channel> subcommand has correct description (NOTF-CMD)", () => {
+        notifyCommand(mockProgram as unknown as import("commander").Command);
+
+    expect(mockProgram.command).toHaveBeenCalledWith("test <channel>");
+  });
+
+  it("remove <channel> subcommand has correct description (NOTF-CMD)", () => {
+        notifyCommand(mockProgram as unknown as import("commander").Command);
+
+    expect(mockProgram.command).toHaveBeenCalledWith("remove <channel>");
+  });
+
+  it("add action calls addChannel with channel and options (NOTF-CMD)", async () => {
+            notifyCommand(mockProgram as unknown as import("commander").Command);
+
+    await capturedAddAction!("telegram", { force: true, botToken: "123:ABC", chatId: "456" });
+
+    expect(mockedSaveNotifyChannel).toHaveBeenCalledWith("telegram", {
+      botToken: "123:ABC",
+      chatId: "456",
+    });
+  });
+
+  it("test action calls testChannel with channel (NOTF-CMD)", async () => {
+        notifyCommand(mockProgram as unknown as import("commander").Command);
+
+    await capturedTestAction!("discord");
+
+    expect(mockedAxiosPost).not.toHaveBeenCalled(); // no config loaded
+  });
+
+  it("remove action calls removeChannel with channel (NOTF-CMD)", () => {
+            notifyCommand(mockProgram as unknown as import("commander").Command);
+
+    capturedRemoveAction!("slack");
+
+    expect(mockedRemoveNotifyChannel).toHaveBeenCalledWith("slack");
   });
 });
