@@ -30,6 +30,9 @@ jest.mock("../../src/utils/paths.js", () => ({
 import {
   logSecurityEvent,
   detectCaller,
+  getSecurityLogEntriesForTesting,
+  resetSecurityLogForTesting,
+  SecurityLogger,
   type SecurityLogLevel,
   type SecurityLogCategory,
   type SecurityLogCaller,
@@ -298,6 +301,92 @@ describe("securityLogger", () => {
     it("returns 'cli' when KASTELL_CALLER has a different value", () => {
       process.env["KASTELL_CALLER"] = "daemon";
       expect(detectCaller()).toBe("cli");
+    });
+  });
+
+  describe("getSecurityLogEntriesForTesting", () => {
+    it("returns empty array when no events have been logged", () => {
+      resetSecurityLogForTesting();
+      const entries = getSecurityLogEntriesForTesting();
+      expect(entries).toEqual([]);
+    });
+
+    it("returns captured entries after logSecurityEvent calls", () => {
+      resetSecurityLogForTesting();
+      logSecurityEvent({ ...baseEntry, action: "event-1" });
+      logSecurityEvent({ ...baseEntry, action: "event-2" });
+
+      const entries = getSecurityLogEntriesForTesting();
+      expect(entries).toHaveLength(2);
+      expect(entries[0]["action"]).toBe("event-1");
+      expect(entries[1]["action"]).toBe("event-2");
+    });
+
+    it("returns a shallow copy (not the same array reference)", () => {
+      resetSecurityLogForTesting();
+      logSecurityEvent(baseEntry);
+
+      const entries = getSecurityLogEntriesForTesting();
+      entries.push({ foo: "bar" }); // mutate returned array
+
+      const next = getSecurityLogEntriesForTesting();
+      expect(next).toHaveLength(1); // original buffer unaffected
+    });
+  });
+
+  describe("resetSecurityLogForTesting", () => {
+    it("clears the internal buffer", () => {
+      logSecurityEvent(baseEntry);
+      logSecurityEvent({ ...baseEntry, action: "another" });
+
+      resetSecurityLogForTesting();
+
+      expect(getSecurityLogEntriesForTesting()).toEqual([]);
+    });
+
+    it("allows fresh entries after reset", () => {
+      resetSecurityLogForTesting();
+      logSecurityEvent({ ...baseEntry, action: "fresh" });
+
+      const entries = getSecurityLogEntriesForTesting();
+      expect(entries).toHaveLength(1);
+      expect(entries[0]["action"]).toBe("fresh");
+    });
+  });
+
+  describe("SecurityLogger.warn", () => {
+    let consoleWarnSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      consoleWarnSpy.mockRestore();
+    });
+
+    it("calls console.warn with [SECURITY] prefix and message", () => {
+      SecurityLogger.warn("test message");
+      expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
+      expect(consoleWarnSpy).toHaveBeenCalledWith("[SECURITY] test message", {});
+    });
+
+    it("passes context object as second argument", () => {
+      const context = { server: "my-server", ip: "1.2.3.4" };
+      SecurityLogger.warn("auth failure", context);
+      expect(consoleWarnSpy).toHaveBeenCalledWith("[SECURITY] auth failure", context);
+    });
+
+    it("passes empty object when context is undefined", () => {
+      SecurityLogger.warn("no context");
+      expect(consoleWarnSpy).toHaveBeenCalledWith("[SECURITY] no context", {});
+    });
+
+    it("does not throw when console.warn throws", () => {
+      consoleWarnSpy.mockImplementation(() => {
+        throw new Error("console warn blocked");
+      });
+      expect(() => SecurityLogger.warn("test")).not.toThrow();
     });
   });
 
