@@ -113,19 +113,11 @@ const PluginCheckV2Schema = z
     // form in v2 with a migration message to avoid silent data loss between
     // plugin author contract and audit/listChecks consumers.
     explain: z
-      .union([z.string(), z.object({ why: z.string(), fix: z.string() })])
-      .optional()
-      .superRefine((value, ctx) => {
-        if (value !== undefined && typeof value !== "string") {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message:
-              "PluginCheckV2.explain must be a string. Use PluginCheckV3 for structured explain (docs/plugin-sdk-migration-v3.md).",
-            path: ["explain"],
-          });
-        }
+      .string({
+        error:
+          "PluginCheckV2.explain must be a string. Use PluginCheckV3 for structured explain (docs/plugin-sdk-migration-v3.md).",
       })
-      .transform((v) => (typeof v === "string" ? v : undefined)),
+      .optional(),
     complianceRefs: complianceRefsSchema,
   })
   .strict();
@@ -233,20 +225,12 @@ export function validateManifest(manifest: unknown): PluginManifest {
  *
  * @param checks - Raw check array from plugin manifest
  * @param checkPrefix - Plugin check prefix (registry validation)
- * @param apiVersion - Plugin API version (required for v2/v3 dispatch)
- * @param pluginName - Plugin name (used in error messages)
+ * @param apiVersion - Plugin API version (defaults to "2" for backward compat)
+ * @param pluginName - Plugin name (used in error messages; defaults to "<unknown>")
  *
- * The 2-arg form `(checks, checkPrefix)` is backward-compat only and
- * dispatches to v2. New code MUST pass `apiVersion` and `pluginName`
- * to receive v3 acceptance and migration-path rejection.
+ * New code MUST pass `apiVersion` and `pluginName` to receive v3 acceptance
+ * and migration-path rejection.
  */
-export function validateChecks(
-  checks: unknown,
-  checkPrefix: string,
-  apiVersion?: PluginApiVersion,
-  pluginName?: string,
-): (PluginCheckV2 | PluginCheckV3)[];
-export function validateChecks(checks: unknown, checkPrefix: string): PluginCheckV2[];
 export function validateChecks(
   checks: unknown,
   checkPrefix: string,
