@@ -714,7 +714,7 @@ describe("loadProbeSession + listProbeSessions", () => {
     const ids = all.map((r) => r.sessionId).sort();
     expect(ids).toEqual([VALID_UUID_A, VALID_UUID_B].sort());
     for (const entry of all) {
-      expect(entry.loaded).not.toBeNull();
+      expect(entry.record).not.toBeNull();
     }
   });
 
@@ -725,7 +725,7 @@ describe("loadProbeSession + listProbeSessions", () => {
     const all = mod.listProbeSessions();
     const corrupt = all.find((r) => r.sessionId === "00000000-0000-4000-8000-000000000fff");
     expect(corrupt).toBeDefined();
-    expect(corrupt!.loaded).toBeNull();
+    expect(corrupt!.record).toBeNull();
     expect(corrupt!.reason).toBe("json-parse-failed");
   });
 });

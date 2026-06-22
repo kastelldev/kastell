@@ -89,7 +89,12 @@ function buildAuditCheck(
   return check;
 }
 
-const SECTION_PREFIX = "---SECTION:PLUGIN:";
+// Plugin batch sections use the same `---SECTION:<prefix>:<name>:<id>---`
+// header convention as the generic audit batch parser
+// (src/core/audit/checks/index.ts: SECTION_PATTERN). The regex captures
+// pluginName + checkId as separate groups; split with capturing groups
+// produces alternating name/checkId/content triples.
+const PLUGIN_SECTION_PATTERN = /^---SECTION:PLUGIN:([^:\n]+):([^:\n]+)---$/gm;
 
 interface ParsedSection {
   pluginName: string;
@@ -99,35 +104,15 @@ interface ParsedSection {
 
 function splitSections(stdout: string): ParsedSection[] {
   const sections: ParsedSection[] = [];
-  const lines = stdout.split("\n");
-  let current: { pluginName: string; checkId: string; bodyLines: string[] } | null = null;
-
-  const flush = (): void => {
-    if (current) {
-      sections.push({
-        pluginName: current.pluginName,
-        checkId: current.checkId,
-        body: current.bodyLines.join("\n").trim(),
-      });
-    }
-  };
-
-  for (const line of lines) {
-    if (line.startsWith(SECTION_PREFIX) && line.endsWith("---")) {
-      const header = line.slice(SECTION_PREFIX.length, line.length - 3);
-      // SECTION_PREFIX contains ':' so header always has at least one colon.
-      const colonIdx = header.lastIndexOf(":");
-      flush();
-      current = {
-        pluginName: header.slice(0, colonIdx),
-        checkId: header.slice(colonIdx + 1),
-        bodyLines: [],
-      };
-    } else if (current) {
-      current.bodyLines.push(line);
-    }
+  // parts: [ text-before-first-sep, NAME1, CHECKID1, content1, NAME2, CHECKID2, content2, ... ]
+  const parts = stdout.split(PLUGIN_SECTION_PATTERN);
+  for (let i = 1; i + 2 < parts.length; i += 3) {
+    sections.push({
+      pluginName: parts[i]!,
+      checkId: parts[i + 1]!,
+      body: parts[i + 2]!.trim(),
+    });
   }
-  flush();
   return sections;
 }
 

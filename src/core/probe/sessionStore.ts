@@ -93,13 +93,11 @@ export interface ProbeTransitionUpdate {
 
 export interface ProbeSessionLoadResult {
   sessionId: string;
-  loaded: ProbeSessionRecord | null;
   /**
-   * Alias of `loaded`. T10 callers (diagnostics, retention) prefer the
-   * `record` shape; T9 callers (and the loader itself) populate `loaded`.
-   * The two refer to the same underlying value.
+   * Parsed session record, or `null` if the file is missing or unparseable.
+   * `reason` carries the operator-facing detail when `record` is null.
    */
-  record?: ProbeSessionRecord | null;
+  record: ProbeSessionRecord | null;
   reason?: string;
 }
 
@@ -556,9 +554,9 @@ export function listProbeSessions(): ProbeSessionLoadResult[] {
     const sessionId = entry.slice(0, -".session.json".length);
     const record = loadSessionById(sessionId);
     if (record) {
-      results.push({ sessionId, loaded: record, record });
+      results.push({ sessionId, record });
     } else {
-      results.push({ sessionId, loaded: null, record: null, reason: "json-parse-failed" });
+      results.push({ sessionId, record: null, reason: "json-parse-failed" });
     }
   }
   return results;

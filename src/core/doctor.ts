@@ -21,20 +21,17 @@ import {
 import {
   tryRunProbeSessionMaintenance,
   probeDiagnosticToDoctorFinding,
+  DOCTOR_ACTIONABLE_KINDS,
 } from "./probe/diagnostics.js";
 import type { ServerRecord, MetricSnapshot, KastellResult } from "../types/index.js";
 import type { AuditHistoryEntry } from "./audit/types.js";
-import type { Severity } from "../types/severity.js";
+import { DOCTOR_SEVERITY_WEIGHTS, type Severity } from "../types/severity.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type DoctorSeverity = Severity;
 
-export const DOCTOR_SEVERITY_WEIGHTS: Record<DoctorSeverity, number> = {
-  critical: 10,
-  warning: 5,
-  info: 1,
-};
+export { DOCTOR_SEVERITY_WEIGHTS };
 
 export interface DoctorFinding {
   id: string;
@@ -466,12 +463,7 @@ export async function runServerDoctor(
     });
     probeFindings = bootstrap.diagnostics
       .filter((d) => d.targetKeyHash === targetHash)
-      .filter(
-        (d) =>
-          d.kind === "unresolved" ||
-          d.kind === "interrupted" ||
-          d.kind === "corrupt",
-      )
+      .filter((d) => DOCTOR_ACTIONABLE_KINDS.has(d.kind))
       .map(probeDiagnosticToDoctorFinding);
   }
 

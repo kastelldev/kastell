@@ -58,7 +58,7 @@ function buildLoadedSession(overrides: Partial<{
     ...(overrides.lastError ? { lastError: overrides.lastError } : {}),
     ...(overrides.terminalAt ? { terminalAt: overrides.terminalAt } : {}),
   };
-  return { sessionId, loaded, record: loaded };
+  return { sessionId, record: loaded };
 }
 
 async function loadModules(env: IsolatedKastellEnv): Promise<{
@@ -193,7 +193,7 @@ describe("classifyProbeSessions — corrupt and undecryptable", () => {
       writeFileSync(corruptPath, "{ not valid json");
 
       const arr = await mod.classifyProbeSessions(
-        [{ sessionId, loaded: null, reason: "json-parse-failed" }],
+        [{ sessionId, record: null, reason: "json-parse-failed" }],
         { resolveCurrentHandlerDigest: async () => undefined },
       );
       expect(arr).toContainEqual(
