@@ -16,6 +16,7 @@ automatically.
 | `apiVersion: "2"` with `checkCommand.kind: "mutate-local"` or `"mutate-global"` | **Rejected** — see [Mutating checks](#mutating-checks-rejected) |
 | `apiVersion: "2"` with top-level `fixCommand` string | **Rejected** — see [Raw `fixCommand`](#raw-fixcommand-rejected) |
 | `apiVersion: "2"` with `checkCommand.kind: "fix"` | **Rejected** — same rationale as raw `fixCommand`        |
+| `apiVersion: "2"` with `explain: <object>`     | **Accepted** — see [v2 `explain` object form](#v2-explain-object-form) |
 | `apiVersion: "3"`                              | **Required for new functionality**                            |
 | `activeProbe` in v3                           | **New** — Active Probe lifecycle                              |
 | `read` in v3                                  | **New** — explicit read-only check shape                      |
@@ -70,6 +71,36 @@ and the loader emits a migration guidance error. The fix never runs.
    `kastell <command>` flow under `commands/`. Commands are still in-process
    and trusted, but they are gated by `KASTELL_SAFE_MODE` and never executed
    during a routine audit.
+
+## v2 `explain` object form
+
+A v2 plugin may declare `explain` as either a string **or** an object
+`{ why: string; fix: string }`. Both forms are accepted by the loader and
+the validator. The object form gives a richer audit-render affordance
+(distinct "why it matters" + "how to fix" lines) without forcing the
+plugin to bump to v3.
+
+This is intentionally a backward-compatibility expansion rather than a
+v2 → v3 forcing function. Plugins that already use a plain string keep
+working unchanged.
+
+**When to prefer the object form in v2:**
+- The check has a non-obvious remediation path that audit-render would
+  benefit from surfacing in two distinct lines.
+- The plugin author does not yet want to commit to the v3 lifecycle
+  (no `activeProbe`, no `read` block).
+
+**When to migrate to v3 instead:**
+- The check needs any other v3 affordance (`activeProbe`, `read`,
+  `complianceRefs` with the v3 schema, plugin-level `commands`,
+  plugin-level `mcp-tool`).
+- The plugin author wants type-strict `explain` enforcement and the
+  v2 schema-strict reject was the only thing protecting them — note
+  that v2 is now permissive, so this reason no longer applies.
+
+**v3 contract:** v3 plugins continue to use the same object form
+(`PluginExplain` = `string | { why, fix }`); there is no v3-specific
+contract drift on this field.
 
 ## Manual lifecycle redesign checklist
 

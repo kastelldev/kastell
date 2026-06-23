@@ -307,6 +307,19 @@ export async function runProbeSessionMaintenance(): Promise<ProbeMaintenanceResu
  * Safe wrapper for bootstrap call sites (CLI startup, MCP server creation,
  * doctor entry). Catches every error, redacts it, security-logs, and
  * returns a bounded result with `error` populated. NEVER throws.
+ *
+ * Test-env short-circuit contract:
+ *   - In Jest (`NODE_ENV === "test"`), probe maintenance defaults to a no-op
+ *     UNLESS `KASTELL_TEST_MODE === "1"` is set explicitly (via
+ *     `tests/helpers/isolatedKastellEnv.ts`). The default-skip is the reason
+ *     every Jest test that needs real probe maintenance must opt-in.
+ *   - In production, `NODE_ENV` is not "test" by default — probe maintenance
+ *     runs. A misconfigured production deployment that sets `NODE_ENV=test`
+ *     (e.g. a CI pipeline mirror or a stray build flag) would silently skip
+ *     cleanup, letting old probe sessions accumulate on disk. This is a
+ *     bounded disk-pressure issue, not a security boundary, but if you are
+ *     touching this branch, consider whether a hard `KASTELL_TEST_MODE`
+ *     opt-in is now appropriate for your callers.
  */
 export async function tryRunProbeSessionMaintenance(): Promise<ProbeMaintenanceBootstrapResult> {
   if (process.env.NODE_ENV === "test" && process.env.KASTELL_TEST_MODE !== "1") {

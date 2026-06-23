@@ -97,6 +97,33 @@ describe("logSafeModeBlock — basic log entry", () => {
     expect(entry["plugin"]).toBe("kastell-plugin-probe");
     expect(entry["check_id"]).toBe("PROBE-001");
   });
+
+  it("preserves the canonical log shape when active-probe metadata is added", () => {
+    // Symmetric to "forwards active-probe metadata when provided" — verifies
+    // that adding the new fields does NOT displace the canonical shape that
+    // log consumers (SIEM, audit pipelines) parse strictly. If a future
+    // refactor accidentally reorders or overwrites the original field set,
+    // this test fails before downstream consumers break.
+    logSafeModeBlock("plugin-probe.execute", {
+      category: "plugin-probe",
+      targetHash: "hash-123",
+      plugin: "kastell-plugin-probe",
+      checkId: "PROBE-001",
+    });
+
+    const entry = readLastLogEntry();
+    expect(entry["level"]).toBe("warn");
+    expect(entry["action"]).toBe("plugin-probe.execute");
+    expect(entry["category"]).toBe("plugin-probe");
+    expect(entry["result"]).toBe("block");
+    expect(entry["reason"]).toBe("KASTELL_SAFE_MODE=true");
+    expect(typeof entry["ts"]).toBe("string");
+    expect(typeof entry["caller"]).toBe("string");
+    // New fields present alongside, not replacing, the canonical shape.
+    expect(entry["target_hash"]).toBe("hash-123");
+    expect(entry["plugin"]).toBe("kastell-plugin-probe");
+    expect(entry["check_id"]).toBe("PROBE-001");
+  });
 });
 
 // ─── Caller detection ─────────────────────────────────────────────────────────
