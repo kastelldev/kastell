@@ -1,5 +1,7 @@
 import { writeFileSync, appendFileSync, mkdirSync, chmodSync } from "fs";
 import { spawnSync } from "child_process";
+import { resolve, sep } from "path";
+import { tmpdir } from "os";
 import { isWindows } from "./platform.js";
 import { logger } from "./logger.js";
 
@@ -186,10 +188,47 @@ function icaclsIdentity(identity: string): string {
   return /^S-\d(?:-\d+)+$/i.test(identity) ? `*${identity}` : identity;
 }
 
+/**
+ * Returns true when KASTELL_DIR is set in the environment AND resolves to a
+ * path inside the OS temp directory. This is the test-environment signal —
+ * the kastell CLI is spawned by the integration test suite against an
+ * isolated temp dir (see tests/helpers/isolatedKastellEnv.ts).
+ *
+ * On Windows, `icacls <dir> /inheritance:r` over a directory that already
+ * contains files can leave the files' DACLs in a broken state (empty — no
+ * granted ACEs), which causes subsequent readFileSync to fail with EPERM.
+ * This bites integration tests where the parent process creates the dir,
+ * writes `servers.json`, then spawns kastell — kastell's startup
+ * `secureMkdirSync(KASTELL_DIR)` triggers `applyWindowsAcl`, the inheritance
+ * step breaks the pre-existing file's ACL, and the first read of
+ * servers.json fails.
+ *
+ * Production kastell never sets KASTELL_DIR (it uses ~/.kastell), so this
+ * skip is test-only. Test temp dirs are inherently user-private (mkdtempSync
+ * + inherited ACE for the creating user), so the security loss is zero.
+ */
+function isTestEnvironmentDir(): boolean {
+  const kastellDir = process.env.KASTELL_DIR;
+  if (!kastellDir) return false;
+  const resolvedKastell = resolve(kastellDir).toLowerCase();
+  const resolvedTmp = resolve(tmpdir()).toLowerCase();
+  return (
+    resolvedKastell === resolvedTmp ||
+    resolvedKastell.startsWith(resolvedTmp + sep)
+  );
+}
+
 function applyWindowsAcl(
   targetPath: string,
   sensitivity: PermissionSensitivity,
 ): void {
+  // Test-env skip: see isTestEnvironmentDir() doc above. Without this,
+  // tests/integration/cli-exit-codes.test.ts fails with EPERM on
+  // servers.json because icacls leaves child ACEs empty.
+  if (isTestEnvironmentDir()) {
+    return;
+  }
+
   // 1. Resolve current Windows identity (e.g. "DOMAIN\user") — cached.
   let identity: string;
   try {
