@@ -27,6 +27,9 @@ jobs:
           echo "name=$RAW_BRANCH" >> "$GITHUB_OUTPUT"
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        # codeql[actions/untrusted-checkout] trigger v* tag only (line 15 `startsWith v`) + CI success gate;
+        # fork PR'lar `v*` branch oluşturamaz (tag'ler base repo'da release skill tarafından oluşturulur),
+        # workflow_run context'inde head_branch upstream'tir, fork değil — false positive mitigation.
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
