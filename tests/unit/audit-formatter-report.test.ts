@@ -221,4 +221,45 @@ describe("P142: structured skip rendering in HTML+MD report", () => {
     expect(output).not.toMatch(/\|\s*Pass\s*\|.*PLUGIN-MUTATE-LOCAL/);
     expect(output).not.toMatch(/\|\s*FAIL\s*\|.*PLUGIN-MUTATE-LOCAL/);
   });
+
+  // P144 T6: active-probe skip is also rendered as Skipped (variant-agnostic)
+  const activeProbeSkipCheck: AuditCheck = {
+    id: "PROBE-01",
+    category: "Plugin",
+    name: "Active Probe",
+    severity: "info",
+    passed: false,
+    currentValue: "n/a",
+    expectedValue: "n/a",
+    skip: { code: "active-probe", apiVersion: "3" },
+  };
+
+  const resultWithActiveProbeSkip: AuditResult = {
+    ...mockResult,
+    categories: [
+      {
+        name: "Plugin",
+        checks: [activeProbeSkipCheck],
+        score: 100,
+        maxScore: 100,
+      },
+    ],
+    quickWins: [],
+  };
+
+  it("P144 T6: HTML report uses neutral Skipped state for active-probe skipped checks", async () => {
+    const { formatHtmlReport } = await import("../../src/core/audit/formatters/report");
+    const output = formatHtmlReport(resultWithActiveProbeSkip);
+
+    expect(output.toLowerCase()).toMatch(/skipped/);
+  });
+
+  it("P144 T6: MD report uses neutral Skipped state for active-probe skipped checks", async () => {
+    const { formatMdReport } = await import("../../src/core/audit/formatters/report");
+    const output = formatMdReport(resultWithActiveProbeSkip);
+
+    expect(output).toContain("Skipped");
+    expect(output).not.toMatch(/\|\s*Pass\s*\|.*PROBE-01/);
+    expect(output).not.toMatch(/\|\s*FAIL\s*\|.*PROBE-01/);
+  });
 });

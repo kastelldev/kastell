@@ -61,7 +61,7 @@ describe("plugin loader v2 contract", () => {
     jest.resetAllMocks();
   });
 
-  it("accepts mutating-looking command when kind declares mutation", async () => {
+  it("rejects mutating command under v2 with migration guidance (p144 T2)", async () => {
     (existsSync as jest.Mock).mockReturnValue(true);
     (readdirSync as jest.Mock).mockReturnValue([
       { name: "kastell-plugin-mutating", isDirectory: () => true },
@@ -74,8 +74,9 @@ describe("plugin loader v2 contract", () => {
     });
 
     const result = await loadPlugins({ importer: mockImporter });
-    expect(result.loaded).toContain("kastell-plugin-mutating");
-    expect(result.errors).toHaveLength(0);
+    expect(result.loaded).not.toContain("kastell-plugin-mutating");
+    expect(result.errors.length).toBeGreaterThan(0);
+    expect(result.errors.join("\n")).toMatch(/mutate-local.*docs\/plugin-sdk-migration-v3\.md/);
   });
 
   it("rejects legacy string checkCommand through validation", async () => {

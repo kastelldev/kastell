@@ -6,6 +6,8 @@
  */
 import { writeFileSync, appendFileSync, mkdirSync, chmodSync } from "fs";
 import { spawnSync } from "child_process";
+import { join } from "path";
+import { tmpdir } from "os";
 
 jest.mock("fs", () => {
   const actual = jest.requireActual<typeof import("fs")>("fs");
@@ -87,10 +89,14 @@ beforeEach(async () => {
     output: [],
     signal: null,
   })) as unknown as typeof spawnSync);
+  delete process.env.KASTELL_TEST_MODE;
+  delete process.env.KASTELL_DIR;
   Object.defineProperty(process, "platform", { value: "win32", configurable: true });
 });
 
 afterEach(async () => {
+  delete process.env.KASTELL_TEST_MODE;
+  delete process.env.KASTELL_DIR;
   Object.defineProperty(process, "platform", { value: "linux", configurable: true });
   // CRITICAL: reset the module-level identity cache between tests so the
   // first-call/skip-on-subsequent-call behavior is observable per test.
@@ -174,6 +180,33 @@ describe("resetWindowsIdentityCacheForTesting", () => {
 // ─── ACL step integration: whoami runs once across multiple writes ──────────
 
 describe("applyWindowsAcl integration — whoami cached across writes", () => {
+  it("does not disable ACL hardening merely because KASTELL_DIR is under temp", async () => {
+    process.env.KASTELL_DIR = join(tmpdir(), "kastell-user-config");
+    await loadModule();
+
+    secureWriteModule.secureWriteFileSync(
+      join(process.env.KASTELL_DIR, "secret.json"),
+      "data",
+      { sensitivity: "secret" },
+    );
+
+    expect(getSpawnCalls().some((call) => call.cmd === "icacls")).toBe(true);
+  });
+
+  it("skips ACL hardening only for an explicitly marked isolated test directory", async () => {
+    process.env.KASTELL_DIR = join(tmpdir(), "kastell-test-explicit");
+    process.env.KASTELL_TEST_MODE = "1";
+    await loadModule();
+
+    secureWriteModule.secureWriteFileSync(
+      join(process.env.KASTELL_DIR, "secret.json"),
+      "data",
+      { sensitivity: "secret" },
+    );
+
+    expect(getSpawnCalls().some((call) => call.cmd === "icacls")).toBe(false);
+  });
+
   it("should invoke whoami only once across multiple secureWriteFileSync calls", async () => {
     await loadModule();
     const { secureWriteFileSync } = secureWriteModule;

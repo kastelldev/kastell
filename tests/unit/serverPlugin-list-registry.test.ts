@@ -27,8 +27,8 @@ describe("server_plugin list", () => {
         entry: "./index.js",
       },
       [
-        { id: "AUD-001", name: "Check One", description: "Test", severity: "info" as const, category: "test", checkCommand: { kind: "read", cmd: "echo test" } },
-        { id: "AUD-002", name: "Check Two", description: "Test", severity: "warning" as const, category: "test", checkCommand: { kind: "read", cmd: "echo test" } },
+        { id: "AUD-001", name: "Check One", description: "Test", severity: "info" as const, category: "test", sourceApiVersion: "2" as const, checkCommand: { kind: "read", cmd: "echo test" } },
+        { id: "AUD-002", name: "Check Two", description: "Test", severity: "warning" as const, category: "test", sourceApiVersion: "2" as const, checkCommand: { kind: "read", cmd: "echo test" } },
       ],
     );
 
@@ -62,7 +62,7 @@ describe("server_plugin list", () => {
         checkPrefix: "WP",
         entry: "./index.js",
       },
-      [{ id: "WP-001", name: "WordPress Check", description: "Test", severity: "info" as const, category: "test", checkCommand: { kind: "read", cmd: "echo test" } }],
+      [{ id: "WP-001", name: "WordPress Check", description: "Test", severity: "info" as const, category: "test", sourceApiVersion: "2" as const, checkCommand: { kind: "read", cmd: "echo test" } }],
     );
 
     const result = await handleServerPlugin({ action: "list" });

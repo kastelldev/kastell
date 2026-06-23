@@ -157,6 +157,7 @@ AGENTS.md
 TODO.md
 LESSONS.md
 .planning/
+.superpowers/
 
 # Superpowers plans (agent-driven development)
 docs/superpowers/
@@ -190,3 +191,4 @@ docs/audits/
 # Never commit; this dir is a sandbox for diff/e2e artifacts.
 tmp/
 .simplify-sandbox*/
+.simplify-scratch/

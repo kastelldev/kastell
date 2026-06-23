@@ -105,11 +105,20 @@ and `/agent:kastell-auditor` to get prioritized remediation guidance from audit 
 | Vultr | 25+ global locations | |
 | Linode (Akamai) | 11 global locations | |
 
-## Plugin SDK v2
+## Plugin SDK v3
 
-Kastell v2.3.0 introduces the Plugin SDK v2 audit command contract. Plugin manifests use `apiVersion: "2"`, and audit checks declare `checkCommand` as `{ kind, cmd }` instead of a plain string.
+Kastell v2.3.0 introduces the Plugin SDK v3 contract. Plugin manifests use
+`apiVersion: "3"`, and audit checks declare `read` (read-only) and/or
+`activeProbe` (lifecycle-driven) blocks. v2 read-only plugins continue to be
+accepted; v2 mutating checks and raw `fixCommand` strings are rejected with
+migration guidance.
 
-See [Plugin SDK v2 Migration Guide](../docs/plugin-sdk-migration-v2.md).
+The Active Probe lifecycle is `prepare` → `execute` → `verify` → `rollback`,
+runs only when an operator explicitly invokes `kastell probe run`, and is
+confined to a session-scoped path that the probe module prepares.
+
+See [Plugin SDK v3 Guide](../docs/plugin-sdk-v3.md) and the
+[Plugin SDK v2 → v3 Migration Guide](../docs/plugin-sdk-migration-v3.md).
 
 ## Links
 

@@ -14,3 +14,9 @@ export const PLUGINS_DIR = join(KASTELL_DIR, "plugins");
 
 /** Plugin node_modules: ~/.kastell/plugins/node_modules */
 export const PLUGINS_NODE_MODULES = join(PLUGINS_DIR, "node_modules");
+
+/** Active Probe session directory: ~/.kastell/probe-sessions */
+export const PROBE_SESSIONS_DIR = join(KASTELL_DIR, "probe-sessions");
+
+/** Active Probe target reservation directory: ~/.kastell/probe-sessions/targets */
+export const PROBE_TARGETS_DIR = join(PROBE_SESSIONS_DIR, "targets");

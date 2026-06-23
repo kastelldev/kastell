@@ -174,22 +174,25 @@ export function diffAuditsFlat(
     const a = afterMap.get(id) ?? null;
     if (b === null || a === null) continue; // skip added/removed — no A/B pair
     const source = a ?? b;
-    const bState = beforeStateMap.get(id) ?? null;
-    const aState = afterStateMap.get(id) ?? null;
+    const beforeState = beforeStateMap.get(id) ?? null;
+    const afterState = afterStateMap.get(id) ?? null;
     let status: FlatCheckDiffStatus;
-    if (bState === "skipped" && aState === "skipped") status = "both_skip";
-    else if (bState === "skipped") status = "B_skip"; // before is skipped, after is the real side
-    else if (aState === "skipped") status = "A_skip"; // after is skipped, before is the real side
+    if (beforeState === "skipped" && afterState === "skipped") status = "both_skip";
+    else if (beforeState === "skipped") status = "B_skip"; // before side is skipped, after is the real side
+    else if (afterState === "skipped") status = "A_skip"; // after side is skipped, before is the real side
     else if (!b.passed && a.passed) status = "A_better";
     else if (b.passed && !a.passed) status = "B_better";
     else if (b.passed && a.passed) status = "both_pass";
     else status = "both_fail";
+    // Public compatibility:
+    // A_skip = after side is skipped
+    // B_skip = before side is skipped
     checks.push({
       id,
       name: source.name,
       status,
-      before: bState,
-      after: aState,
+      before: beforeState,
+      after: afterState,
     });
   }
 

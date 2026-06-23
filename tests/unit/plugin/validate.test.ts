@@ -2,7 +2,8 @@ jest.mock("../../../src/utils/version.js", () => ({
   KASTELL_VERSION: "2.2.0",
 }));
 
-import { validateManifest } from "../../../src/plugin/validate.js";
+import { validateManifest, validateChecks } from "../../../src/plugin/validate.js";
+import { validateAndNormalizeChecks } from "../../../src/plugin/normalize.js";
 import { ValidationError } from "../../../src/utils/errors.js";
 
 const VALID_MANIFEST = {
@@ -437,6 +438,263 @@ describe("validateManifest", () => {
         fixes: [{ checkId: "WP-001", tier: "SAFE", handler: "./fixes/fix001.js" }],
       });
       expect(result.fixes).toHaveLength(1);
+    });
+  });
+});
+
+describe("validateChecks — v2/v3 version dispatch", () => {
+  describe("v2 acceptance", () => {
+    it("accepts v2 read-only checks and normalizes missing description", () => {
+      const checks = validateChecks(
+        [{
+          id: "WP-READ", name: "read", category: "WP", severity: "info",
+          checkCommand: { kind: "read", cmd: "echo ok" },
+        }],
+        "WP", "2", "kastell-plugin-wordpress",
+      );
+      expect(validateAndNormalizeChecks(checks, "2")[0]).toMatchObject({
+        description: "", sourceApiVersion: "2", read: { cmd: "echo ok" },
+      });
+    });
+  });
+
+  describe("v2 rejection", () => {
+    it.each(["mutate-local", "mutate-global"] as const)(
+      "rejects v2 %s with check id and migration path",
+      (kind) => {
+        expect(() => validateChecks([{
+          id: "WP-MUT", name: "mutating", category: "WP", severity: "warning",
+          checkCommand: { kind, cmd: "systemctl restart nginx" },
+        }], "WP", "2", "kastell-plugin-wordpress"))
+          .toThrow(/WP-MUT.*mutate-.*docs\/plugin-sdk-migration-v3\.md/);
+      },
+    );
+
+    it("rejects v2 raw fixCommand", () => {
+      expect(() => validateChecks([{
+        id: "WP-FIX", name: "raw fix", category: "WP", severity: "warning",
+        checkCommand: { kind: "read", cmd: "echo bad" },
+        fixCommand: "systemctl restart nginx",
+      }], "WP", "2", "kastell-plugin-wordpress"))
+        .toThrow(/WP-FIX.*fixCommand.*migration/i);
+    });
+
+    it("accepts v2 explain object form for backward compatibility", () => {
+      const checks = validateChecks([{
+        id: "WP-OBJ", name: "object form", category: "WP", severity: "warning",
+        checkCommand: { kind: "read", cmd: "echo ok" },
+        explain: { why: "because", fix: "do this" },
+      }], "WP", "2", "kastell-plugin-wordpress");
+      expect(checks[0].explain).toEqual({ why: "because", fix: "do this" });
+    });
+
+    it("accepts v2 explain as string", () => {
+      const checks = validateChecks([{
+        id: "WP-STR", name: "string form", category: "WP", severity: "info",
+        checkCommand: { kind: "read", cmd: "echo ok" },
+        explain: "because reasons",
+      }], "WP", "2", "kastell-plugin-wordpress");
+      expect(checks[0].explain).toBe("because reasons");
+    });
+
+    it("normalizes v2 explain object form without lossy conversion", () => {
+      const checks = validateChecks([{
+        id: "WP-NORM", name: "normalize", category: "WP", severity: "info",
+        checkCommand: { kind: "read", cmd: "echo ok" },
+        explain: { why: "because", fix: "do this" },
+      }], "WP", "2", "kastell-plugin-wordpress");
+      expect(validateAndNormalizeChecks(checks, "2")[0].explain)
+        .toEqual({ why: "because", fix: "do this" });
+    });
+  });
+
+  describe("2-arg overload backward compat", () => {
+    it("dispatches to v2 and accepts a v2-shaped check", () => {
+      const v2Shaped = [{
+        id: "WP-V2", name: "v", category: "WP", severity: "info",
+        checkCommand: { kind: "read", cmd: "echo ok" },
+      }];
+      const checks = validateChecks(v2Shaped, "WP");
+      expect(checks).toHaveLength(1);
+    });
+
+    it("2-arg overload rejects v3-shaped input (read field unknown in v2 strict schema)", () => {
+      const v3Shaped = [{
+        id: "WP-V3", name: "v", category: "WP", severity: "info",
+        description: "v3", read: { cmd: "echo ok" },
+      }];
+      expect(() => validateChecks(v3Shaped, "WP")).toThrow();
+    });
+
+    it("2-arg overload applies v2 rules (rejects v2 raw fixCommand)", () => {
+      expect(() => validateChecks([{
+        id: "WP-FIX", name: "raw fix", category: "WP", severity: "warning",
+        checkCommand: { kind: "read", cmd: "echo bad" },
+        fixCommand: "systemctl restart nginx",
+      }] as never, "WP"))
+        .toThrow(/fixCommand.*migration/i);
+    });
+  });
+
+  describe("v3 acceptance", () => {
+    it("accepts v3 read-only, probe-only, and combined checks", () => {
+      const raw = [
+        { id: "WP-READ", name: "read", category: "WP", severity: "info",
+          description: "read", read: { cmd: "echo read" } },
+        { id: "WP-PROBE", name: "probe", category: "WP", severity: "warning",
+          description: "probe",
+          activeProbe: { handler: "./probes/check.js", risk: "low", timeoutMs: 5_000 } },
+        { id: "WP-BOTH", name: "both", category: "WP", severity: "critical",
+          description: "both", read: { cmd: "echo both" },
+          activeProbe: { handler: "./probes/check.js", risk: "high", timeoutMs: 300_000 } },
+      ];
+      const checks = validateChecks(raw, "WP", "3", "kastell-plugin-wordpress");
+      expect(validateAndNormalizeChecks(checks, "3").map((c) => c.id))
+        .toEqual(["WP-READ", "WP-PROBE", "WP-BOTH"]);
+    });
+
+    it("accepts v3 inclusive timeout boundaries (5000 and 300000)", () => {
+      const raw = [
+        { id: "WP-MIN", name: "min", category: "WP", severity: "info",
+          description: "min", activeProbe: { handler: "./p.js", risk: "low", timeoutMs: 5_000 } },
+        { id: "WP-MAX", name: "max", category: "WP", severity: "info",
+          description: "max", activeProbe: { handler: "./p.js", risk: "low", timeoutMs: 300_000 } },
+      ];
+      expect(() => validateChecks(raw, "WP", "3", "kastell-plugin-wordpress")).not.toThrow();
+    });
+  });
+
+  describe("v3 rejection", () => {
+    it("rejects v3 with neither read nor activeProbe", () => {
+      expect(() => validateChecks([{
+        id: "WP-EMPTY", name: "empty", category: "WP", severity: "info", description: "empty",
+      }], "WP", "3", "kastell-plugin-wordpress"))
+        .toThrow(/requires read and\/or activeProbe/);
+    });
+
+    it.each([4_999, 300_001])("rejects v3 timeout %d outside 5000..300000", (timeoutMs) => {
+      expect(() => validateChecks([{
+        id: "WP-PROBE", name: "probe", category: "WP", severity: "warning", description: "probe",
+        activeProbe: { handler: "./probes/check.js", risk: "low", timeoutMs },
+      }], "WP", "3", "kastell-plugin-wordpress"))
+        .toThrow(/timeoutMs/);
+    });
+
+    it("rejects non-integer timeoutMs", () => {
+      expect(() => validateChecks([{
+        id: "WP-PROBE", name: "probe", category: "WP", severity: "warning", description: "probe",
+        activeProbe: { handler: "./probes/check.js", risk: "low", timeoutMs: 5_500.5 },
+      }], "WP", "3", "kastell-plugin-wordpress"))
+        .toThrow(/timeoutMs/);
+    });
+
+    it.each(["echo ---SECTION:foo", "echo KASTELL_PLUGIN_CHECK_EOF", "echo bad\rchar"])(
+      "rejects v3 read.cmd containing dangerous token",
+      (cmd) => {
+        expect(() => validateChecks([{
+          id: "WP-READ", name: "read", category: "WP", severity: "info",
+          description: "read", read: { cmd },
+        }], "WP", "3", "kastell-plugin-wordpress"))
+          .toThrow();
+      },
+    );
+
+    it("rejects empty read.cmd", () => {
+      expect(() => validateChecks([{
+        id: "WP-READ", name: "read", category: "WP", severity: "info",
+        description: "read", read: { cmd: "" },
+      }], "WP", "3", "kastell-plugin-wordpress"))
+        .toThrow();
+    });
+
+    it.each([
+      "noSlash.js",
+      "./has/dotdot/../traversal.js",
+      "back\\slash.js",
+      "./noext",
+      "./wrong.ext",
+    ])("rejects handler path %s", (handler) => {
+      expect(() => validateChecks([{
+        id: "WP-PROBE", name: "probe", category: "WP", severity: "warning",
+        description: "probe",
+        activeProbe: { handler, risk: "low", timeoutMs: 5_000 },
+      }], "WP", "3", "kastell-plugin-wordpress"))
+        .toThrow(/handler/);
+    });
+
+    it("rejects unknown fields in read object", () => {
+      expect(() => validateChecks([{
+        id: "WP-READ", name: "read", category: "WP", severity: "info",
+        description: "read",
+        read: { cmd: "echo ok", shell: "/bin/sh" },
+      }], "WP", "3", "kastell-plugin-wordpress"))
+        .toThrow();
+    });
+
+    it("rejects unknown fields in activeProbe object", () => {
+      expect(() => validateChecks([{
+        id: "WP-PROBE", name: "probe", category: "WP", severity: "warning",
+        description: "probe",
+        activeProbe: { handler: "./p.js", risk: "low", timeoutMs: 5_000, sandbox: true },
+      }], "WP", "3", "kastell-plugin-wordpress"))
+        .toThrow();
+    });
+
+    it("rejects unknown top-level field in v3 check", () => {
+      expect(() => validateChecks([{
+        id: "WP-READ", name: "read", category: "WP", severity: "info",
+        description: "read", read: { cmd: "echo ok" },
+        safeToAutoFix: "SAFE",
+      }], "WP", "3", "kastell-plugin-wordpress"))
+        .toThrow();
+    });
+
+    it("rejects unknown risk enum", () => {
+      expect(() => validateChecks([{
+        id: "WP-PROBE", name: "probe", category: "WP", severity: "warning",
+        description: "probe",
+        activeProbe: { handler: "./p.js", risk: "extreme" as unknown as "low", timeoutMs: 5_000 },
+      }], "WP", "3", "kastell-plugin-wordpress"))
+        .toThrow();
+    });
+  });
+
+  describe("shared id/duplicate checks", () => {
+    it("rejects check id not matching prefix", () => {
+      expect(() => validateChecks([{
+        id: "OTHER-X", name: "x", category: "WP", severity: "info",
+        checkCommand: { kind: "read", cmd: "echo" },
+      }], "WP", "2", "kastell-plugin-wordpress"))
+        .toThrow(ValidationError);
+    });
+
+    it("rejects duplicate check ids within plugin (v2)", () => {
+      const arr = [{
+        id: "WP-X", name: "x", category: "WP", severity: "info",
+        checkCommand: { kind: "read", cmd: "echo a" },
+      }, {
+        id: "WP-X", name: "x", category: "WP", severity: "info",
+        checkCommand: { kind: "read", cmd: "echo b" },
+      }];
+      expect(() => validateChecks(arr, "WP", "2", "kastell-plugin-wordpress"))
+        .toThrow(/Duplicate check id/);
+    });
+
+    it("rejects duplicate check ids within plugin (v3)", () => {
+      const arr = [{
+        id: "WP-X", name: "x", category: "WP", severity: "info",
+        description: "x", read: { cmd: "echo a" },
+      }, {
+        id: "WP-X", name: "x", category: "WP", severity: "info",
+        description: "x", read: { cmd: "echo b" },
+      }];
+      expect(() => validateChecks(arr, "WP", "3", "kastell-plugin-wordpress"))
+        .toThrow(/Duplicate check id/);
+    });
+
+    it("rejects non-array checks", () => {
+      expect(() => validateChecks("not-array", "WP", "2", "kastell-plugin-wordpress"))
+        .toThrow(/must be an array/);
     });
   });
 });

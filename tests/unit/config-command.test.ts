@@ -6,6 +6,52 @@ import { createConsoleSpy } from "../helpers/consoleSpy.js";
 jest.mock("../../src/utils/providerConfig");
 jest.mock("../../src/utils/yamlConfig");
 
+// @ts-ignore - inquirer mock with dynamic control via proxy
+jest.mock("inquirer", () => {
+  // Use a proxy so the factory captures the proxy, not the mutable state
+  // The proxy forwards gets to a mutable object that tests can update
+  const state = { inquirerVal: {} };
+  const promptFn = () => Promise.resolve(state.inquirerVal);
+  const handler = {
+    get(_t: unknown, prop: string) {
+      // `default.prompt(...)` (source uses await import -> __importStar wraps proxy
+      // as { default: proxy }; subsequent .prompt access goes through this handler).
+      if (prop === "default") {
+        return { prompt: promptFn };
+      }
+      // Direct `prompt(...)` access (some code paths / moduleNameMapper mock).
+      if (prop === "prompt") {
+        return promptFn;
+      }
+      if (prop === "_inquirerState") return state;
+      return undefined;
+    },
+  };
+  return new Proxy({}, handler);
+});
+
+// Shared state for repair tests — state object reference is captured by the proxy
+const _inquirerState = (require("inquirer") as unknown as { _inquirerState: { inquirerVal: unknown } })._inquirerState;
+
+let _diagnoseResult = {
+  status: "healthy" as "healthy" | "degraded" | "corrupt" | "missing",
+  issues: [] as { type: string; message: string; index?: number }[],
+  validCount: 0, invalidCount: 0, autoFixableCount: 0, totalCount: 0,
+};
+let _repairResult = { backupPath: "", recoveredCount: 0, droppedCount: 0, autoFixedCount: 0 };
+let _repairCalled = false;
+
+jest.mock("../../src/core/configRepair", () => ({
+  diagnoseConfig: () => _diagnoseResult,
+  repairConfig: () => {
+    _repairCalled = true;
+    return _repairResult;
+  },
+}));
+jest.mock("../../src/utils/paths", () => ({
+  KASTELL_DIR: "/mock/kastell",
+}));
+
 const mockedDefaults = defaults as jest.Mocked<typeof defaults>;
 const mockedYamlConfig = yamlConfig as jest.Mocked<typeof yamlConfig>;
 
@@ -16,7 +62,18 @@ describe("configCommand", () => {
   beforeEach(() => {
     spy.setup();
     stderrSpy = jest.spyOn(console, "error").mockImplementation();
-    jest.clearAllMocks();
+    // Reset module-level repair mock state
+    _diagnoseResult = {
+      status: "healthy",
+      issues: [],
+      validCount: 0,
+      invalidCount: 0,
+      autoFixableCount: 0,
+      totalCount: 0,
+    };
+    _repairResult = { backupPath: "", recoveredCount: 0, droppedCount: 0, autoFixedCount: 0 };
+    _repairCalled = false;
+    _inquirerState.inquirerVal = {};
     // Mock VALID_KEYS as a real value
     Object.defineProperty(mockedDefaults, "VALID_KEYS", {
       value: ["provider", "region", "size", "name"],
@@ -156,6 +213,87 @@ describe("configCommand", () => {
       await configCommand("unknown");
       const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
       expect(output).toContain("Usage");
+    });
+  });
+
+  describe("repair subcommand", () => {
+    it("should show info message when servers.json is missing", async () => {
+      _diagnoseResult = {
+        status: "missing",
+        issues: [],
+        validCount: 0,
+        invalidCount: 0,
+        autoFixableCount: 0,
+        totalCount: 0,
+      };
+
+      await configCommand("repair");
+
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
+      expect(output).toContain("No servers.json found");
+    });
+
+    it("should show healthy status and return early", async () => {
+      _diagnoseResult = {
+        status: "healthy",
+        issues: [],
+        validCount: 3,
+        invalidCount: 0,
+        autoFixableCount: 0,
+        totalCount: 3,
+      };
+
+      await configCommand("repair");
+
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
+      expect(output).toContain("healthy");
+      expect(output).toContain("3 servers");
+    });
+
+    it("should show degraded status and cancel when user refuses", async () => {
+      _diagnoseResult = {
+        status: "degraded",
+        issues: [{ type: "unknown_provider", message: "Unknown provider", index: 0 }],
+        validCount: 5,
+        invalidCount: 1,
+        autoFixableCount: 1,
+        totalCount: 6,
+      };
+      _inquirerState.inquirerVal = { proceed: false };
+
+      await configCommand("repair");
+
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
+      expect(output).toContain("degraded");
+      expect(output).toContain("cancelled");
+    });
+
+    it("should run repair and report when user confirms", async () => {
+      _diagnoseResult = {
+        status: "degraded",
+        issues: [{ type: "unknown_provider", message: "Unknown provider", index: 0 }],
+        validCount: 5,
+        invalidCount: 1,
+        autoFixableCount: 2,
+        totalCount: 6,
+      };
+      _inquirerState.inquirerVal = { proceed: true };
+      _repairResult = {
+        backupPath: "/mock/kastell/backups/servers.bak",
+        recoveredCount: 1,
+        droppedCount: 1,
+        autoFixedCount: 2,
+      };
+
+      await configCommand("repair");
+
+      expect(_repairCalled).toBe(true);
+      const output = [...spy.getCalls(), ...stderrSpy.mock.calls].map((c: any[]) => c.join(" ")).join("\n");
+      expect(output).toContain("Repair complete");
+      expect(output).toContain("recovered");
+      expect(output).toContain("auto-fixed");
+      expect(output).toContain("dropped");
+      expect(output).toContain("Backup saved");
     });
   });
 });

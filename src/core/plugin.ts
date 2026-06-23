@@ -2,7 +2,7 @@ import { spawn } from "child_process";
 import { PLUGIN_STATUS_LOADED } from "../plugin/registry.js";
 import { existsSync } from "fs";
 import { join } from "path";
-import { getPluginRegistry, mapRegistryPlugins, deletePlugin as deletePluginFromRegistry, savePluginCache } from "../plugin/registry.js";
+import { getPluginRegistry, mapRegistryPlugins, deletePlugin as deletePluginFromRegistry, savePluginCache, toPluginCacheEntry } from "../plugin/registry.js";
 import type { PluginRegistryEntry } from "../plugin/registry.js";
 import type { PluginManifest } from "../plugin/sdk/types.js";
 import { PLUGIN_NAME_PATTERN } from "../plugin/sdk/constants.js";
@@ -100,7 +100,7 @@ export async function removePlugin(name: string): Promise<PluginOperationResult>
   const manifests = mapRegistryPlugins((_, entry) =>
     entry.status === PLUGIN_STATUS_LOADED ? entry.manifest : null,
   ).filter((m): m is PluginManifest => m !== null);
-  savePluginCache(manifests);
+  savePluginCache(manifests.map(toPluginCacheEntry));
 
   return { success: true, name };
 }
@@ -140,14 +140,11 @@ export type PluginListEntry =
 // Discriminator-narrowing helpers — P139 simplify C3/A12: replace
 // `entry.status === PLUGIN_STATUS_LOADED ? ... : ...` ternaries with structural narrowing.
 function toListEntry(_: string, entry: PluginRegistryEntry): PluginListEntry {
-  const base = {
-    name: entry.manifest.name,
-    version: entry.manifest.version,
-    prefix: entry.manifest.checkPrefix,
-  };
   if (entry.status === PLUGIN_STATUS_LOADED) {
     return {
-      ...base,
+      name: entry.manifest.name,
+      version: entry.manifest.version,
+      prefix: entry.manifest.checkPrefix,
       status: "loaded",
       checks: entry.checks.length,
       commands: entry.commands ?? [],
@@ -156,7 +153,9 @@ function toListEntry(_: string, entry: PluginRegistryEntry): PluginListEntry {
   }
   if (entry.status === "failed") {
     return {
-      ...base,
+      name: entry.descriptor.name,
+      version: entry.descriptor.version ?? "unknown",
+      prefix: entry.descriptor.checkPrefix ?? "unknown",
       status: "failed",
       checks: 0,
       commands: [],
@@ -165,7 +164,15 @@ function toListEntry(_: string, entry: PluginRegistryEntry): PluginListEntry {
     };
   }
   // disabled
-  return { ...base, status: "disabled", checks: 0, commands: [], mcpTools: [] };
+  return {
+    name: entry.manifest.name,
+    version: entry.manifest.version,
+    prefix: entry.manifest.checkPrefix,
+    status: "disabled",
+    checks: 0,
+    commands: [],
+    mcpTools: [],
+  };
 }
 
 export function listPlugins(): PluginListEntry[] {
@@ -179,8 +186,10 @@ export interface PluginValidationResult {
 }
 
 function toValidationResult(name: string, entry: PluginRegistryEntry): PluginValidationResult {
+  const resolvedName =
+    entry.status === "failed" ? entry.descriptor.name : entry.manifest.name;
   return {
-    name: entry.manifest.name,
+    name: resolvedName,
     valid: entry.status === PLUGIN_STATUS_LOADED,
     ...(entry.status === "failed" ? { reason: entry.reason } : {}),
   };

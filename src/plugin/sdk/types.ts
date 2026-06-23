@@ -51,10 +51,143 @@ export type PluginCheckCommand =
   | { kind: "mutate-local"; cmd: string }
   | { kind: "mutate-global"; cmd: string };
 
-export interface PluginManifest {
+export type PluginExplainObject = { why: string; fix: string };
+export type PluginExplain = string | PluginExplainObject;
+
+export interface PluginReadDefinition {
+  cmd: string;
+  passPattern?: string;
+  failPattern?: string;
+}
+
+export type PluginProbeRisk = "low" | "medium" | "high";
+
+export interface ActiveProbeDefinition {
+  handler: string;
+  risk: PluginProbeRisk;
+  timeoutMs: number;
+}
+
+export interface PluginProbeTarget {
+  serverId: string;
+  provider: string;
+  cloudId?: string;
+  ip: string;
+}
+
+export interface PluginProbeContext {
+  readonly target: PluginProbeTarget;
+  readonly sessionId: string;
+  readonly pluginName: string;
+  readonly checkId: string;
+  readonly signal: AbortSignal;
+  readonly deadlineMs: number;
+  ssh: (command: string, options?: { timeoutMs?: number }) => Promise<{ stdout: string; stderr: string; code: number }>;
+  /**
+   * Logger accepts a structured-fields second argument. The runtime
+   * implementation in src/core/probe/context.ts serializes fields
+   * through the bounded `safeStringify` redactor before forwarding.
+   */
+  logger: {
+    info: (msg: string, fields?: unknown) => void;
+    warn: (msg: string, fields?: unknown) => void;
+    error: (msg: string, fields?: unknown) => void;
+  };
+}
+
+export interface PluginProbeVerification {
+  passed: boolean;
+  summary?: string;
+  data?: Record<string, unknown>;
+}
+
+export interface PluginProbeRollbackResult {
+  success: boolean;
+  summary?: string;
+  data?: Record<string, unknown>;
+}
+
+export interface ActiveProbeModule {
+  prepare: (ctx: PluginProbeContext) => Promise<unknown>;
+  execute: (ctx: PluginProbeContext, prepared: unknown) => Promise<unknown>;
+  verify: (
+    ctx: PluginProbeContext,
+    prepared: unknown,
+    executed: unknown,
+  ) => Promise<PluginProbeVerification>;
+  rollback: (
+    ctx: PluginProbeContext,
+    prepared: unknown,
+    executed?: unknown,
+  ) => Promise<PluginProbeRollbackResult>;
+}
+
+export interface PluginComplianceRef {
+  framework: string;
+  ref: string;
+}
+
+interface PluginCheckBase {
+  id: string;
+  name: string;
+  category: string;
+  severity: PluginSeverity;
+  description: string;
+  complianceRefs?: PluginComplianceRef[];
+}
+
+export interface PluginCheckV2 extends PluginCheckBase {
+  checkCommand: PluginCheckCommand;
+  passPattern?: string;
+  failPattern?: string;
+  fixCommand?: string;
+  safeToAutoFix?: PluginFixTier;
+  explain?: PluginExplain;
+}
+
+export interface PluginCheckV3 extends PluginCheckBase {
+  read?: PluginReadDefinition;
+  activeProbe?: ActiveProbeDefinition;
+  explain?: PluginExplain;
+}
+
+export type NormalizedReadCheck = PluginReadDefinition;
+
+export type NormalizedActiveProbe = ActiveProbeDefinition;
+
+/**
+ * Unified runtime check shape produced by `validateAndNormalizeChecks`.
+ * Unified structural type: v2 fields (`checkCommand`, `passPattern`, etc.)
+ * are present on v2-normalized checks and absent on v3 ones. v3 adds
+ * `read` and `activeProbe`. The `sourceApiVersion` discriminator lets
+ * post-validation consumers narrow where needed.
+ *
+ * FIXME(p144-t5/t6): tighten LoadedPluginCheck to a v2/v3 discriminated
+ * union so pluginAudit.ts/buildPluginBatchSection can narrow by
+ * sourceApiVersion. v2-specific fields are kept optional here so existing
+ * consumer code keeps compiling.
+ */
+export interface LoadedPluginCheck {
+  id: string;
+  name: string;
+  category: string;
+  severity: PluginSeverity;
+  description: string;
+  sourceApiVersion: PluginApiVersion;
+  read?: PluginReadDefinition;
+  activeProbe?: ActiveProbeDefinition;
+  explain?: PluginExplain;
+  complianceRefs?: PluginComplianceRef[];
+  checkCommand?: PluginCheckCommand;
+  passPattern?: string;
+  failPattern?: string;
+  fixCommand?: string;
+  safeToAutoFix?: PluginFixTier;
+}
+
+interface PluginManifestBase {
   name: string;
   version: string;
-  apiVersion: PluginApiVersion;
   kastell: string;
   capabilities: PluginCapability[];
   checkPrefix: string;
@@ -64,20 +197,9 @@ export interface PluginManifest {
   fixes?: PluginFix[];
 }
 
-export interface PluginCheck {
-  id: string;
-  name: string;
-  category: string;
-  severity: PluginSeverity;
-  description: string;
-  checkCommand: PluginCheckCommand;
-  passPattern?: string;
-  failPattern?: string;
-  fixCommand?: string;
-  safeToAutoFix?: PluginFixTier;
-  explain?: string;
-  complianceRefs?: Array<{ framework: string; ref: string }>;
-}
+export type PluginManifest =
+  | (PluginManifestBase & { apiVersion: "2" })
+  | (PluginManifestBase & { apiVersion: "3" });
 
 export interface PluginFixContext {
   ip: string;

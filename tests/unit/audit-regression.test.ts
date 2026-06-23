@@ -190,6 +190,36 @@ describe("regression suite", () => {
       expect(result.newPasses).toEqual([]);
     });
 
+    // P144 T6: active-probe skip also ignored by regression promotion/baseline
+    it("P144 T6: should exclude active-probe skipped checks from extracted passed ID set", () => {
+      const checks: AuditCheck[] = [
+        { id: "SSH-001", category: "SSH", name: "Root login", severity: "critical", passed: true, currentValue: "", expectedValue: "" },
+        { id: "PLUGIN-PROBE-1", category: "Plugin", name: "Active probe check", severity: "info", passed: false, currentValue: "n/a", expectedValue: "n/a", skip: { code: "active-probe", apiVersion: "3" } },
+      ];
+      const result = makeAuditResult({ categories: [{ name: "X", checks, score: 100, maxScore: 100 }] });
+      expect(extractPassedCheckIds(result)).toEqual(["SSH-001"]);
+    });
+
+    it("P144 T6: should not regress a baseline check that became active-probe skipped in current audit", () => {
+      const baseline = {
+        version: 1 as const,
+        serverIp: "1.2.3.4",
+        lastUpdated: "2026-04-20T10:00:00Z",
+        bestScore: 66,
+        passedChecks: ["SSH-001", "PROBE-002"],
+      };
+      const checks: AuditCheck[] = [
+        { id: "SSH-001", category: "SSH", name: "Root login", severity: "critical", passed: true, currentValue: "", expectedValue: "" },
+        { id: "PROBE-002", category: "Plugin", name: "Probe check", severity: "warning", passed: false, currentValue: "", expectedValue: "", skip: { code: "active-probe", apiVersion: "3" } },
+      ];
+      const audit = makeAuditResult({ categories: [{ name: "X", checks, score: 100, maxScore: 100 }] });
+
+      const result = checkRegression(baseline, audit);
+      // PROBE-002 became active-probe skipped — not a regression, not a new pass
+      expect(result.regressions).toEqual([]);
+      expect(result.newPasses).toEqual([]);
+    });
+
     it("should detect new passes", () => {
       const baseline = {
         version: 1 as const,

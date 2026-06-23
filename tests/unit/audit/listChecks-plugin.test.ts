@@ -1,6 +1,6 @@
 import { listAllChecks } from "../../../src/core/audit/listChecks.js";
 import { registerPlugin, clearPluginRegistry } from "../../../src/plugin/registry.js";
-import type { PluginManifest, PluginCheck, PluginCapability } from "../../../src/plugin/sdk/types.js";
+import type { PluginManifest, LoadedPluginCheck, PluginCapability } from "../../../src/plugin/sdk/types.js";
 import type { CheckCatalogEntry } from "../../../src/core/audit/listChecks.js";
 
 describe("listAllChecks with plugins", () => {
@@ -14,15 +14,15 @@ describe("listAllChecks with plugins", () => {
     entry: "./index.js",
   };
 
-  const pluginChecks: PluginCheck[] = [
+  const pluginChecks: LoadedPluginCheck[] = [
     {
       id: "WP-UPDATES",
       name: "WordPress Updates",
       category: "WordPress",
       severity: "warning",
       description: "Check WP core updates",
-      checkCommand: { kind: "read", cmd: "wp core check-update" },
-      passPattern: "^$",
+      sourceApiVersion: "2",
+      read: { cmd: "wp core check-update", passPattern: "^$" },
       explain: "WordPress core should be up to date",
     },
   ];

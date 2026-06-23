@@ -1,20 +1,28 @@
 jest.mock("../../../src/utils/version.js", () => ({ KASTELL_VERSION: "2.2.0" }));
 
 import {
+  CURRENT_PLUGIN_API_VERSION,
   PLUGIN_API_VERSION,
   PLUGIN_NAME_PATTERN,
+  SUPPORTED_PLUGIN_API_VERSIONS,
 } from "../../../src/plugin/sdk/constants.js";
 import {
   PLUGIN_CHECK_COMMAND_KINDS,
-  type PluginManifest,
-  type PluginCheck,
+  type ActiveProbeDefinition,
+  type LoadedPluginCheck,
   type PluginCheckCommand,
-  type PluginSeverity,
-  type PluginFixTier,
+  type PluginCheckV2,
+  type PluginCheckV3,
   type PluginContext,
   type PluginCommandHandler,
-  type PluginMcpToolHandler,
   type PluginMcpTool,
+  type PluginMcpToolHandler,
+  type PluginManifest,
+  type PluginProbeContext,
+  type PluginProbeTarget,
+  type PluginReadDefinition,
+  type PluginSeverity,
+  type PluginFixTier,
 } from "../../../src/plugin/sdk/types.js";
 
 describe("Plugin SDK constants", () => {
@@ -53,8 +61,21 @@ describe("Plugin SDK Types", () => {
     expect(manifest.checkPrefix).toBe("WP");
   });
 
-  it("PluginCheck accepts valid check with required + optional fields", () => {
-    const check: PluginCheck = {
+  it("PluginManifest accepts v3 apiVersion discriminator", () => {
+    const manifest: PluginManifest = {
+      name: "kastell-plugin-v3",
+      version: "1.0.0",
+      apiVersion: "3",
+      kastell: ">=2.3.0",
+      capabilities: ["audit"],
+      checkPrefix: "V3",
+      entry: "dist/index.js",
+    };
+    expect(manifest.apiVersion).toBe("3");
+  });
+
+  it("PluginCheckV2 accepts valid check with required + optional fields", () => {
+    const check: PluginCheckV2 = {
       id: "WP-FILE-PERMS",
       name: "WordPress file permissions",
       category: "WordPress",
@@ -93,8 +114,8 @@ describe("Plugin SDK Types", () => {
     expect([t1, t2, t3]).toHaveLength(3);
   });
 
-  it("PluginCheck works with minimal fields (no optionals)", () => {
-    const check: PluginCheck = {
+  it("PluginCheckV2 works with minimal fields (no optionals)", () => {
+    const check: PluginCheckV2 = {
       id: "AUD-001",
       name: "Minimal check",
       category: "Auditor",
@@ -105,6 +126,19 @@ describe("Plugin SDK Types", () => {
     expect(check.fixCommand).toBeUndefined();
     expect(check.explain).toBeUndefined();
     expect(check.complianceRefs).toBeUndefined();
+  });
+
+  it("PluginCheckV2 explain supports legacy object form", () => {
+    const check: PluginCheckV2 = {
+      id: "AUD-OBJ",
+      name: "Object explain",
+      category: "Auditor",
+      severity: "info",
+      description: "Legacy object explain contract",
+      checkCommand: { kind: "read", cmd: "echo ok" },
+      explain: { why: "because", fix: "do this" },
+    };
+    expect(check.explain).toEqual({ why: "because", fix: "do this" });
   });
 });
 
@@ -178,5 +212,146 @@ describe("PluginMcpTool type", () => {
     };
     expect(tool.inputSchema).toBeDefined();
     expect(tool.inputSchema!.type).toBe("object");
+  });
+});
+
+describe("Plugin API v3 versioning", () => {
+  it("separates supported versions from the current authoring version", () => {
+    expect([...SUPPORTED_PLUGIN_API_VERSIONS]).toEqual(["2", "3"]);
+    expect(CURRENT_PLUGIN_API_VERSION).toBe("3");
+  });
+
+  it("keeps PLUGIN_API_VERSION legacy shim for migration", () => {
+    expect(PLUGIN_API_VERSION).toBe("2");
+  });
+});
+
+describe("PluginCheckV2 and PluginCheckV3 public contracts", () => {
+  it("PluginCheckV2 keeps the v2 checkCommand shape with safeToAutoFix and fixCommand", () => {
+    const check: PluginCheckV2 = {
+      id: "WP-FILE-PERMS",
+      name: "WordPress file permissions",
+      category: "WordPress",
+      severity: "warning",
+      description: "World-writable file check",
+      checkCommand: { kind: "read", cmd: "find /var/www -type f -perm -002 | wc -l" },
+      passPattern: "^0$",
+      fixCommand: "find /var/www -type f -exec chmod 644 {} \\;",
+      safeToAutoFix: "GUARDED",
+      explain: "Checks world-writable files in WordPress root",
+      complianceRefs: [{ framework: "CIS", ref: "6.1.3" }],
+    };
+    expect(check.id).toBe("WP-FILE-PERMS");
+    expect(check.checkCommand.kind).toBe("read");
+  });
+
+  it("PluginCheckV3 models read-only, probe-only, and combined checks", () => {
+    const readOnly: PluginCheckV3 = {
+      id: "TST-READ",
+      name: "read",
+      category: "Test",
+      severity: "info",
+      description: "read",
+      read: { cmd: "echo ok" },
+    };
+    const probeOnly: PluginCheckV3 = {
+      id: "TST-PROBE",
+      name: "probe",
+      category: "Test",
+      severity: "info",
+      description: "probe",
+      activeProbe: { handler: "./probes/test.js", risk: "low", timeoutMs: 5_000 },
+    };
+    const combined: PluginCheckV3 = {
+      ...readOnly,
+      id: "TST-BOTH",
+      activeProbe: { handler: "./probes/test.js", risk: "medium", timeoutMs: 30_000 },
+    };
+    expect([readOnly, probeOnly, combined]).toHaveLength(3);
+    expect(probeOnly.read).toBeUndefined();
+    expect(combined.read).toBeDefined();
+    expect(combined.activeProbe).toBeDefined();
+  });
+});
+
+describe("PluginReadDefinition and ActiveProbeDefinition shapes", () => {
+  it("PluginReadDefinition accepts optional pass/fail patterns", () => {
+    const read: PluginReadDefinition = {
+      cmd: "echo ok",
+      passPattern: "ok",
+      failPattern: "fail",
+    };
+    expect(read.cmd).toBe("echo ok");
+    expect(read.passPattern).toBe("ok");
+  });
+
+  it("ActiveProbeDefinition enforces risk enum and required timeoutMs", () => {
+    const probe: ActiveProbeDefinition = {
+      handler: "./probes/x.js",
+      risk: "high",
+      timeoutMs: 60_000,
+    };
+    expect(probe.risk).toBe("high");
+    expect(probe.timeoutMs).toBe(60_000);
+  });
+});
+
+describe("PluginProbeTarget and PluginProbeContext", () => {
+  it("PluginProbeTarget carries server identification", () => {
+    const target: PluginProbeTarget = {
+      serverId: "srv-1",
+      provider: "hetzner",
+      cloudId: "12345",
+      ip: "1.2.3.4",
+    };
+    expect(target.ip).toBe("1.2.3.4");
+    expect(target.provider).toBe("hetzner");
+  });
+
+  it("PluginProbeContext exposes readonly target, signal, ssh, and logger", () => {
+    const ac = new AbortController();
+    const ctx: PluginProbeContext = {
+      target: { serverId: "s", provider: "hetzner", ip: "1.2.3.4" },
+      sessionId: "session-1",
+      pluginName: "kastell-plugin-test",
+      checkId: "TST-001",
+      signal: ac.signal,
+      deadlineMs: 30_000,
+      ssh: async () => ({ stdout: "", stderr: "", code: 0 }),
+      logger: { info: () => {}, warn: () => {}, error: () => {} },
+    };
+    expect(ctx.target.ip).toBe("1.2.3.4");
+    expect(ctx.deadlineMs).toBe(30_000);
+  });
+});
+
+describe("LoadedPluginCheck normalized shape", () => {
+  it("keeps normalized checks independent from public v2/v3 shapes", () => {
+    const normalized: LoadedPluginCheck = {
+      id: "TST-READ",
+      name: "read",
+      category: "Test",
+      severity: "info",
+      description: "",
+      sourceApiVersion: "2",
+      read: { cmd: "echo ok" },
+    };
+    expect(normalized.sourceApiVersion).toBe("2");
+    expect(normalized.read?.cmd).toBe("echo ok");
+  });
+
+  it("PluginCheck alias removed: consumers must use PluginCheckV2 directly", () => {
+    // P144 T5: deprecated `PluginCheck = PluginCheckV2` alias was removed.
+    // Migration target is explicit PluginCheckV2 (and PluginCheckV3 for
+    // the new v3 plugin shape).
+    const check: PluginCheckV2 = {
+      id: "WP-1",
+      name: "wp",
+      category: "WP",
+      severity: "info",
+      description: "d",
+      checkCommand: { kind: "read", cmd: "echo ok" },
+    };
+    expect(check.checkCommand.kind).toBe("read");
   });
 });

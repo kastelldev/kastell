@@ -3,6 +3,7 @@ import { getServers } from "../../utils/config.js";
 import { runServerDoctor } from "../../core/doctor.js";
 import { runDoctorFix } from "../../core/doctor-fix.js";
 import { isSafeMode } from "../../core/manage.js";
+import { tryRunProbeSessionMaintenance } from "../../core/probe/diagnostics.js";
 import type { DoctorFinding } from "../../core/doctor.js";
 import {
   resolveServerForMcp,
@@ -51,6 +52,11 @@ export async function handleServerDoctor(params: {
   force?: boolean;
 }): Promise<McpResponse> {
   try {
+    // Best-effort Active Probe maintenance — runs before any diagnostics are
+    // adapted into the MCP response so server_doctor surfaces unresolved /
+    // rolled-back session state. Non-throwing (wrapper catches internally).
+    await tryRunProbeSessionMaintenance();
+
     const servers = getServers();
     if (servers.length === 0) {
       return mcpError("No servers found", undefined, [
@@ -73,7 +79,7 @@ export async function handleServerDoctor(params: {
     }
 
     const fresh = params.fresh ?? false;
-    const result = await runServerDoctor(server.ip, server.name, { fresh });
+    const result = await runServerDoctor(server.ip, server.name, { fresh }, server);
 
     if (!result.success || !result.data) {
       return mcpError(result.error ?? "Doctor analysis failed", result.hint);

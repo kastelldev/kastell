@@ -18,11 +18,16 @@ export interface ComplianceRef {
   level?: "L1" | "L2";  // only meaningful for CIS framework
 }
 
-export type PluginCheckSkipReason = {
-  code: "legacy-mutating";
-  apiVersion: "2";
-  kind: "mutate-local" | "mutate-global";
-};
+export type PluginCheckSkipReason =
+  | {
+      code: "legacy-mutating";
+      apiVersion: "2";
+      kind: "mutate-local" | "mutate-global";
+    }
+  | {
+      code: "active-probe";
+      apiVersion: "3";
+    };
 
 export interface AuditCheck {
   id: string;                    // e.g. "SSH-PASSWORD-AUTH"
@@ -72,7 +77,12 @@ export function getAuditCheckState(check: AuditCheck): AuditCheckState {
  * (TS2741) if a new code is added to the union without an entry here.
  */
 const SKIP_REASON_DESCRIPTIONS: Record<PluginCheckSkipReason["code"], (skip: PluginCheckSkipReason) => string> = {
-  "legacy-mutating": (skip) => `Skipped: legacy v2 mutating check (${skip.kind}) is not run by audit`,
+  "legacy-mutating": (skip) =>
+    skip.code === "legacy-mutating"
+      ? `Skipped: legacy v2 mutating check (${skip.kind}) is not run by audit`
+      : "",
+  "active-probe": () =>
+    "Skipped: Active Probe requires explicit guarded execution and is not run by audit",
 };
 
 /** Render a structured skip reason as a human-readable display string. */

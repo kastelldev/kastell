@@ -1,8 +1,8 @@
 import { buildAuditBatchCommands, buildPluginBatchSection } from "../../src/core/audit/commands.js";
 import type { PluginRegistryEntry } from "../../src/plugin/registry.js";
-import type { PluginManifest, PluginCheck } from "../../src/plugin/sdk/types.js";
+import type { PluginManifest, PluginCheckV2 } from "../../src/plugin/sdk/types.js";
 
-function makeEntry(name: string, checks: PluginCheck[], s: "loaded" | "failed" = "loaded"): PluginRegistryEntry {
+function makeEntry(name: string, checks: PluginCheckV2[], s: "loaded" | "failed" = "loaded"): PluginRegistryEntry {
   const manifest: PluginManifest = {
     name,
     version: "1.0.0",
@@ -14,23 +14,40 @@ function makeEntry(name: string, checks: PluginCheck[], s: "loaded" | "failed" =
   };
   if (s === "failed") {
     return {
-      manifest,
+      descriptor: { name: manifest.name },
       status: "failed",
       reason: "test reason",
       checks: [],
       checksById: new Map(),
+      activeProbesByCheckId: new Map(),
       fixesByCheckId: new Map(),
     } as unknown as PluginRegistryEntry;
   }
   const checksById = new Map(checks.map((c) => [c.id, c]));
-  return { manifest, checks, status: "loaded", checksById, fixesByCheckId: new Map() } as unknown as PluginRegistryEntry;
+  return {
+    manifest,
+    checks,
+    // P144 T5: builder iterates entry.readChecks (normalized, ordered).
+    // Fixture builds the index from the legacy PluginCheckV2 list using
+    // the read-kind contract and synthesizes `read.cmd` from `checkCommand.cmd`.
+    readChecks: checks
+      .filter((c) => c.checkCommand.kind === "read")
+      .map((c) => ({
+        ...c,
+        read: { cmd: c.checkCommand.cmd },
+      })) as unknown as PluginRegistryEntry["readChecks"] extends readonly (infer T)[] ? T[] : never,
+    status: "loaded",
+    checksById,
+    fixesByCheckId: new Map(),
+    activeProbesByCheckId: new Map(),
+  } as unknown as PluginRegistryEntry;
 }
 
 function check(
   id: string,
   cmd = "echo ok",
-  kind: PluginCheck["checkCommand"]["kind"] = "read",
-): PluginCheck {
+  kind: PluginCheckV2["checkCommand"]["kind"] = "read",
+): PluginCheckV2 {
   return {
     id,
     category: "X",
@@ -116,6 +133,69 @@ describe("buildPluginBatchSection", () => {
     ]));
 
     expect(buildPluginBatchSection(reg)).toBeNull();
+  });
+
+  // P144 Task 5: v3 normalized-read execution preserves plugin/category
+  // iteration order. The builder must iterate entry.readChecks (already
+  // ordered by the registry) and only emit checks that have a `read`.
+  describe("v3 plugin checks (P144 T5)", () => {
+    function makeLoadedEntry(
+      name: string,
+      checks: Array<{
+        id: string;
+        read?: { cmd: string };
+        activeProbe?: boolean;
+        checkCommand?: { kind: PluginCheckV2["checkCommand"]["kind"]; cmd: string };
+      }>,
+    ): PluginRegistryEntry {
+      const loaded: PluginCheckV2[] = checks.map((c) => ({
+        id: c.id,
+        category: "X",
+        name: c.id,
+        severity: "info",
+        description: "",
+        checkCommand: c.checkCommand ?? { kind: "read", cmd: c.read?.cmd ?? "echo" },
+      }));
+      return {
+        manifest: {
+          name,
+          version: "1.0.0",
+          apiVersion: "3",
+          kastell: "*",
+          capabilities: ["audit"],
+          checkPrefix: name.split("-").pop()!.toUpperCase().slice(0, 6),
+          entry: "./index.js",
+        },
+        checks: loaded,
+        // Builder iterates entry.readChecks after T5. Fixture synthesizes
+        // `read.cmd` from the legacy checkCommand so the shape matches
+        // what `registerPlugin` would produce via validateAndNormalizeChecks.
+        readChecks: loaded
+          .filter((c) => c.checkCommand?.kind === "read")
+          .map((c) => ({ ...c, read: { cmd: c.checkCommand.cmd } })) as never,
+        status: "loaded",
+        checksById: new Map(loaded.map((c) => [c.id, c] as [string, PluginCheckV2])),
+        fixesByCheckId: new Map(),
+        activeProbesByCheckId: new Map(),
+      } as unknown as PluginRegistryEntry;
+    }
+
+    it("emits sections for v2 read, v3 read, v3 combined; skips v3 probe-only", () => {
+      const reg = new Map<string, PluginRegistryEntry>();
+      reg.set("kastell-plugin-mix", makeLoadedEntry("kastell-plugin-mix", [
+        { id: "T-V2", read: { cmd: "v2 read command" } },
+        { id: "T-V3", read: { cmd: "v3 read command" } },
+        { id: "T-BOTH", read: { cmd: "combined read command" } },
+        // Probe-only: legacy kind != read keeps it out of readChecks.
+        // v3 normalize would set checkCommand undefined + activeProbe defined.
+        { id: "T-PROBE", activeProbe: true, checkCommand: { kind: "mutate-local", cmd: "noop" } },
+      ]));
+      const out = buildPluginBatchSection(reg)!;
+      expect(out).toContain("T-V2");
+      expect(out).toContain("T-V3");
+      expect(out).toContain("T-BOTH");
+      expect(out).not.toContain("T-PROBE");
+    });
   });
 });
 

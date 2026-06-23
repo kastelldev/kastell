@@ -16,6 +16,7 @@ import type { AuditCheck, PluginCheckSkipReason } from "../../src/core/audit/typ
 import { getCheckCounts, type CheckCounts } from "../../src/core/audit/formatters/counts.js";
 
 const SKIP_FIXTURE: PluginCheckSkipReason = { code: "legacy-mutating", apiVersion: "2", kind: "mutate-local" };
+const ACTIVE_PROBE_FIXTURE: PluginCheckSkipReason = { code: "active-probe", apiVersion: "3" };
 
 function makeCheck(overrides: Partial<AuditCheck> & { id: string }): AuditCheck {
   const base: AuditCheck = {
@@ -90,5 +91,26 @@ describe("getCheckCounts", () => {
     const readonly: readonly AuditCheck[] = [makeCheck({ id: "P1", passed: true })];
     // TypeScript compile-time check; runtime call:
     expect(getCheckCounts(readonly)).toEqual({ passed: 1, failed: 0, skipped: 0 });
+  });
+
+  // P144 T6: active-probe skip is also counted as skipped (variant-agnostic)
+  it("P144 T6: counts a single active-probe skipped check as skipped", () => {
+    const checks = [makeCheck({ id: "AP1", passed: false, skip: ACTIVE_PROBE_FIXTURE })];
+    expect(getCheckCounts(checks)).toEqual({ passed: 0, failed: 0, skipped: 1 });
+  });
+
+  it("P144 T6: counts passed active-probe skipped check as skipped (skip wins)", () => {
+    const checks = [makeCheck({ id: "AP1", passed: true, skip: ACTIVE_PROBE_FIXTURE })];
+    expect(getCheckCounts(checks)).toEqual({ passed: 0, failed: 0, skipped: 1 });
+  });
+
+  it("P144 T6: counts mixed legacy-mutating and active-probe skipped checks together", () => {
+    const checks: AuditCheck[] = [
+      makeCheck({ id: "P1", passed: true }),
+      makeCheck({ id: "F1", passed: false }),
+      makeCheck({ id: "LM1", passed: false, skip: SKIP_FIXTURE }),
+      makeCheck({ id: "AP1", passed: false, skip: ACTIVE_PROBE_FIXTURE }),
+    ];
+    expect(getCheckCounts(checks)).toEqual({ passed: 1, failed: 1, skipped: 2 });
   });
 });

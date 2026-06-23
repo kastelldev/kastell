@@ -272,6 +272,37 @@ describe("calculateComplianceDetail", () => {
     // (control must not enter the denominator)
     expect(scores).toHaveLength(0);
   });
+
+  // P144 T6: active-probe skip is also score-neutral in compliance denominator
+  it("P144 T6: excludes active-probe mapping from control pass/fail aggregation", () => {
+    const cat = makeCategory("Auth", [
+      makeCheck("AUTH-A", true, [
+        { framework: "CIS", controlId: "5.3.3", version: "CIS", description: "Auth", coverage: "full" },
+      ]),
+      makeCheck("AUTH-B-PROBE", false, [
+        { framework: "CIS", controlId: "5.3.3", version: "CIS", description: "Auth", coverage: "full" },
+      ]),
+    ]);
+    cat.checks[1].skip = { code: "active-probe", apiVersion: "3" };
+
+    const scores = calculateComplianceScores([cat]);
+    // active-probe skipped → control 5.3.3 has only AUTH-A passing
+    expect(scores[0].passedControls).toBe(1);
+    expect(scores[0].totalControls).toBe(1);
+  });
+
+  it("P144 T6: omits control that has only active-probe skipped checks from denominator", () => {
+    const cat = makeCategory("Auth", [
+      makeCheck("AUTH-PROBE-ONLY", false, [
+        { framework: "CIS", controlId: "5.3.4", version: "CIS", description: "Auth2", coverage: "full" },
+      ]),
+    ]);
+    cat.checks[0].skip = { code: "active-probe", apiVersion: "3" };
+
+    const scores = calculateComplianceScores([cat]);
+    // Control 5.3.4 had only active-probe skipped checks → no scores
+    expect(scores).toHaveLength(0);
+  });
 });
 
 describe("filterByProfile", () => {

@@ -9,10 +9,15 @@ describe("executePluginChecks parallel", () => {
     jest.resetAllMocks();
   });
 
-  function makeCheck(i: number, kind: "read" | "mutate-local" | "mutate-global" = "read") {
+  // P144 T5: executePluginChecks now consumes registry-normalized read
+  // checks (PluginReadCheck). Fixture shape uses `read.cmd` instead of
+  // legacy `checkCommand.cmd`. Kind branching removed — all reads run at
+  // the default (or env-overridden) parallelism.
+
+  function makeCheck(i: number) {
     return {
       id: `c${i}`,
-      checkCommand: { kind, cmd: `cmd${i}` },
+      read: { cmd: `cmd${i}` },
       name: `c${i}`,
       severity: "warning" as PluginSeverity,
       fixCommand: "",
@@ -33,7 +38,7 @@ describe("executePluginChecks parallel", () => {
 
     const checks = Array.from({ length: 10 }, (_, i) => makeCheck(i));
 
-    const result = await executePluginChecks(checks, { ssh });
+    const result = await executePluginChecks(checks as never, { ssh });
 
     expect(peak).toBeLessThanOrEqual(3);
     expect(ssh).toHaveBeenCalledTimes(10);
@@ -49,13 +54,15 @@ describe("executePluginChecks parallel", () => {
 
     const checks = [makeCheck(0), makeCheck(1), makeCheck(2)];
 
-    const result = await executePluginChecks(checks, { ssh });
+    const result = await executePluginChecks(checks as never, { ssh });
 
     expect(result.results.filter((r: CheckResult) => r.status === "pass")).toHaveLength(2);
     expect(result.results.filter((r: CheckResult) => r.status === "error")).toHaveLength(1);
   });
 
-  it("mutating check → sequential (cap=1)", async () => {
+  it("default parallelism (no mutating-kind branching)", async () => {
+    // P144 T5: kind branching removed — concurrency comes from
+    // PLUGIN_AUDIT_PARALLELISM (default 3) regardless of check shape.
     let active = 0, peak = 0;
     const ssh = jest.fn(async () => {
       active++;
@@ -65,10 +72,10 @@ describe("executePluginChecks parallel", () => {
       return { stdout: "ok", stderr: "", code: 0 };
     });
 
-    const checks = [makeCheck(0), makeCheck(1, "mutate-local"), makeCheck(2), makeCheck(3), makeCheck(4)];
+    const checks = [makeCheck(0), makeCheck(1), makeCheck(2), makeCheck(3), makeCheck(4)];
 
-    await executePluginChecks(checks, { ssh });
+    await executePluginChecks(checks as never, { ssh });
 
-    expect(peak).toBe(1);
+    expect(peak).toBeLessThanOrEqual(3);
   });
 });

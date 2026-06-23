@@ -1,4 +1,4 @@
-async function handler(args, ctx) {
+export async function handler(args, ctx) {
   const serverInfo = ctx.server ?? "unknown";
   ctx.logger.info(`Generating report for ${serverInfo}`);
   return {
@@ -7,5 +7,3 @@ async function handler(args, ctx) {
     status: "demo",
   };
 }
-
-module.exports = { handler };

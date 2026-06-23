@@ -44,3 +44,49 @@ export function restoreEncryptionMock(
     if (impl) encMod[key].mockImplementation(impl);
   }
 }
+
+// ─── Probe-specific payload helpers ─────────────────────────────────────────
+//
+// These mock encryptData / decryptData with a deterministic hex-roundtrip so
+// the Probe payload tests can exercise serialize/encrypt/decrypt without
+// depending on Node crypto, while still verifying envelope structure and
+// authentication-failure paths via the corruption helpers below.
+
+/** Deterministic encrypt mock used by probe-payload tests. */
+export const PROBE_MOCK_IV = "1122334455667788990011aa";
+export const PROBE_MOCK_TAG = "00112233445566778899aabbccddeeff";
+
+export function createProbeEncryptionMock() {
+  const tagState: { value: string } = { value: PROBE_MOCK_TAG };
+  return {
+    encryptData: jest.fn((plaintext: string) => ({
+      encrypted: true as const,
+      version: 1 as const,
+      iv: PROBE_MOCK_IV,
+      data: Buffer.from(plaintext, "utf8").toString("hex"),
+      tag: tagState.value,
+    })),
+    decryptData: jest.fn((payload: { data: string; tag: string }) => {
+      if (payload.tag !== tagState.value) {
+        throw new Error("Authentication failed (mock)");
+      }
+      return Buffer.from(payload.data, "hex").toString("utf8");
+    }),
+    getMachineKey: jest.fn(() => MOCK_KEY),
+    isEncryptedPayload: jest.fn((obj: unknown) => {
+      if (obj === null || obj === undefined || typeof obj !== "object") return false;
+      return (obj as Record<string, unknown>).encrypted === true;
+    }),
+  };
+}
+
+/**
+ * Produce a payload envelope whose auth tag has been corrupted.
+ * Used to verify Probe decrypt fails closed.
+ */
+export function withCorruptedAuthTag<T extends { tag: string }>(envelope: T): T {
+  return {
+    ...envelope,
+    tag: "AA" + envelope.tag.slice(2),
+  };
+}

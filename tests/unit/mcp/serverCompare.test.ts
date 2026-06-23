@@ -1,6 +1,6 @@
 import * as config from "../../../src/utils/config";
 import * as diff from "../../../src/core/audit/diff";
-import { handleServerCompare } from "../../../src/mcp/tools/serverCompare";
+import { handleServerCompare, serverCompareOutputSchema } from "../../../src/mcp/tools/serverCompare";
 
 jest.mock("../../../src/utils/config");
 jest.mock("../../../src/core/audit/diff");
@@ -177,5 +177,45 @@ describe("handleServerCompare", () => {
 
     const result = await handleServerCompare({ serverA: "server-a", serverB: "server-b" });
     expect(result.isError).toBe(true);
+  });
+});
+
+describe("serverCompareOutputSchema — status enum regression protection", () => {
+  // The public MCP schema must accept exactly the seven existing values
+  // (A_better / B_better / both_pass / both_fail / A_skip / B_skip / both_skip)
+  // and reject any drift such as "before_skip" / "after_skip". This locks the
+  // public contract against accidental enum renames.
+  const buildPayload = (status: string) => ({
+    result: {
+      format: "check" as const,
+      serverA: "server-a",
+      serverB: "server-b",
+      checks: [{ id: "C1", name: "C1", status, before: null, after: null }],
+    },
+  });
+
+  const allowedStatuses = [
+    "A_better",
+    "B_better",
+    "both_pass",
+    "both_fail",
+    "A_skip",
+    "B_skip",
+    "both_skip",
+  ];
+
+  it.each(allowedStatuses)("accepts status %s", (status) => {
+    const result = serverCompareOutputSchema.safeParse(buildPayload(status));
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects status 'before_skip' as drift from the public contract", () => {
+    const result = serverCompareOutputSchema.safeParse(buildPayload("before_skip"));
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects status 'after_skip' as drift from the public contract", () => {
+    const result = serverCompareOutputSchema.safeParse(buildPayload("after_skip"));
+    expect(result.success).toBe(false);
   });
 });

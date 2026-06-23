@@ -1,11 +1,23 @@
 import { z } from "zod";
 
-/** Strict Zod schema for the P142 PluginCheckSkipReason union (P142 Task 4). */
-export const PluginCheckSkipReasonSchema = z.object({
-  code: z.literal("legacy-mutating"),
-  apiVersion: z.literal("2"),
-  kind: z.enum(["mutate-local", "mutate-global"]),
-});
+/**
+ * P144 T6: PluginCheckSkipReason union (legacy-mutating + active-probe).
+ * Used as the `skip` field value on AuditCheckSchema — the parent schema
+ * (AuditCheckSchema) is the object-shape that MCP SDK normalizeObjectSchema
+ * accepts. Inline discriminatedUnion here mirrors the serverAuditOutputSchema
+ * pattern (`z.object({ result: z.discriminatedUnion(...) })`).
+ */
+export const PluginCheckSkipReasonSchema = z.discriminatedUnion("code", [
+  z.object({
+    code: z.literal("legacy-mutating"),
+    apiVersion: z.literal("2"),
+    kind: z.enum(["mutate-local", "mutate-global"]),
+  }),
+  z.object({
+    code: z.literal("active-probe"),
+    apiVersion: z.literal("3"),
+  }),
+]);
 
 export const AuditCheckSchema = z.object({
   id: z.string(),

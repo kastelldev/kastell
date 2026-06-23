@@ -54,6 +54,7 @@ import {
 } from "./commands/plugin.js";
 import { getPluginCommands } from "./plugin/registry.js";
 import { registerPluginCommands } from "./plugin/registerCommands.js";
+import { tryRunProbeSessionMaintenance } from "./core/probe/diagnostics.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -74,6 +75,12 @@ if (pluginResult.errors.length > 0) {
     console.warn(`[plugin] ${err}`);
   }
 }
+
+// Best-effort Active Probe session maintenance. Failures are logged via the
+// security logger inside the wrapper and MUST NOT block command registration.
+// This call only classifies durable session state and applies retention to
+// rolled-back records older than 30 days — it does NOT resume probe lifecycle.
+await tryRunProbeSessionMaintenance();
 
 const program = new Command();
 

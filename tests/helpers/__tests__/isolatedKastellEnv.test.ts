@@ -51,6 +51,18 @@ describe("isolatedKastellEnv", () => {
     expect(resolve(paths.KASTELL_DIR)).toBe(resolve(isolated.dir));
   });
 
+  it("sets KASTELL_TEST_MODE during isolated imports", async () => {
+    const isolated = track(createIsolatedKastellEnv());
+
+    const snapshot = await importWithIsolatedKastellDir(isolated, async () => ({
+      kastellDir: process.env.KASTELL_DIR,
+      kastellTestMode: process.env.KASTELL_TEST_MODE,
+    }));
+
+    expect(snapshot.kastellDir).toBe(isolated.dir);
+    expect(snapshot.kastellTestMode).toBe("1");
+  });
+
   it("should throw a clear error when the imported path does not match isolation", () => {
     const expected = mkdtempSync(join(tmpdir(), "kastell-test-"));
     const actual = mkdtempSync(join(tmpdir(), "kastell-test-"));

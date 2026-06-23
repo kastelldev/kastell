@@ -1,6 +1,6 @@
 import { copyFileSync, renameSync } from "fs";
 import { performance } from "perf_hooks";
-import { secureWriteFileSync, type WriteFileOptions } from "./secureWrite.js";
+import { secureWriteFileSync, type SecureWriteOptions } from "./secureWrite.js";
 import {
   DEFAULT_PERMISSION_RETRY_ATTEMPTS,
   DEFAULT_PERMISSION_RETRY_DELAY_MS,
@@ -9,9 +9,21 @@ import {
   unlinkBestEffort,
 } from "./fsRetry.js";
 
-export interface AtomicWriteOptions extends WriteFileOptions {
+export interface AtomicWriteOptions extends SecureWriteOptions {
   attempts?: number;
   delayMs?: number;
+  /**
+   * When true (default), exhausted permission retries fall back to
+   * `copyFileSync + unlinkSync` so the destination still receives the new
+   * bytes (non-atomic but durable on most filesystems).
+   *
+   * When false, exhausted permission retries remove the temporary file and
+   * throw WITHOUT copying over the destination. The previous durable
+   * contents are preserved untouched. Callers that cannot tolerate torn
+   * state under crash (e.g. Active Probe session persistence) MUST pass
+   * `allowCopyFallback: false` and wrap writes in a file lock.
+   */
+  allowCopyFallback?: boolean;
 }
 
 /**
@@ -89,7 +101,12 @@ export function atomicWriteFileSync(
   options: AtomicWriteOptions = {},
 ): void {
   const tmpFile = `${targetPath}.tmp`;
-  const { attempts = DEFAULT_PERMISSION_RETRY_ATTEMPTS, delayMs = DEFAULT_PERMISSION_RETRY_DELAY_MS, ...writeOptions } = options;
+  const {
+    attempts = DEFAULT_PERMISSION_RETRY_ATTEMPTS,
+    delayMs = DEFAULT_PERMISSION_RETRY_DELAY_MS,
+    allowCopyFallback = true,
+    ...writeOptions
+  } = options;
 
   secureWriteFileSync(tmpFile, content, writeOptions);
 
@@ -98,10 +115,26 @@ export function atomicWriteFileSync(
     retryOnPermission(() => renameSync(tmpFile, targetPath), { attempts, delayMs });
   } catch (renameErr) {
     // Non-permission error → propagate immediately (callers classify by code).
-    // Permission errors are exhausted here, so the copy fallback takes over.
+    // Permission errors are exhausted here, so the copy fallback takes over
+    // unless the caller explicitly opted out (allowCopyFallback === false).
     if (!isPermissionError(renameErr)) {
       unlinkBestEffort(tmpFile);
       throw renameErr;
+    }
+    if (!allowCopyFallback) {
+      // Caller refuses non-atomic fallback. Remove the temp file and surface
+      // a "rename"-stage exhaustion error so the previous durable contents
+      // stay untouched. Wrap the original rename error as the cause.
+      unlinkBestEffort(tmpFile);
+      const renameErrno = renameErr as NodeJS.ErrnoException;
+      throw new AtomicWriteExhaustedError({
+        target: targetPath,
+        attempts,
+        elapsedMs: Math.round(performance.now() - startedAt),
+        finalCode: renameErrno.code ?? "EPERM",
+        stage: "rename",
+        cause: renameErr instanceof Error ? renameErr : new Error(String(renameErr)),
+      });
     }
     // Permission errors exhausted. Try the copy fallback; on failure, throw
     // with stage "copy" so the operator can tell which step died.

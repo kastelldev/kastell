@@ -29,6 +29,20 @@ export const checkIdArb = fc.tuple(
 const nonEmptyString = (maxLength: number) =>
   fc.string({ minLength: 1, maxLength }).filter((s) => s.trim().length > 0);
 
+// P144 T6: per-variant skip arbitraries (named for author ergonomics).
+export const legacyMutatingSkipArb = fc.record({
+  code: fc.constant("legacy-mutating" as const),
+  apiVersion: fc.constant("2" as const),
+  kind: fc.constantFrom("mutate-local" as const, "mutate-global" as const),
+});
+
+export const activeProbeSkipArb = fc.record({
+  code: fc.constant("active-probe" as const),
+  apiVersion: fc.constant("3" as const),
+});
+
+export const skipReasonArb = fc.oneof(legacyMutatingSkipArb, activeProbeSkipArb);
+
 // Single audit check arbitrary — simplified, only required fields
 export const auditCheckArb = fc.record({
   id: checkIdArb,
@@ -38,14 +52,7 @@ export const auditCheckArb = fc.record({
   passed: fc.boolean(),
   currentValue: nonEmptyString(200),
   expectedValue: nonEmptyString(200),
-  skip: fc.option(
-    fc.record({
-      code: fc.constant("legacy-mutating" as const),
-      apiVersion: fc.constant("2" as const),
-      kind: fc.constantFrom("mutate-local" as const, "mutate-global" as const),
-    }),
-    { nil: undefined },
-  ),
+  skip: fc.option(skipReasonArb, { nil: undefined }),
 });
 
 // Category arbitrary

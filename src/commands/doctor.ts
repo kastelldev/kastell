@@ -2,9 +2,14 @@ import { resolveServer } from "../utils/serverSelect.js";
 import { logger, createSpinner } from "../utils/logger.js";
 import { runServerDoctor } from "../core/doctor.js";
 import { runDoctorFix } from "../core/doctor-fix.js";
-import { runDoctorChecks, checkProviderTokens } from "../core/doctor-local.js";
+import {
+  runDoctorChecks,
+  checkProviderTokens,
+  runLocalProbeDoctorChecks,
+} from "../core/doctor-local.js";
 import { scoreColor } from "../core/audit/formatters/shared.js";
 import { installLocalCron } from "../core/scheduleManager.js";
+import { tryRunProbeSessionMaintenance } from "../core/probe/diagnostics.js";
 import type { DoctorFinding, DoctorResult } from "../core/doctor.js";
 
 // ─── Server mode display helpers ──────────────────────────────────────────────
@@ -75,6 +80,11 @@ export async function doctorCommand(
   },
   version?: string,
 ): Promise<void> {
+  // Best-effort Active Probe maintenance — runs before any diagnostics are
+  // adapted into local or server findings so doctor surfaces unresolved /
+  // rolled-back session state. Non-throwing (wrapper catches internally).
+  await tryRunProbeSessionMaintenance();
+
   if (options?.schedule && !options?.autoFix) {
     logger.error("--schedule requires --auto-fix");
     return;
@@ -99,7 +109,7 @@ export async function doctorCommand(
     const spinner = createSpinner(`Running doctor analysis on ${resolved.name}...`);
     spinner.start();
 
-    const result = await runServerDoctor(resolved.ip, resolved.name, { fresh: useFresh });
+    const result = await runServerDoctor(resolved.ip, resolved.name, { fresh: useFresh }, resolved);
 
     spinner.stop();
 
@@ -222,7 +232,9 @@ export async function doctorCommand(
   // ── Local mode ───────────────────────────────────────────────────────────────
   logger.title("Kastell Doctor");
 
-  const results = runDoctorChecks(version);
+  const baseResults = runDoctorChecks(version);
+  const probeResults = await runLocalProbeDoctorChecks();
+  const results = [...baseResults, ...probeResults];
 
   for (const result of results) {
     const colorFn =

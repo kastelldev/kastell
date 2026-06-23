@@ -1,0 +1,9 @@
+{
+  "name": "kastell-plugin-v2-rawfix-bad",
+  "version": "1.0.0",
+  "apiVersion": "2",
+  "kastell": "*",
+  "capabilities": ["audit"],
+  "checkPrefix": "RF",
+  "entry": "index.js"
+}

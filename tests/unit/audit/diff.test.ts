@@ -292,4 +292,57 @@ describe("diffAuditsFlat — neutral status for skip side", () => {
     expect(entry.before).toBe("passed");
     expect(entry.after).toBe("skipped");
   });
+
+  // Characterization assertions for the public skip-status contract.
+  // A_skip = after side is skipped; B_skip = before side is skipped.
+  // These guard against accidental enum drift (e.g. introducing "after_skip"/"before_skip").
+  it("keeps public A_skip when after is skipped", () => {
+    const before = makeAudit({
+      categories: [
+        { name: "Plugin", score: 0, maxScore: 0, checks: [makeCheck("PLG-CHECK", { passed: false })] },
+      ],
+    });
+    const after = makeAudit({
+      categories: [
+        {
+          name: "Plugin",
+          score: 0,
+          maxScore: 0,
+          checks: [
+            makeCheck("PLG-CHECK", {
+              passed: false,
+              skip: { code: "active-probe", apiVersion: "3" },
+            }),
+          ],
+        },
+      ],
+    });
+    const result = diffAuditsFlat(before, after);
+    expect(result.checks[0].status).toBe("A_skip");
+  });
+
+  it("keeps public B_skip when before is skipped", () => {
+    const before = makeAudit({
+      categories: [
+        {
+          name: "Plugin",
+          score: 0,
+          maxScore: 0,
+          checks: [
+            makeCheck("PLG-CHECK", {
+              passed: false,
+              skip: { code: "active-probe", apiVersion: "3" },
+            }),
+          ],
+        },
+      ],
+    });
+    const after = makeAudit({
+      categories: [
+        { name: "Plugin", score: 0, maxScore: 0, checks: [makeCheck("PLG-CHECK", { passed: false })] },
+      ],
+    });
+    const result = diffAuditsFlat(before, after);
+    expect(result.checks[0].status).toBe("B_skip");
+  });
 });

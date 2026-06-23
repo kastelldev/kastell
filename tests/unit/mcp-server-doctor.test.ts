@@ -99,7 +99,7 @@ describe("MCP server_doctor tool", () => {
 
       expect(mockedDoctor.runServerDoctor).toHaveBeenCalledWith("1.2.3.4", "my-server", {
         fresh: false,
-      });
+      }, sampleServer);
       expect(result.isError).toBeUndefined();
       const parsed = JSON.parse(result.content[0].text);
       expect(parsed.critical).toBe(1);
@@ -119,7 +119,7 @@ describe("MCP server_doctor tool", () => {
 
       expect(mockedDoctor.runServerDoctor).toHaveBeenCalledWith("1.2.3.4", "my-server", {
         fresh: true,
-      });
+      }, sampleServer);
       expect(result.isError).toBeUndefined();
     });
 
@@ -235,8 +235,160 @@ describe("MCP server_doctor tool", () => {
       expect(result.isError).toBeUndefined();
       expect(mockedDoctor.runServerDoctor).toHaveBeenCalledWith("1.2.3.4", "my-server", {
         fresh: false,
-      });
+      }, sampleServer);
     });
+  });
+});
+
+// ─── P144 T12 — Active Probe findings in MCP server_doctor ──────────────────
+
+describe("MCP server_doctor — Active Probe findings (T12)", () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+    mockedConfig.getServers.mockReturnValue([sampleServer] as never);
+    mockedConfig.findServer.mockReturnValue(sampleServer as never);
+  });
+
+  const probeFindings = [
+    {
+      id: "PROBE_UNRESOLVED_11111111",
+      severity: "critical" as const,
+      description: "Probe session terminated as unresolved — manual cleanup required",
+      command: "kastell probe inspect 11111111-1111-4111-8111-111111111111",
+      weight: 10,
+    },
+    {
+      id: "PROBE_INTERRUPTED_22222222",
+      severity: "critical" as const,
+      description: "Probe session interrupted mid-execution",
+      command: "kastell probe inspect 22222222-2222-4222-8222-222222222222",
+      weight: 10,
+    },
+  ];
+
+  const doctorResultWithProbe: DoctorResult = {
+    serverName: "my-server",
+    serverIp: "1.2.3.4",
+    findings: [
+      ...probeFindings,
+      {
+        id: "STALE_PACKAGES",
+        severity: "warning",
+        description: "15 packages available for upgrade",
+        command: "sudo apt update && sudo apt upgrade",
+        weight: 5,
+      },
+    ],
+    ranAt: "2026-03-14T11:00:00Z",
+    usedFreshData: false,
+    score: 64, // (15/70 * 100 = 21 penalty) → 79; +2 critical probe (20/70) → 71? Actually critical weight 10 each: 3 critical (30) + 1 warning (5) = 35, 35/70*100 = 50, 100-50 = 50. Score computed live.
+  };
+
+  it("preserves MCP serverDoctor structuredContent shape when probe findings are merged", async () => {
+    mockedDoctor.runServerDoctor.mockResolvedValue({
+      success: true,
+      data: doctorResultWithProbe,
+    });
+
+    const result = await handleServerDoctor({ server: "my-server" });
+
+    expect(result.isError).toBeUndefined();
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.critical).toBe(2);
+    expect(parsed.warning).toBe(1);
+    expect(parsed.total).toBe(3);
+    // Probe findings serialize as [CRITICAL] lines carrying the diagnostic
+    // description and the inspection command. Verify shape, not the literal
+    // PROBE_<KIND> tag (that's an internal id, not in the rendered string).
+    expect(parsed.findings.length).toBe(3);
+    const criticalLines = parsed.findings.filter((f: string) => f.startsWith("  [CRITICAL]"));
+    expect(criticalLines.length).toBe(2);
+    expect(criticalLines[0]).toContain("kastell probe inspect");
+  });
+
+  it("never imports probe lifecycle or handlers modules (static import scan)", () => {
+    // T12 review (Critical 2): the MCP tool must not import or invoke probe
+    // lifecycle. Static-import scan reads serverDoctor.ts and asserts NO
+    // import of probe lifecycle or handlers modules. (A list of forbidden
+    // function names is weaker — a future new lifecycle function would
+    // pass the test until manually added.)
+    const fs = jest.requireActual("fs") as typeof import("fs");
+    const path = jest.requireActual("path") as typeof import("path");
+    const toolSource = fs.readFileSync(
+      path.join(__dirname, "..", "..", "src", "mcp", "tools", "serverDoctor.ts"),
+      "utf8",
+    );
+    const forbiddenImport = /from\s+["'](\.\.\/)*core\/probe\/(lifecycle|handlers)/;
+    expect(toolSource).not.toMatch(forbiddenImport);
+  });
+
+  it("autoFix=true with probe-only findings: returns early with no-fixable message (probe findings have no fixCommand)", async () => {
+    mockedManage.isSafeMode.mockReturnValue(false);
+    mockedDoctor.runServerDoctor.mockResolvedValue({
+      success: true,
+      data: doctorResultWithProbe,
+    });
+
+    const result = await handleServerDoctor({
+      server: "my-server",
+      autoFix: true,
+    });
+
+    expect(result.isError).toBeUndefined();
+    // When ALL findings are unfixable (probe findings have no fixCommand),
+    // the handler short-circuits with the "No auto-fixable findings" message
+    // and never invokes runDoctorFix.
+    expect(mockedDoctorFix.runDoctorFix).not.toHaveBeenCalled();
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.message).toContain("No auto-fixable findings");
+    expect(parsed.total).toBe(3);
+  });
+
+  it("autoFix=true with mixed findings: fixable filter excludes probe findings (only STALE_PACKAGES is fixable)", async () => {
+    mockedManage.isSafeMode.mockReturnValue(false);
+    mockedDoctor.runServerDoctor.mockResolvedValue({
+      success: true,
+      data: {
+        ...doctorResultWithProbe,
+        findings: [
+          {
+            id: "STALE_PACKAGES",
+            severity: "warning",
+            description: "15 packages to upgrade",
+            command: "sudo apt update",
+            fixCommand: "DEBIAN_FRONTEND=noninteractive sudo apt update && sudo apt upgrade -y",
+            weight: 5,
+          },
+          {
+            id: "PROBE_UNRESOLVED_11111111",
+            severity: "critical",
+            description: "Probe session unresolved",
+            command: "kastell probe inspect 11111111-1111-4111-8111-111111111111",
+            weight: 10,
+          },
+        ],
+      },
+    });
+    mockedDoctorFix.runDoctorFix.mockResolvedValue({
+      applied: ["STALE_PACKAGES"],
+      skipped: [],
+      failed: [],
+    });
+
+    const result = await handleServerDoctor({
+      server: "my-server",
+      autoFix: true,
+      force: true,
+    });
+
+    expect(result.isError).toBeUndefined();
+    expect(mockedDoctorFix.runDoctorFix).toHaveBeenCalledTimes(1);
+    const passedFindings = mockedDoctorFix.runDoctorFix.mock.calls[0][1] as Array<{ id: string; fixCommand?: string }>;
+    const fixableCount = passedFindings.filter((f) => f.fixCommand).length;
+    // Only STALE_PACKAGES has fixCommand; probe finding has none.
+    expect(fixableCount).toBe(1);
+    const fixableIds = passedFindings.filter((f) => f.fixCommand).map((f) => f.id);
+    expect(fixableIds).toEqual(["STALE_PACKAGES"]);
   });
 });
 

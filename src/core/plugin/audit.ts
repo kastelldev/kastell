@@ -1,5 +1,5 @@
 import { chunkConcurrent } from "../../utils/concurrency.js";
-import type { PluginCheck } from "../../plugin/sdk/types.js";
+import type { PluginReadCheck } from "../../plugin/registry.js";
 
 export interface CheckResult {
   checkId: string;
@@ -30,22 +30,36 @@ export interface ExecutePluginChecksContext {
   ssh: (cmd: string, opts?: { timeoutMs?: number; signal?: AbortSignal }) => Promise<{ stdout: string; stderr: string; code: number }>;
 }
 
+/**
+ * Execute normalized plugin read checks (P144 T5).
+ *
+ * Caller supplies `readChecks` — the registry's already-ordered subset of
+ * checks that expose a `read.cmd`. Mutating and probe-only checks are
+ * excluded upstream: `buildPluginBatchSection` builds the heredoc from
+ * `entry.readChecks`, and `pluginAudit` emits structured skip metadata
+ * for the excluded checks (mutating → `legacy-mutating`, probe-only →
+ * `probe-only`).
+ *
+ * Envelope preserved unchanged: `PLUGIN_AUDIT_PARALLELISM` env override
+ * (lazy lookup per invocation), `AGGREGATE_TIMEOUT_MS` abort ceiling,
+ * `chunkConcurrent` ordering, abort propagation, partial-result semantics,
+ * 15-second per-check timeout.
+ */
 export async function executePluginChecks(
-  checks: PluginCheck[],
+  readChecks: PluginReadCheck[],
   ctx: ExecutePluginChecksContext,
 ): Promise<ExecutePluginChecksResult> {
-  const hasMutatingCheck = checks.some((check) => check.checkCommand.kind !== "read");
-  const concurrency = hasMutatingCheck ? 1 : getDefaultParallelism();
+  const concurrency = getDefaultParallelism();
 
   const controller = new AbortController();
   const aggregateTimer = setTimeout(() => controller.abort(), AGGREGATE_TIMEOUT_MS);
 
-  const runCheck = async (check: PluginCheck): Promise<CheckResult> => {
+  const runCheck = async (check: PluginReadCheck): Promise<CheckResult> => {
     if (controller.signal.aborted) {
       return { checkId: check.id, status: "timeout" };
     }
     try {
-      const ssh = await ctx.ssh(check.checkCommand.cmd, { timeoutMs: 15000, signal: controller.signal });
+      const ssh = await ctx.ssh(check.read.cmd, { timeoutMs: 15000, signal: controller.signal });
       if (ssh.code !== 0) {
         return { checkId: check.id, status: "error", reason: ssh.stderr || `Exit code ${ssh.code}` };
       }
@@ -59,9 +73,9 @@ export async function executePluginChecks(
   };
 
   try {
-    const results = await chunkConcurrent(checks, concurrency, runCheck);
+    const results = await chunkConcurrent(readChecks, concurrency, runCheck);
     const completed = results.filter((r) => r.status !== "timeout").length;
-    return { results, completed, pending: checks.length - completed };
+    return { results, completed, pending: readChecks.length - completed };
   } finally {
     clearTimeout(aggregateTimer);
   }

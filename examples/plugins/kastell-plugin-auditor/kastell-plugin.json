@@ -1,8 +1,8 @@
 {
   "name": "kastell-plugin-auditor",
-  "version": "1.1.0",
-  "apiVersion": "2",
-  "kastell": ">=2.2.0",
+  "version": "1.2.0",
+  "apiVersion": "3",
+  "kastell": ">=2.3.0",
   "capabilities": ["audit", "command", "mcp-tool"],
   "checkPrefix": "AUD",
   "entry": "index.js",

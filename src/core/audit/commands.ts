@@ -689,13 +689,18 @@ function ddosSection(): string {
 }
 
 /**
- * Build a single batch section containing every loaded plugin's checks,
- * each wrapped in an isolated heredoc-fed bash subshell.
- * Returns null when no loaded plugin has any checks.
+ * Build a single batch section containing every loaded plugin's read
+ * checks, each wrapped in an isolated heredoc-fed bash subshell.
+ * Returns null when no loaded plugin has any read-bearing checks.
  *
  * Section format: ---SECTION:PLUGIN:<pluginName>:<checkId>---
  * Each check body runs in a fresh bash interpreter (state isolation)
  * fed via single-quoted heredoc (no expansion, no quote-balancing).
+ *
+ * P144 T5: iterates `entry.readChecks` (registry-normalized, already
+ * ordered) instead of branching on `check.checkCommand.kind`. Mutating
+ * and probe-only checks are excluded upstream — `parsePluginBatchOutput`
+ * surfaces them with structured skip metadata.
  */
 export function buildPluginBatchSection(
   registry: ReadonlyMap<string, PluginRegistryEntry>,
@@ -703,12 +708,11 @@ export function buildPluginBatchSection(
   const lines: string[] = [];
   for (const [, entry] of registry) {
     if (entry.status !== PLUGIN_STATUS_LOADED) continue;
-    if (entry.checks.length === 0) continue;
-    for (const check of entry.checks) {
-      if (check.checkCommand.kind !== "read") continue;
+    if (entry.readChecks.length === 0) continue;
+    for (const check of entry.readChecks) {
       lines.push(NAMED_SEP(`PLUGIN:${entry.manifest.name}:${check.id}`));
       lines.push(`bash <<'KASTELL_PLUGIN_CHECK_EOF' 2>/dev/null`);
-      lines.push(check.checkCommand.cmd);
+      lines.push(check.read.cmd);
       lines.push(`KASTELL_PLUGIN_CHECK_EOF`);
     }
   }

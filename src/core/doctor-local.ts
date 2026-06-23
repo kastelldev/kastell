@@ -7,6 +7,10 @@ import { checkSshAvailable } from "../utils/ssh.js";
 import { PROVIDER_REGISTRY, DOCTOR_TIMEOUT_MS } from "../constants.js";
 import { logger } from "../utils/logger.js";
 
+// Re-export so local-doctor call sites have one import surface. Implementation
+// lives in `probe/diagnostics.ts` to keep all probe-related logic together.
+export { runLocalProbeDoctorChecks } from "./probe/diagnostics.js";
+
 // ─── Token Validation ────────────────────────────────────────────────────────
 
 // Validation endpoints differ from base API URLs (provider-specific paths)

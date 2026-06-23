@@ -392,4 +392,110 @@ describe("P142: skip Zod schema strict validation", () => {
     const parseResult = await safeParseAsync(normalized!, response.structuredContent);
     expect(parseResult.success).toBe(true);
   });
+
+  // P144 T6: active-probe skip variant round-trips through MCP outputSchema
+  it("P144 T6: serverAudit outputSchema round-trip with active-probe skip variant", async () => {
+    const activeProbeSkipCheck = {
+      id: "PROBE-01",
+      category: "Plugin",
+      name: "Active Probe",
+      severity: "info",
+      passed: false,
+      currentValue: "n/a",
+      expectedValue: "n/a",
+      skip: { code: "active-probe", apiVersion: "3" },
+    };
+    const auditData = {
+      format: "json" as const,
+      server: "test",
+      ip: "1.2.3.4",
+      overallScore: 100,
+      categories: [
+        {
+          name: "Plugin",
+          score: 100,
+          maxScore: 100,
+          checks: [activeProbeSkipCheck],
+        },
+      ],
+    };
+    const response = mcpSuccess(auditData, { largeResult: true });
+    const normalized = normalizeObjectSchema(serverAuditOutputSchema);
+    expect(normalized).toBeDefined();
+    const parseResult = await safeParseAsync(normalized!, response.structuredContent);
+    expect(parseResult.success).toBe(true);
+  });
+});
+
+// ─── P144 T12 — serverDoctor outputSchema round-trip with probe findings ────
+
+describe("serverDoctor outputSchema — Active Probe findings (T12)", () => {
+  it("validates response with probe-derived critical findings via Zod safeParse", async () => {
+    const probeFindings = [
+      "  [CRITICAL] Probe session terminated as unresolved (fix: kastell probe inspect 11111111-1111-4111-8111-111111111111)",
+      "  [CRITICAL] Probe session interrupted mid-execution (fix: kastell probe inspect 22222222-2222-4222-8222-222222222222)",
+    ];
+    const doctorResponse = {
+      server: "my-server",
+      total: 2,
+      critical: 2,
+      warning: 0,
+      info: 0,
+      score: 71, // 100 - (20/70 * 100) ≈ 71
+      ranAt: new Date().toISOString(),
+      usedFreshData: false,
+      findings: probeFindings,
+    };
+
+    const response = mcpSuccess(doctorResponse);
+    const validation = validateAgainstSchema(serverDoctorOutputSchema, response.structuredContent);
+    expect(validation.valid).toBe(true);
+  });
+
+  it("round-trips probe findings through MCP SDK normalize + safeParseAsync", async () => {
+    const doctorResponse = {
+      server: "my-server",
+      total: 3,
+      critical: 2,
+      warning: 1,
+      info: 0,
+      score: 64,
+      ranAt: "2026-06-20T00:00:00.000Z",
+      usedFreshData: false,
+      findings: [
+        "  [CRITICAL] PROBE_UNRESOLVED_11111111 — manual cleanup required (fix: kastell probe inspect 11111111-1111-4111-8111-111111111111)",
+        "  [CRITICAL] PROBE_INTERRUPTED_22222222 — process crashed mid-execution (fix: kastell probe inspect 22222222-2222-4222-8222-222222222222)",
+        "  [WARNING] 15 packages available for upgrade (fix: sudo apt update && sudo apt upgrade)",
+      ],
+    };
+
+    const response = mcpSuccess(doctorResponse);
+    const normalized = normalizeObjectSchema(serverDoctorOutputSchema);
+    expect(normalized).toBeDefined();
+    const parseResult = await safeParseAsync(normalized!, response.structuredContent);
+    expect(parseResult.success).toBe(true);
+  });
+
+  it("serverDoctor outputSchema accepts long probe-finding strings (findings field is z.array(z.string()))", async () => {
+    // The outputSchema keeps `findings` as `z.array(z.string())` so long probe
+    // inspection commands and human-readable descriptions pass through.
+    const longDescription = "Probe session terminated: " + "x".repeat(500);
+    const doctorResponse = {
+      server: "my-server",
+      total: 1,
+      critical: 1,
+      warning: 0,
+      info: 0,
+      score: 86,
+      ranAt: new Date().toISOString(),
+      usedFreshData: false,
+      findings: [`  [CRITICAL] ${longDescription} (fix: kastell probe inspect session-id)`],
+    };
+
+    // Wrap into mcpSuccess so structuredContent shape matches what the
+    // handler returns. Validation runs against the actual structuredContent.
+    const response = mcpSuccess(doctorResponse);
+    const validation = validateAgainstSchema(serverDoctorOutputSchema, response.structuredContent);
+    expect(validation.valid).toBe(true);
+  });
 });
