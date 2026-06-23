@@ -16,6 +16,7 @@ import {
 } from "../../src/core/probe/executor.js";
 import {
   createProbeSessionFacade,
+  ALLOWED_PROBE_TRANSITIONS,
   type ProbeSessionFacade,
   type NewProbeSession,
   type ProbeSessionRecord,
@@ -128,6 +129,9 @@ function buildInMemoryFacade(): {
       if (!current) throw new Error("not found");
       if (current.state !== session.state || current.revision !== session.revision) {
         throw new Error("cas mismatch");
+      }
+      if (!ALLOWED_PROBE_TRANSITIONS[current.state].includes(update.toState)) {
+        throw new Error(`invalid transition: ${current.state} -> ${update.toState}`);
       }
       const next: ProbeSessionRecord = {
         ...current,

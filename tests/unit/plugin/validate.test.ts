@@ -479,13 +479,13 @@ describe("validateChecks — v2/v3 version dispatch", () => {
         .toThrow(/WP-FIX.*fixCommand.*migration/i);
     });
 
-    it("rejects v2 explain object form with migration message", () => {
-      expect(() => validateChecks([{
+    it("accepts v2 explain object form for backward compatibility", () => {
+      const checks = validateChecks([{
         id: "WP-OBJ", name: "object form", category: "WP", severity: "warning",
         checkCommand: { kind: "read", cmd: "echo ok" },
         explain: { why: "because", fix: "do this" },
-      }], "WP", "2", "kastell-plugin-wordpress"))
-        .toThrow(/PluginCheckV2\.explain must be a string[\s\S]*PluginCheckV3[\s\S]*plugin-sdk-migration-v3/);
+      }], "WP", "2", "kastell-plugin-wordpress");
+      expect(checks[0].explain).toEqual({ why: "because", fix: "do this" });
     });
 
     it("accepts v2 explain as string", () => {
@@ -495,6 +495,16 @@ describe("validateChecks — v2/v3 version dispatch", () => {
         explain: "because reasons",
       }], "WP", "2", "kastell-plugin-wordpress");
       expect(checks[0].explain).toBe("because reasons");
+    });
+
+    it("normalizes v2 explain object form without lossy conversion", () => {
+      const checks = validateChecks([{
+        id: "WP-NORM", name: "normalize", category: "WP", severity: "info",
+        checkCommand: { kind: "read", cmd: "echo ok" },
+        explain: { why: "because", fix: "do this" },
+      }], "WP", "2", "kastell-plugin-wordpress");
+      expect(validateAndNormalizeChecks(checks, "2")[0].explain)
+        .toEqual({ why: "because", fix: "do this" });
     });
   });
 

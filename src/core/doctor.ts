@@ -46,13 +46,7 @@ export function computeDoctorScore(
   baseFindings: DoctorFinding[],
   probeFindings: DoctorFinding[] = [],
 ): number {
-  // Dynamic maxPenalty (T12 review): the original 7 base checks contributed
-  // 7 × 10 = 70 total possible penalty. With P144 T12, Active Probe
-  // findings are merged in; the denominator is now base × 10 + probe × 10.
-  // Per-finding impact is preserved: each critical finding (weight 10)
-  // deducts exactly 10 points regardless of how many other findings exist.
-  const maxPenalty = baseFindings.length * 10 + probeFindings.length * 10;
-  if (maxPenalty === 0) return 100;
+  const maxPenalty = 70;
   const totalPenalty = [...baseFindings, ...probeFindings].reduce(
     (sum, f) => sum + f.weight,
     0,

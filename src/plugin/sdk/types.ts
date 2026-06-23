@@ -142,9 +142,7 @@ export interface PluginCheckV2 extends PluginCheckBase {
   failPattern?: string;
   fixCommand?: string;
   safeToAutoFix?: PluginFixTier;
-  // FIXME(p144-t5/t6): tighten to literal string and migrate listChecks/audit consumers
-  // away from string default; schema already rejects object form.
-  explain?: string;
+  explain?: PluginExplain;
 }
 
 export interface PluginCheckV3 extends PluginCheckBase {

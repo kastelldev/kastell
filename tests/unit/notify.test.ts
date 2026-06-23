@@ -506,14 +506,12 @@ describe("sendTelegram — invalid token rejection", () => {
 
 describe("removeChannel", () => {
   it("calls removeNotifyChannel with the channel name", () => {
-    
     removeChannel("discord");
 
     expect(mockedRemoveNotifyChannel).toHaveBeenCalledWith("discord");
   });
 
   it("does not call removeNotifyChannel for invalid channel name", () => {
-    
     removeChannel("invalid-channel");
 
     expect(mockedRemoveNotifyChannel).not.toHaveBeenCalled();
@@ -524,7 +522,6 @@ describe("removeChannel", () => {
 
 describe("addChannel — invalid channel", () => {
   it("returns early when channel name is not valid (notexist)", async () => {
-    
     await addChannel("notexist", { force: true, webhookUrl: "https://x.com" });
 
     expect(mockedSaveNotifyChannel).not.toHaveBeenCalled();
@@ -533,7 +530,6 @@ describe("addChannel — invalid channel", () => {
 
 describe("addChannel — force mode", () => {
   it("skips mockedInquirerPrompt when force=true for telegram", async () => {
-    
     await addChannel("telegram", {
       force: true,
       botToken: "123456:ABCdef_GHI-jkl",
@@ -548,7 +544,6 @@ describe("addChannel — force mode", () => {
   });
 
   it("skips mockedInquirerPrompt when force=true for discord", async () => {
-    
     await addChannel("discord", {
       force: true,
       webhookUrl: "https://discord.com/api/webhooks/1/abc",
@@ -561,7 +556,6 @@ describe("addChannel — force mode", () => {
   });
 
   it("skips mockedInquirerPrompt when force=true for slack", async () => {
-    
     await addChannel("slack", {
       force: true,
       webhookUrl: "https://hooks.slack.com/services/T/B/secret",
@@ -574,21 +568,18 @@ describe("addChannel — force mode", () => {
   });
 
   it("returns early when force=true for telegram but botToken is missing", async () => {
-    
     await addChannel("telegram", { force: true, chatId: "-100123456" });
 
     expect(mockedSaveNotifyChannel).not.toHaveBeenCalled();
   });
 
   it("returns early when force=true for telegram but chatId is missing", async () => {
-    
     await addChannel("telegram", { force: true, botToken: "123456:ABC" });
 
     expect(mockedSaveNotifyChannel).not.toHaveBeenCalled();
   });
 
   it("returns early when force=true for discord but webhookUrl is missing", async () => {
-    
     await addChannel("discord", { force: true });
 
     expect(mockedSaveNotifyChannel).not.toHaveBeenCalled();
@@ -597,7 +588,7 @@ describe("addChannel — force mode", () => {
 
 describe("addChannel — interactive mode (inquirer)", () => {
   it("prompts for botToken and chatId when adding telegram without force", async () => {
-        (mockedInquirerPrompt as unknown as jest.Mock).mockResolvedValueOnce({
+    (mockedInquirerPrompt as unknown as jest.Mock).mockResolvedValueOnce({
       botToken: "999888:ValidToken_xyz",
       chatId: "-100456",
     });
@@ -630,7 +621,7 @@ describe("addChannel — interactive mode (inquirer)", () => {
   });
 
   it("prompts for webhookUrl when adding slack without force", async () => {
-        (mockedInquirerPrompt as unknown as jest.Mock).mockResolvedValueOnce({
+    (mockedInquirerPrompt as unknown as jest.Mock).mockResolvedValueOnce({
       webhookUrl: "https://hooks.slack.com/services/X/Y/secret",
     });
 

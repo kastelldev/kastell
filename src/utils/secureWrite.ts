@@ -189,10 +189,10 @@ function icaclsIdentity(identity: string): string {
 }
 
 /**
- * Returns true when KASTELL_DIR is set in the environment AND resolves to a
- * path inside the OS temp directory. This is the test-environment signal —
- * the kastell CLI is spawned by the integration test suite against an
- * isolated temp dir (see tests/helpers/isolatedKastellEnv.ts).
+ * Returns true only when the test harness explicitly marks the process and
+ * KASTELL_DIR resolves inside the OS temp directory. The explicit marker
+ * prevents a real user-selected temp-directory configuration from silently
+ * disabling ACL hardening.
  *
  * On Windows, `icacls <dir> /inheritance:r` over a directory that already
  * contains files can leave the files' DACLs in a broken state (empty — no
@@ -203,19 +203,26 @@ function icaclsIdentity(identity: string): string {
  * step breaks the pre-existing file's ACL, and the first read of
  * servers.json fails.
  *
- * Production kastell never sets KASTELL_DIR (it uses ~/.kastell), so this
- * skip is test-only. Test temp dirs are inherently user-private (mkdtempSync
- * + inherited ACE for the creating user), so the security loss is zero.
+ * Test temp dirs are inherently user-private (mkdtempSync + inherited ACE for
+ * the creating user), so the security loss is zero.
  */
 function isTestEnvironmentDir(): boolean {
+  if (process.env.KASTELL_TEST_MODE !== "1") return false;
   const kastellDir = process.env.KASTELL_DIR;
   if (!kastellDir) return false;
   const resolvedKastell = resolve(kastellDir).toLowerCase();
-  const resolvedTmp = resolve(tmpdir()).toLowerCase();
+  const resolvedTmp = resolve(resolveTemporaryRoot()).toLowerCase();
   return (
     resolvedKastell === resolvedTmp ||
     resolvedKastell.startsWith(resolvedTmp + sep)
   );
+}
+
+function resolveTemporaryRoot(): string {
+  if (typeof tmpdir === "function") {
+    return tmpdir();
+  }
+  return process.env.TEMP ?? process.env.TMP ?? process.cwd();
 }
 
 function applyWindowsAcl(

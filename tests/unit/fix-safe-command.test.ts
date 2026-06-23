@@ -1497,9 +1497,6 @@ describe("fixSafeCommand", () => {
     });
 
     it("should exit with warning in non-TTY mode when regression detected without --force", async () => {
-      const origIsTTY = process.stdin.isTTY;
-      Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
-
       mockedResolveServer.mockResolvedValue(testServer);
       mockedCheckSsh.mockReturnValue(true);
 
@@ -1540,8 +1537,6 @@ describe("fixSafeCommand", () => {
       );
       expect(mockedBackupServer).not.toHaveBeenCalled();
       expect(mockedMarkCommandFailed).toHaveBeenCalledTimes(1);
-
-      Object.defineProperty(process.stdin, "isTTY", { value: origIsTTY, configurable: true });
     });
   });
 

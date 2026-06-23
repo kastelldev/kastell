@@ -109,6 +109,9 @@ export function logSafeModeBlock(
       ip: options?.ip,
       result: "block",
       reason: "KASTELL_SAFE_MODE=true",
+      target_hash: options?.targetHash,
+      plugin: options?.plugin,
+      check_id: options?.checkId,
     },
     { maxBytes },
   );

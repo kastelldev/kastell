@@ -14,6 +14,7 @@ import {
 } from "../../src/core/probe/executor.js";
 import {
   createProbeSessionFacade,
+  ALLOWED_PROBE_TRANSITIONS,
   type ProbeSessionFacade,
   type ProbeSessionRecord,
   type NewProbeSession,
@@ -126,6 +127,9 @@ function buildInMemoryFacade(): {
       if (!current) throw new Error("not found");
       if (current.state !== session.state || current.revision !== session.revision) {
         throw new Error("cas mismatch");
+      }
+      if (!ALLOWED_PROBE_TRANSITIONS[current.state].includes(update.toState)) {
+        throw new Error(`invalid transition: ${current.state} -> ${update.toState}`);
       }
       const next: ProbeSessionRecord = {
         ...current,
@@ -313,6 +317,55 @@ describe("executeActiveProbe — quiescence rule (5s handler settlement grace)",
 // ─── Cancellation / timeout ────────────────────────────────────────────────
 
 describe("executeActiveProbe — cancellation and timeout", () => {
+  it("does not start execute after prepare has already exhausted the shared forward deadline", async () => {
+    const fakeTimers = makeFakeTimerSet();
+    const executeSpy = jest.fn(async () => ({ applied: true }));
+    const rollbackSpy = jest.fn(async () => ({ success: true }));
+    const module: ActiveProbeModule = {
+      prepare: jest.fn(async () => {
+        await fakeTimers.advance(30_001);
+        return { snapshot: 1 };
+      }),
+      execute: executeSpy,
+      verify: jest.fn(async () => ({ passed: true })),
+      rollback: rollbackSpy,
+    };
+    const { facade } = buildInMemoryFacade();
+    const deps = buildDependencies(facade, fakeTimers);
+
+    const result = await executeActiveProbe(
+      buildBaseRequest({ module, timeoutMs: 30_000 }),
+      deps,
+    );
+
+    expect(executeSpy).not.toHaveBeenCalled();
+    expect(rollbackSpy).toHaveBeenCalledTimes(1);
+    expect(result.status).toBe("rolled-back");
+  });
+
+  it("caps rollback budget at the configured probe timeout", async () => {
+    const fakeTimers = makeFakeTimerSet();
+    let rollbackBudgetMs = -1;
+    const module: ActiveProbeModule = {
+      prepare: jest.fn(async () => ({ snapshot: 1 })),
+      execute: jest.fn(async () => ({ applied: true })),
+      verify: jest.fn(async () => ({ passed: true })),
+      rollback: jest.fn(async (ctx) => {
+        rollbackBudgetMs = ctx.deadlineMs - fakeTimers.now();
+        return { success: true };
+      }),
+    };
+    const { facade } = buildInMemoryFacade();
+    const deps = buildDependencies(facade, fakeTimers);
+
+    await executeActiveProbe(
+      buildBaseRequest({ module, timeoutMs: 30_000 }),
+      deps,
+    );
+
+    expect(rollbackBudgetMs).toBe(30_000);
+  });
+
   it("forward cancellation aborts controlled SSH only — rollback has a fresh controller", async () => {
     let preparedCalls = 0;
     let executedRollback = false;

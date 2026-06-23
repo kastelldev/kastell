@@ -100,7 +100,7 @@ const defaultDokployAdapter = createMockAdapter({ name: "dokploy" });
 describe("restore", () => {
   const spy = createConsoleSpy();
   let stderrSpy: jest.SpyInstance;
-  const originalIsTTY = process.stdin.isTTY;
+  const originalIsTTYDescriptor = Object.getOwnPropertyDescriptor(process.stdin, "isTTY");
   const originalExitCode = process.exitCode;
 
   function setIsTTY(value: boolean | undefined): void {
@@ -128,7 +128,11 @@ describe("restore", () => {
   afterEach(() => {
     spy.restore();
     stderrSpy?.mockRestore();
-    setIsTTY(originalIsTTY);
+    if (originalIsTTYDescriptor) {
+      Object.defineProperty(process.stdin, "isTTY", originalIsTTYDescriptor);
+    } else {
+      delete ((process.stdin as unknown) as Record<string, unknown>).isTTY;
+    }
     process.exitCode = originalExitCode;
   });
 

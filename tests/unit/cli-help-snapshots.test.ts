@@ -34,7 +34,13 @@ function safeCleanup(dir: string): void {
 function getHelp(args: string[]): string {
   const result = spawnSync("node", [CLI_PATH, ...args], {
     encoding: "utf-8",
-    env: { ...process.env, NO_COLOR: "1", FORCE_COLOR: "0", KASTELL_DIR: ISOLATED_KASTELL_DIR },
+    env: {
+      ...process.env,
+      NO_COLOR: "1",
+      FORCE_COLOR: "0",
+      KASTELL_DIR: ISOLATED_KASTELL_DIR,
+      KASTELL_TEST_MODE: "1",
+    },
   });
   const raw = (result.stdout || result.stderr || "").trim();
   return stripAnsi(raw);
@@ -49,6 +55,7 @@ describe("CLI help text snapshots", () => {
         NO_COLOR: "1",
         FORCE_COLOR: "0",
         KASTELL_DIR: ISOLATED_KASTELL_DIR,
+        KASTELL_TEST_MODE: "1",
       },
     });
     if (result.status !== 0) {

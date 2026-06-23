@@ -786,13 +786,11 @@ describe("computeDoctorScore", () => {
     expect(computeDoctorScore([], [])).toBe(100);
   });
 
-  it("deducts per-finding weight from a single base warning (denom scales with base count)", () => {
-    // T12 review: maxPenalty = base.length * 10 + probe.length * 10.
-    // 1 base warning: denom = 10, penalty = 5, score = 100 - (5/10)*100 = 50.
+  it("preserves the pre-P144 denominator for a single base warning", () => {
     const finding: DoctorFinding = {
       id: "TEST", severity: "warning", description: "t", command: "t", weight: 5,
     };
-    expect(computeDoctorScore([finding], [])).toBe(50);
+    expect(computeDoctorScore([finding], [])).toBe(93);
   });
 
   it("returns 0 when 7 base critical findings (denom = 70, penalty = 70)", () => {
@@ -802,38 +800,29 @@ describe("computeDoctorScore", () => {
     expect(computeDoctorScore(findings, [])).toBe(0);
   });
 
-  it("calculates mixed base severity correctly (2 base, denom = 20)", () => {
-    // 1 critical + 1 warning: denom = 20, penalty = 15, score = 100 - 75 = 25.
+  it("calculates mixed base severity against the unchanged denominator", () => {
     const findings: DoctorFinding[] = [
       { id: "A", severity: "critical", description: "t", command: "t", weight: 10 },
       { id: "B", severity: "warning", description: "t", command: "t", weight: 5 },
     ];
-    expect(computeDoctorScore(findings, [])).toBe(25);
+    expect(computeDoctorScore(findings, [])).toBe(79);
   });
 
-  it("per-finding impact preserved: 1 critical probe finding deducts 10 points (denom = 10, 0 base)", () => {
-    // T12 review: 1 probe finding with weight 10 → denom = 0*10 + 1*10 = 10.
-    // Penalty = 10 → score = 100 - 100 = 0. The per-finding impact is the
-    // full critical weight in isolation; adding more base findings re-dilutes
-    // the relative impact (preserves the original arithmetic).
+  it("applies a critical probe finding against the unchanged denominator", () => {
     const probe: DoctorFinding = {
       id: "PROBE_UNRESOLVED_X", severity: "critical", description: "p", command: "c", weight: 10,
     };
-    expect(computeDoctorScore([], [probe])).toBe(0);
+    expect(computeDoctorScore([], [probe])).toBe(86);
   });
 
-  it("per-finding impact preserved: 0 base + 1 critical probe + 9 base other = 10/100 score", () => {
-    // T12 review: a single critical probe finding alongside 9 clean base
-    // checks deducts 10/100 of the score (10 points). This is the
-    // per-finding-impact contract the brief calls out.
+  it("does not improve the score when zero-weight findings are added beside a critical probe finding", () => {
     const probe: DoctorFinding = {
       id: "PROBE_UNRESOLVED_X", severity: "critical", description: "p", command: "c", weight: 10,
     };
-    // 9 base + 1 probe → denom = 90 + 10 = 100. Penalty = 10. Score = 90.
     const base: DoctorFinding[] = Array.from({ length: 9 }, (_, i) => ({
       id: `B${i}`, severity: "info" as const, description: "b", command: "c", weight: 0,
     }));
-    expect(computeDoctorScore(base, [probe])).toBe(90);
+    expect(computeDoctorScore(base, [probe])).toBe(86);
   });
 });
 
@@ -986,11 +975,7 @@ describe("runServerDoctor — Active Probe findings merge", () => {
     );
     expect(withProbe.success).toBe(true);
     expect(withProbe.data!.findings.filter((f) => f.id.startsWith("PROBE_"))).toHaveLength(1);
-    // T12 review (Important 2): maxPenalty is now dynamic. 0 base + 1 probe
-    // → denom = 0*10 + 1*10 = 10. Penalty = 10. Score = 100 - 100 = 0.
-    // The per-finding impact is preserved: a single critical probe finding
-    // (weight 10) deducts the full critical weight in isolation.
-    expect(withProbe.data!.score).toBe(0);
+    expect(withProbe.data!.score).toBe(86);
   });
 
   it("does not call tryRunProbeSessionMaintenance when serverRecord is omitted (back-compat)", async () => {

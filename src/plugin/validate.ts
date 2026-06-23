@@ -108,15 +108,8 @@ const PluginCheckV2Schema = z
     failPattern: z.string().optional(),
     fixCommand: z.string().optional(),
     safeToAutoFix: z.enum(["SAFE", "GUARDED", "FORBIDDEN"]).optional(),
-    // PluginCheckV2.explain is string-only at the type level (see FIXME in
-    // sdk/types.ts). v3 retains the rich {why, fix} union. Reject the object
-    // form in v2 with a migration message to avoid silent data loss between
-    // plugin author contract and audit/listChecks consumers.
     explain: z
-      .string({
-        error:
-          "PluginCheckV2.explain must be a string. Use PluginCheckV3 for structured explain (docs/plugin-sdk-migration-v3.md).",
-      })
+      .union([z.string(), z.object({ why: z.string(), fix: z.string() })])
       .optional(),
     complianceRefs: complianceRefsSchema,
   })

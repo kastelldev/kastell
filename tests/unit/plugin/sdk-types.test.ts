@@ -127,6 +127,19 @@ describe("Plugin SDK Types", () => {
     expect(check.explain).toBeUndefined();
     expect(check.complianceRefs).toBeUndefined();
   });
+
+  it("PluginCheckV2 explain supports legacy object form", () => {
+    const check: PluginCheckV2 = {
+      id: "AUD-OBJ",
+      name: "Object explain",
+      category: "Auditor",
+      severity: "info",
+      description: "Legacy object explain contract",
+      checkCommand: { kind: "read", cmd: "echo ok" },
+      explain: { why: "because", fix: "do this" },
+    };
+    expect(check.explain).toEqual({ why: "because", fix: "do this" });
+  });
 });
 
 describe("PluginContext type", () => {

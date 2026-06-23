@@ -309,6 +309,12 @@ export async function runProbeSessionMaintenance(): Promise<ProbeMaintenanceResu
  * returns a bounded result with `error` populated. NEVER throws.
  */
 export async function tryRunProbeSessionMaintenance(): Promise<ProbeMaintenanceBootstrapResult> {
+  if (process.env.NODE_ENV === "test" && process.env.KASTELL_TEST_MODE !== "1") {
+    return {
+      diagnostics: [],
+      cleanup: { deletedSessionIds: [], scannedAt: new Date().toISOString() },
+    };
+  }
   try {
     const result = await runProbeSessionMaintenance();
     return result;

@@ -119,6 +119,23 @@ function sanitizeProbeError(error: unknown): string {
   return "Unknown probe error";
 }
 
+function remainingForwardBudgetMs(deadlineMs: number, now: () => number): number {
+  return Math.max(0, deadlineMs - now());
+}
+
+function assertForwardBudgetAvailable(
+  deadlineMs: number,
+  now: () => number,
+  sessionId: string,
+  step: "prepare" | "execute" | "verify",
+): number {
+  const remainingMs = remainingForwardBudgetMs(deadlineMs, now);
+  if (remainingMs <= 0) {
+    throw new ProbeTimeoutError(`Active probe ${step} skipped because the shared deadline was already exhausted`, sessionId);
+  }
+  return remainingMs;
+}
+
 /**
  * The allowlist projection passed to `sessions.reserve`. It contains ONLY
  * plugin/check IDs, plugin version, normalized handler path/digest, risk,
@@ -232,7 +249,7 @@ export async function executeActiveProbe(
       "prepare",
       context,
       () => request.module.prepare(context),
-      request.timeoutMs,
+      assertForwardBudgetAvailable(deadlineMs, nowFn, session.sessionId, "prepare"),
       forwardController,
       nowFn,
       deps,
@@ -261,6 +278,7 @@ export async function executeActiveProbe(
   //    handles the rest.
   let durableExecuted: unknown;
   let verificationPassed: boolean;
+  let rollbackReason: string | undefined;
   try {
     session = await deps.sessions.transition(session, {
       toState: "executing",
@@ -271,7 +289,7 @@ export async function executeActiveProbe(
       "execute",
       context,
       () => request.module.execute(context, prepared),
-      request.timeoutMs,
+      assertForwardBudgetAvailable(deadlineMs, nowFn, session.sessionId, "execute"),
       forwardController,
       nowFn,
       deps,
@@ -295,7 +313,7 @@ export async function executeActiveProbe(
       "verify",
       context,
       () => request.module.verify(context, prepared, durableExecuted),
-      request.timeoutMs,
+      assertForwardBudgetAvailable(deadlineMs, nowFn, session.sessionId, "verify"),
       forwardController,
       nowFn,
       deps,
@@ -309,14 +327,9 @@ export async function executeActiveProbe(
     });
     emitTransition("verified");
     if (!verifyPassed) {
-      // Treat `passed === false` as a verify failure: persist a forward
-      // failure reason and roll back. The brief mandates that verification
-      // failure still triggers rollback (invariant #6, #7).
-      session = await deps.sessions.transition(session, {
-        toState: "rollback-pending",
-        reason: `verify-failed: ${verification.summary ?? "no summary"}`,
-      });
-      emitTransition("rollback-pending");
+      // Verification failure still rolls back, but the canonical rollback
+      // helper owns the single transition into rollback-pending.
+      rollbackReason = `verify-failed: ${verification.summary ?? "no summary"}`;
     }
   } catch (error) {
     if (error instanceof ProbeHandlerNotQuiescedError) {
@@ -326,10 +339,6 @@ export async function executeActiveProbe(
       });
       return { status: "unresolved", sessionId: session.sessionId };
     }
-    session = await deps.sessions.transition(session, {
-      toState: "rollback-pending",
-      reason: sanitizeProbeError(error),
-    });
     return rollbackAfterQuiescence({
       session,
       context,
@@ -340,6 +349,7 @@ export async function executeActiveProbe(
       verification: undefined,
       verificationPassed: false,
       dependencies: deps,
+      rollbackReason: sanitizeProbeError(error),
     });
   }
 
@@ -355,6 +365,7 @@ export async function executeActiveProbe(
     verification: undefined,
     verificationPassed,
     dependencies: deps,
+    rollbackReason,
   });
 }
 
@@ -454,6 +465,7 @@ interface RollbackInput {
   verification: PluginProbeVerification | undefined;
   verificationPassed: boolean;
   dependencies: ProbeExecutorDependencies;
+  rollbackReason?: string;
 }
 
 /**
@@ -481,7 +493,10 @@ async function rollbackAfterQuiescence(
   // forward step) and has no meaningful relationship to the rollback
   // wall-clock budget. boundedBudgetMs is the only budget used for
   // the rollback timer AND for the rollback context's deadline.
-  const boundedBudgetMs = ROLLBACK_BUDGET_CAP_MS;
+  const boundedBudgetMs = Math.min(
+    ROLLBACK_BUDGET_CAP_MS,
+    inputSession.timeoutMs,
+  );
 
   // Build a rollback-only context. The target/session/plugin identity
   // is preserved; the signal is the fresh rollback controller; the
@@ -502,6 +517,7 @@ async function rollbackAfterQuiescence(
   let current = await deps.sessions.transition(inputSession, {
     toState: "rollback-pending",
     setHistory: true,
+    reason: input.rollbackReason,
   });
 
   // 2) Persist `rolling-back` BEFORE invoking rollback.

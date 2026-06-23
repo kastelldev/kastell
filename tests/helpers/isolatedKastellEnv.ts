@@ -22,6 +22,7 @@ export function createIsolatedKastellEnv(
     env: {
       ...process.env,
       KASTELL_DIR: dir,
+      KASTELL_TEST_MODE: "1",
       NO_COLOR: "1",
       FORCE_COLOR: "0",
     },
@@ -51,18 +52,25 @@ export async function importWithIsolatedKastellDir<T>(
   isolated: IsolatedKastellEnv,
   importer: () => Promise<T>,
 ): Promise<T> {
-  const previous = process.env.KASTELL_DIR;
+  const previousDir = process.env.KASTELL_DIR;
+  const previousTestMode = process.env.KASTELL_TEST_MODE;
   process.env.KASTELL_DIR = isolated.dir;
+  process.env.KASTELL_TEST_MODE = "1";
   jest.resetModules();
   try {
     const paths = await import("../../src/utils/paths.js");
     assertIsolatedKastellDir(paths.KASTELL_DIR, isolated.dir);
     return await importer();
   } finally {
-    if (previous === undefined) {
+    if (previousDir === undefined) {
       delete process.env.KASTELL_DIR;
     } else {
-      process.env.KASTELL_DIR = previous;
+      process.env.KASTELL_DIR = previousDir;
+    }
+    if (previousTestMode === undefined) {
+      delete process.env.KASTELL_TEST_MODE;
+    } else {
+      process.env.KASTELL_TEST_MODE = previousTestMode;
     }
   }
 }

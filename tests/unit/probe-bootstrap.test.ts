@@ -87,6 +87,29 @@ describe("tryRunProbeSessionMaintenance — bootstrap wrapper", () => {
     }
   });
 
+  it("returns a bounded no-op result in Jest when isolation marker is absent", async () => {
+    const env = createIsolatedKastellEnv();
+    const previousDir = process.env.KASTELL_DIR;
+    const previousTestMode = process.env.KASTELL_TEST_MODE;
+    process.env.KASTELL_DIR = env.dir;
+    delete process.env.KASTELL_TEST_MODE;
+    jest.resetModules();
+    try {
+      const mod = (await import("../../src/core/probe/diagnostics.js")) as unknown as ModuleUnderTest;
+      const result = await mod.tryRunProbeSessionMaintenance();
+      expect(result).toEqual({
+        diagnostics: [],
+        cleanup: { deletedSessionIds: [], scannedAt: expect.any(String) },
+      });
+    } finally {
+      if (previousDir === undefined) delete process.env.KASTELL_DIR;
+      else process.env.KASTELL_DIR = previousDir;
+      if (previousTestMode === undefined) delete process.env.KASTELL_TEST_MODE;
+      else process.env.KASTELL_TEST_MODE = previousTestMode;
+      env.cleanup();
+    }
+  });
+
   it("deletes only rolled-back sessions older than 30 days and emits a security event", async () => {
     const env = createIsolatedKastellEnv();
     const { mod, paths } = await loadModules(env);

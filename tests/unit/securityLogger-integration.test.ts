@@ -82,6 +82,21 @@ describe("logSafeModeBlock — basic log entry", () => {
     expect(entry["server"]).toBeUndefined();
     expect(entry["ip"]).toBeUndefined();
   });
+
+  it("forwards active-probe metadata when provided", () => {
+    logSafeModeBlock("plugin-probe.execute", {
+      category: "plugin-probe",
+      targetHash: "hash-123",
+      plugin: "kastell-plugin-probe",
+      checkId: "PROBE-001",
+    });
+
+    const entry = readLastLogEntry();
+    expect(entry["category"]).toBe("plugin-probe");
+    expect(entry["target_hash"]).toBe("hash-123");
+    expect(entry["plugin"]).toBe("kastell-plugin-probe");
+    expect(entry["check_id"]).toBe("PROBE-001");
+  });
 });
 
 // ─── Caller detection ─────────────────────────────────────────────────────────
