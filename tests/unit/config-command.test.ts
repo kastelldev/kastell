@@ -11,12 +11,17 @@ jest.mock("inquirer", () => {
   // Use a proxy so the factory captures the proxy, not the mutable state
   // The proxy forwards gets to a mutable object that tests can update
   const state = { inquirerVal: {} };
+  const promptFn = () => Promise.resolve(state.inquirerVal);
   const handler = {
     get(_t: unknown, prop: string) {
+      // `default.prompt(...)` (source uses await import -> __importStar wraps proxy
+      // as { default: proxy }; subsequent .prompt access goes through this handler).
       if (prop === "default") {
-        return {
-          prompt: () => Promise.resolve(state.inquirerVal),
-        };
+        return { prompt: promptFn };
+      }
+      // Direct `prompt(...)` access (some code paths / moduleNameMapper mock).
+      if (prop === "prompt") {
+        return promptFn;
       }
       if (prop === "_inquirerState") return state;
       return undefined;

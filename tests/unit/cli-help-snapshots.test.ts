@@ -16,6 +16,20 @@ import { stripAnsi } from "../helpers/stripAnsi";
 const CLI_PATH = join(__dirname, "../../dist/index.js");
 const ISOLATED_KASTELL_DIR = mkdtempSync(join(tmpdir(), "kastell-help-"));
 
+/**
+ * Best-effort temp-dir cleanup. Windows Defender / Search Indexer may retain
+ * a handle on the isolated dir after spawnSync returns, causing rmSync to
+ * throw EPERM. Assertions have already evaluated; cleanup failure must not
+ * fail the test suite. Node's rmSync maxRetries is ignored on win32.
+ */
+function safeCleanup(dir: string): void {
+  try {
+    rmSync(dir, { recursive: true, force: true });
+  } catch (err) {
+    console.warn(`cli-help-snapshots cleanup warning: ${(err as Error).message}`);
+  }
+}
+
 /** Invoke the CLI with the given args and return the help text output */
 function getHelp(args: string[]): string {
   const result = spawnSync("node", [CLI_PATH, ...args], {
@@ -43,7 +57,7 @@ describe("CLI help text snapshots", () => {
   });
 
   afterAll(() => {
-    rmSync(ISOLATED_KASTELL_DIR, { recursive: true, force: true });
+    safeCleanup(ISOLATED_KASTELL_DIR);
   });
 
   it("kastell --help matches snapshot", () => {
