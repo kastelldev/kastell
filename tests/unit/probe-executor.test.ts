@@ -367,6 +367,29 @@ describe("executeActiveProbe — execute failure", () => {
     expect(finalSession!.executed).toBeUndefined();
     expect(finalSession!.prepared).toBeDefined();
   });
+
+  it("execute failure skips executed receipt and persists rollback states in order", async () => {
+    const module: ActiveProbeModule = {
+      prepare: jest.fn(async () => ({ snapshot: 1 })),
+      execute: jest.fn(async () => { throw new Error("execute failed"); }),
+      verify: jest.fn(),
+      rollback: jest.fn(async () => ({ success: true })),
+    };
+    const { facade, state } = buildInMemoryFacade();
+    const { dependencies } = buildDependencies(facade);
+
+    const result = await executeActiveProbe(buildBaseRequest({ module }), dependencies);
+
+    expect(result.status).toBe("rolled-back");
+    expect(module.verify).not.toHaveBeenCalled();
+    expect(module.rollback).toHaveBeenCalledTimes(1);
+    expect(state.writes.some((w) => w.endsWith("->executed"))).toBe(false);
+    expect(state.writes.some((w) => w.endsWith("->rollback-pending"))).toBe(true);
+    expect(state.writes.some((w) => w.endsWith("->rolling-back"))).toBe(true);
+    const finalSession = Array.from(state.sessions.values()).find((s) => s.state === "rolled-back");
+    expect(finalSession?.executed).toBeUndefined();
+    expect(finalSession?.prepared).toBeDefined();
+  });
 });
 
 // ─── Verify false/throw → rollback ─────────────────────────────────────────
@@ -414,6 +437,25 @@ describe("executeActiveProbe — verify failure", () => {
     const { dependencies } = buildDependencies(facade);
     await executeActiveProbe(buildBaseRequest({ module }), dependencies);
     expect(rollbackSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("rollback throw persists unresolved and keeps the reservation blocking", async () => {
+    const module: ActiveProbeModule = {
+      prepare: jest.fn(async () => ({ snapshot: 1 })),
+      execute: jest.fn(async () => ({ applied: true })),
+      verify: jest.fn(async () => ({ passed: true })),
+      rollback: jest.fn(async () => { throw new Error("rollback transport failure"); }),
+    };
+    const { facade, state } = buildInMemoryFacade();
+    const { dependencies } = buildDependencies(facade);
+
+    const result = await executeActiveProbe(buildBaseRequest({ module }), dependencies);
+
+    expect(result.status).toBe("unresolved");
+    expect(state.reservations.size).toBe(1);
+    const session = Array.from(state.sessions.values())[0]!;
+    expect(session.state).toBe("unresolved");
+    expect(session.lastError?.message).toMatch(/rollback transport failure/);
   });
 });
 

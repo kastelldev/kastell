@@ -385,27 +385,29 @@ interface RunForwardStepOptions {
 }
 
 /**
- * Run a single forward step. The handler is raced against the deadline,
- * but a settled handler is always allowed to complete its turn — we only
- * surface `ProbeHandlerNotQuiescedError` if the handler does NOT settle
- * within `QUIESCENCE_GRACE_MS` after the deadline. The handler's own
- * promise rejection propagates to the caller.
+ * Generic lifecycle step runner shared by forward (`prepare` / `execute` /
+ * `verify`) and rollback phases. Races the handler against `timeoutMs`,
+ * aborts the controller on deadline, and surfaces
+ * `ProbeHandlerNotQuiescedError` if the handler does not settle within
+ * `QUIESCENCE_GRACE_MS` after the deadline. The handler's own promise
+ * rejection propagates to the caller.
  *
- * Implementation: we use Promise.race to detect (a) handler settlement
- * with a value or rejection, (b) deadline elapsing, and (c) the deadline
- * + QUIESCENCE_GRACE_MS elapsing without settlement. (b) does NOT throw;
- * it aborts the controller and waits for settlement. (c) rejects the
- * outer promise with `ProbeHandlerNotQuiescedError`.
+ * Persist callbacks own ALL receipt/payload writes (`prepared`, `executed`,
+ * `verification`, `rollback`) AND state transitions. The runner itself
+ * never touches the session store — that ordering invariant is delegated
+ * to the caller so audit-trail fields cannot be dropped.
  */
-async function runForwardStep<T>(
-  step: RunForwardStepOptions["step"],
-  context: ReturnType<typeof createProbeContext>,
-  runner: () => Promise<T>,
-  timeoutMs: number,
-  controller: AbortController,
-  now: () => number,
-  deps: ProbeExecutorDependencies,
+async function runLifecycleStep<T>(
+  args: {
+    label: "prepare" | "execute" | "verify" | "rollback";
+    context: ReturnType<typeof createProbeContext>;
+    run: () => Promise<T>;
+    controller: AbortController;
+    timeoutMs: number;
+    deps: ProbeExecutorDependencies;
+  },
 ): Promise<T> {
+  const { label, context, run, controller, timeoutMs, deps } = args;
   const setTimeoutFn = deps.setTimeoutFn ?? ((h: (...args: unknown[]) => void, ms?: number) => setTimeout(h, ms ?? 0));
   const clearTimeoutFn = deps.clearTimeoutFn ?? ((h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>));
 
@@ -421,7 +423,7 @@ async function runForwardStep<T>(
   const handlerPromise: Promise<T> = new Promise<T>((resolve, reject) => {
     handlerResolve = resolve;
     handlerReject = reject;
-    runner().then(
+    run().then(
       (value) => { settle(); handlerResolve!(value); },
       (err) => { settle(); handlerReject!(err); },
     );
@@ -438,7 +440,9 @@ async function runForwardStep<T>(
     if (settled) return;
     settle();
     const err = new ProbeHandlerNotQuiescedError(
-      `Active probe ${step} handler did not settle within ${QUIESCENCE_GRACE_MS}ms after deadline`,
+      label === "rollback"
+        ? `Active probe rollback did not settle within ${QUIESCENCE_GRACE_MS}ms after deadline`
+        : `Active probe ${label} handler did not settle within ${QUIESCENCE_GRACE_MS}ms after deadline`,
       context.sessionId,
     );
     // Reject the handler's own promise so awaiting code sees the error.
@@ -451,6 +455,31 @@ async function runForwardStep<T>(
     clearTimeoutFn(deadlineHandle);
     clearTimeoutFn(graceHandle);
   }
+}
+
+/**
+ * Run a single forward step. Thin wrapper around `runLifecycleStep` that
+ * keeps the legacy positional call sites in `executeActiveProbe` working
+ * without churn. Receipt/payload writes remain the caller's responsibility
+ * (see `runLifecycleStep` doc).
+ */
+async function runForwardStep<T>(
+  step: RunForwardStepOptions["step"],
+  context: ReturnType<typeof createProbeContext>,
+  runner: () => Promise<T>,
+  timeoutMs: number,
+  controller: AbortController,
+  now: () => number,
+  deps: ProbeExecutorDependencies,
+): Promise<T> {
+  return runLifecycleStep<T>({
+    label: step,
+    context,
+    run: runner,
+    controller,
+    timeoutMs,
+    deps,
+  });
 }
 
 // ─── Rollback after quiescence ─────────────────────────────────────────────
@@ -576,6 +605,12 @@ async function rollbackAfterQuiescence(
 
 // ─── Rollback step helper ──────────────────────────────────────────────────
 
+/**
+ * Run the rollback handler with the same quiescence + abort semantics as
+ * forward steps. Thin wrapper around `runLifecycleStep` to keep the
+ * rollback call site readable and the rollback-specific arguments
+ * (prepared, executed) flowing through the closure.
+ */
 async function runRollbackStep(
   context: ReturnType<typeof createProbeContext>,
   rollbackFn: ActiveProbeModule["rollback"],
@@ -586,44 +621,14 @@ async function runRollbackStep(
   now: () => number,
   deps: ProbeExecutorDependencies,
 ): Promise<PluginProbeRollbackResult> {
-  const setTimeoutFn = deps.setTimeoutFn ?? ((h: (...args: unknown[]) => void, ms?: number) => setTimeout(h, ms ?? 0));
-  const clearTimeoutFn = deps.clearTimeoutFn ?? ((h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>));
-
-  let settled = false;
-  const settle = () => { settled = true; };
-
-  let handlerResolve: ((value: PluginProbeRollbackResult) => void) | null = null;
-  let handlerReject: ((reason: unknown) => void) | null = null;
-  const handlerPromise = new Promise<PluginProbeRollbackResult>((resolve, reject) => {
-    handlerResolve = resolve;
-    handlerReject = reject;
-    rollbackFn(context, prepared, executed).then(
-      (value) => { settle(); handlerResolve!(value); },
-      (err) => { settle(); handlerReject!(err); },
-    );
+  return runLifecycleStep<PluginProbeRollbackResult>({
+    label: "rollback",
+    context,
+    run: () => rollbackFn(context, prepared, executed),
+    controller,
+    timeoutMs: budgetMs,
+    deps,
   });
-
-  const deadlineHandle = setTimeoutFn(() => {
-    if (settled) return;
-    controller.abort();
-  }, budgetMs);
-
-  const graceHandle = setTimeoutFn(() => {
-    if (settled) return;
-    settle();
-    const err = new ProbeHandlerNotQuiescedError(
-      `Active probe rollback did not settle within ${QUIESCENCE_GRACE_MS}ms after deadline`,
-      context.sessionId,
-    );
-    handlerReject?.(err);
-  }, budgetMs + QUIESCENCE_GRACE_MS);
-
-  try {
-    return await handlerPromise;
-  } finally {
-    clearTimeoutFn(deadlineHandle);
-    clearTimeoutFn(graceHandle);
-  }
 }
 
 // ─── Defaults ──────────────────────────────────────────────────────────────
