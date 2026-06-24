@@ -11,7 +11,7 @@ import {
 import { isBareServer, getServerModeLabel } from "../utils/modeGuard.js";
 import { getAdapter, resolvePlatform } from "../adapters/factory.js";
 import { adapterDisplayName } from "../adapters/shared.js";
-import { withCommandBoundary, CommandFailure } from "../utils/commandBoundary.js";
+import { withCommandBoundary, CommandFailure, failWith } from "../utils/commandBoundary.js";
 import type { ServerRecord } from "../types/index.js";
 import type { StatusResult } from "../core/status.js";
 
@@ -103,7 +103,14 @@ async function statusCommandImpl(query?: string, options?: StatusOptions): Promi
   }
 
   const server = await resolveServer(query);
-  if (!server) return;
+  if (!server) {
+    // A query was provided but did not match any server. resolveServer
+    // already logged "Server not found: <query>"; route through the command
+    // boundary so the CLI exits 1 for automation. The no-query path is left
+    // alone so interactive cancellation (user picks nothing) stays exit 0.
+    if (query) failWith(`Server not found: ${query}`);
+    return;
+  }
 
   // Ask for API token (skip for manually added servers)
   const apiToken = server.id.startsWith("manual-") ? "" : await promptApiToken(server.provider);

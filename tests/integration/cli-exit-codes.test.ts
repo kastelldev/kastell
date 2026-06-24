@@ -100,7 +100,7 @@ describe("CLI exit codes — process-level", () => {
     await runWithIsolatedKastellEnv(async (isolated) => {
       const result = spawnKastell(isolated, ["status", "missing-server"]);
 
-      expect(result.status).toBe(0);
+      expect(result.status).toBe(1);
       expect(result.stderr + result.stdout).toMatch(/not found|No servers found|missing/i);
     });
   });
@@ -109,7 +109,7 @@ describe("CLI exit codes — process-level", () => {
     await runWithIsolatedKastellEnv(async (isolated) => {
       const result = spawnKastell(isolated, ["evidence", "missing-server", "--quiet"]);
 
-      expect(result.status).toBe(0);
+      expect(result.status).toBe(1);
       expect(result.stderr + result.stdout).toMatch(/not found|No servers found|missing/i);
     });
   });

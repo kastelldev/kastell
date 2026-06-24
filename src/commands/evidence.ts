@@ -30,7 +30,14 @@ async function evidenceCommandImpl(
   options: EvidenceCommandOptions,
 ): Promise<void> {
   const server = await resolveServer(serverArg, "Select a server to collect evidence from:");
-  if (!server) return;
+  if (!server) {
+    // A query was provided but did not match any server. resolveServer
+    // already logged "Server not found: <serverArg>"; route through the
+    // command boundary so the CLI exits 1 for automation. The no-query
+    // path is left alone so interactive cancellation stays exit 0.
+    if (serverArg) failWith(`Server not found: ${serverArg}`);
+    return;
+  }
 
   const { name, ip } = server;
   const platform = (server.platform ?? server.mode ?? "bare") as string;
