@@ -21,6 +21,24 @@ export function isMachineMode(): boolean {
   return machineMode;
 }
 
+/**
+ * Run `fn` with machine mode enabled, then restore the prior state — even
+ * when `fn` throws. Use for `--json` output blocks so the enable/restore
+ * pair is impossible to forget on early-return paths. Nested calls
+ * snapshot and restore their own frame, so an outer human-mode caller
+ * with an inner `--json` block stays in human mode after the inner
+ * block exits.
+ */
+export async function withMachineMode<T>(fn: () => T | Promise<T>): Promise<T> {
+  const previous = machineMode;
+  machineMode = true;
+  try {
+    return await fn();
+  } finally {
+    machineMode = previous;
+  }
+}
+
 function diagnosticLog(...args: unknown[]): void {
   if (machineMode) {
     console.error(...args);

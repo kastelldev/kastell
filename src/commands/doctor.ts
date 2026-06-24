@@ -1,5 +1,5 @@
 import { resolveServer } from "../utils/serverSelect.js";
-import { logger, createSpinner, setMachineMode } from "../utils/logger.js";
+import { logger, createSpinner, withMachineMode } from "../utils/logger.js";
 import { runServerDoctor } from "../core/doctor.js";
 import { runDoctorFix } from "../core/doctor-fix.js";
 import {
@@ -114,16 +114,13 @@ export async function doctorCommand(
     spinner.stop();
 
     if (options?.json) {
-      setMachineMode(true);
-      try {
+      await withMachineMode(() => {
         if (result.success && result.data) {
           console.log(JSON.stringify(result.data, null, 2));
         } else {
           console.log(JSON.stringify({ error: result.error }, null, 2));
         }
-      } finally {
-        setMachineMode(false);
-      }
+      });
       return;
     }
 

@@ -1,4 +1,4 @@
-import { logger, createSpinner, setMachineMode, isMachineMode } from "../../src/utils/logger";
+import { logger, createSpinner, setMachineMode, isMachineMode, withMachineMode } from "../../src/utils/logger";
 
 describe("logger machine mode", () => {
   let stdoutSpy: jest.SpyInstance;
@@ -81,6 +81,51 @@ describe("logger machine mode", () => {
     logger.info("visible");
     // visible should be called via stdout (console.log)
     expect(stdoutSpy).toHaveBeenCalled();
+  });
+});
+
+describe("withMachineMode", () => {
+  let stdoutSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    stdoutSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+    stderrSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    setMachineMode(false);
+  });
+
+  afterEach(() => {
+    setMachineMode(false);
+    stdoutSpy.mockRestore();
+    stderrSpy.mockRestore();
+  });
+
+  it("should enable machine mode for the duration of fn and restore after", async () => {
+    expect(isMachineMode()).toBe(false);
+    await withMachineMode(() => {
+      expect(isMachineMode()).toBe(true);
+    });
+    expect(isMachineMode()).toBe(false);
+  });
+
+  it("should restore machine mode even when fn throws", async () => {
+    setMachineMode(false);
+    await expect(
+      withMachineMode(() => {
+        throw new Error("boom");
+      }),
+    ).rejects.toThrow("boom");
+    expect(isMachineMode()).toBe(false);
+  });
+
+  it("should preserve an outer machine-mode state when invoked from inside machine mode", async () => {
+    setMachineMode(true);
+    await withMachineMode(() => {
+      expect(isMachineMode()).toBe(true);
+    });
+    // Outer mode was true on entry, restored to true on exit.
+    expect(isMachineMode()).toBe(true);
+    setMachineMode(false);
   });
 });
 
