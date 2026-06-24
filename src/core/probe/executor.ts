@@ -392,10 +392,22 @@ interface RunForwardStepOptions {
  * `QUIESCENCE_GRACE_MS` after the deadline. The handler's own promise
  * rejection propagates to the caller.
  *
- * Persist callbacks own ALL receipt/payload writes (`prepared`, `executed`,
- * `verification`, `rollback`) AND state transitions. The runner itself
- * never touches the session store — that ordering invariant is delegated
- * to the caller so audit-trail fields cannot be dropped.
+ * Scope of responsibility:
+ *
+ * - This helper OWNS the timeout race (deadline + quiescence grace),
+ *   controller abort on deadline, and label-aware error messages.
+ *
+ * - This helper does NOT take `persistSuccess` / `persistFailure` callbacks
+ *   or a `receipt: ProbeReceiptSink` parameter, and it does NOT write
+ *   receipt/payload records (`prepared`, `executed`, `verification`,
+ *   `rollback`) or state transitions. Those stay inline in the callers
+ *   (`executeActiveProbe`, `runForwardStep`, `runRollbackStep`).
+ *
+ * This is a deliberate faithful read of brief Step 3's audit-trail rule:
+ * receipt/payload persistence must not be moved outside the helper in a
+ * way that can drop audit-trail fields. Keeping the writes in the callers
+ * preserves every state transition and every `prepared` / `executed` /
+ * `verification` / `rollback` write at its original call site.
  */
 async function runLifecycleStep<T>(
   args: {
