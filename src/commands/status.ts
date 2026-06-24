@@ -11,7 +11,7 @@ import {
 import { isBareServer, getServerModeLabel } from "../utils/modeGuard.js";
 import { getAdapter, resolvePlatform } from "../adapters/factory.js";
 import { adapterDisplayName } from "../adapters/shared.js";
-import { markCommandFailed } from "../utils/exitCode.js";
+import { withCommandBoundary, CommandFailure } from "../utils/commandBoundary.js";
 import type { ServerRecord } from "../types/index.js";
 import type { StatusResult } from "../core/status.js";
 
@@ -97,7 +97,7 @@ async function autostartCoolify(server: ServerRecord): Promise<void> {
   }
 }
 
-export async function statusCommand(query?: string, options?: StatusOptions): Promise<void> {
+async function statusCommandImpl(query?: string, options?: StatusOptions): Promise<void> {
   if (options?.all) {
     return statusAll();
   }
@@ -156,12 +156,11 @@ export async function statusCommand(query?: string, options?: StatusOptions): Pr
   } catch (error: unknown) {
     spinner.fail("Failed to check status");
     const classified = classifyError(error);
-    logger.error(classified.message);
-    if (classified.hint) logger.info(classified.hint);
-    if (!classified.isTyped) {
-      const hint = mapProviderError(error, server.provider);
-      if (hint) logger.info(hint);
-    }
-    markCommandFailed();
+    const fallbackHint = classified.isTyped ? undefined : mapProviderError(error, server.provider) ?? undefined;
+    const hint = classified.hint ?? fallbackHint;
+    if (hint) logger.info(hint);
+    throw new CommandFailure(classified.message, { hint, cause: error });
   }
 }
+
+export const statusCommand = withCommandBoundary(statusCommandImpl);

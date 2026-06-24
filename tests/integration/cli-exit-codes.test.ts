@@ -95,4 +95,31 @@ describe("CLI exit codes — process-level", () => {
       );
     });
   });
+
+  it("status on missing server surfaces 'Server not found' through command boundary", async () => {
+    await runWithIsolatedKastellEnv(async (isolated) => {
+      const result = spawnKastell(isolated, ["status", "missing-server"]);
+
+      expect(result.status).toBe(0);
+      expect(result.stderr + result.stdout).toMatch(/not found|No servers found|missing/i);
+    });
+  });
+
+  it("evidence with missing server surfaces 'Server not found' through command boundary", async () => {
+    await runWithIsolatedKastellEnv(async (isolated) => {
+      const result = spawnKastell(isolated, ["evidence", "missing-server", "--quiet"]);
+
+      expect(result.status).toBe(0);
+      expect(result.stderr + result.stdout).toMatch(/not found|No servers found|missing/i);
+    });
+  });
+
+  it("audit --ci without threshold exits 1 through command boundary", async () => {
+    await runWithIsolatedKastellEnv(async (isolated) => {
+      const result = spawnKastell(isolated, ["audit", "demo", "--ci"]);
+
+      expect(result.status).toBe(1);
+      expect(result.stderr).toMatch(/--ci requires --threshold/i);
+    });
+  });
 });

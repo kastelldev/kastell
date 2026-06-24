@@ -6,7 +6,7 @@
 import { readFileSync } from "fs";
 import { resolveServer } from "../utils/serverSelect.js";
 import { logger, createSpinner } from "../utils/logger.js";
-import { markCommandFailed } from "../utils/exitCode.js";
+import { withCommandBoundary, failWith } from "../utils/commandBoundary.js";
 import { collectEvidence } from "../core/evidence.js";
 import type { EvidenceOptions } from "../core/evidence.js";
 
@@ -25,7 +25,7 @@ interface EvidenceCommandOptions {
   quiet?: boolean;
 }
 
-export async function evidenceCommand(
+async function evidenceCommandImpl(
   serverArg: string | undefined,
   options: EvidenceCommandOptions,
 ): Promise<void> {
@@ -57,7 +57,7 @@ export async function evidenceCommand(
 
   if (!result.success || !result.data) {
     spinner?.fail(result.error ?? "Evidence collection failed");
-    markCommandFailed();
+    failWith(result.error ?? "Evidence collection failed");
     return;
   }
 
@@ -86,3 +86,5 @@ export async function evidenceCommand(
 
   logger.warning("Evidence directory may contain sensitive server data.");
 }
+
+export const evidenceCommand = withCommandBoundary(evidenceCommandImpl);
