@@ -1,6 +1,17 @@
 import { logger } from "./logger.js";
 import { markCommandFailed } from "./exitCode.js";
 
+/**
+ * The boundary's typed error. `hint` is a non-fatal remediation cue that
+ * the boundary surfaces via `logger.info` after `logger.error(message)`.
+ * `cause` is the original error from upstream — preserved as the audit
+ * trail for operator diagnostics. The boundary's `logger.error(message)`
+ * call intentionally does NOT log `cause` to user output; cause is
+ * forensic context for logs/telemetry, not part of the user-facing
+ * message. Non-Error causes are defensively wrapped so they are not
+ * silently dropped on the audit trail (ESLint preserve-caught-error
+ * requires an Error for Error.cause).
+ */
 export class CommandFailure extends Error {
   readonly hint?: string;
 

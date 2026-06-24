@@ -104,10 +104,8 @@ async function statusCommandImpl(query?: string, options?: StatusOptions): Promi
 
   const server = await resolveServer(query);
   if (!server) {
-    // A query was provided but did not match any server. resolveServer
-    // already logged "Server not found: <query>"; route through the command
-    // boundary so the CLI exits 1 for automation. The no-query path is left
-    // alone so interactive cancellation (user picks nothing) stays exit 0.
+    // resolveServer already logged "Server not found"; boundary fires only
+    // when the user typed a query (interactive cancel stays exit 0).
     if (query) failWith(`Server not found: ${query}`);
     return;
   }
@@ -166,12 +164,7 @@ async function statusCommandImpl(query?: string, options?: StatusOptions): Promi
     const fallbackHint = classified.isTyped ? undefined : mapProviderError(error, server.provider) ?? undefined;
     const hint = classified.hint ?? fallbackHint;
     if (hint) logger.info(hint);
-    // CommandFailure.cause preserves the original error as the audit trail
-    // for operator diagnostics. The boundary's `logger.error(message)` call
-    // intentionally does NOT log `cause` to user output — cause is forensic
-    // context for logs/telemetry, not part of the user-facing message. See
-    // src/commands/audit.ts for the matching AuditError → CommandFailure
-    // conversion pattern.
+    // CommandFailure.cause rationale lives in commandBoundary.ts JSDoc.
     throw new CommandFailure(classified.message, { hint, cause: error });
   }
 }
