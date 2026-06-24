@@ -48,6 +48,11 @@ export function assertIsolatedKastellDir(actual: string, expected: string): void
   }
 }
 
+// P119 LESSON: KASTELL_DIR MUST be set BEFORE any dynamic import of modules
+// that evaluate src/utils/paths.ts or src/utils/config.ts at module load time.
+// These modules cache KASTELL_DIR on first evaluation; setting the env var
+// after import has no effect. The wrappers below capture and restore the
+// prior env state so callers (test bodies) do not need to manage it.
 export async function importWithIsolatedKastellDir<T>(
   isolated: IsolatedKastellEnv,
   importer: () => Promise<T>,
@@ -83,4 +88,30 @@ export function spawnKastell(
     encoding: "utf8",
     env: isolated.env,
   });
+}
+
+export async function runWithIsolatedKastellEnv<T>(
+  fn: (isolated: IsolatedKastellEnv) => T | Promise<T>,
+  servers: ServerRecord[] = [],
+): Promise<T> {
+  const isolated = createIsolatedKastellEnv(servers);
+  const previousDir = process.env.KASTELL_DIR;
+  const previousTestMode = process.env.KASTELL_TEST_MODE;
+  process.env.KASTELL_DIR = isolated.dir;
+  process.env.KASTELL_TEST_MODE = "1";
+  try {
+    return await fn(isolated);
+  } finally {
+    if (previousDir === undefined) {
+      delete process.env.KASTELL_DIR;
+    } else {
+      process.env.KASTELL_DIR = previousDir;
+    }
+    if (previousTestMode === undefined) {
+      delete process.env.KASTELL_TEST_MODE;
+    } else {
+      process.env.KASTELL_TEST_MODE = previousTestMode;
+    }
+    isolated.cleanup();
+  }
 }
