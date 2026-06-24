@@ -485,7 +485,7 @@ describe("doctorCommand — server mode", () => {
     expect(isMachineMode()).toBe(false);
   });
 
-  it("logs error when runServerDoctor returns success=false", async () => {
+  it("should log error when runServerDoctor returns success=false", async () => {
     mockedResolveServer.mockResolvedValue(fakeServer);
     mockedRunServerDoctor.mockResolvedValue({ success: false, error: "SSH connection failed" });
 

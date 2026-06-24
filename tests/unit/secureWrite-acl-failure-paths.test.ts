@@ -302,8 +302,18 @@ describe("applyWindowsAcl — batched /remove (P146 Task 6)", () => {
         cmd === "icacls" && Array.isArray(args) && args.includes("/remove"),
     );
     expect(removeCalls).toHaveLength(1);
-    expect(removeCalls[0][1]).toEqual(
-      expect.arrayContaining(["/remove", "BUILTIN\\Users", "Everyone", "/Q"]),
-    );
+    // Exact arg list: secureWrite.ts:292 produces
+    // [targetPath, "/remove", ...removablePrincipals, "/Q"] with the inspect
+    // call returning exactly BUILTIN\Users and Everyone in that order.
+    // Tightening from arrayContaining catches accidental insertion of
+    // shell separators (/C, /S) or extra flags that would silently change
+    // icacls semantics.
+    expect(removeCalls[0][1]).toEqual([
+      "C:\\state.json",
+      "/remove",
+      "BUILTIN\\Users",
+      "Everyone",
+      "/Q",
+    ]);
   });
 });
