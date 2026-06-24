@@ -439,18 +439,18 @@ describe("Win32 ACL hardening (P142 Task 6)", () => {
     secureWriteFileSync("C:\\Users\\test\\file.txt", "data");
 
     const calls = getSpawnCalls();
-    expect(calls).toContainEqual({
-      cmd: "icacls",
-      args: ["C:\\Users\\test\\file.txt", "/remove", "Everyone", "/Q"],
-    });
-    expect(calls).toContainEqual({
-      cmd: "icacls",
-      args: ["C:\\Users\\test\\file.txt", "/remove", "*S-1-5-5-0-123", "/Q"],
-    });
-    expect(calls).toContainEqual({
-      cmd: "icacls",
-      args: ["C:\\Users\\test\\file.txt", "/remove", "DOMAIN\\testuser", "/Q"],
-    });
+    const removeCalls = calls.filter(
+      (c) => c.cmd === "icacls" && c.args.includes("/remove"),
+    );
+    expect(removeCalls).toHaveLength(1);
+    expect(removeCalls[0].args).toEqual([
+      "C:\\Users\\test\\file.txt",
+      "/remove",
+      "*S-1-5-5-0-123",
+      "Everyone",
+      "DOMAIN\\testuser",
+      "/Q",
+    ]);
     expect(calls).toContainEqual({
       cmd: "icacls",
       args: ["C:\\Users\\test\\file.txt", "/grant:r", "DOMAIN\\testuser:(F)", "/Q"],

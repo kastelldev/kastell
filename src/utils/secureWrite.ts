@@ -279,17 +279,22 @@ function applyWindowsAcl(
     return;
   }
 
-  // 4. Remove every existing principal.
+  // 4. Remove every existing principal in a single batched icacls call.
+  //    icacls accepts multiple principals after /remove, so one process
+  //    invocation replaces N processes (perf win on cold secure-write paths).
+  const removablePrincipals = [
+    ...new Set(aclPrincipals(targetPath, inspect.stdout).map(icaclsIdentity)),
+  ];
   let removalFailure: AclFailure | undefined;
-  for (const principal of new Set(aclPrincipals(targetPath, inspect.stdout))) {
+  if (removablePrincipals.length > 0) {
     const remove = runAclStep(
       "icacls",
-      [targetPath, "/remove", icaclsIdentity(principal), "/Q"],
+      [targetPath, "/remove", ...removablePrincipals, "/Q"],
       targetPath,
       sensitivity,
     );
     if (remove.status !== 0) {
-      removalFailure ??= {
+      removalFailure = {
         executable: "icacls",
         status: remove.status,
         stderr: remove.stderr,
