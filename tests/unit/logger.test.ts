@@ -53,7 +53,11 @@ describe("logger machine mode", () => {
     logger.title("My Title");
     // In machine mode title should not emit the leading/trailing empty console.log calls
     expect(stdoutSpy).not.toHaveBeenCalled();
-    expect(stderrSpy).toHaveBeenCalled();
+    // title must still emit the title text to stderr exactly once — guards against
+    // regressions where blank lines would also reach stderr (e.g. empty console.log
+    // calls routed to stderr in machine mode).
+    expect(stderrSpy).toHaveBeenCalledTimes(1);
+    expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining("My Title"));
   });
 
   it("should keep logger.error on stderr regardless of machine mode", () => {

@@ -455,7 +455,7 @@ describe("doctorCommand — server mode", () => {
     expect(allOutput).toContain('"findings"');
   });
 
-  it("keeps stdout limited to JSON payload when --json flag set (machine mode)", async () => {
+  it("should keep stdout limited to JSON payload when --json flag is set (machine mode)", async () => {
     mockedResolveServer.mockResolvedValue(fakeServer);
     mockedRunServerDoctor.mockResolvedValue({ success: true, data: fakeResult });
 
@@ -471,7 +471,7 @@ describe("doctorCommand — server mode", () => {
     expect(parsed.findings).toHaveLength(2);
   });
 
-  it("restores machine mode to false after --json execution", async () => {
+  it("should restore machine mode to false when --json execution finishes", async () => {
     mockedResolveServer.mockResolvedValue(fakeServer);
     mockedRunServerDoctor.mockResolvedValue({ success: true, data: fakeResult });
 
