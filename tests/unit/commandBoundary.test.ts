@@ -40,4 +40,19 @@ describe("withCommandBoundary", () => {
 
     expect(process.exitCode).toBe(1);
   });
+
+  it("should wrap a non-Error cause in an Error so it is not silently dropped", () => {
+    const stringCause = "network timeout string";
+    const failure = new CommandFailure("Boundary fired", { cause: stringCause });
+
+    expect(failure.cause).toBeInstanceOf(Error);
+    expect((failure.cause as Error).message).toBe(stringCause);
+  });
+
+  it("should preserve an Error cause unchanged", () => {
+    const errorCause = new Error("original");
+    const failure = new CommandFailure("Boundary fired", { cause: errorCause });
+
+    expect(failure.cause).toBe(errorCause);
+  });
 });

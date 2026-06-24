@@ -7,8 +7,15 @@ export class CommandFailure extends Error {
   constructor(message: string, options?: { hint?: string; cause?: unknown }) {
     // `instanceof Error` guard satisfies ESLint preserve-caught-error:
     // Error.cause only accepts an Error (or undefined). Non-Error causes
-    // (string, plain object, network error wrappers) would be lost otherwise.
-    super(message, options?.cause instanceof Error ? { cause: options.cause } : undefined);
+    // (string, plain object, network error wrappers) are wrapped defensively
+    // so they are not silently dropped on the audit trail.
+    const cause =
+      options?.cause instanceof Error
+        ? options.cause
+        : options?.cause !== undefined
+          ? new Error(String(options.cause))
+          : undefined;
+    super(message, cause ? { cause } : undefined);
     this.name = "CommandFailure";
     this.hint = options?.hint;
   }
