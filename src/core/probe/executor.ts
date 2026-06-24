@@ -245,15 +245,14 @@ export async function executeActiveProbe(
   //    path; cleanup is a separate concern.
   let prepared: unknown;
   try {
-    prepared = await runForwardStep(
-      "prepare",
+    prepared = await runLifecycleStep({
+      label: "prepare",
       context,
-      () => request.module.prepare(context),
-      assertForwardBudgetAvailable(deadlineMs, nowFn, session.sessionId, "prepare"),
-      forwardController,
-      nowFn,
+      run: () => request.module.prepare(context),
+      controller: forwardController,
+      timeoutMs: assertForwardBudgetAvailable(deadlineMs, nowFn, session.sessionId, "prepare"),
       deps,
-    );
+    });
     session = await deps.sessions.transition(session, {
       toState: "prepared",
       setHistory: true,
@@ -285,15 +284,14 @@ export async function executeActiveProbe(
       setHistory: true,
     });
     emitTransition("executing");
-    const executedCandidate = await runForwardStep(
-      "execute",
+    const executedCandidate = await runLifecycleStep({
+      label: "execute",
       context,
-      () => request.module.execute(context, prepared),
-      assertForwardBudgetAvailable(deadlineMs, nowFn, session.sessionId, "execute"),
-      forwardController,
-      nowFn,
+      run: () => request.module.execute(context, prepared),
+      controller: forwardController,
+      timeoutMs: assertForwardBudgetAvailable(deadlineMs, nowFn, session.sessionId, "execute"),
       deps,
-    );
+    });
     session = await deps.sessions.transition(session, {
       toState: "executed",
       setHistory: true,
@@ -309,15 +307,14 @@ export async function executeActiveProbe(
       setHistory: true,
     });
     emitTransition("verifying");
-    const verification = await runForwardStep(
-      "verify",
+    const verification = await runLifecycleStep({
+      label: "verify",
       context,
-      () => request.module.verify(context, prepared, durableExecuted),
-      assertForwardBudgetAvailable(deadlineMs, nowFn, session.sessionId, "verify"),
-      forwardController,
-      nowFn,
+      run: () => request.module.verify(context, prepared, durableExecuted),
+      controller: forwardController,
+      timeoutMs: assertForwardBudgetAvailable(deadlineMs, nowFn, session.sessionId, "verify"),
       deps,
-    );
+    });
     const verifyPassed = verification.passed === true;
     verificationPassed = verifyPassed;
     session = await deps.sessions.transition(session, {
@@ -369,20 +366,7 @@ export async function executeActiveProbe(
   });
 }
 
-// ─── Forward step helper ───────────────────────────────────────────────────
-
-interface RunForwardStepOptions {
-  /** Per-step name for logging only — must be one of "prepare" | "execute" | "verify". */
-  step: "prepare" | "execute" | "verify";
-  /** AbortController whose signal is forwarded to the handler context. */
-  controller: AbortController;
-  /** The forward deadline budget in milliseconds (typically request.timeoutMs). */
-  timeoutMs: number;
-  /** Clock injection point — must agree with the context's `now`. */
-  now: () => number;
-  /** Executor dependencies (setTimeout/clearTimeout overrides). */
-  deps: ProbeExecutorDependencies;
-}
+// ─── Lifecycle step runner ─────────────────────────────────────────────────
 
 /**
  * Generic lifecycle step runner shared by forward (`prepare` / `execute` /
@@ -401,7 +385,7 @@ interface RunForwardStepOptions {
  *   or a `receipt: ProbeReceiptSink` parameter, and it does NOT write
  *   receipt/payload records (`prepared`, `executed`, `verification`,
  *   `rollback`) or state transitions. Those stay inline in the callers
- *   (`executeActiveProbe`, `runForwardStep`, `runRollbackStep`).
+ *   (`executeActiveProbe`, `rollbackAfterQuiescence`).
  *
  * This is a deliberate faithful read of brief Step 3's audit-trail rule:
  * receipt/payload persistence must not be moved outside the helper in a
@@ -467,31 +451,6 @@ async function runLifecycleStep<T>(
     clearTimeoutFn(deadlineHandle);
     clearTimeoutFn(graceHandle);
   }
-}
-
-/**
- * Run a single forward step. Thin wrapper around `runLifecycleStep` that
- * keeps the legacy positional call sites in `executeActiveProbe` working
- * without churn. Receipt/payload writes remain the caller's responsibility
- * (see `runLifecycleStep` doc).
- */
-async function runForwardStep<T>(
-  step: RunForwardStepOptions["step"],
-  context: ReturnType<typeof createProbeContext>,
-  runner: () => Promise<T>,
-  timeoutMs: number,
-  controller: AbortController,
-  now: () => number,
-  deps: ProbeExecutorDependencies,
-): Promise<T> {
-  return runLifecycleStep<T>({
-    label: step,
-    context,
-    run: runner,
-    controller,
-    timeoutMs,
-    deps,
-  });
 }
 
 // ─── Rollback after quiescence ─────────────────────────────────────────────
@@ -572,16 +531,14 @@ async function rollbackAfterQuiescence(
   //    blocking — the operator must investigate before retry.
   let result: PluginProbeRollbackResult;
   try {
-    result = await runRollbackStep(
-      rollbackContext,
-      input.module.rollback,
-      input.prepared,
-      input.executed,
-      boundedBudgetMs,
-      rollbackController,
-      nowFn,
+    result = await runLifecycleStep<PluginProbeRollbackResult>({
+      label: "rollback",
+      context: rollbackContext,
+      run: () => input.module.rollback(rollbackContext, input.prepared, input.executed),
+      controller: rollbackController,
+      timeoutMs: boundedBudgetMs,
       deps,
-    );
+    });
   } catch (error) {
     current = await deps.sessions.transition(current, {
       toState: "unresolved",
@@ -613,34 +570,6 @@ async function rollbackAfterQuiescence(
     reason: `rollback-returned-false: ${result.summary ?? "no summary"}`,
   });
   return { status: "unresolved", sessionId: current.sessionId };
-}
-
-// ─── Rollback step helper ──────────────────────────────────────────────────
-
-/**
- * Run the rollback handler with the same quiescence + abort semantics as
- * forward steps. Thin wrapper around `runLifecycleStep` to keep the
- * rollback call site readable and the rollback-specific arguments
- * (prepared, executed) flowing through the closure.
- */
-async function runRollbackStep(
-  context: ReturnType<typeof createProbeContext>,
-  rollbackFn: ActiveProbeModule["rollback"],
-  prepared: unknown,
-  executed: unknown | undefined,
-  budgetMs: number,
-  controller: AbortController,
-  now: () => number,
-  deps: ProbeExecutorDependencies,
-): Promise<PluginProbeRollbackResult> {
-  return runLifecycleStep<PluginProbeRollbackResult>({
-    label: "rollback",
-    context,
-    run: () => rollbackFn(context, prepared, executed),
-    controller,
-    timeoutMs: budgetMs,
-    deps,
-  });
 }
 
 // ─── Defaults ──────────────────────────────────────────────────────────────

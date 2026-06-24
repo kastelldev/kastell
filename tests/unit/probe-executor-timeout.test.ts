@@ -238,7 +238,7 @@ describe("executeActiveProbe — quiescence rule (5s handler settlement grace)",
     // The executor races against deadlineMs and aborts after the 5s grace.
     // We must not have run rollback at all.
     const promise = executeActiveProbe(request, deps);
-    // Drain microtasks so the executor reaches runForwardStep's setTimeout
+    // Drain microtasks so the executor reaches runLifecycleStep's setTimeout
     // calls before we drive the simulated clock forward.
     await new Promise((r) => setImmediate(r));
     await new Promise((r) => setImmediate(r));
