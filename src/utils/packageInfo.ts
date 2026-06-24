@@ -44,6 +44,11 @@ export function getPackageMetadata(): {
     cachedPackageMetadata = readKastellPackageJson();
   }
   const pkg = cachedPackageMetadata;
+  // `process.env.KASTELL_BUILD_ID` is intentionally read on EVERY call
+  // (not just at cache-fill) so build identity changes mid-process (e.g.
+  // CI stamping the env var after package.json is read) are picked up
+  // without a process restart. The package.json cache is stable for the
+  // process lifetime; only the env-derived build identity is dynamic.
   return {
     version: pkg?.version ?? "0.0.0",
     mcpSdkVersion: pkg?.dependencies?.["@modelcontextprotocol/sdk"] ?? "unknown",

@@ -166,6 +166,12 @@ async function statusCommandImpl(query?: string, options?: StatusOptions): Promi
     const fallbackHint = classified.isTyped ? undefined : mapProviderError(error, server.provider) ?? undefined;
     const hint = classified.hint ?? fallbackHint;
     if (hint) logger.info(hint);
+    // CommandFailure.cause preserves the original error as the audit trail
+    // for operator diagnostics. The boundary's `logger.error(message)` call
+    // intentionally does NOT log `cause` to user output — cause is forensic
+    // context for logs/telemetry, not part of the user-facing message. See
+    // src/commands/audit.ts for the matching AuditError → CommandFailure
+    // conversion pattern.
     throw new CommandFailure(classified.message, { hint, cause: error });
   }
 }

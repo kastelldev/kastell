@@ -65,6 +65,13 @@ export interface AuditCommandOptions extends AuditCliOptions {
 /**
  * Wrapper: catches AuditError and sets exitCode = 1.
  * All early-return paths in auditCommandImpl throw AuditError instead.
+ *
+ * The AuditError → CommandFailure conversion preserves the original error
+ * in `CommandFailure.cause` as the audit trail for operator diagnostics.
+ * The boundary's `logger.error(message)` call intentionally does NOT log
+ * `cause` to user output — cause is forensic context for logs/telemetry,
+ * not part of the user-facing message. See src/commands/status.ts for the
+ * matching pattern (typed `error` rethrown with `cause`).
  */
 export const auditCommand = withCommandBoundary(
   async (serverName?: string, options: AuditCommandOptions = {}) => {
