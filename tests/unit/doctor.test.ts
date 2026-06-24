@@ -455,6 +455,36 @@ describe("doctorCommand — server mode", () => {
     expect(allOutput).toContain('"findings"');
   });
 
+  it("keeps stdout limited to JSON payload when --json flag set (machine mode)", async () => {
+    mockedResolveServer.mockResolvedValue(fakeServer);
+    mockedRunServerDoctor.mockResolvedValue({ success: true, data: fakeResult });
+
+    await doctorCommand("my-server", { json: true }, "1.0.0");
+
+    // In machine mode, only the JSON payload should be on stdout (no decorative
+    // log lines / blank lines from logger.info / logger.title etc.)
+    const stdoutJoined = consoleSpy.mock.calls.map((c: unknown[]) => c.map((a) => String(a)).join("")).join("\n");
+    // The payload is JSON, so it should parse and contain findings
+    expect(() => JSON.parse(stdoutJoined)).not.toThrow();
+    const parsed = JSON.parse(stdoutJoined) as { findings?: unknown[]; serverName?: string };
+    expect(parsed.serverName).toBe("my-server");
+    expect(parsed.findings).toHaveLength(2);
+  });
+
+  it("restores machine mode to false after --json execution", async () => {
+    mockedResolveServer.mockResolvedValue(fakeServer);
+    mockedRunServerDoctor.mockResolvedValue({ success: true, data: fakeResult });
+
+    const { isMachineMode } = await import("../../src/utils/logger");
+    expect(isMachineMode()).toBe(false);
+
+    await doctorCommand("my-server", { json: true }, "1.0.0");
+
+    // After --json command completes, machine mode MUST be reset to false
+    // (try/finally guarantee) so subsequent non-JSON commands aren't affected.
+    expect(isMachineMode()).toBe(false);
+  });
+
   it("logs error when runServerDoctor returns success=false", async () => {
     mockedResolveServer.mockResolvedValue(fakeServer);
     mockedRunServerDoctor.mockResolvedValue({ success: false, error: "SSH connection failed" });

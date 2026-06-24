@@ -4,16 +4,38 @@ import ora, { type Ora } from "ora";
 // CodeQL suppression: logger methods display user-facing messages only;
 // sensitive data is redacted via REDACT_PATTERNS in debugLog
 
+// ─── Machine mode (P146 Task 3) ───────────────────────────────────────────────
+//
+// When machine mode is enabled, diagnostic messages (info / success / step /
+// title) route to stderr instead of stdout so that a command's JSON / machine
+// payload on stdout is not contaminated with human-facing decorations.
+// logger.error and logger.warning always go to stderr (they are not changed).
+// debugLog redaction is unaffected.
+let machineMode = false;
+
+export function setMachineMode(enabled: boolean): void {
+  machineMode = enabled;
+}
+
+export function isMachineMode(): boolean {
+  return machineMode;
+}
+
+function diagnosticLog(...args: unknown[]): void {
+  if (machineMode) {
+    console.error(...args);
+  } else {
+    console.log(...args);
+  }
+}
 
 export const logger = {
   info: (message: string) => {
-
-    console.log(chalk.blue("ℹ"), message);
+    diagnosticLog(chalk.blue("ℹ"), message);
   },
 
   success: (message: string) => {
-
-    console.log(chalk.green("✔"), message);
+    diagnosticLog(chalk.green("✔"), message);
   },
 
   error: (message: string, context?: Record<string, unknown>) => {
@@ -25,18 +47,22 @@ export const logger = {
   },
 
   warning: (message: string) => {
-
     console.error(chalk.yellow("⚠"), message);
   },
 
   title: (message: string) => {
-    console.log();
-    console.log(chalk.bold.cyan(message));
-    console.log();
+    if (machineMode) {
+      // Suppress decorative blank lines; emit only the title on stderr.
+      console.error(chalk.bold.cyan(message));
+    } else {
+      console.log();
+      console.log(chalk.bold.cyan(message));
+      console.log();
+    }
   },
 
   step: (message: string) => {
-    console.log(chalk.gray("→"), message);
+    diagnosticLog(chalk.gray("→"), message);
   },
 };
 
