@@ -11,7 +11,7 @@ import {
 import { isBareServer, getServerModeLabel } from "../utils/modeGuard.js";
 import { getAdapter, resolvePlatform } from "../adapters/factory.js";
 import { adapterDisplayName } from "../adapters/shared.js";
-import { markCommandFailed } from "../utils/exitCode.js";
+import { withCommandBoundary, CommandFailure } from "../utils/commandBoundary.js";
 import type { ServerRecord } from "../types/index.js";
 import type { StatusResult } from "../core/status.js";
 
@@ -97,13 +97,18 @@ async function autostartCoolify(server: ServerRecord): Promise<void> {
   }
 }
 
-export async function statusCommand(query?: string, options?: StatusOptions): Promise<void> {
+async function statusCommandImpl(query?: string, options?: StatusOptions): Promise<void> {
   if (options?.all) {
     return statusAll();
   }
 
   const server = await resolveServer(query);
-  if (!server) return;
+  if (!server) {
+    // resolveServer already logged "Server not found"; boundary fires only
+    // when the user typed a query (interactive cancel stays exit 0).
+    if (query) throw new CommandFailure(`Server not found: ${query}`, { logged: true });
+    return;
+  }
 
   // Ask for API token (skip for manually added servers)
   const apiToken = server.id.startsWith("manual-") ? "" : await promptApiToken(server.provider);
@@ -156,12 +161,11 @@ export async function statusCommand(query?: string, options?: StatusOptions): Pr
   } catch (error: unknown) {
     spinner.fail("Failed to check status");
     const classified = classifyError(error);
-    logger.error(classified.message);
-    if (classified.hint) logger.info(classified.hint);
-    if (!classified.isTyped) {
-      const hint = mapProviderError(error, server.provider);
-      if (hint) logger.info(hint);
-    }
-    markCommandFailed();
+    const fallbackHint = classified.isTyped ? undefined : mapProviderError(error, server.provider) ?? undefined;
+    const hint = classified.hint ?? fallbackHint;
+    // CommandFailure.cause rationale lives in commandBoundary.ts JSDoc.
+    throw new CommandFailure(classified.message, { hint, cause: error });
   }
 }
+
+export const statusCommand = withCommandBoundary(statusCommandImpl);

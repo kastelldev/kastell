@@ -7,6 +7,7 @@ import {
   assertIsolatedKastellDir,
   createIsolatedKastellEnv,
   importWithIsolatedKastellDir,
+  runWithIsolatedKastellEnv,
 } from "../isolatedKastellEnv";
 
 describe("isolatedKastellEnv", () => {
@@ -74,5 +75,31 @@ describe("isolatedKastellEnv", () => {
     expect(() => assertIsolatedKastellDir(actual, expected)).toThrow(
       /KASTELL_DIR.*before importing/i,
     );
+  });
+
+  it("should run an isolated test body and clean up the temp KASTELL_DIR when wrapper is invoked", async () => {
+    const seenDirs: string[] = [];
+
+    await runWithIsolatedKastellEnv(async (isolated) => {
+      seenDirs.push(isolated.dir);
+      expect(process.env.KASTELL_DIR).toBe(isolated.dir);
+      expect(process.env.KASTELL_TEST_MODE).toBe("1");
+    });
+
+    expect(seenDirs).toHaveLength(1);
+  });
+
+  it("should restore prior KASTELL_DIR and KASTELL_TEST_MODE after wrapper execution", async () => {
+    process.env.KASTELL_DIR = "C:\\previous-kastell";
+    process.env.KASTELL_TEST_MODE = "previous";
+
+    await runWithIsolatedKastellEnv(async () => {
+      expect(process.env.KASTELL_TEST_MODE).toBe("1");
+    });
+
+    expect(process.env.KASTELL_DIR).toBe("C:\\previous-kastell");
+    expect(process.env.KASTELL_TEST_MODE).toBe("previous");
+    delete process.env.KASTELL_DIR;
+    delete process.env.KASTELL_TEST_MODE;
   });
 });

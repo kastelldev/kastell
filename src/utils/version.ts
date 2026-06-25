@@ -1,37 +1,7 @@
-import { readFileSync, existsSync } from "fs";
-import { join, dirname } from "path";
-import { fileURLToPath } from "url";
+import { readFileSync } from "fs";
+import { findPackageJson, clearPackageMetadataCache, getPackageMetadata } from "./packageInfo.js";
 
 let cachedVersion: string | null = null;
-
-function findPackageJson(): string | null {
-  let dir = fileURLToPath(new URL(".", import.meta.url));
-  for (let i = 0; i < 5; i++) {
-    const candidate = join(dir, "package.json");
-    if (existsSync(candidate)) return candidate;
-    const parent = dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-  return null;
-}
-
-interface KastellPackageJson {
-  version: string;
-  dependencies?: Record<string, string>;
-}
-
-function readKastellPackageJson(): KastellPackageJson | null {
-  try {
-    const pkgPath = findPackageJson();
-    if (!pkgPath) return null;
-    return JSON.parse(readFileSync(pkgPath, "utf-8")) as KastellPackageJson;
-  } catch {
-    return null;
-  }
-}
-
-let cachedPackageMetadata: ReturnType<typeof readKastellPackageJson> | null | undefined;
 
 export function getKastellVersion(): string {
   if (cachedVersion !== null) return cachedVersion;
@@ -50,23 +20,7 @@ export const KASTELL_VERSION = getKastellVersion();
 
 export function clearVersionCache(): void {
   cachedVersion = null;
-  cachedPackageMetadata = undefined;
+  clearPackageMetadataCache();
 }
 
-export function getPackageMetadata(): {
-  version: string;
-  mcpSdkVersion: string;
-  buildIdentity?: string;
-} {
-  if (cachedPackageMetadata === undefined) {
-    cachedPackageMetadata = readKastellPackageJson();
-  }
-  const pkg = cachedPackageMetadata;
-  return {
-    version: pkg?.version ?? "0.0.0",
-    mcpSdkVersion: pkg?.dependencies?.["@modelcontextprotocol/sdk"] ?? "unknown",
-    ...(process.env.KASTELL_BUILD_ID
-      ? { buildIdentity: process.env.KASTELL_BUILD_ID }
-      : {}),
-  };
-}
+export { getPackageMetadata, clearPackageMetadataCache };

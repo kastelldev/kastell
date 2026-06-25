@@ -6,7 +6,7 @@
 import { readFileSync } from "fs";
 import { resolveServer } from "../utils/serverSelect.js";
 import { logger, createSpinner } from "../utils/logger.js";
-import { markCommandFailed } from "../utils/exitCode.js";
+import { withCommandBoundary, CommandFailure, failWith } from "../utils/commandBoundary.js";
 import { collectEvidence } from "../core/evidence.js";
 import type { EvidenceOptions } from "../core/evidence.js";
 
@@ -25,12 +25,17 @@ interface EvidenceCommandOptions {
   quiet?: boolean;
 }
 
-export async function evidenceCommand(
+async function evidenceCommandImpl(
   serverArg: string | undefined,
   options: EvidenceCommandOptions,
 ): Promise<void> {
   const server = await resolveServer(serverArg, "Select a server to collect evidence from:");
-  if (!server) return;
+  if (!server) {
+    // resolveServer already logged "Server not found"; boundary fires only
+    // when the user typed a query (interactive cancel stays exit 0).
+    if (serverArg) throw new CommandFailure(`Server not found: ${serverArg}`, { logged: true });
+    return;
+  }
 
   const { name, ip } = server;
   const platform = (server.platform ?? server.mode ?? "bare") as string;
@@ -57,7 +62,7 @@ export async function evidenceCommand(
 
   if (!result.success || !result.data) {
     spinner?.fail(result.error ?? "Evidence collection failed");
-    markCommandFailed();
+    failWith(result.error ?? "Evidence collection failed");
     return;
   }
 
@@ -86,3 +91,5 @@ export async function evidenceCommand(
 
   logger.warning("Evidence directory may contain sensitive server data.");
 }
+
+export const evidenceCommand = withCommandBoundary(evidenceCommandImpl);

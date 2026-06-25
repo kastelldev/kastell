@@ -30,6 +30,7 @@ import { saveBaselineSafe, loadBaseline, checkRegression, formatRegressionSummar
 import { loadDefaults } from "../core/defaults.js";
 import { AuditError } from "../core/audit/errors.js";
 import { markCommandFailed } from "../utils/exitCode.js";
+import { withCommandBoundary, CommandFailure } from "../utils/commandBoundary.js";
 
 function printDiff(diff: AuditDiffResult, json?: boolean): void {
   console.log(json ? formatDiffJson(diff) : formatDiffTerminal(diff));
@@ -64,22 +65,21 @@ export interface AuditCommandOptions extends AuditCliOptions {
 /**
  * Wrapper: catches AuditError and sets exitCode = 1.
  * All early-return paths in auditCommandImpl throw AuditError instead.
+ * The cause-rationale (why it is set on CommandFailure but not logged)
+ * lives in the CommandFailure JSDoc.
  */
-export async function auditCommand(
-  serverName?: string,
-  options: AuditCommandOptions = {},
-): Promise<void> {
-  try {
-    await auditCommandImpl(serverName, options);
-  } catch (err) {
-    if (err instanceof AuditError) {
-      logger.error(err.message);
-      markCommandFailed();
-      return;
+export const auditCommand = withCommandBoundary(
+  async (serverName?: string, options: AuditCommandOptions = {}) => {
+    try {
+      await auditCommandImpl(serverName, options);
+    } catch (error) {
+      if (error instanceof AuditError) {
+        throw new CommandFailure(error.message, { cause: error });
+      }
+      throw error;
     }
-    throw err;
-  }
-}
+  },
+);
 
 /**
  * Execute the audit command.

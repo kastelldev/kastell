@@ -133,6 +133,14 @@ describe("getPackageMetadata (real implementation)", () => {
     const { pathToFileURL } = require("url") as typeof import("url");
 
     const distPath = path.resolve(__dirname, "..", "..", "dist", "utils", "version.js");
+    const distPackageInfoPath = path.resolve(
+      __dirname,
+      "..",
+      "..",
+      "dist",
+      "utils",
+      "packageInfo.js",
+    );
     // Create a nested temp dir 6 levels deep so findPackageJson's 5-level walk
     // cannot find any package.json above the copied version.js file.
     const baseTemp = os.tmpdir();
@@ -141,7 +149,11 @@ describe("getPackageMetadata (real implementation)", () => {
     const tempDir = path.join(tempBase, "a", "b", "c", "d", "e", "f");
     fsPromised.mkdirSync(tempDir, { recursive: true });
     const copiedDist = path.join(tempDir, "version.js");
+    const copiedPackageInfo = path.join(tempDir, "packageInfo.js");
     fsPromised.copyFileSync(distPath, copiedDist);
+    // version.js re-exports getPackageMetadata from packageInfo.js; copy it too
+    // so the ESM resolver can satisfy the import inside the temp sandbox.
+    fsPromised.copyFileSync(distPackageInfoPath, copiedPackageInfo);
 
     const distUrl = pathToFileURL(copiedDist).href;
     const driverScript = `

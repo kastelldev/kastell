@@ -229,13 +229,6 @@ function applyWindowsAcl(
   targetPath: string,
   sensitivity: PermissionSensitivity,
 ): void {
-  // Test-env skip: see isTestEnvironmentDir() doc above. Without this,
-  // tests/integration/cli-exit-codes.test.ts fails with EPERM on
-  // servers.json because icacls leaves child ACEs empty.
-  if (isTestEnvironmentDir()) {
-    return;
-  }
-
   // 1. Resolve current Windows identity (e.g. "DOMAIN\user") — cached.
   let identity: string;
   try {
@@ -279,17 +272,22 @@ function applyWindowsAcl(
     return;
   }
 
-  // 4. Remove every existing principal.
+  // 4. Remove every existing principal in a single batched icacls call.
+  //    icacls accepts multiple principals after /remove, so one process
+  //    invocation replaces N processes (perf win on cold secure-write paths).
+  const removablePrincipals = [
+    ...new Set(aclPrincipals(targetPath, inspect.stdout).map(icaclsIdentity)),
+  ];
   let removalFailure: AclFailure | undefined;
-  for (const principal of new Set(aclPrincipals(targetPath, inspect.stdout))) {
+  if (removablePrincipals.length > 0) {
     const remove = runAclStep(
       "icacls",
-      [targetPath, "/remove", icaclsIdentity(principal), "/Q"],
+      [targetPath, "/remove", ...removablePrincipals, "/Q"],
       targetPath,
       sensitivity,
     );
     if (remove.status !== 0) {
-      removalFailure ??= {
+      removalFailure = {
         executable: "icacls",
         status: remove.status,
         stderr: remove.stderr,
@@ -349,6 +347,11 @@ function applyPermissions(
   mode: 0o600 | 0o700,
   sensitivity: PermissionSensitivity,
 ): void {
+  // Test-env skip lives at the caller (not inside applyWindowsAcl) so the
+  // platform helper stays focused on ACL mechanics. Test temp dirs are
+  // user-private by mkdtempSync + inherited ACE for the creating user, so
+  // the security loss is zero. See isTestEnvironmentDir() doc.
+  if (isWindows() && isTestEnvironmentDir()) return;
   if (isWindows()) {
     applyWindowsAcl(targetPath, sensitivity);
     return;

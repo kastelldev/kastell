@@ -270,3 +270,50 @@ describe("applyWindowsAcl — icacls /grant failure path (second icacls call)", 
     warningSpy.mockRestore();
   });
 });
+
+describe("applyWindowsAcl — batched /remove (P146 Task 6)", () => {
+  it("removes all non-owner principals with one icacls batch call", async () => {
+    await loadModule();
+    const okReturn = (stdout = ""): ReturnType<typeof spawnSync> => ({
+      stdout,
+      stderr: "",
+      status: 0,
+      pid: 0,
+      output: [],
+      signal: null,
+    }) as ReturnType<typeof spawnSync>;
+    mockedSpawnSync.mockImplementation(((cmd: string, args?: readonly string[]) => {
+      if (cmd === "whoami") {
+        return okReturn("DOMAIN\\user\r\n");
+      }
+      if (cmd === "icacls" && Array.isArray(args) && args.length === 1) {
+        return okReturn(
+          "C:\\state.json BUILTIN\\Users:(I)(RX)\r\nC:\\state.json Everyone:(I)(RX)\r\n",
+        );
+      }
+      return okReturn();
+    }) as unknown as typeof spawnSync);
+
+    const { secureWriteFileSync } = secureWriteModule;
+    secureWriteFileSync("C:\\state.json", "data");
+
+    const removeCalls = mockedSpawnSync.mock.calls.filter(
+      ([cmd, args]) =>
+        cmd === "icacls" && Array.isArray(args) && args.includes("/remove"),
+    );
+    expect(removeCalls).toHaveLength(1);
+    // Exact arg list: secureWrite.ts:292 produces
+    // [targetPath, "/remove", ...removablePrincipals, "/Q"] with the inspect
+    // call returning exactly BUILTIN\Users and Everyone in that order.
+    // Tightening from arrayContaining catches accidental insertion of
+    // shell separators (/C, /S) or extra flags that would silently change
+    // icacls semantics.
+    expect(removeCalls[0][1]).toEqual([
+      "C:\\state.json",
+      "/remove",
+      "BUILTIN\\Users",
+      "Everyone",
+      "/Q",
+    ]);
+  });
+});

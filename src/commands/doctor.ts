@@ -1,5 +1,5 @@
 import { resolveServer } from "../utils/serverSelect.js";
-import { logger, createSpinner } from "../utils/logger.js";
+import { logger, createSpinner, withMachineMode } from "../utils/logger.js";
 import { runServerDoctor } from "../core/doctor.js";
 import { runDoctorFix } from "../core/doctor-fix.js";
 import {
@@ -114,11 +114,13 @@ export async function doctorCommand(
     spinner.stop();
 
     if (options?.json) {
-      if (result.success && result.data) {
-        console.log(JSON.stringify(result.data, null, 2));
-      } else {
-        console.log(JSON.stringify({ error: result.error }, null, 2));
-      }
+      await withMachineMode(() => {
+        if (result.success && result.data) {
+          console.log(JSON.stringify(result.data, null, 2));
+        } else {
+          console.log(JSON.stringify({ error: result.error }, null, 2));
+        }
+      });
       return;
     }
 
@@ -230,11 +232,24 @@ export async function doctorCommand(
   }
 
   // ── Local mode ───────────────────────────────────────────────────────────────
-  logger.title("Kastell Doctor");
-
   const baseResults = runDoctorChecks(version);
   const probeResults = await runLocalProbeDoctorChecks();
   const results = [...baseResults, ...probeResults];
+  const failures = results.filter((r) => r.status === "fail");
+  const warnings = results.filter((r) => r.status === "warn");
+
+  if (options?.json) {
+    console.log(JSON.stringify({
+      checks: results,
+      summary: {
+        failures: failures.length,
+        warnings: warnings.length,
+      },
+    }, null, 2));
+    return;
+  }
+
+  logger.title("Kastell Doctor");
 
   for (const result of results) {
     const colorFn =
@@ -245,9 +260,6 @@ export async function doctorCommand(
           : logger.error;
     colorFn(`${result.name}: ${result.detail}`);
   }
-
-  const failures = results.filter((r) => r.status === "fail");
-  const warnings = results.filter((r) => r.status === "warn");
 
   console.log();
   if (failures.length > 0) {

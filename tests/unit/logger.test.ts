@@ -1,4 +1,133 @@
-import { logger, createSpinner } from "../../src/utils/logger";
+import { logger, createSpinner, setMachineMode, isMachineMode, withMachineMode } from "../../src/utils/logger";
+
+describe("logger machine mode", () => {
+  let stdoutSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    stdoutSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+    stderrSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    setMachineMode(false);
+  });
+
+  afterEach(() => {
+    setMachineMode(false);
+    stdoutSpy.mockRestore();
+    stderrSpy.mockRestore();
+  });
+
+  it("should default to non-machine mode", () => {
+    expect(isMachineMode()).toBe(false);
+  });
+
+  it("should reflect machine mode state when enabled", () => {
+    setMachineMode(true);
+    expect(isMachineMode()).toBe(true);
+    setMachineMode(false);
+    expect(isMachineMode()).toBe(false);
+  });
+
+  it("should route logger.info to stderr when in machine mode", () => {
+    setMachineMode(true);
+    logger.info("diagnostic");
+    expect(stdoutSpy).not.toHaveBeenCalled();
+    expect(stderrSpy).toHaveBeenCalled();
+  });
+
+  it("should route logger.success to stderr when in machine mode", () => {
+    setMachineMode(true);
+    logger.success("success");
+    expect(stdoutSpy).not.toHaveBeenCalled();
+    expect(stderrSpy).toHaveBeenCalled();
+  });
+
+  it("should route logger.step to stderr when in machine mode", () => {
+    setMachineMode(true);
+    logger.step("step");
+    expect(stdoutSpy).not.toHaveBeenCalled();
+    expect(stderrSpy).toHaveBeenCalled();
+  });
+
+  it("should suppress decorative blank lines for logger.title when in machine mode", () => {
+    setMachineMode(true);
+    logger.title("My Title");
+    // In machine mode title should not emit the leading/trailing empty console.log calls
+    expect(stdoutSpy).not.toHaveBeenCalled();
+    // title must still emit the title text to stderr exactly once — guards against
+    // regressions where blank lines would also reach stderr (e.g. empty console.log
+    // calls routed to stderr in machine mode).
+    expect(stderrSpy).toHaveBeenCalledTimes(1);
+    expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining("My Title"));
+  });
+
+  it("should keep logger.error on stderr regardless of machine mode", () => {
+    setMachineMode(true);
+    logger.error("boom");
+    expect(stdoutSpy).not.toHaveBeenCalled();
+    expect(stderrSpy).toHaveBeenCalledWith(expect.any(String), "boom");
+  });
+
+  it("should keep logger.warning on stderr regardless of machine mode", () => {
+    setMachineMode(true);
+    logger.warning("warn");
+    expect(stdoutSpy).not.toHaveBeenCalled();
+    expect(stderrSpy).toHaveBeenCalledWith(expect.any(String), "warn");
+  });
+
+  it("should restore stdout routing for logger.info after machine mode is disabled", () => {
+    setMachineMode(true);
+    logger.info("hidden");
+    setMachineMode(false);
+    logger.info("visible");
+    // visible should be called via stdout (console.log)
+    expect(stdoutSpy).toHaveBeenCalled();
+  });
+});
+
+describe("withMachineMode", () => {
+  let stdoutSpy: jest.SpyInstance;
+  let stderrSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    stdoutSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+    stderrSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    setMachineMode(false);
+  });
+
+  afterEach(() => {
+    setMachineMode(false);
+    stdoutSpy.mockRestore();
+    stderrSpy.mockRestore();
+  });
+
+  it("should enable machine mode for the duration of fn and restore after", async () => {
+    expect(isMachineMode()).toBe(false);
+    await withMachineMode(() => {
+      expect(isMachineMode()).toBe(true);
+    });
+    expect(isMachineMode()).toBe(false);
+  });
+
+  it("should restore machine mode even when fn throws", async () => {
+    setMachineMode(false);
+    await expect(
+      withMachineMode(() => {
+        throw new Error("boom");
+      }),
+    ).rejects.toThrow("boom");
+    expect(isMachineMode()).toBe(false);
+  });
+
+  it("should preserve an outer machine-mode state when invoked from inside machine mode", async () => {
+    setMachineMode(true);
+    await withMachineMode(() => {
+      expect(isMachineMode()).toBe(true);
+    });
+    // Outer mode was true on entry, restored to true on exit.
+    expect(isMachineMode()).toBe(true);
+    setMachineMode(false);
+  });
+});
 
 describe("logger", () => {
   let stdoutSpy: jest.SpyInstance;

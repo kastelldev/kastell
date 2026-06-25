@@ -4,16 +4,56 @@ import ora, { type Ora } from "ora";
 // CodeQL suppression: logger methods display user-facing messages only;
 // sensitive data is redacted via REDACT_PATTERNS in debugLog
 
+// ─── Machine mode (P146 Task 3) ───────────────────────────────────────────────
+//
+// When machine mode is enabled, diagnostic messages (info / success / step /
+// title) route to stderr instead of stdout so that a command's JSON / machine
+// payload on stdout is not contaminated with human-facing decorations.
+// logger.error and logger.warning always go to stderr (they are not changed).
+// debugLog redaction is unaffected.
+let machineMode = false;
+
+export function setMachineMode(enabled: boolean): void {
+  machineMode = enabled;
+}
+
+export function isMachineMode(): boolean {
+  return machineMode;
+}
+
+/**
+ * Run `fn` with machine mode enabled, then restore the prior state — even
+ * when `fn` throws. Use for `--json` output blocks so the enable/restore
+ * pair is impossible to forget on early-return paths. Nested calls
+ * snapshot and restore their own frame, so an outer human-mode caller
+ * with an inner `--json` block stays in human mode after the inner
+ * block exits.
+ */
+export async function withMachineMode<T>(fn: () => T | Promise<T>): Promise<T> {
+  const previous = machineMode;
+  machineMode = true;
+  try {
+    return await fn();
+  } finally {
+    machineMode = previous;
+  }
+}
+
+function diagnosticLog(...args: unknown[]): void {
+  if (machineMode) {
+    console.error(...args);
+  } else {
+    console.log(...args);
+  }
+}
 
 export const logger = {
   info: (message: string) => {
-
-    console.log(chalk.blue("ℹ"), message);
+    diagnosticLog(chalk.blue("ℹ"), message);
   },
 
   success: (message: string) => {
-
-    console.log(chalk.green("✔"), message);
+    diagnosticLog(chalk.green("✔"), message);
   },
 
   error: (message: string, context?: Record<string, unknown>) => {
@@ -25,18 +65,22 @@ export const logger = {
   },
 
   warning: (message: string) => {
-
     console.error(chalk.yellow("⚠"), message);
   },
 
   title: (message: string) => {
-    console.log();
-    console.log(chalk.bold.cyan(message));
-    console.log();
+    if (machineMode) {
+      // Suppress decorative blank lines; emit only the title on stderr.
+      console.error(chalk.bold.cyan(message));
+    } else {
+      console.log();
+      console.log(chalk.bold.cyan(message));
+      console.log();
+    }
   },
 
   step: (message: string) => {
-    console.log(chalk.gray("→"), message);
+    diagnosticLog(chalk.gray("→"), message);
   },
 };
 

@@ -245,15 +245,14 @@ export async function executeActiveProbe(
   //    path; cleanup is a separate concern.
   let prepared: unknown;
   try {
-    prepared = await runForwardStep(
-      "prepare",
+    prepared = await runLifecycleStep({
+      label: "prepare",
       context,
-      () => request.module.prepare(context),
-      assertForwardBudgetAvailable(deadlineMs, nowFn, session.sessionId, "prepare"),
-      forwardController,
-      nowFn,
+      run: () => request.module.prepare(context),
+      controller: forwardController,
+      timeoutMs: assertForwardBudgetAvailable(deadlineMs, nowFn, session.sessionId, "prepare"),
       deps,
-    );
+    });
     session = await deps.sessions.transition(session, {
       toState: "prepared",
       setHistory: true,
@@ -285,15 +284,14 @@ export async function executeActiveProbe(
       setHistory: true,
     });
     emitTransition("executing");
-    const executedCandidate = await runForwardStep(
-      "execute",
+    const executedCandidate = await runLifecycleStep({
+      label: "execute",
       context,
-      () => request.module.execute(context, prepared),
-      assertForwardBudgetAvailable(deadlineMs, nowFn, session.sessionId, "execute"),
-      forwardController,
-      nowFn,
+      run: () => request.module.execute(context, prepared),
+      controller: forwardController,
+      timeoutMs: assertForwardBudgetAvailable(deadlineMs, nowFn, session.sessionId, "execute"),
       deps,
-    );
+    });
     session = await deps.sessions.transition(session, {
       toState: "executed",
       setHistory: true,
@@ -309,15 +307,14 @@ export async function executeActiveProbe(
       setHistory: true,
     });
     emitTransition("verifying");
-    const verification = await runForwardStep(
-      "verify",
+    const verification = await runLifecycleStep({
+      label: "verify",
       context,
-      () => request.module.verify(context, prepared, durableExecuted),
-      assertForwardBudgetAvailable(deadlineMs, nowFn, session.sessionId, "verify"),
-      forwardController,
-      nowFn,
+      run: () => request.module.verify(context, prepared, durableExecuted),
+      controller: forwardController,
+      timeoutMs: assertForwardBudgetAvailable(deadlineMs, nowFn, session.sessionId, "verify"),
       deps,
-    );
+    });
     const verifyPassed = verification.passed === true;
     verificationPassed = verifyPassed;
     session = await deps.sessions.transition(session, {
@@ -369,43 +366,44 @@ export async function executeActiveProbe(
   });
 }
 
-// ─── Forward step helper ───────────────────────────────────────────────────
-
-interface RunForwardStepOptions {
-  /** Per-step name for logging only — must be one of "prepare" | "execute" | "verify". */
-  step: "prepare" | "execute" | "verify";
-  /** AbortController whose signal is forwarded to the handler context. */
-  controller: AbortController;
-  /** The forward deadline budget in milliseconds (typically request.timeoutMs). */
-  timeoutMs: number;
-  /** Clock injection point — must agree with the context's `now`. */
-  now: () => number;
-  /** Executor dependencies (setTimeout/clearTimeout overrides). */
-  deps: ProbeExecutorDependencies;
-}
+// ─── Lifecycle step runner ─────────────────────────────────────────────────
 
 /**
- * Run a single forward step. The handler is raced against the deadline,
- * but a settled handler is always allowed to complete its turn — we only
- * surface `ProbeHandlerNotQuiescedError` if the handler does NOT settle
- * within `QUIESCENCE_GRACE_MS` after the deadline. The handler's own
- * promise rejection propagates to the caller.
+ * Generic lifecycle step runner shared by forward (`prepare` / `execute` /
+ * `verify`) and rollback phases. Races the handler against `timeoutMs`,
+ * aborts the controller on deadline, and surfaces
+ * `ProbeHandlerNotQuiescedError` if the handler does not settle within
+ * `QUIESCENCE_GRACE_MS` after the deadline. The handler's own promise
+ * rejection propagates to the caller.
  *
- * Implementation: we use Promise.race to detect (a) handler settlement
- * with a value or rejection, (b) deadline elapsing, and (c) the deadline
- * + QUIESCENCE_GRACE_MS elapsing without settlement. (b) does NOT throw;
- * it aborts the controller and waits for settlement. (c) rejects the
- * outer promise with `ProbeHandlerNotQuiescedError`.
+ * Scope of responsibility:
+ *
+ * - This helper OWNS the timeout race (deadline + quiescence grace),
+ *   controller abort on deadline, and label-aware error messages.
+ *
+ * - This helper does NOT take `persistSuccess` / `persistFailure` callbacks
+ *   or a `receipt: ProbeReceiptSink` parameter, and it does NOT write
+ *   receipt/payload records (`prepared`, `executed`, `verification`,
+ *   `rollback`) or state transitions. Those stay inline in the callers
+ *   (`executeActiveProbe`, `rollbackAfterQuiescence`).
+ *
+ * This is a deliberate faithful read of brief Step 3's audit-trail rule:
+ * receipt/payload persistence must not be moved outside the helper in a
+ * way that can drop audit-trail fields. Keeping the writes in the callers
+ * preserves every state transition and every `prepared` / `executed` /
+ * `verification` / `rollback` write at its original call site.
  */
-async function runForwardStep<T>(
-  step: RunForwardStepOptions["step"],
-  context: ReturnType<typeof createProbeContext>,
-  runner: () => Promise<T>,
-  timeoutMs: number,
-  controller: AbortController,
-  now: () => number,
-  deps: ProbeExecutorDependencies,
+async function runLifecycleStep<T>(
+  args: {
+    label: "prepare" | "execute" | "verify" | "rollback";
+    context: ReturnType<typeof createProbeContext>;
+    run: () => Promise<T>;
+    controller: AbortController;
+    timeoutMs: number;
+    deps: ProbeExecutorDependencies;
+  },
 ): Promise<T> {
+  const { label, context, run, controller, timeoutMs, deps } = args;
   const setTimeoutFn = deps.setTimeoutFn ?? ((h: (...args: unknown[]) => void, ms?: number) => setTimeout(h, ms ?? 0));
   const clearTimeoutFn = deps.clearTimeoutFn ?? ((h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>));
 
@@ -421,7 +419,7 @@ async function runForwardStep<T>(
   const handlerPromise: Promise<T> = new Promise<T>((resolve, reject) => {
     handlerResolve = resolve;
     handlerReject = reject;
-    runner().then(
+    run().then(
       (value) => { settle(); handlerResolve!(value); },
       (err) => { settle(); handlerReject!(err); },
     );
@@ -438,7 +436,9 @@ async function runForwardStep<T>(
     if (settled) return;
     settle();
     const err = new ProbeHandlerNotQuiescedError(
-      `Active probe ${step} handler did not settle within ${QUIESCENCE_GRACE_MS}ms after deadline`,
+      label === "rollback"
+        ? `Active probe rollback did not settle within ${QUIESCENCE_GRACE_MS}ms after deadline`
+        : `Active probe ${label} handler did not settle within ${QUIESCENCE_GRACE_MS}ms after deadline`,
       context.sessionId,
     );
     // Reject the handler's own promise so awaiting code sees the error.
@@ -531,16 +531,14 @@ async function rollbackAfterQuiescence(
   //    blocking — the operator must investigate before retry.
   let result: PluginProbeRollbackResult;
   try {
-    result = await runRollbackStep(
-      rollbackContext,
-      input.module.rollback,
-      input.prepared,
-      input.executed,
-      boundedBudgetMs,
-      rollbackController,
-      nowFn,
+    result = await runLifecycleStep<PluginProbeRollbackResult>({
+      label: "rollback",
+      context: rollbackContext,
+      run: () => input.module.rollback(rollbackContext, input.prepared, input.executed),
+      controller: rollbackController,
+      timeoutMs: boundedBudgetMs,
       deps,
-    );
+    });
   } catch (error) {
     current = await deps.sessions.transition(current, {
       toState: "unresolved",
@@ -572,58 +570,6 @@ async function rollbackAfterQuiescence(
     reason: `rollback-returned-false: ${result.summary ?? "no summary"}`,
   });
   return { status: "unresolved", sessionId: current.sessionId };
-}
-
-// ─── Rollback step helper ──────────────────────────────────────────────────
-
-async function runRollbackStep(
-  context: ReturnType<typeof createProbeContext>,
-  rollbackFn: ActiveProbeModule["rollback"],
-  prepared: unknown,
-  executed: unknown | undefined,
-  budgetMs: number,
-  controller: AbortController,
-  now: () => number,
-  deps: ProbeExecutorDependencies,
-): Promise<PluginProbeRollbackResult> {
-  const setTimeoutFn = deps.setTimeoutFn ?? ((h: (...args: unknown[]) => void, ms?: number) => setTimeout(h, ms ?? 0));
-  const clearTimeoutFn = deps.clearTimeoutFn ?? ((h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>));
-
-  let settled = false;
-  const settle = () => { settled = true; };
-
-  let handlerResolve: ((value: PluginProbeRollbackResult) => void) | null = null;
-  let handlerReject: ((reason: unknown) => void) | null = null;
-  const handlerPromise = new Promise<PluginProbeRollbackResult>((resolve, reject) => {
-    handlerResolve = resolve;
-    handlerReject = reject;
-    rollbackFn(context, prepared, executed).then(
-      (value) => { settle(); handlerResolve!(value); },
-      (err) => { settle(); handlerReject!(err); },
-    );
-  });
-
-  const deadlineHandle = setTimeoutFn(() => {
-    if (settled) return;
-    controller.abort();
-  }, budgetMs);
-
-  const graceHandle = setTimeoutFn(() => {
-    if (settled) return;
-    settle();
-    const err = new ProbeHandlerNotQuiescedError(
-      `Active probe rollback did not settle within ${QUIESCENCE_GRACE_MS}ms after deadline`,
-      context.sessionId,
-    );
-    handlerReject?.(err);
-  }, budgetMs + QUIESCENCE_GRACE_MS);
-
-  try {
-    return await handlerPromise;
-  } finally {
-    clearTimeoutFn(deadlineHandle);
-    clearTimeoutFn(graceHandle);
-  }
 }
 
 // ─── Defaults ──────────────────────────────────────────────────────────────
