@@ -11,7 +11,7 @@ import {
 import { isBareServer, getServerModeLabel } from "../utils/modeGuard.js";
 import { getAdapter, resolvePlatform } from "../adapters/factory.js";
 import { adapterDisplayName } from "../adapters/shared.js";
-import { withCommandBoundary, CommandFailure, failWith } from "../utils/commandBoundary.js";
+import { withCommandBoundary, CommandFailure } from "../utils/commandBoundary.js";
 import type { ServerRecord } from "../types/index.js";
 import type { StatusResult } from "../core/status.js";
 
@@ -106,7 +106,7 @@ async function statusCommandImpl(query?: string, options?: StatusOptions): Promi
   if (!server) {
     // resolveServer already logged "Server not found"; boundary fires only
     // when the user typed a query (interactive cancel stays exit 0).
-    if (query) failWith(`Server not found: ${query}`);
+    if (query) throw new CommandFailure(`Server not found: ${query}`, { logged: true });
     return;
   }
 
@@ -163,7 +163,6 @@ async function statusCommandImpl(query?: string, options?: StatusOptions): Promi
     const classified = classifyError(error);
     const fallbackHint = classified.isTyped ? undefined : mapProviderError(error, server.provider) ?? undefined;
     const hint = classified.hint ?? fallbackHint;
-    if (hint) logger.info(hint);
     // CommandFailure.cause rationale lives in commandBoundary.ts JSDoc.
     throw new CommandFailure(classified.message, { hint, cause: error });
   }

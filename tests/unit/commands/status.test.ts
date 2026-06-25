@@ -458,6 +458,24 @@ describe("statusCommand", () => {
       const stdoutOutput = consoleSpy.mock.calls.map((c) => c.join(" ")).join("\n");
       expect(stdoutOutput).toContain("API token is invalid or expired");
     });
+
+    it("should log provider error hints only once", async () => {
+      mockedServerSelect.resolveServer.mockResolvedValue(sampleServer);
+      mockedServerSelect.promptApiToken.mockResolvedValue("test-token");
+      mockedModeGuard.isBareServer.mockImplementation((s) => s.mode === "bare");
+      mockedModeGuard.getServerModeLabel.mockImplementation((s) => s.mode);
+      mockedStatusCore.getCloudServerStatus.mockRejectedValue(new Error("Request failed"));
+      mockedErrorMapper.classifyError.mockReturnValue({
+        message: "Request failed",
+        isTyped: false,
+      });
+      mockedErrorMapper.mapProviderError.mockReturnValue("Check your API token");
+
+      await statusCommand("test-server");
+
+      const stdoutOutput = consoleSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+      expect(stdoutOutput.match(/Check your API token/g)).toHaveLength(1);
+    });
   });
 
   // ─── resolveServer: multiple matches (inquirer picks one) ───────────────────

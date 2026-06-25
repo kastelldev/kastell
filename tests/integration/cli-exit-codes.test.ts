@@ -101,7 +101,9 @@ describe("CLI exit codes — process-level", () => {
       const result = spawnKastell(isolated, ["status", "missing-server"]);
 
       expect(result.status).toBe(1);
-      expect(result.stderr + result.stdout).toMatch(/not found|No servers found|missing/i);
+      const combined = result.stderr + result.stdout;
+      expect(combined).toMatch(/not found|No servers found|missing/i);
+      expect(combined.match(/Server not found: missing-server/g)).toHaveLength(1);
     });
   });
 
@@ -110,7 +112,9 @@ describe("CLI exit codes — process-level", () => {
       const result = spawnKastell(isolated, ["evidence", "missing-server", "--quiet"]);
 
       expect(result.status).toBe(1);
-      expect(result.stderr + result.stdout).toMatch(/not found|No servers found|missing/i);
+      const combined = result.stderr + result.stdout;
+      expect(combined).toMatch(/not found|No servers found|missing/i);
+      expect(combined.match(/Server not found: missing-server/g)).toHaveLength(1);
     });
   });
 

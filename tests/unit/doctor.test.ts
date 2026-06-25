@@ -256,6 +256,24 @@ describe("doctorCommand — local mode (no server arg)", () => {
     expect(output).toContain("npm");
   });
 
+  it("should keep stdout limited to JSON payload in local mode when --json is set", async () => {
+    mockedSpawnSync.mockReturnValue({ status: 0, stdout: Buffer.from("10.0.0"), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
+    mockedCheckSsh.mockReturnValue(true);
+    mockedExistsSync.mockReturnValue(true);
+    mockedAccessSync.mockImplementation(() => {});
+
+    await doctorCommand(undefined, { json: true }, "0.6.0");
+
+    const stdout = consoleSpy.mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    expect(stdout).not.toContain("Kastell Doctor");
+    const parsed = JSON.parse(stdout) as {
+      checks: Array<{ name: string; status: string; detail: string }>;
+      summary: { failures: number; warnings: number };
+    };
+    expect(parsed.checks.some((check) => check.name === "Node.js")).toBe(true);
+    expect(parsed.summary.failures).toBeGreaterThanOrEqual(0);
+  });
+
   it("should show info message with --check-tokens when no servers — new signature", async () => {
     mockedSpawnSync.mockReturnValue({ status: 0, stdout: Buffer.from("10.0.0"), stderr: Buffer.from(""), pid: 1, output: [], signal: null });
     mockedCheckSsh.mockReturnValue(true);

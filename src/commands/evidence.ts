@@ -6,7 +6,7 @@
 import { readFileSync } from "fs";
 import { resolveServer } from "../utils/serverSelect.js";
 import { logger, createSpinner } from "../utils/logger.js";
-import { withCommandBoundary, failWith } from "../utils/commandBoundary.js";
+import { withCommandBoundary, CommandFailure, failWith } from "../utils/commandBoundary.js";
 import { collectEvidence } from "../core/evidence.js";
 import type { EvidenceOptions } from "../core/evidence.js";
 
@@ -33,7 +33,7 @@ async function evidenceCommandImpl(
   if (!server) {
     // resolveServer already logged "Server not found"; boundary fires only
     // when the user typed a query (interactive cancel stays exit 0).
-    if (serverArg) failWith(`Server not found: ${serverArg}`);
+    if (serverArg) throw new CommandFailure(`Server not found: ${serverArg}`, { logged: true });
     return;
   }
 

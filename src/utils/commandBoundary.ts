@@ -14,8 +14,9 @@ import { markCommandFailed } from "./exitCode.js";
  */
 export class CommandFailure extends Error {
   readonly hint?: string;
+  readonly logged: boolean;
 
-  constructor(message: string, options?: { hint?: string; cause?: unknown }) {
+  constructor(message: string, options?: { hint?: string; cause?: unknown; logged?: boolean }) {
     // `instanceof Error` guard satisfies ESLint preserve-caught-error:
     // Error.cause only accepts an Error (or undefined). Non-Error causes
     // (string, plain object, network error wrappers) are wrapped defensively
@@ -29,6 +30,7 @@ export class CommandFailure extends Error {
     super(message, cause ? { cause } : undefined);
     this.name = "CommandFailure";
     this.hint = options?.hint;
+    this.logged = options?.logged ?? false;
   }
 }
 
@@ -44,7 +46,7 @@ export function withCommandBoundary<TArgs extends unknown[]>(
       await handler(...args);
     } catch (error) {
       if (error instanceof CommandFailure) {
-        logger.error(error.message);
+        if (!error.logged) logger.error(error.message);
         if (error.hint) logger.info(error.hint);
         markCommandFailed();
         return;
