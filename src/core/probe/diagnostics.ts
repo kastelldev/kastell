@@ -14,11 +14,14 @@
 //      bootstrap code only needs one import. The real implementation lives in
 //      sessionStore.ts (retention policy + lock acquisition).
 //
-//   3. Bootstrap wrappers: `runProbeSessionMaintenance` (strict, throws on
-//      failure) and `tryRunProbeSessionMaintenance` (catches, redacts,
-//      security-logs, returns bounded result). Bootstrap call sites (CLI,
-//      MCP, doctor) must use the try-version so cleanup failure never
-//      crashes startup.
+//   3. Bootstrap wrapper: `runProbeSessionMaintenance` is the single public
+//      maintenance API. Two overloads:
+//        - `runProbeSessionMaintenance()` — strict mode, throws on failure.
+//        - `runProbeSessionMaintenance({ strict: false })` — bootstrap mode,
+//          catches, redacts, security-logs, returns bounded result with
+//          optional `error` populated. NEVER throws.
+//      Bootstrap call sites (CLI, MCP, doctor) MUST use `{ strict: false }`
+//      so cleanup failure never crashes startup.
 //
 // Digest resolution is data-only: it reads the file bytes and SHA-256s them.
 // It does NOT import or execute the handler module — bootstrap must never
@@ -293,7 +296,7 @@ function ensureKastellDir(): void {
  * any unrecoverable error. Used by lifecycle tests and explicit operator
  * runs.
  */
-export async function runProbeSessionMaintenance(): Promise<ProbeMaintenanceResult> {
+async function runStrictProbeSessionMaintenance(): Promise<ProbeMaintenanceResult> {
   ensureKastellDir();
   const records = listProbeSessions();
   const diagnostics = await classifyProbeSessions(records, {
@@ -304,52 +307,72 @@ export async function runProbeSessionMaintenance(): Promise<ProbeMaintenanceResu
 }
 
 /**
- * Safe wrapper for bootstrap call sites (CLI startup, MCP server creation,
- * doctor entry). Catches every error, redacts it, security-logs, and
- * returns a bounded result with `error` populated. NEVER throws.
+ * Single public maintenance API with two contract overloads:
  *
- * Test-env short-circuit contract:
- *   - In Jest (`NODE_ENV === "test"`), probe maintenance defaults to a no-op
- *     UNLESS `KASTELL_TEST_MODE === "1"` is set explicitly (via
- *     `tests/helpers/isolatedKastellEnv.ts`). The default-skip is the reason
- *     every Jest test that needs real probe maintenance must opt-in.
- *   - In production, `NODE_ENV` is not "test" by default — probe maintenance
- *     runs. A misconfigured production deployment that sets `NODE_ENV=test`
- *     (e.g. a CI pipeline mirror or a stray build flag) would silently skip
- *     cleanup, letting old probe sessions accumulate on disk. This is a
- *     bounded disk-pressure issue, not a security boundary, but if you are
- *     touching this branch, consider whether a hard `KASTELL_TEST_MODE`
- *     opt-in is now appropriate for your callers.
+ *   - `runProbeSessionMaintenance()` — strict mode. Throws on any
+ *     unrecoverable error. Used by lifecycle tests and explicit operator
+ *     runs.
+ *
+ *   - `runProbeSessionMaintenance({ strict: false })` — bootstrap mode.
+ *     Catches every error, redacts it, security-logs, and returns a
+ *     bounded `ProbeMaintenanceBootstrapResult` with optional `error`
+ *     populated. NEVER throws. This is the ONLY contract bootstrap call
+ *     sites (CLI startup, MCP server creation, doctor entry) should use.
+ *
+ * Test-env short-circuit contract (applies only to `{ strict: false }`):
+ *   - In Jest (`NODE_ENV === "test"`), the bootstrap mode defaults to a
+ *     no-op UNLESS `KASTELL_TEST_MODE === "1"` is set explicitly (via
+ *     `tests/helpers/isolatedKastellEnv.ts`). The default-skip is the
+ *     reason every Jest test that needs real probe maintenance must
+ *     opt-in.
+ *   - In production, `NODE_ENV` is not "test" by default — probe
+ *     maintenance runs. A misconfigured production deployment that sets
+ *     `NODE_ENV=test` (e.g. a CI pipeline mirror or a stray build flag)
+ *     would silently skip cleanup, letting old probe sessions accumulate
+ *     on disk. This is a bounded disk-pressure issue, not a security
+ *     boundary, but if you are touching this branch, consider whether a
+ *     hard `KASTELL_TEST_MODE` opt-in is now appropriate for your callers.
+ *
+ * The public overloads are the contract; the implementation signature
+ * uses a union because internally both shapes must be produced.
  */
-export async function tryRunProbeSessionMaintenance(): Promise<ProbeMaintenanceBootstrapResult> {
-  if (process.env.NODE_ENV === "test" && process.env.KASTELL_TEST_MODE !== "1") {
-    return {
-      diagnostics: [],
-      cleanup: { deletedSessionIds: [], scannedAt: new Date().toISOString() },
-    };
-  }
-  try {
-    const result = await runProbeSessionMaintenance();
-    return result;
-  } catch (cause) {
-    const error = redactError(cause);
-    try {
-      logSecurityEvent({
-        level: "warn",
-        action: "probe_maintenance_failed",
-        category: "plugin-probe",
-        result: "failure",
-        reason: error.message,
-      });
-    } catch {
-      // security log failure must never propagate
+export function runProbeSessionMaintenance(): Promise<ProbeMaintenanceResult>;
+export function runProbeSessionMaintenance(options: { strict: false }): Promise<ProbeMaintenanceBootstrapResult>;
+export function runProbeSessionMaintenance(options: { strict?: true }): Promise<ProbeMaintenanceResult>;
+export async function runProbeSessionMaintenance(
+  options?: { strict?: boolean },
+): Promise<ProbeMaintenanceResult | ProbeMaintenanceBootstrapResult> {
+  if (options?.strict === false) {
+    if (process.env.NODE_ENV === "test" && process.env.KASTELL_TEST_MODE !== "1") {
+      return {
+        diagnostics: [],
+        cleanup: { deletedSessionIds: [], scannedAt: new Date().toISOString() },
+      };
     }
-    return {
-      diagnostics: [],
-      cleanup: { deletedSessionIds: [], scannedAt: new Date().toISOString() },
-      error,
-    };
+    try {
+      return await runStrictProbeSessionMaintenance();
+    } catch (cause) {
+      const error = redactError(cause);
+      try {
+        logSecurityEvent({
+          level: "warn",
+          action: "probe_maintenance_failed",
+          category: "plugin-probe",
+          result: "failure",
+          reason: error.message,
+        });
+      } catch {
+        // security log failure must never propagate
+      }
+      return {
+        diagnostics: [],
+        cleanup: { deletedSessionIds: [], scannedAt: new Date().toISOString() },
+        error,
+      };
+    }
   }
+
+  return runStrictProbeSessionMaintenance();
 }
 
 function redactError(cause: unknown): RedactedProbeError {
@@ -432,7 +455,7 @@ export function probeDiagnosticToDoctorFinding(
 export async function runLocalProbeDoctorChecks(
   targetKeyHash?: string,
 ): Promise<CheckResult[]> {
-  const result = await tryRunProbeSessionMaintenance();
+  const result = await runProbeSessionMaintenance({ strict: false });
   const out: CheckResult[] = [];
   for (const diagnostic of result.diagnostics) {
     if (!DOCTOR_ACTIONABLE_KINDS.has(diagnostic.kind)) {

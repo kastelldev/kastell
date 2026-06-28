@@ -18,7 +18,6 @@ import {
 } from "../helpers/isolatedKastellEnv.js";
 
 interface ModuleUnderTest {
-  tryRunProbeSessionMaintenance: typeof import("../../src/core/probe/diagnostics.js")["tryRunProbeSessionMaintenance"];
   runProbeSessionMaintenance: typeof import("../../src/core/probe/diagnostics.js")["runProbeSessionMaintenance"];
 }
 
@@ -37,12 +36,12 @@ async function loadModules(env: IsolatedKastellEnv): Promise<{
   });
 }
 
-describe("tryRunProbeSessionMaintenance — bootstrap wrapper", () => {
+describe("runProbeSessionMaintenance({ strict: false }) — bootstrap wrapper", () => {
   it("returns diagnostics and cleanup on success", async () => {
     const env = createIsolatedKastellEnv();
     const { mod } = await loadModules(env);
     try {
-      const result = await mod.tryRunProbeSessionMaintenance();
+      const result = await mod.runProbeSessionMaintenance({ strict: false });
       expect(Array.isArray(result.diagnostics)).toBe(true);
       expect(result.cleanup).toBeDefined();
       expect(result.cleanup.deletedSessionIds).toEqual([]);
@@ -52,14 +51,14 @@ describe("tryRunProbeSessionMaintenance — bootstrap wrapper", () => {
     }
   });
 
-  it("does NOT throw when runProbeSessionMaintenance throws — returns bounded result", async () => {
+  it("does NOT throw when strict maintenance throws — returns bounded result", async () => {
     const env = createIsolatedKastellEnv();
     const { mod } = await loadModules(env);
     try {
-      // tryRun wraps runProbeSessionMaintenance which internally calls
-      // listProbeSessions. On a fresh isolated dir with no records, the
-      // happy path is taken — we exercise baseline bounded-shape behavior.
-      const result = await mod.tryRunProbeSessionMaintenance();
+      // The { strict: false } wrapper calls strict maintenance internally;
+      // on a fresh isolated dir with no records, the happy path is taken
+      // — we exercise baseline bounded-shape behavior.
+      const result = await mod.runProbeSessionMaintenance({ strict: false });
       expect(result.error).toBeUndefined();
       expect(Array.isArray(result.diagnostics)).toBe(true);
       expect(result.cleanup).toBeDefined();
@@ -74,8 +73,8 @@ describe("tryRunProbeSessionMaintenance — bootstrap wrapper", () => {
     const env = createIsolatedKastellEnv();
     const { mod } = await loadModules(env);
     try {
-      const first = await mod.tryRunProbeSessionMaintenance();
-      const second = await mod.tryRunProbeSessionMaintenance();
+      const first = await mod.runProbeSessionMaintenance({ strict: false });
+      const second = await mod.runProbeSessionMaintenance({ strict: false });
       expect(first.error).toBeUndefined();
       expect(second.error).toBeUndefined();
       // Diagnostics may differ in count if state changed in between, but
@@ -96,7 +95,7 @@ describe("tryRunProbeSessionMaintenance — bootstrap wrapper", () => {
     jest.resetModules();
     try {
       const mod = (await import("../../src/core/probe/diagnostics.js")) as unknown as ModuleUnderTest;
-      const result = await mod.tryRunProbeSessionMaintenance();
+      const result = await mod.runProbeSessionMaintenance({ strict: false });
       expect(result).toEqual({
         diagnostics: [],
         cleanup: { deletedSessionIds: [], scannedAt: expect.any(String) },
@@ -138,7 +137,7 @@ describe("tryRunProbeSessionMaintenance — bootstrap wrapper", () => {
       };
       writeFileSync(sessionPath, JSON.stringify(record));
 
-      const result = await mod.tryRunProbeSessionMaintenance();
+      const result = await mod.runProbeSessionMaintenance({ strict: false });
       // Now is roughly "today" — 2026-07-20 is in the past, so the session
       // qualifies as older than 30 days only if today is after 2026-01-31.
       // Today's date in this test environment is later than that cutoff.
@@ -154,21 +153,12 @@ describe("tryRunProbeSessionMaintenance — bootstrap wrapper", () => {
 });
 
 describe("bootstrap wrappers — module surface", () => {
-  it("exports tryRunProbeSessionMaintenance", async () => {
-    const env = createIsolatedKastellEnv();
-    const { mod } = await loadModules(env);
-    try {
-      expect(typeof mod.tryRunProbeSessionMaintenance).toBe("function");
-    } finally {
-      env.cleanup();
-    }
-  });
-
-  it("exports runProbeSessionMaintenance (strict)", async () => {
+  it("exports runProbeSessionMaintenance as the single public maintenance API", async () => {
     const env = createIsolatedKastellEnv();
     const { mod } = await loadModules(env);
     try {
       expect(typeof mod.runProbeSessionMaintenance).toBe("function");
+      expect("tryRunProbeSessionMaintenance" in mod).toBe(false);
     } finally {
       env.cleanup();
     }
@@ -182,11 +172,13 @@ describe("CLI bootstrap — bootstrap integration in src/index.ts", () => {
       join(process.cwd(), "src", "index.ts"),
       "utf8",
     );
-    expect(indexSource).toMatch(/tryRunProbeSessionMaintenance/);
+    expect(indexSource).toMatch(/runProbeSessionMaintenance\(\{\s*strict:\s*false\s*\}\)/);
     // The CALL must come AFTER loadPlugins and BEFORE command registration.
     const loadPluginsIdx = indexSource.indexOf("await loadPlugins()");
     // Look for the call expression, not the import.
-    const callIdx = indexSource.indexOf("await tryRunProbeSessionMaintenance()");
+    const callIdx = indexSource.indexOf(
+      "await runProbeSessionMaintenance({ strict: false })",
+    );
     const commandIdx = indexSource.indexOf("const program = new Command");
     expect(loadPluginsIdx).toBeGreaterThanOrEqual(0);
     expect(callIdx).toBeGreaterThan(loadPluginsIdx);
@@ -200,10 +192,12 @@ describe("MCP bootstrap — bootstrap integration in src/mcp/server.ts", () => {
       join(process.cwd(), "src", "mcp", "server.ts"),
       "utf8",
     );
-    expect(serverSource).toMatch(/tryRunProbeSessionMaintenance/);
+    expect(serverSource).toMatch(/runProbeSessionMaintenance\(\{\s*strict:\s*false\s*\}\)/);
     // The CALL must come AFTER loadPlugins and BEFORE constructing McpServer.
     const loadPluginsIdx = serverSource.indexOf("await loadPlugins()");
-    const callIdx = serverSource.indexOf("await tryRunProbeSessionMaintenance()");
+    const callIdx = serverSource.indexOf(
+      "await runProbeSessionMaintenance({ strict: false })",
+    );
     const mcpServerIdx = serverSource.indexOf("new McpServer(");
     expect(loadPluginsIdx).toBeGreaterThanOrEqual(0);
     expect(callIdx).toBeGreaterThan(loadPluginsIdx);
@@ -217,13 +211,15 @@ describe("CLI Doctor bootstrap — bootstrap integration in src/commands/doctor.
       join(process.cwd(), "src", "commands", "doctor.ts"),
       "utf8",
     );
-    expect(doctorSource).toMatch(/tryRunProbeSessionMaintenance/);
+    expect(doctorSource).toMatch(/runProbeSessionMaintenance\(\{\s*strict:\s*false\s*\}\)/);
     // The CALL must appear inside doctorCommand, BEFORE any diagnostic work
     // (resolveServer / runServerDoctor / runDoctorChecks).
     const importIdx = doctorSource.indexOf(
-      'import { tryRunProbeSessionMaintenance } from "../core/probe/diagnostics.js";',
+      'import { runProbeSessionMaintenance } from "../core/probe/diagnostics.js";',
     );
-    const callIdx = doctorSource.indexOf("await tryRunProbeSessionMaintenance()");
+    const callIdx = doctorSource.indexOf(
+      "await runProbeSessionMaintenance({ strict: false })",
+    );
     const resolveServerIdx = doctorSource.indexOf("await resolveServer(");
     const runDoctorChecksIdx = doctorSource.indexOf("runDoctorChecks(");
     expect(importIdx).toBeGreaterThanOrEqual(0);
@@ -237,7 +233,9 @@ describe("CLI Doctor bootstrap — bootstrap integration in src/commands/doctor.
       join(process.cwd(), "src", "commands", "doctor.ts"),
       "utf8",
     );
-    const matches = doctorSource.match(/await tryRunProbeSessionMaintenance\(\)/g);
+    const matches = doctorSource.match(
+      /await runProbeSessionMaintenance\(\{\s*strict:\s*false\s*\}\)/g,
+    );
     expect(matches).not.toBeNull();
     expect(matches?.length).toBe(1);
   });
@@ -249,13 +247,15 @@ describe("MCP Doctor bootstrap — bootstrap integration in src/mcp/tools/server
       join(process.cwd(), "src", "mcp", "tools", "serverDoctor.ts"),
       "utf8",
     );
-    expect(toolSource).toMatch(/tryRunProbeSessionMaintenance/);
+    expect(toolSource).toMatch(/runProbeSessionMaintenance\(\{\s*strict:\s*false\s*\}\)/);
     // The CALL must appear BEFORE any doctor core work
     // (getServers / resolveServerForMcp / runServerDoctor).
     const importIdx = toolSource.indexOf(
-      'import { tryRunProbeSessionMaintenance } from "../../core/probe/diagnostics.js";',
+      'import { runProbeSessionMaintenance } from "../../core/probe/diagnostics.js";',
     );
-    const callIdx = toolSource.indexOf("await tryRunProbeSessionMaintenance()");
+    const callIdx = toolSource.indexOf(
+      "await runProbeSessionMaintenance({ strict: false })",
+    );
     const getServersIdx = toolSource.indexOf("getServers()");
     const runServerDoctorIdx = toolSource.indexOf("runServerDoctor(");
     expect(importIdx).toBeGreaterThanOrEqual(0);
@@ -269,7 +269,9 @@ describe("MCP Doctor bootstrap — bootstrap integration in src/mcp/tools/server
       join(process.cwd(), "src", "mcp", "tools", "serverDoctor.ts"),
       "utf8",
     );
-    const matches = toolSource.match(/await tryRunProbeSessionMaintenance\(\)/g);
+    const matches = toolSource.match(
+      /await runProbeSessionMaintenance\(\{\s*strict:\s*false\s*\}\)/g,
+    );
     expect(matches).not.toBeNull();
     expect(matches?.length).toBe(1);
   });

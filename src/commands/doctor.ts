@@ -9,7 +9,7 @@ import {
 } from "../core/doctor-local.js";
 import { scoreColor } from "../core/audit/formatters/shared.js";
 import { installLocalCron } from "../core/scheduleManager.js";
-import { tryRunProbeSessionMaintenance } from "../core/probe/diagnostics.js";
+import { runProbeSessionMaintenance } from "../core/probe/diagnostics.js";
 import type { DoctorFinding, DoctorResult } from "../core/doctor.js";
 
 // ─── Server mode display helpers ──────────────────────────────────────────────
@@ -83,7 +83,7 @@ export async function doctorCommand(
   // Best-effort Active Probe maintenance — runs before any diagnostics are
   // adapted into local or server findings so doctor surfaces unresolved /
   // rolled-back session state. Non-throwing (wrapper catches internally).
-  await tryRunProbeSessionMaintenance();
+  await runProbeSessionMaintenance({ strict: false });
 
   if (options?.schedule && !options?.autoFix) {
     logger.error("--schedule requires --auto-fix");
