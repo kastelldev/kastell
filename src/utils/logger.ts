@@ -1,9 +1,6 @@
 import chalk from "chalk";
 import ora, { type Ora } from "ora";
 
-// CodeQL suppression: logger methods display user-facing messages only;
-// sensitive data is redacted via REDACT_PATTERNS in debugLog
-
 // ─── Machine mode (P146 Task 3) ───────────────────────────────────────────────
 //
 // When machine mode is enabled, diagnostic messages (info / success / step /
@@ -39,14 +36,6 @@ export async function withMachineMode<T>(fn: () => T | Promise<T>): Promise<T> {
   }
 }
 
-function diagnosticLog(...args: unknown[]): void {
-  if (machineMode) {
-    console.error(...args);
-  } else {
-    console.log(...args);
-  }
-}
-
 export const logger = {
   info: (message: string) => {
     diagnosticLog(chalk.blue("ℹ"), message);
@@ -57,24 +46,23 @@ export const logger = {
   },
 
   error: (message: string, context?: Record<string, unknown>) => {
-    if (context) {
-      console.error(chalk.red("✖"), message, context);
-    } else {
-      console.error(chalk.red("✖"), message);
-    }
+    const args = context
+      ? [chalk.red("✖"), message, context]
+      : [chalk.red("✖"), message];
+    console.error(...args.map(redactArg));
   },
 
   warning: (message: string) => {
-    console.error(chalk.yellow("⚠"), message);
+    console.error(chalk.yellow("⚠"), redactString(message));
   },
 
   title: (message: string) => {
+    const redactedMessage = redactString(message);
     if (machineMode) {
-      // Suppress decorative blank lines; emit only the title on stderr.
-      console.error(chalk.bold.cyan(message));
+      console.error(chalk.bold.cyan(redactedMessage));
     } else {
       console.log();
-      console.log(chalk.bold.cyan(message));
+      console.log(chalk.bold.cyan(redactedMessage));
       console.log();
     }
   },
@@ -83,6 +71,15 @@ export const logger = {
     diagnosticLog(chalk.gray("→"), message);
   },
 };
+
+function diagnosticLog(...args: unknown[]): void {
+  const redactedArgs = args.map(redactArg);
+  if (machineMode) {
+    console.error(...redactedArgs);
+  } else {
+    console.log(...redactedArgs);
+  }
+}
 
 export function createSpinner(text: string): Ora {
   return ora({

@@ -169,6 +169,39 @@ describe("logger", () => {
     expect(stdoutSpy).not.toHaveBeenCalled();
   });
 
+  it("should redact sensitive context before logging errors", () => {
+    logger.error("request failed", {
+      token: "dop_v1_aB3xK9mZ2qL5wR8n",
+      nested: { password: "p4ssw0rd" },
+      serverId: "srv_a1b2c3",
+    });
+
+    const output = stderrSpy.mock.calls
+      .map((call) => call.map((part: unknown) => String(part)).join(" "))
+      .join("\n");
+
+    expect(output).toContain("request failed");
+    expect(output).toContain("srv_a1b2c3");
+    expect(output).not.toContain("dop_v1_aB3xK9mZ2qL5wR8n");
+    expect(output).not.toContain("p4ssw0rd");
+    expect(output).toContain("[REDACTED]");
+  });
+
+  it("should redact secret-shaped strings in diagnostic logger methods", () => {
+    logger.info("Bearer eyJhbGciOiJIUzI1NiJ9.payload.sig");
+    logger.success("dop_v1_aB3xK9mZ2qL5wR8n");
+    logger.warning("hcic_f7d2c9e4b1a8g6h3");
+
+    const output = [...stdoutSpy.mock.calls, ...stderrSpy.mock.calls]
+      .map((call) => call.map((part: unknown) => String(part)).join(" "))
+      .join("\n");
+
+    expect(output).not.toContain("eyJhbGciOiJIUzI1NiJ9.payload.sig");
+    expect(output).not.toContain("dop_v1_aB3xK9mZ2qL5wR8n");
+    expect(output).not.toContain("hcic_f7d2c9e4b1a8g6h3");
+    expect(output).toContain("[REDACTED]");
+  });
+
   it("should log title with empty lines before and after", () => {
     logger.title("My Title");
     expect(stdoutSpy).toHaveBeenCalledTimes(3);
