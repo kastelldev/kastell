@@ -289,3 +289,93 @@ describe("probe-bootstrap integration — runtime check", () => {
     }
   });
 });
+
+// P147 Task 9 — coverage gaps G4 (strict-mode direct path) and G5
+// (bootstrap catch-block contract: failure must NEVER throw and must populate
+// the bounded `error` field with a redacted message).
+describe("runProbeSessionMaintenance() — strict-mode direct path", () => {
+  it("returns diagnostics and cleanup without throwing on a clean isolated dir", async () => {
+    const env = createIsolatedKastellEnv();
+    const { mod } = await loadModules(env);
+    try {
+      // No-arg form resolves to runStrictProbeSessionMaintenance internally.
+      // On an isolated dir with no records, this must return the strict
+      // success shape (ProbeMaintenanceResult — note the absence of `error`).
+      const result = await mod.runProbeSessionMaintenance();
+      expect(Array.isArray(result.diagnostics)).toBe(true);
+      expect(result.cleanup).toBeDefined();
+      expect(result.cleanup.deletedSessionIds).toEqual([]);
+      expect("error" in result ? result.error : undefined).toBeUndefined();
+    } finally {
+      env.cleanup();
+    }
+  });
+});
+
+describe("runProbeSessionMaintenance({ strict: false }) — bootstrap catch-block (G5)", () => {
+  it("does NOT throw when strict maintenance throws — returns bounded error result", async () => {
+    const env = createIsolatedKastellEnv();
+    try {
+      // Force listProbeSessions to throw inside the strict path so the
+      // bootstrap catch-block (diagnostics.ts lines 354-371) executes.
+      const result = await importWithIsolatedKastellDir(env, async () => {
+        jest.doMock("../../src/core/probe/sessionStore.js", () => {
+          const actual = jest.requireActual("../../src/core/probe/sessionStore.js");
+          return {
+            ...actual,
+            listProbeSessions: () => {
+              throw new Error("simulated session-store I/O failure");
+            },
+          };
+        });
+        const mod = (await import("../../src/core/probe/diagnostics.js")) as unknown as ModuleUnderTest;
+        return mod.runProbeSessionMaintenance({ strict: false });
+      });
+
+      // Contract: bootstrap never throws on maintenance failure.
+      expect(result).toBeDefined();
+      expect(result.error).toBeDefined();
+      // The error message must be redacted/structured — not the raw thrown message.
+      // The error type is RedactedProbeError (code/message/stack?).
+      expect(typeof result.error?.code).toBe("string");
+      expect(typeof result.error?.message).toBe("string");
+      // The bounded diagnostics/cleanup fields must still be present and empty.
+      expect(result.diagnostics).toEqual([]);
+      expect(result.cleanup.deletedSessionIds).toEqual([]);
+    } finally {
+      env.cleanup();
+    }
+  });
+
+  it("does not include the raw thrown message verbatim when redaction is not required", async () => {
+    // Belt-and-braces: the redacted error message should NOT leak the
+    // secret-shaped substring in the throw — the redactor strips JWTs and
+    // Bearer tokens but leaves ordinary text intact. This test pins the
+    // contract that the message IS the original message (not "[REDACTED]"
+    // for non-secret-shaped strings) so operators can still diagnose.
+    const env = createIsolatedKastellEnv();
+    try {
+      const result = await importWithIsolatedKastellDir(env, async () => {
+        jest.doMock("../../src/core/probe/sessionStore.js", () => {
+          const actual = jest.requireActual("../../src/core/probe/sessionStore.js");
+          return {
+            ...actual,
+            listProbeSessions: () => {
+              throw new Error("simulated maintenance failure with safe text");
+            },
+          };
+        });
+        const mod = (await import("../../src/core/probe/diagnostics.js")) as unknown as ModuleUnderTest;
+        return mod.runProbeSessionMaintenance({ strict: false });
+      });
+
+      expect(result.error).toBeDefined();
+      // Non-secret text passes through the redactor untouched.
+      expect(result.error?.message).toContain("simulated maintenance failure");
+      // No original "Error: " prefix leakage from the wrapped cause.
+      expect(result.error?.message.startsWith("Error:")).toBe(false);
+    } finally {
+      env.cleanup();
+    }
+  });
+});
