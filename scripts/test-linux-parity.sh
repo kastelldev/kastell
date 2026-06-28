@@ -42,4 +42,4 @@ docker run --rm \
   -e KASTELL_DIR \
   -e CI=1 \
   node:22-alpine \
-  sh -c "apk add --no-cache libc6-compat >/dev/null 2>&1; npx --yes jest --runInBand --config jest.config.cjs $*"
+  sh -c "apk add --no-cache libc6-compat openssh-client >/dev/null 2>&1; npx --yes jest --runInBand --config jest.config.cjs $*"
