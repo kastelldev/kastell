@@ -212,6 +212,55 @@ describe("logger", () => {
     expect(stdoutSpy).toHaveBeenCalledTimes(1);
     expect(stdoutSpy).toHaveBeenCalledWith(expect.any(String), "doing something");
   });
+
+  // P147 Task 9 — coverage gaps G1/G2/G7
+  it("should not throw when logger.error receives an empty message", () => {
+    expect(() => logger.error("")).not.toThrow();
+    expect(stderrSpy).toHaveBeenCalled();
+    const flatOutput = stderrSpy.mock.calls
+      .map((call) => call.map((part: unknown) => String(part)).join(" "))
+      .join("\n");
+    // Empty message is preserved as-is (redactString("") === "" — looksLikeSecretValue returns false).
+    expect(flatOutput).toBeDefined();
+  });
+
+  it("should not throw when logger.error receives a circular reference in context", () => {
+    const ctx: Record<string, unknown> = { name: "test" };
+    ctx.self = ctx;
+    expect(() => logger.error("circular ctx", ctx)).not.toThrow();
+    const flatOutput = stderrSpy.mock.calls
+      .map((call) => call.map((part: unknown) => String(part)).join(" "))
+      .join("\n");
+    expect(flatOutput).toContain("[Circular]");
+    expect(flatOutput).toContain("circular ctx");
+  });
+
+  it("should not throw when logger.error context has a throwing getter", () => {
+    const evil: Record<string, unknown> = {};
+    Object.defineProperty(evil, "boom", {
+      get() {
+        throw new Error("getter exploded");
+      },
+      enumerable: true,
+    });
+    expect(() => logger.error("getter ctx", evil)).not.toThrow();
+    const flatOutput = stderrSpy.mock.calls
+      .map((call) => call.map((part: unknown) => String(part)).join(" "))
+      .join("\n");
+    expect(flatOutput).not.toContain("getter exploded");
+  });
+
+  it("should not throw when logger.warning receives an empty message", () => {
+    expect(() => logger.warning("")).not.toThrow();
+    expect(stderrSpy).toHaveBeenCalled();
+  });
+
+  it("should not throw when logger.title receives an empty message in human mode", () => {
+    setMachineMode(false);
+    expect(() => logger.title("")).not.toThrow();
+    // 3 console.log calls (empty-line + title + empty-line) — each with the redacted title arg.
+    expect(stdoutSpy).toHaveBeenCalledTimes(3);
+  });
 });
 
 describe("createSpinner", () => {
