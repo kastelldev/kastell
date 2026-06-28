@@ -74,7 +74,7 @@ function buildCheckCatalog(): ExplainResult[] {
 export function findCheckById(checkId: string): FindCheckResult {
   const catalog = getFullCheckCatalog();
 
-  // 1. Exact match — O(n) scan on 457 items is fast enough
+  // 1. Exact match — O(n) scan on 449 items is fast enough
   const exact = catalog.find((c) => c.id === checkId);
   if (exact) return { match: exact, suggestions: [] };
 
