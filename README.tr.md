@@ -95,7 +95,7 @@ Kastell sunucu oluşturma, SSH anahtar kurulumu, güvenlik duvarı yapılandırm
 |---------|---------|-------|----------|
 | Kurulum | `npm i -g kastell` | Paket yoneticisi | Paket yoneticisi |
 | Dil | TypeScript | Shell | C/Python |
-| Guvenlik Kontrolleri | 470+ | 300+ | Profile gore degisir |
+| Guvenlik Kontrolleri | 449 | 300+ | Profile gore degisir |
 | Otomatik Duzeltme | Guvenli katman | Sadece oneri | Sadece oneri |
 | MCP (AI Ajan) | 17 arac | -- | -- |
 | Uyumluluk | CIS, PCI-DSS, HIPAA | CIS, HIPAA | CIS, STIG, PCI-DSS |
@@ -170,7 +170,7 @@ kastell domain add sunucum --domain ornek.com  # Domain + SSL ayarla
 
 ### Güvenlik Denetimi
 ```bash
-kastell audit sunucum                    # Tam güvenlik denetimi (32 kategori, 470+ kontrol)
+kastell audit sunucum                    # Tam güvenlik denetimi (32 kategori, 449 kontrol)
 kastell audit sunucum --json             # Otomasyon için JSON çıktısı
 kastell audit sunucum --threshold 70     # Skor eşiğin altındaysa exit code 1
 kastell audit sunucum --fix              # İnteraktif düzeltme modu (önem derecesine göre)
