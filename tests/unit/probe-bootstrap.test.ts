@@ -379,3 +379,246 @@ describe("runProbeSessionMaintenance({ strict: false }) — bootstrap catch-bloc
     }
   });
 });
+
+// P147 T9 follow-up — coverage gaps in diagnostics.ts branches.
+// Target uncovered lines: 110-112, 204-214, 240-241, 250-251, 256-257,
+// 264-265, 290-291, 365-366, 388-389, 456-477.
+
+describe("diagnostics.ts — coverage gap fills (P147 T9 follow-up)", () => {
+  // Test isolation: jest.doMock registrations persist across test boundaries.
+  // Without explicit reset, the previous test's listProbeSessions mock will
+  // bleed into the next test and cause spurious "Unknown maintenance failure"
+  // errors in the bootstrap wrapper. Use jest.dontMock + jest.resetModules.
+  beforeEach(() => {
+    jest.dontMock("../../src/core/probe/sessionStore.js");
+    jest.dontMock("../../src/utils/securityLogger.js");
+    jest.dontMock("../../src/utils/secureWrite.js");
+    jest.resetModules();
+  });
+  afterEach(() => {
+    jest.dontMock("../../src/core/probe/sessionStore.js");
+    jest.dontMock("../../src/utils/securityLogger.js");
+    jest.dontMock("../../src/utils/secureWrite.js");
+    jest.resetModules();
+  });
+
+  it("resolveCurrentHandlerDigest returns undefined when readFileSync throws (lines 107-112)", async () => {
+    const env = createIsolatedKastellEnv();
+    try {
+      const result = await importWithIsolatedKastellDir(env, async () => {
+        const mod = await import("../../src/core/probe/diagnostics.js");
+        // handlerPath exists but readFileSync will throw on it because
+        // it's a directory not a file. The try/catch at line 109-112
+        // returns undefined rather than propagating the I/O error.
+        const fakeDir = env.dir; // directory exists but is not a file
+        return mod.resolveCurrentHandlerDigest({ handlerPath: fakeDir });
+      });
+      expect(result).toBeUndefined();
+    } finally {
+      env.cleanup();
+    }
+  });
+
+  it("resolveCurrentHandlerDigest returns undefined when handlerPath is empty (line 104)", async () => {
+    const env = createIsolatedKastellEnv();
+    try {
+      const result = await importWithIsolatedKastellDir(env, async () => {
+        const mod = await import("../../src/core/probe/diagnostics.js");
+        return mod.resolveCurrentHandlerDigest({ handlerPath: "" });
+      });
+      expect(result).toBeUndefined();
+    } finally {
+      env.cleanup();
+    }
+  });
+
+  it("bootstrap catch-block survives when logSecurityEvent itself throws (line 365-366)", async () => {
+    const env = createIsolatedKastellEnv();
+    try {
+      const result = await importWithIsolatedKastellDir(env, async () => {
+        // Force listProbeSessions to throw so bootstrap catch-block runs.
+        jest.doMock("../../src/core/probe/sessionStore.js", () => {
+          const actual = jest.requireActual("../../src/core/probe/sessionStore.js");
+          return {
+            ...actual,
+            listProbeSessions: () => {
+              throw new Error("session-store-failure");
+            },
+          };
+        });
+        // Force logSecurityEvent to throw so the inner try/catch at
+        // lines 364-366 (security log failure must never propagate) is
+        // exercised.
+        jest.doMock("../../src/utils/securityLogger.js", () => ({
+          logSecurityEvent: () => {
+            throw new Error("security-log-write-failed");
+          },
+        }));
+        const mod = (await import("../../src/core/probe/diagnostics.js")) as unknown as ModuleUnderTest;
+        return mod.runProbeSessionMaintenance({ strict: false });
+      });
+      // Bootstrap must NEVER throw, even if BOTH the strict path AND
+      // the security log fail. This is the line 364-366 contract.
+      expect(result.error).toBeDefined();
+      expect(result.diagnostics).toEqual([]);
+      expect(result.cleanup.deletedSessionIds).toEqual([]);
+    } finally {
+      env.cleanup();
+    }
+  });
+
+  it("redactError handles non-Error cause (string) — line 388-389 fallback", async () => {
+    const env = createIsolatedKastellEnv();
+    try {
+      const result = await importWithIsolatedKastellDir(env, async () => {
+        jest.doMock("../../src/core/probe/sessionStore.js", () => {
+          const actual = jest.requireActual("../../src/core/probe/sessionStore.js");
+          return {
+            ...actual,
+            listProbeSessions: () => {
+              // Non-Error throw — exercises redactError fallback at line 388-389.
+              throw "string-cause-not-error";
+            },
+          };
+        });
+        const mod = (await import("../../src/core/probe/diagnostics.js")) as unknown as ModuleUnderTest;
+        return mod.runProbeSessionMaintenance({ strict: false });
+      });
+      expect(result.error).toBeDefined();
+      expect(result.error?.code).toBe("PROBE_MAINTENANCE_ERROR");
+      // The non-Error cause is coerced through redactProbeDiagnostic and
+      // returned as message text. The string "string-cause-not-error"
+      // does not contain sensitive substrings so it passes through.
+      expect(result.error?.message).toContain("string-cause-not-error");
+    } finally {
+      env.cleanup();
+    }
+  });
+
+  it("redactError handles non-Error cause (plain object) — line 388-389 fallback", async () => {
+    const env = createIsolatedKastellEnv();
+    try {
+      const result = await importWithIsolatedKastellDir(env, async () => {
+        jest.doMock("../../src/core/probe/sessionStore.js", () => {
+          const actual = jest.requireActual("../../src/core/probe/sessionStore.js");
+          return {
+            ...actual,
+            listProbeSessions: () => {
+              // Plain object throw — exercises the unknown cause branch.
+              throw { code: "CUSTOM", info: "weird-shape" };
+            },
+          };
+        });
+        const mod = (await import("../../src/core/probe/diagnostics.js")) as unknown as ModuleUnderTest;
+        return mod.runProbeSessionMaintenance({ strict: false });
+      });
+      expect(result.error).toBeDefined();
+      expect(result.error?.code).toBe("PROBE_MAINTENANCE_ERROR");
+      expect(result.error?.message).toBe("Unknown maintenance failure");
+    } finally {
+      env.cleanup();
+    }
+  });
+});
+
+describe("classifyProbeSessions + findOrphanReservations — branch coverage", () => {
+  // Same isolation contract as above — jest.doMock from prior tests must
+  // not leak in via the module registry.
+  beforeEach(() => {
+    jest.dontMock("../../src/core/probe/sessionStore.js");
+    jest.dontMock("../../src/utils/securityLogger.js");
+    jest.dontMock("../../src/utils/secureWrite.js");
+    jest.resetModules();
+  });
+  afterEach(() => {
+    jest.dontMock("../../src/core/probe/sessionStore.js");
+    jest.dontMock("../../src/utils/securityLogger.js");
+    jest.dontMock("../../src/utils/secureWrite.js");
+    jest.resetModules();
+  });
+
+  // Lines 240-241, 250-251, 256-257, 264-265 are inside findOrphanReservations.
+  // They handle: mkdirSync/readdirSync failure, readFileSync failure,
+  // JSON.parse failure, and validation failure (parsed missing fields).
+  // We exercise the validation path by writing a malformed reservation
+  // file into the KASTELL probe targets dir.
+
+  it("findOrphanReservations ignores reservation file with missing sessionId field", async () => {
+    const env = createIsolatedKastellEnv();
+    try {
+      const result = await importWithIsolatedKastellDir(env, async () => {
+        const paths = (await import("../../src/utils/paths.js")) as unknown as {
+          PROBE_TARGETS_DIR: string;
+        };
+        // Write a reservation file that is valid JSON but missing both
+        // sessionId and targetKeyHash — exercises the validation skip at
+        // lines 258-265. The findOrphanReservations function must skip
+        // this entry without throwing.
+        mkdirSync(paths.PROBE_TARGETS_DIR, { recursive: true });
+        writeFileSync(
+          join(paths.PROBE_TARGETS_DIR, "invalid-no-sessionid.reservation.json"),
+          JSON.stringify({ unrelated: "field" }),
+        );
+        const mod = (await import("../../src/core/probe/diagnostics.js")) as unknown as ModuleUnderTest;
+        return mod.runProbeSessionMaintenance({ strict: false });
+      });
+      expect(result.diagnostics).toEqual([]);
+      expect(result.error).toBeUndefined();
+    } finally {
+      env.cleanup();
+    }
+  });
+
+  it("findOrphanReservations ignores reservation file with invalid JSON", async () => {
+    const env = createIsolatedKastellEnv();
+    try {
+      const result = await importWithIsolatedKastellDir(env, async () => {
+        const paths = (await import("../../src/utils/paths.js")) as unknown as {
+          PROBE_TARGETS_DIR: string;
+        };
+        mkdirSync(paths.PROBE_TARGETS_DIR, { recursive: true });
+        // Malformed JSON — exercises the JSON.parse catch at line 256-257.
+        writeFileSync(
+          join(paths.PROBE_TARGETS_DIR, "broken-json.reservation.json"),
+          "{ not valid json",
+        );
+        const mod = (await import("../../src/core/probe/diagnostics.js")) as unknown as ModuleUnderTest;
+        return mod.runProbeSessionMaintenance({ strict: false });
+      });
+      expect(result.diagnostics).toEqual([]);
+      expect(result.error).toBeUndefined();
+    } finally {
+      env.cleanup();
+    }
+  });
+
+  it("ensureKastellDir is best-effort — does not throw when secureMkdirSync fails (line 290-291)", async () => {
+    const env = createIsolatedKastellEnv();
+    try {
+      const result = await importWithIsolatedKastellDir(env, async () => {
+        // Force secureMkdirSync to throw inside ensureKastellDir.
+        // The try/catch at line 287-291 swallows the error so strict
+        // maintenance can still proceed to listProbeSessions (which
+        // may or may not itself throw; we just verify bootstrap does
+        // not propagate the mkdir failure directly).
+        jest.doMock("../../src/utils/secureWrite.js", () => {
+          const actual = jest.requireActual("../../src/utils/secureWrite.js");
+          return {
+            ...actual,
+            secureMkdirSync: () => {
+              throw new Error("mkdir-forbidden");
+            },
+          };
+        });
+        const mod = (await import("../../src/core/probe/diagnostics.js")) as unknown as ModuleUnderTest;
+        return mod.runProbeSessionMaintenance({ strict: false });
+      });
+      // The wrapper caught both mkdir failure AND listProbeSessions
+      // downstream failure (if any), bounded result returned.
+      expect(result.diagnostics).toEqual([]);
+      expect(result.cleanup.deletedSessionIds).toEqual([]);
+    } finally {
+      env.cleanup();
+    }
+  });
+});
