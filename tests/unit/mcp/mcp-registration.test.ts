@@ -11,6 +11,13 @@ jest.mock("../../../src/plugin/loader.js", () => ({
 jest.mock("../../../src/core/audit/explainCheck.js", () => ({
   getFullCheckCatalog: jest.fn().mockReturnValue([]),
   findCheckById: jest.fn().mockReturnValue({ match: null, suggestions: [] }),
+  describeAuditCatalog: jest.fn().mockReturnValue({
+    checks: 449,
+    categories: 31,
+    description: "Scans 31 categories with 449 checks",
+    short: "449-check security scan, 31 categories",
+    resource: "449 checks with id, name, category, severity",
+  }),
 }));
 
 jest.mock("../../../src/utils/config.js", () => ({

@@ -106,6 +106,36 @@ export function getFullCheckCatalog(): ExplainResult[] {
   return _catalogCache;
 }
 
+/**
+ * Live-derived catalog counts used by tool descriptions, MCP server text,
+ * and log lines. Returns a stable short summary so callers do not hardcode
+ * drift-prone literals — every reference in the codebase routes here so
+ * future catalog edits only need to update one place.
+ */
+export interface CatalogSummary {
+  checks: number;
+  categories: number;
+  /** Stable long-form: "Scans 31 categories with 449 checks" */
+  description: string;
+  /** Stable short-form: "449-check security scan, 31 categories" */
+  short: string;
+  /** "449 checks with id, name, category, severity" — for MCP resources. */
+  resource: string;
+}
+
+export function describeAuditCatalog(): CatalogSummary {
+  const catalog = getFullCheckCatalog();
+  const categories = new Set(catalog.map((c) => c.category)).size;
+  const checks = catalog.length;
+  return {
+    checks,
+    categories,
+    description: `Scans ${categories} categories with ${checks} checks`,
+    short: `${checks}-check security scan, ${categories} categories`,
+    resource: `${checks} checks with id, name, category, severity`,
+  };
+}
+
 export function formatSuggestions(suggestions: string[]): string {
   if (suggestions.length > 0) return `Did you mean: ${suggestions.join(", ")}?`;
   return "Run `kastell audit --list-checks` to see all available checks.";

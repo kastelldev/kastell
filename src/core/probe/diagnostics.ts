@@ -175,11 +175,24 @@ export async function classifyProbeSessions(
       });
     }
 
+    // Per-record digest cache: only within this record's iteration. The
+    // mismatch check and the undecryptable check both resolve the same
+    // handlerPath; sharing within one record avoids the double-read+hash.
+    // NOT cached across records — TOCTOU invariant: each record must be
+    // validated against live file state to detect mid-loop tampering.
+    let currentDigest: string | undefined | null = null;
+    async function digestOnce(): Promise<string | undefined> {
+      if (currentDigest === null) {
+        currentDigest = await dependencies.resolveCurrentHandlerDigest(record);
+      }
+      return currentDigest;
+    }
+
     // Handler-digest mismatch is checked for ALL records with a recorded
     // sha256 (terminal rolled-back is the most common case, but the brief
     // specifies this as a cross-cutting integrity invariant).
     if (record.handlerSha256) {
-      const current = await dependencies.resolveCurrentHandlerDigest(record);
+      const current = await digestOnce();
       if (current !== undefined && current !== record.handlerSha256) {
         diagnostics.push({
           kind: "handler-mismatch",
@@ -199,7 +212,7 @@ export async function classifyProbeSessions(
     // no resolvable current handler. Treat as a warning that operator must
     // inspect the persisted (encrypted) payloads.
     if (record.state === "rolled-back" && !record.lastError) {
-      const current = await dependencies.resolveCurrentHandlerDigest(record);
+      const current = await digestOnce();
       if (current === undefined) {
         diagnostics.push({
           kind: "undecryptable",
@@ -372,7 +385,7 @@ export async function runProbeSessionMaintenance(
     }
   }
 
-  return runStrictProbeSessionMaintenance();
+  return await runStrictProbeSessionMaintenance();
 }
 
 function redactError(cause: unknown): RedactedProbeError {

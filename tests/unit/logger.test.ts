@@ -202,6 +202,28 @@ describe("logger", () => {
     expect(output).toContain("[REDACTED]");
   });
 
+  it("should redact secrets embedded mid-string (substring redaction)", () => {
+    // Provider tokens embedded in longer messages — pre-fix, the
+    // whole-string-only redactString let these leak through stderr.
+    logger.error(`auth failed: token=hcic_aB3xK9mZ2qL5wR8n user=alice`);
+    logger.warning(`Re-run with HETZNER_TOKEN=hcic_f7d2c9e4b1a8g6h3 set`);
+    logger.info(`request url: /api/v1?token=dop_v1_aB3xK9mZ2qL5wR8n&page=1`);
+    // Bearer mid-string
+    logger.warning(`upstream returned Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c`);
+
+    const output = [...stdoutSpy.mock.calls, ...stderrSpy.mock.calls]
+      .map((call) => call.map((part: unknown) => String(part)).join(" "))
+      .join("\n");
+
+    expect(output).not.toContain("hcic_aB3xK9mZ2qL5wR8n");
+    expect(output).not.toContain("hcic_f7d2c9e4b1a8g6h3");
+    expect(output).not.toContain("dop_v1_aB3xK9mZ2qL5wR8n");
+    expect(output).not.toContain("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c");
+    // IPv4 addresses and other non-secret substrings remain visible
+    expect(output).toContain("auth failed");
+    expect(output).toContain("alice");
+  });
+
   it("should log title with empty lines before and after", () => {
     logger.title("My Title");
     expect(stdoutSpy).toHaveBeenCalledTimes(3);

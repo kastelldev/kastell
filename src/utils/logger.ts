@@ -122,8 +122,13 @@ export const PROVIDER_TOKEN_PATTERNS: readonly RegExp[] = [
 ];
 
 // String-shape patterns: matched anywhere in the value.
-const BEARER_PATTERN = /(^|\W)Bearer\s+[A-Za-z0-9._+/=_-]+/i;
-const JWT_PATTERN = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
+// JWT min segment length 20 avoids false positives like IPv4
+// (e.g. "203.0.113.42" → "203.0.113" matches the 3-segment dot pattern
+// without the length floor).
+const BEARER_PATTERN = /Bearer\s+[A-Za-z0-9._+/=_-]+/i;
+const JWT_PATTERN = /[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}/;
+const HETZNER_TOKEN_PATTERN = /hcic_[A-Za-z0-9]+/g;
+const DIGITALOCEAN_TOKEN_PATTERN = /dop_v1_[A-Za-z0-9]+/g;
 
 function isSensitiveKey(key: string): boolean {
   return SENSITIVE_KEY_PATTERNS.some((re) => re.test(key));
@@ -137,8 +142,38 @@ function looksLikeSecretValue(value: string): boolean {
 }
 
 function redactString(value: string): string {
+  // Whole-string match: the entire value IS a secret → collapse to REDACTED
   if (looksLikeSecretValue(value)) return REDACTED;
-  return value;
+
+  // Substring match: a secret is embedded inside a longer message
+  // (e.g. `auth failed with token=hcic_xxx`). Replace the secret token
+  // in place, preserve surrounding context for operator diagnosis.
+  let result = value;
+  let changed = false;
+
+  // Bearer: capture group keeps the leading non-word char (if any)
+  if (BEARER_PATTERN.test(result)) {
+    result = result.replace(BEARER_PATTERN, REDACTED);
+    changed = true;
+  }
+
+  // Provider tokens: global regex, replace every occurrence
+  if (HETZNER_TOKEN_PATTERN.test(result)) {
+    result = result.replace(HETZNER_TOKEN_PATTERN, REDACTED);
+    changed = true;
+  }
+  if (DIGITALOCEAN_TOKEN_PATTERN.test(result)) {
+    result = result.replace(DIGITALOCEAN_TOKEN_PATTERN, REDACTED);
+    changed = true;
+  }
+
+  // JWT: any 3-segment dot-separated base64url token
+  if (JWT_PATTERN.test(result)) {
+    result = result.replace(JWT_PATTERN, REDACTED);
+    changed = true;
+  }
+
+  return changed ? result : value;
 }
 
 /**
