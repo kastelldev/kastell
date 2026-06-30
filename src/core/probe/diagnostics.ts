@@ -180,13 +180,15 @@ export async function classifyProbeSessions(
     // handlerPath; sharing within one record avoids the double-read+hash.
     // NOT cached across records — TOCTOU invariant: each record must be
     // validated against live file state to detect mid-loop tampering.
-    let currentDigest: string | undefined | null = null;
-    async function digestOnce(): Promise<string | undefined> {
-      if (currentDigest === null) {
-        currentDigest = await dependencies.resolveCurrentHandlerDigest(record);
-      }
-      return currentDigest;
-    }
+    //
+    // Implementation: lazy-init the in-flight Promise itself. The first
+    // call assigns `dependencies.resolveCurrentHandlerDigest(record)` to
+    // `currentDigest`; every subsequent call awaits the same Promise. This
+    // eliminates the 3-state sentinel (null/undefined/string) and the
+    // closure wrapper — single-line inline arrow function.
+    let currentDigest: Promise<string | undefined> | undefined;
+    const digestOnce = async (): Promise<string | undefined> =>
+      (currentDigest ??= dependencies.resolveCurrentHandlerDigest(record));
 
     // Handler-digest mismatch is checked for ALL records with a recorded
     // sha256 (terminal rolled-back is the most common case, but the brief
