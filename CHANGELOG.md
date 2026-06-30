@@ -2,6 +2,55 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.1] - 2026-06-30
+
+### Security
+- **Logger BEARER token redaction hardened** — word-boundary matching, 20+ char length floor, provider-pattern dedup; WHOLE vs SUBSTRING pattern split for provider tokens vs API tokens (`src/utils/logger.ts`)
+- **Logger console output redaction** — `src/utils/logger.ts` redacts tokens/keys/passwords in console output (covers `console.log`/`console.error`/`stderr`)
+- **`applyWindowsAcl` sensitivity-graded policy** — secret ACL failures throw (fail-closed), state ACL failures warn; net strengthen of file permission hardening
+- **Dev vulnerability advisories remediated** — `package-lock.json` reconciliation (`41b25f6`)
+
+### Fixed
+- **Test-env detection hardened** — `applyWindowsAcl` now requires explicit `KASTELL_TEST_MODE=1` opt-in (no more path-based heuristic that silently skipped ACL hardening under temp `KASTELL_DIR`); P119-class recurrence fix
+- **Command hints routed to stderr** — interactive menu prompt messages no longer pollute stdout; clean snapshot tests + correct log level separation (P147)
+- **In-source audit count strings aligned** — `describeAuditCatalog` cached count now matches release-facing count; eliminates drift between menu catalog and CLI help (P147)
+- **Release-facing audit counts aligned** with cached `describeAuditCatalog` output (P147)
+- **Linux parity gate** — `openssh-client` install in `scripts/test-linux-parity.sh` (P147)
+- **`applyWindowsAcl` cause wrap** — non-Error `CommandFailure.cause` defensively wrapped (P146/simplify)
+- **`runLifecycleStep` consolidation** — `runForwardStep`/`runRollbackStep` inlined (P146/simplify)
+- **Command boundary JSON output** cleaned for predictable CLI output (P146)
+- **Doctor command** refactored with `withMachineMode` helper + `applyWindowsAcl` `isTestEnvironmentDir` check lifted (P146/simplify)
+- **Windows ACL principal removal batched** for performance (P146)
+- **Probe bootstrap maintenance API collapsed** to single surface (P147)
+- **Probe diagnostics `digestOnce`** — Promise lazy-init eliminates eager computation (P147 perf)
+- **Audit catalog memoization** — `describeAuditCatalog` cached + live mocks (P147)
+- **Code-review findings applied** — security + drift + perf issues remediated (`153c715`)
+
+### Added
+- **`withMachineMode` helper** for test/lock state propagation (`src/core/doctor.ts`)
+- **Plugin SDK v3** — `apiVersion: "2"` required, object-shaped `checkCommand: { kind, cmd }`, per-check `mutates` flag replaces manifest-level
+- **Probe system** — `src/core/probe/{context,executor,diagnostics,payload,sessionStore,types}.ts` for active plugin probe sessions with budget tracking, retention, concurrency control
+- **Plugin SDK test fixtures** — `kastell-plugin-v2-mutate-bad`, `kastell-plugin-v2-rawfix-bad`, `kastell-plugin-v2-readonly`, `kastell-plugin-mock` for SDK contract validation
+- **Windows ACL test coverage** — `tests/integration/windows-acl.test.ts` for `applyWindowsAcl` happy path + failure paths + cached path
+- **Logger redaction depth test** — `tests/unit/logger-redact-depth.test.ts` for WHOLE/SUBSTRING split verification
+- **Boot catch-block + strict-mode direct-path coverage** for probe bootstrap (P147)
+- **Empty-string + circular-context `logger.error` coverage** (P147)
+- **Diagnostics.ts branch coverage gaps** filled (P147)
+- **`isTestEnvironmentDir`** helper exported from `applyWindowsAcl` (P146)
+
+### Changed
+- **`chunkConcurrent`** replaces `p-limit` in fleet.ts (p-limit dependency dropped)
+- **`serverCompare` outputSchema** uses `discriminatedUnion` (outer shape unchanged)
+- **`PluginRegistryEntry`** is now a discriminated union (`loaded`/`error`/`disabled`)
+- **CI workflow** — build artifact shared between jobs (~30s saving per run)
+- **Plugin parallel audit** — cap=3 (configurable via `PLUGIN_AUDIT_PARALLELISM`), aggregate timeout (`PLUGIN_AUDIT_TOTAL_TIMEOUT_MS`, default 120s)
+- **File-mtime cache** for `getServers()` and `loadLatestAudit(ip)` with network FS guard
+- **MCP SDK round-trip test** for `serverCompare` schema (`tests/unit/mcp/mcp-registration.test.ts`)
+
+### Removed
+- `p-limit` npm dependency (replaced by internal `chunkConcurrent`)
+- Plugin manifest-level `mutates` and `safeToParallel` flags (moved to per-check `checkCommand.mutates`)
+
 ## [2.3.0] - 2026-06-12
 
 ### Added

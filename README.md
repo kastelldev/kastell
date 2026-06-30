@@ -46,7 +46,7 @@ Running `kastell` without any arguments launches an **interactive search menu** 
  ██║  ██╗  ██║  ██║ ███████║   ██║   ███████╗███████╗███████╗
  ╚═╝  ╚═╝  ╚═╝  ╚═╝ ╚══════╝   ╚═╝   ╚══════╝╚══════╝╚══════╝
 
-  KASTELL  v2.3.0  ·  Your infrastructure, fortified.
+  KASTELL  v2.3.1  ·  Your infrastructure, fortified.
 
   $ kastell init --template production  → deploy a new server
   $ kastell status --all                → check all servers
@@ -263,7 +263,7 @@ kastell init --template production --provider hetzner
 
 ## Security
 
-Kastell is built with security as a priority -- **11,206 tests** across 344 suites, including dedicated security test suites.
+Kastell is built with security as a priority -- **12,132 tests** across 380 suites, including dedicated security test suites.
 
 - API tokens are never stored on disk -- prompted at runtime or via environment variables
 - SSH keys are auto-generated if needed (Ed25519)

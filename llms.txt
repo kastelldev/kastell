@@ -1,14 +1,14 @@
 # Kastell
 
 > CLI toolkit for provisioning, securing, and managing self-hosted servers.
-> 470+ security checks across 32 categories. CIS/PCI-DSS/HIPAA compliance.
+> 449 security checks across 31 categories. CIS/PCI-DSS/HIPAA compliance.
 > 24-step hardening. Supports Coolify, Dokploy, bare VPS. 4 providers (Hetzner, DigitalOcean, Vultr, Linode).
 
 Kastell is an open-source CLI that automates server provisioning, hardening, maintenance, and security audit.
 Run `npx kastell` for an interactive menu or use individual commands.
 Includes an MCP server (`npx kastell-mcp`) for AI-native server management via Claude Code, Cursor, VS Code Copilot, and other MCP clients.
 
-Key differentiators: 470+-check audit engine, 24-step production hardening (server_lock), fleet management, and CIS/PCI-DSS/HIPAA compliance mapping.
+Key differentiators: 449-check audit engine, 24-step production hardening (server_lock), fleet management, and CIS/PCI-DSS/HIPAA compliance mapping.
 
 ## MCP Tools
 
