@@ -11,6 +11,7 @@ import {
   describeAuditCatalog,
   getFullCheckCatalog,
 } from "../../../src/core/audit/explainCheck.js";
+import { CHECK_REGISTRY } from "../../../src/core/audit/checks/index.js";
 
 describe("describeAuditCatalog", () => {
   // Note: no beforeEach clearCheckCatalogCache — describeAuditCatalog() is
@@ -22,12 +23,13 @@ describe("describeAuditCatalog", () => {
     expect(summary.checks).toBe(getFullCheckCatalog().length);
     expect(summary.checks).toBeGreaterThan(0);
 
-    // Categories are derived from distinct catalog.category values, not
-    // from the static CHECK_REGISTRY file count.
+    // Categories are derived from runtime registry/catalog data, not
+    // from the filesystem file count, which includes checks/index.ts.
     const distinctCategories = new Set(
       getFullCheckCatalog().map((c) => c.category),
     );
     expect(summary.categories).toBe(distinctCategories.size);
+    expect(summary.categories).toBe(CHECK_REGISTRY.length);
   });
 
   // The three "stable long/short/resource form" it() blocks were deleted:

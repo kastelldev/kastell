@@ -397,7 +397,10 @@ function redactError(cause: unknown): RedactedProbeError {
       // Pass the raw message through the canonical probe redactor so JWTs,
       // Bearer tokens, and sensitive-key substrings never escape to logs.
       message: String(redactProbeDiagnostic(cause.message) ?? ""),
-      stack: typeof cause.stack === "string" ? cause.stack.split("\n").slice(0, 3).join("\n") : undefined,
+      stack:
+        typeof cause.stack === "string"
+          ? String(redactProbeDiagnostic(cause.stack.split("\n").slice(0, 3).join("\n")) ?? "")
+          : undefined,
     };
   }
   return {

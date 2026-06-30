@@ -239,6 +239,20 @@ describe("logger", () => {
     expect(out).toContain("succeeded");
   });
 
+  it("should redact repeated secret-shaped substrings across separate log calls", () => {
+    logger.warning("first token=hcic_firstAAA111");
+    logger.warning("second token=hcic_secondBBB222");
+
+    const out = stderrSpy.mock.calls
+      .map((call) => call.map((p: unknown) => String(p)).join(" "))
+      .join("\n");
+
+    expect(out).not.toContain("hcic_firstAAA111");
+    expect(out).not.toContain("hcic_secondBBB222");
+    expect(out).toContain("first token=");
+    expect(out).toContain("second token=");
+  });
+
   it("should redact JWT substring in the middle of a longer message", () => {
     // JWT (3-segment base64url, each segment >=20 chars) embedded mid-string.
     logger.error(

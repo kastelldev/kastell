@@ -36,7 +36,7 @@ echo "Running: npx jest --runInBand --config jest.config.cjs $*"
 echo "KASTELL_DIR=$KASTELL_DIR"
 
 # ─── Run Jest in Linux container ────────────────────────────────────────────
-docker run --rm \
+MSYS_NO_PATHCONV=1 docker run --rm \
   -v "$PWD":/app \
   -w /app \
   -e KASTELL_DIR \

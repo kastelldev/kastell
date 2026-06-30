@@ -379,6 +379,33 @@ describe("runProbeSessionMaintenance({ strict: false }) — bootstrap catch-bloc
       env.cleanup();
     }
   });
+
+  it("redacts secret-shaped substrings from the captured error stack", async () => {
+    const env = createIsolatedKastellEnv();
+    const secret =
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
+    try {
+      const result = await importWithIsolatedKastellDir(env, async () => {
+        jest.doMock("../../src/core/probe/sessionStore.js", () => {
+          const actual = jest.requireActual("../../src/core/probe/sessionStore.js");
+          return {
+            ...actual,
+            listProbeSessions: () => {
+              throw new Error(`maintenance failed with ${secret}`);
+            },
+          };
+        });
+        const mod = (await import("../../src/core/probe/diagnostics.js")) as unknown as ModuleUnderTest;
+        return mod.runProbeSessionMaintenance({ strict: false });
+      });
+
+      expect(result.error?.message).not.toContain(secret);
+      expect(result.error?.stack).not.toContain(secret);
+      expect(result.error?.stack).toContain("[REDACTED]");
+    } finally {
+      env.cleanup();
+    }
+  });
 });
 
 // P147 T9 follow-up — coverage gaps in diagnostics.ts branches.
