@@ -30,8 +30,16 @@ export interface FindCheckResult {
 // Module-level cache — catalog is static data, rebuilt only when explicitly cleared
 let _catalogCache: ExplainResult[] | null = null;
 
+// Module-level cache for describeAuditCatalog() — the summary is derived from
+// the catalog and is read-only between catalog rebuilds. Without this cache,
+// every call would rebuild a Set over the entire catalog (O(n)) and reformat
+// three template strings, even though the inputs only change when the catalog
+// cache is cleared. Invalidated together with the catalog cache below.
+let _summaryCache: CatalogSummary | null = null;
+
 export function clearCheckCatalogCache(): void {
   _catalogCache = null;
+  _summaryCache = null;
 }
 
 function levenshtein(a: string, b: string): number {
@@ -124,16 +132,18 @@ export interface CatalogSummary {
 }
 
 export function describeAuditCatalog(): CatalogSummary {
+  if (_summaryCache) return _summaryCache;
   const catalog = getFullCheckCatalog();
   const categories = new Set(catalog.map((c) => c.category)).size;
   const checks = catalog.length;
-  return {
+  _summaryCache = {
     checks,
     categories,
     description: `Scans ${categories} categories with ${checks} checks`,
     short: `${checks}-check security scan, ${categories} categories`,
     resource: `${checks} checks with id, name, category, severity`,
   };
+  return _summaryCache;
 }
 
 export function formatSuggestions(suggestions: string[]): string {

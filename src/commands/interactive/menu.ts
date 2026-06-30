@@ -1,5 +1,6 @@
 import inquirer from "inquirer";
 import chalk from "chalk";
+import { describeAuditCatalog } from "../../core/audit/explainCheck.js";
 
 export interface MenuAction {
   name: string;
@@ -40,7 +41,7 @@ export const MENU: MenuCategory[] = [
     label: "Security",
     emoji: "🔒",
     actions: [
-      { name: "Run security audit", value: "audit", description: "Score server security across 31 categories with compliance mapping" },
+      { name: "Run security audit", value: "audit", description: `Score server security across ${describeAuditCatalog().categories} categories with compliance mapping` },
       { name: "Harden SSH & fail2ban", value: "secure", description: "Configure SSH security and brute-force protection" },
       { name: "Lock server (production hardening)", value: "lock", description: "Apply 24-step hardening: SSH, fail2ban, UFW, sysctl, auditd, AIDE, and more" },
       { name: "Fix server (safe auto-fix)", value: "fix", description: "Apply safe fixes automatically with backup (SAFE tier only)" },
