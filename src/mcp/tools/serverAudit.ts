@@ -7,6 +7,7 @@ import { saveSnapshot } from "../../core/audit/snapshot.js";
 import type { AuditFilter } from "../../core/audit/filter.js";
 import type { Severity } from "../../types/severity.js";
 import { isFailedCheck } from "../../core/audit/types.js";
+import { describeAuditCatalog } from "../../core/audit/explainCheck.js";
 import {
   resolveServerForMcp,
   mcpSuccess,
@@ -156,7 +157,7 @@ export async function handleServerAudit(params: {
       return mcpSuccess({ summary: formatDiffJson(diff), scoreDelta: diff.scoreDelta });
     }
 
-    await mcpLog(mcpServer, `Starting 457-check audit on ${server.name}`);
+    await mcpLog(mcpServer, `Starting ${describeAuditCatalog().checks}-check audit on ${server.name}`);
 
     const platform = server.platform ?? server.mode ?? "bare";
     const result = await runAudit(server.ip, server.name, platform);

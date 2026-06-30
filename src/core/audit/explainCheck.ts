@@ -30,8 +30,16 @@ export interface FindCheckResult {
 // Module-level cache — catalog is static data, rebuilt only when explicitly cleared
 let _catalogCache: ExplainResult[] | null = null;
 
+// Module-level cache for describeAuditCatalog() — the summary is derived from
+// the catalog and is read-only between catalog rebuilds. Without this cache,
+// every call would rebuild a Set over the entire catalog (O(n)) and reformat
+// three template strings, even though the inputs only change when the catalog
+// cache is cleared. Invalidated together with the catalog cache below.
+let _summaryCache: CatalogSummary | null = null;
+
 export function clearCheckCatalogCache(): void {
   _catalogCache = null;
+  _summaryCache = null;
 }
 
 function levenshtein(a: string, b: string): number {
@@ -74,7 +82,7 @@ function buildCheckCatalog(): ExplainResult[] {
 export function findCheckById(checkId: string): FindCheckResult {
   const catalog = getFullCheckCatalog();
 
-  // 1. Exact match — O(n) scan on 457 items is fast enough
+  // 1. Exact match — O(n) scan on 449 items is fast enough
   const exact = catalog.find((c) => c.id === checkId);
   if (exact) return { match: exact, suggestions: [] };
 
@@ -104,6 +112,38 @@ export function getFullCheckCatalog(): ExplainResult[] {
   if (_catalogCache) return _catalogCache;
   _catalogCache = buildCheckCatalog();
   return _catalogCache;
+}
+
+/**
+ * Live-derived catalog counts used by tool descriptions, MCP server text,
+ * and log lines. Returns a stable short summary so callers do not hardcode
+ * drift-prone literals — every reference in the codebase routes here so
+ * future catalog edits only need to update one place.
+ */
+export interface CatalogSummary {
+  checks: number;
+  categories: number;
+  /** Stable long-form: "Scans 31 categories with 449 checks" */
+  description: string;
+  /** Stable short-form: "449-check security scan, 31 categories" */
+  short: string;
+  /** "449 checks with id, name, category, severity" — for MCP resources. */
+  resource: string;
+}
+
+export function describeAuditCatalog(): CatalogSummary {
+  if (_summaryCache) return _summaryCache;
+  const catalog = getFullCheckCatalog();
+  const categories = new Set(catalog.map((c) => c.category)).size;
+  const checks = catalog.length;
+  _summaryCache = {
+    checks,
+    categories,
+    description: `Scans ${categories} categories with ${checks} checks`,
+    short: `${checks}-check security scan, ${categories} categories`,
+    resource: `${checks} checks with id, name, category, severity`,
+  };
+  return _summaryCache;
 }
 
 export function formatSuggestions(suggestions: string[]): string {

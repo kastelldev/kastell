@@ -8,10 +8,25 @@ jest.mock("../../../src/plugin/loader.js", () => ({
   loadPlugins: jest.fn().mockResolvedValue({ loaded: [], errors: [] }),
 }));
 
-jest.mock("../../../src/core/audit/explainCheck.js", () => ({
-  getFullCheckCatalog: jest.fn().mockReturnValue([]),
-  findCheckById: jest.fn().mockReturnValue({ match: null, suggestions: [] }),
-}));
+jest.mock("../../../src/core/audit/explainCheck.js", () => {
+  // Reuse the real describeAuditCatalog() so the mock reflects the live
+  // catalog count — hardcoding 449/31 here re-introduces the exact
+  // catalog-drift trap that describeAuditCatalog was added to prevent.
+  const actual = jest.requireActual("../../../src/core/audit/explainCheck.js") as {
+    describeAuditCatalog: () => {
+      checks: number;
+      categories: number;
+      description: string;
+      short: string;
+      resource: string;
+    };
+  };
+  return {
+    getFullCheckCatalog: jest.fn().mockReturnValue([]),
+    findCheckById: jest.fn().mockReturnValue({ match: null, suggestions: [] }),
+    describeAuditCatalog: jest.fn(() => actual.describeAuditCatalog()),
+  };
+});
 
 jest.mock("../../../src/utils/config.js", () => ({
   getServers: jest.fn().mockReturnValue([]),

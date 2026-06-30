@@ -95,7 +95,7 @@ Kastell handles server provisioning, SSH key setup, firewall configuration, and 
 |---------|---------|-------|----------|
 | Installation | `npm i -g kastell` | Package manager | Package manager |
 | Language | TypeScript | Shell | C/Python |
-| Security Checks | 470+ | 300+ | Varies by profile |
+| Security Checks | 449 | 300+ | Varies by profile |
 | Auto-Fix | Safe tier | Suggest only | Suggest only |
 | MCP (AI Agent) | 17 tools | -- | -- |
 | Compliance | CIS, PCI-DSS, HIPAA | CIS, HIPAA | CIS, STIG, PCI-DSS |
@@ -170,7 +170,7 @@ kastell domain add my-server --domain example.com  # Set domain + SSL
 
 ### Security Audit
 ```bash
-kastell audit my-server                  # Full security audit (32 categories, 470+ checks)
+kastell audit my-server                  # Full security audit (31 categories, 449 checks)
 kastell audit my-server --json           # JSON output for automation
 kastell audit my-server --threshold 70   # Exit code 1 if score below threshold
 kastell audit my-server --fix            # Interactive fix mode (prompts per severity)
@@ -361,7 +361,7 @@ Available tools:
 | `server_secure` | secure, firewall, domain | SSH hardening, firewall rules, domain/SSL management (10 subcommands) |
 | `server_backup` | backup, snapshot | Backup/restore databases and create/manage VPS snapshots |
 | `server_provision` | create | Provision new servers on cloud providers |
-| `server_audit` | audit | 457+-check security audit with compliance framework filtering; use `--explain` for remediation guidance |
+| `server_audit` | audit | 449-check security audit with compliance framework filtering; use `--explain` for remediation guidance |
 | `server_evidence` | collect | Collect forensic evidence package with checksums |
 | `server_guard` | start, stop, status | Manage autonomous security monitoring daemon |
 | `server_doctor` | diagnose | Proactive health analysis with remediation commands |

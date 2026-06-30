@@ -96,7 +96,7 @@ describe("COMPLIANCE_MAP equivalence", () => {
     }
   });
 
-  it("should have all 457+ check IDs from Phase 85+", () => {
+  it("should have all 449 check IDs from Phase 85+", () => {
     // Phase 85 TLS checks
     expect(COMPLIANCE_MAP[CHECK_IDS.TLS.TLS_MIN_VERSION]).toBeDefined();
     expect(COMPLIANCE_MAP[CHECK_IDS.TLS.TLS_WEAK_CIPHERS]).toBeDefined();

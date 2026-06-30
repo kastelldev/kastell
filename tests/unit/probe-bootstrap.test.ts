@@ -16,9 +16,9 @@ import {
   createIsolatedKastellEnv,
   type IsolatedKastellEnv,
 } from "../helpers/isolatedKastellEnv.js";
+import { classifyProbeSessions } from "../../src/core/probe/diagnostics.js";
 
 interface ModuleUnderTest {
-  tryRunProbeSessionMaintenance: typeof import("../../src/core/probe/diagnostics.js")["tryRunProbeSessionMaintenance"];
   runProbeSessionMaintenance: typeof import("../../src/core/probe/diagnostics.js")["runProbeSessionMaintenance"];
 }
 
@@ -37,12 +37,12 @@ async function loadModules(env: IsolatedKastellEnv): Promise<{
   });
 }
 
-describe("tryRunProbeSessionMaintenance — bootstrap wrapper", () => {
+describe("runProbeSessionMaintenance({ strict: false }) — bootstrap wrapper", () => {
   it("returns diagnostics and cleanup on success", async () => {
     const env = createIsolatedKastellEnv();
     const { mod } = await loadModules(env);
     try {
-      const result = await mod.tryRunProbeSessionMaintenance();
+      const result = await mod.runProbeSessionMaintenance({ strict: false });
       expect(Array.isArray(result.diagnostics)).toBe(true);
       expect(result.cleanup).toBeDefined();
       expect(result.cleanup.deletedSessionIds).toEqual([]);
@@ -52,14 +52,14 @@ describe("tryRunProbeSessionMaintenance — bootstrap wrapper", () => {
     }
   });
 
-  it("does NOT throw when runProbeSessionMaintenance throws — returns bounded result", async () => {
+  it("does NOT throw when strict maintenance throws — returns bounded result", async () => {
     const env = createIsolatedKastellEnv();
     const { mod } = await loadModules(env);
     try {
-      // tryRun wraps runProbeSessionMaintenance which internally calls
-      // listProbeSessions. On a fresh isolated dir with no records, the
-      // happy path is taken — we exercise baseline bounded-shape behavior.
-      const result = await mod.tryRunProbeSessionMaintenance();
+      // The { strict: false } wrapper calls strict maintenance internally;
+      // on a fresh isolated dir with no records, the happy path is taken
+      // — we exercise baseline bounded-shape behavior.
+      const result = await mod.runProbeSessionMaintenance({ strict: false });
       expect(result.error).toBeUndefined();
       expect(Array.isArray(result.diagnostics)).toBe(true);
       expect(result.cleanup).toBeDefined();
@@ -74,8 +74,8 @@ describe("tryRunProbeSessionMaintenance — bootstrap wrapper", () => {
     const env = createIsolatedKastellEnv();
     const { mod } = await loadModules(env);
     try {
-      const first = await mod.tryRunProbeSessionMaintenance();
-      const second = await mod.tryRunProbeSessionMaintenance();
+      const first = await mod.runProbeSessionMaintenance({ strict: false });
+      const second = await mod.runProbeSessionMaintenance({ strict: false });
       expect(first.error).toBeUndefined();
       expect(second.error).toBeUndefined();
       // Diagnostics may differ in count if state changed in between, but
@@ -96,7 +96,7 @@ describe("tryRunProbeSessionMaintenance — bootstrap wrapper", () => {
     jest.resetModules();
     try {
       const mod = (await import("../../src/core/probe/diagnostics.js")) as unknown as ModuleUnderTest;
-      const result = await mod.tryRunProbeSessionMaintenance();
+      const result = await mod.runProbeSessionMaintenance({ strict: false });
       expect(result).toEqual({
         diagnostics: [],
         cleanup: { deletedSessionIds: [], scannedAt: expect.any(String) },
@@ -138,7 +138,7 @@ describe("tryRunProbeSessionMaintenance — bootstrap wrapper", () => {
       };
       writeFileSync(sessionPath, JSON.stringify(record));
 
-      const result = await mod.tryRunProbeSessionMaintenance();
+      const result = await mod.runProbeSessionMaintenance({ strict: false });
       // Now is roughly "today" — 2026-07-20 is in the past, so the session
       // qualifies as older than 30 days only if today is after 2026-01-31.
       // Today's date in this test environment is later than that cutoff.
@@ -154,21 +154,12 @@ describe("tryRunProbeSessionMaintenance — bootstrap wrapper", () => {
 });
 
 describe("bootstrap wrappers — module surface", () => {
-  it("exports tryRunProbeSessionMaintenance", async () => {
-    const env = createIsolatedKastellEnv();
-    const { mod } = await loadModules(env);
-    try {
-      expect(typeof mod.tryRunProbeSessionMaintenance).toBe("function");
-    } finally {
-      env.cleanup();
-    }
-  });
-
-  it("exports runProbeSessionMaintenance (strict)", async () => {
+  it("exports runProbeSessionMaintenance as the single public maintenance API", async () => {
     const env = createIsolatedKastellEnv();
     const { mod } = await loadModules(env);
     try {
       expect(typeof mod.runProbeSessionMaintenance).toBe("function");
+      expect("tryRunProbeSessionMaintenance" in mod).toBe(false);
     } finally {
       env.cleanup();
     }
@@ -182,11 +173,13 @@ describe("CLI bootstrap — bootstrap integration in src/index.ts", () => {
       join(process.cwd(), "src", "index.ts"),
       "utf8",
     );
-    expect(indexSource).toMatch(/tryRunProbeSessionMaintenance/);
+    expect(indexSource).toMatch(/runProbeSessionMaintenance\(\{\s*strict:\s*false\s*\}\)/);
     // The CALL must come AFTER loadPlugins and BEFORE command registration.
     const loadPluginsIdx = indexSource.indexOf("await loadPlugins()");
     // Look for the call expression, not the import.
-    const callIdx = indexSource.indexOf("await tryRunProbeSessionMaintenance()");
+    const callIdx = indexSource.indexOf(
+      "await runProbeSessionMaintenance({ strict: false })",
+    );
     const commandIdx = indexSource.indexOf("const program = new Command");
     expect(loadPluginsIdx).toBeGreaterThanOrEqual(0);
     expect(callIdx).toBeGreaterThan(loadPluginsIdx);
@@ -200,10 +193,12 @@ describe("MCP bootstrap — bootstrap integration in src/mcp/server.ts", () => {
       join(process.cwd(), "src", "mcp", "server.ts"),
       "utf8",
     );
-    expect(serverSource).toMatch(/tryRunProbeSessionMaintenance/);
+    expect(serverSource).toMatch(/runProbeSessionMaintenance\(\{\s*strict:\s*false\s*\}\)/);
     // The CALL must come AFTER loadPlugins and BEFORE constructing McpServer.
     const loadPluginsIdx = serverSource.indexOf("await loadPlugins()");
-    const callIdx = serverSource.indexOf("await tryRunProbeSessionMaintenance()");
+    const callIdx = serverSource.indexOf(
+      "await runProbeSessionMaintenance({ strict: false })",
+    );
     const mcpServerIdx = serverSource.indexOf("new McpServer(");
     expect(loadPluginsIdx).toBeGreaterThanOrEqual(0);
     expect(callIdx).toBeGreaterThan(loadPluginsIdx);
@@ -217,13 +212,15 @@ describe("CLI Doctor bootstrap — bootstrap integration in src/commands/doctor.
       join(process.cwd(), "src", "commands", "doctor.ts"),
       "utf8",
     );
-    expect(doctorSource).toMatch(/tryRunProbeSessionMaintenance/);
+    expect(doctorSource).toMatch(/runProbeSessionMaintenance\(\{\s*strict:\s*false\s*\}\)/);
     // The CALL must appear inside doctorCommand, BEFORE any diagnostic work
     // (resolveServer / runServerDoctor / runDoctorChecks).
     const importIdx = doctorSource.indexOf(
-      'import { tryRunProbeSessionMaintenance } from "../core/probe/diagnostics.js";',
+      'import { runProbeSessionMaintenance } from "../core/probe/diagnostics.js";',
     );
-    const callIdx = doctorSource.indexOf("await tryRunProbeSessionMaintenance()");
+    const callIdx = doctorSource.indexOf(
+      "await runProbeSessionMaintenance({ strict: false })",
+    );
     const resolveServerIdx = doctorSource.indexOf("await resolveServer(");
     const runDoctorChecksIdx = doctorSource.indexOf("runDoctorChecks(");
     expect(importIdx).toBeGreaterThanOrEqual(0);
@@ -237,7 +234,9 @@ describe("CLI Doctor bootstrap — bootstrap integration in src/commands/doctor.
       join(process.cwd(), "src", "commands", "doctor.ts"),
       "utf8",
     );
-    const matches = doctorSource.match(/await tryRunProbeSessionMaintenance\(\)/g);
+    const matches = doctorSource.match(
+      /await runProbeSessionMaintenance\(\{\s*strict:\s*false\s*\}\)/g,
+    );
     expect(matches).not.toBeNull();
     expect(matches?.length).toBe(1);
   });
@@ -249,13 +248,15 @@ describe("MCP Doctor bootstrap — bootstrap integration in src/mcp/tools/server
       join(process.cwd(), "src", "mcp", "tools", "serverDoctor.ts"),
       "utf8",
     );
-    expect(toolSource).toMatch(/tryRunProbeSessionMaintenance/);
+    expect(toolSource).toMatch(/runProbeSessionMaintenance\(\{\s*strict:\s*false\s*\}\)/);
     // The CALL must appear BEFORE any doctor core work
     // (getServers / resolveServerForMcp / runServerDoctor).
     const importIdx = toolSource.indexOf(
-      'import { tryRunProbeSessionMaintenance } from "../../core/probe/diagnostics.js";',
+      'import { runProbeSessionMaintenance } from "../../core/probe/diagnostics.js";',
     );
-    const callIdx = toolSource.indexOf("await tryRunProbeSessionMaintenance()");
+    const callIdx = toolSource.indexOf(
+      "await runProbeSessionMaintenance({ strict: false })",
+    );
     const getServersIdx = toolSource.indexOf("getServers()");
     const runServerDoctorIdx = toolSource.indexOf("runServerDoctor(");
     expect(importIdx).toBeGreaterThanOrEqual(0);
@@ -269,7 +270,9 @@ describe("MCP Doctor bootstrap — bootstrap integration in src/mcp/tools/server
       join(process.cwd(), "src", "mcp", "tools", "serverDoctor.ts"),
       "utf8",
     );
-    const matches = toolSource.match(/await tryRunProbeSessionMaintenance\(\)/g);
+    const matches = toolSource.match(
+      /await runProbeSessionMaintenance\(\{\s*strict:\s*false\s*\}\)/g,
+    );
     expect(matches).not.toBeNull();
     expect(matches?.length).toBe(1);
   });
@@ -285,5 +288,450 @@ describe("probe-bootstrap integration — runtime check", () => {
     } finally {
       env.cleanup();
     }
+  });
+});
+
+// P147 Task 9 — coverage gaps G4 (strict-mode direct path) and G5
+// (bootstrap catch-block contract: failure must NEVER throw and must populate
+// the bounded `error` field with a redacted message).
+describe("runProbeSessionMaintenance() — strict-mode direct path", () => {
+  it("returns diagnostics and cleanup without throwing on a clean isolated dir", async () => {
+    const env = createIsolatedKastellEnv();
+    const { mod } = await loadModules(env);
+    try {
+      // No-arg form resolves to runStrictProbeSessionMaintenance internally.
+      // On an isolated dir with no records, this must return the strict
+      // success shape (ProbeMaintenanceResult — note the absence of `error`).
+      const result = await mod.runProbeSessionMaintenance();
+      expect(Array.isArray(result.diagnostics)).toBe(true);
+      expect(result.cleanup).toBeDefined();
+      expect(result.cleanup.deletedSessionIds).toEqual([]);
+      expect("error" in result ? result.error : undefined).toBeUndefined();
+    } finally {
+      env.cleanup();
+    }
+  });
+});
+
+describe("runProbeSessionMaintenance({ strict: false }) — bootstrap catch-block (G5)", () => {
+  it("does NOT throw when strict maintenance throws — returns bounded error result", async () => {
+    const env = createIsolatedKastellEnv();
+    try {
+      // Force listProbeSessions to throw inside the strict path so the
+      // bootstrap catch-block (diagnostics.ts lines 354-371) executes.
+      const result = await importWithIsolatedKastellDir(env, async () => {
+        jest.doMock("../../src/core/probe/sessionStore.js", () => {
+          const actual = jest.requireActual("../../src/core/probe/sessionStore.js");
+          return {
+            ...actual,
+            listProbeSessions: () => {
+              throw new Error("simulated session-store I/O failure");
+            },
+          };
+        });
+        const mod = (await import("../../src/core/probe/diagnostics.js")) as unknown as ModuleUnderTest;
+        return mod.runProbeSessionMaintenance({ strict: false });
+      });
+
+      // Contract: bootstrap never throws on maintenance failure.
+      expect(result).toBeDefined();
+      expect(result.error).toBeDefined();
+      // The error message must be redacted/structured — not the raw thrown message.
+      // The error type is RedactedProbeError (code/message/stack?).
+      expect(typeof result.error?.code).toBe("string");
+      expect(typeof result.error?.message).toBe("string");
+      // The bounded diagnostics/cleanup fields must still be present and empty.
+      expect(result.diagnostics).toEqual([]);
+      expect(result.cleanup.deletedSessionIds).toEqual([]);
+    } finally {
+      env.cleanup();
+    }
+  });
+
+  it("does not include the raw thrown message verbatim when redaction is not required", async () => {
+    // Belt-and-braces: the redacted error message should NOT leak the
+    // secret-shaped substring in the throw — the redactor strips JWTs and
+    // Bearer tokens but leaves ordinary text intact. This test pins the
+    // contract that the message IS the original message (not "[REDACTED]"
+    // for non-secret-shaped strings) so operators can still diagnose.
+    const env = createIsolatedKastellEnv();
+    try {
+      const result = await importWithIsolatedKastellDir(env, async () => {
+        jest.doMock("../../src/core/probe/sessionStore.js", () => {
+          const actual = jest.requireActual("../../src/core/probe/sessionStore.js");
+          return {
+            ...actual,
+            listProbeSessions: () => {
+              throw new Error("simulated maintenance failure with safe text");
+            },
+          };
+        });
+        const mod = (await import("../../src/core/probe/diagnostics.js")) as unknown as ModuleUnderTest;
+        return mod.runProbeSessionMaintenance({ strict: false });
+      });
+
+      expect(result.error).toBeDefined();
+      // Non-secret text passes through the redactor untouched.
+      expect(result.error?.message).toContain("simulated maintenance failure");
+      // No original "Error: " prefix leakage from the wrapped cause.
+      expect(result.error?.message.startsWith("Error:")).toBe(false);
+    } finally {
+      env.cleanup();
+    }
+  });
+
+  it("redacts secret-shaped substrings from the captured error stack", async () => {
+    const env = createIsolatedKastellEnv();
+    const secret =
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
+    try {
+      const result = await importWithIsolatedKastellDir(env, async () => {
+        jest.doMock("../../src/core/probe/sessionStore.js", () => {
+          const actual = jest.requireActual("../../src/core/probe/sessionStore.js");
+          return {
+            ...actual,
+            listProbeSessions: () => {
+              throw new Error(`maintenance failed with ${secret}`);
+            },
+          };
+        });
+        const mod = (await import("../../src/core/probe/diagnostics.js")) as unknown as ModuleUnderTest;
+        return mod.runProbeSessionMaintenance({ strict: false });
+      });
+
+      expect(result.error?.message).not.toContain(secret);
+      expect(result.error?.stack).not.toContain(secret);
+      expect(result.error?.stack).toContain("[REDACTED]");
+    } finally {
+      env.cleanup();
+    }
+  });
+});
+
+// P147 T9 follow-up — coverage gaps in diagnostics.ts branches.
+// Target uncovered lines: 110-112, 204-214, 240-241, 250-251, 256-257,
+// 264-265, 290-291, 365-366, 388-389, 456-477.
+
+describe("diagnostics.ts — coverage gap fills (P147 T9 follow-up)", () => {
+  // Test isolation: jest.doMock registrations persist across test boundaries.
+  // Without explicit reset, the previous test's listProbeSessions mock will
+  // bleed into the next test and cause spurious "Unknown maintenance failure"
+  // errors in the bootstrap wrapper. Use jest.dontMock + jest.resetModules.
+  beforeEach(() => {
+    jest.dontMock("../../src/core/probe/sessionStore.js");
+    jest.dontMock("../../src/utils/securityLogger.js");
+    jest.dontMock("../../src/utils/secureWrite.js");
+    jest.resetModules();
+  });
+  afterEach(() => {
+    jest.dontMock("../../src/core/probe/sessionStore.js");
+    jest.dontMock("../../src/utils/securityLogger.js");
+    jest.dontMock("../../src/utils/secureWrite.js");
+    jest.resetModules();
+  });
+
+  it("resolveCurrentHandlerDigest returns undefined when readFileSync throws (lines 107-112)", async () => {
+    const env = createIsolatedKastellEnv();
+    try {
+      const result = await importWithIsolatedKastellDir(env, async () => {
+        const mod = await import("../../src/core/probe/diagnostics.js");
+        // handlerPath exists but readFileSync will throw on it because
+        // it's a directory not a file. The try/catch at line 109-112
+        // returns undefined rather than propagating the I/O error.
+        const fakeDir = env.dir; // directory exists but is not a file
+        return mod.resolveCurrentHandlerDigest({ handlerPath: fakeDir });
+      });
+      expect(result).toBeUndefined();
+    } finally {
+      env.cleanup();
+    }
+  });
+
+  it("resolveCurrentHandlerDigest returns undefined when handlerPath is empty (line 104)", async () => {
+    const env = createIsolatedKastellEnv();
+    try {
+      const result = await importWithIsolatedKastellDir(env, async () => {
+        const mod = await import("../../src/core/probe/diagnostics.js");
+        return mod.resolveCurrentHandlerDigest({ handlerPath: "" });
+      });
+      expect(result).toBeUndefined();
+    } finally {
+      env.cleanup();
+    }
+  });
+
+  it("bootstrap catch-block survives when logSecurityEvent itself throws (line 365-366)", async () => {
+    const env = createIsolatedKastellEnv();
+    try {
+      const result = await importWithIsolatedKastellDir(env, async () => {
+        // Force listProbeSessions to throw so bootstrap catch-block runs.
+        jest.doMock("../../src/core/probe/sessionStore.js", () => {
+          const actual = jest.requireActual("../../src/core/probe/sessionStore.js");
+          return {
+            ...actual,
+            listProbeSessions: () => {
+              throw new Error("session-store-failure");
+            },
+          };
+        });
+        // Force logSecurityEvent to throw so the inner try/catch at
+        // lines 364-366 (security log failure must never propagate) is
+        // exercised.
+        jest.doMock("../../src/utils/securityLogger.js", () => ({
+          logSecurityEvent: () => {
+            throw new Error("security-log-write-failed");
+          },
+        }));
+        const mod = (await import("../../src/core/probe/diagnostics.js")) as unknown as ModuleUnderTest;
+        return mod.runProbeSessionMaintenance({ strict: false });
+      });
+      // Bootstrap must NEVER throw, even if BOTH the strict path AND
+      // the security log fail. This is the line 364-366 contract.
+      expect(result.error).toBeDefined();
+      expect(result.diagnostics).toEqual([]);
+      expect(result.cleanup.deletedSessionIds).toEqual([]);
+    } finally {
+      env.cleanup();
+    }
+  });
+
+  it("redactError handles non-Error cause (string) — line 388-389 fallback", async () => {
+    const env = createIsolatedKastellEnv();
+    try {
+      const result = await importWithIsolatedKastellDir(env, async () => {
+        jest.doMock("../../src/core/probe/sessionStore.js", () => {
+          const actual = jest.requireActual("../../src/core/probe/sessionStore.js");
+          return {
+            ...actual,
+            listProbeSessions: () => {
+              // Non-Error throw — exercises redactError fallback at line 388-389.
+              throw "string-cause-not-error";
+            },
+          };
+        });
+        const mod = (await import("../../src/core/probe/diagnostics.js")) as unknown as ModuleUnderTest;
+        return mod.runProbeSessionMaintenance({ strict: false });
+      });
+      expect(result.error).toBeDefined();
+      expect(result.error?.code).toBe("PROBE_MAINTENANCE_ERROR");
+      // The non-Error cause is coerced through redactProbeDiagnostic and
+      // returned as message text. The string "string-cause-not-error"
+      // does not contain sensitive substrings so it passes through.
+      expect(result.error?.message).toContain("string-cause-not-error");
+    } finally {
+      env.cleanup();
+    }
+  });
+
+  it("redactError handles non-Error cause (plain object) — line 388-389 fallback", async () => {
+    const env = createIsolatedKastellEnv();
+    try {
+      const result = await importWithIsolatedKastellDir(env, async () => {
+        jest.doMock("../../src/core/probe/sessionStore.js", () => {
+          const actual = jest.requireActual("../../src/core/probe/sessionStore.js");
+          return {
+            ...actual,
+            listProbeSessions: () => {
+              // Plain object throw — exercises the unknown cause branch.
+              throw { code: "CUSTOM", info: "weird-shape" };
+            },
+          };
+        });
+        const mod = (await import("../../src/core/probe/diagnostics.js")) as unknown as ModuleUnderTest;
+        return mod.runProbeSessionMaintenance({ strict: false });
+      });
+      expect(result.error).toBeDefined();
+      expect(result.error?.code).toBe("PROBE_MAINTENANCE_ERROR");
+      expect(result.error?.message).toBe("Unknown maintenance failure");
+    } finally {
+      env.cleanup();
+    }
+  });
+});
+
+describe("classifyProbeSessions + findOrphanReservations — branch coverage", () => {
+  // Same isolation contract as above — jest.doMock from prior tests must
+  // not leak in via the module registry.
+  beforeEach(() => {
+    jest.dontMock("../../src/core/probe/sessionStore.js");
+    jest.dontMock("../../src/utils/securityLogger.js");
+    jest.dontMock("../../src/utils/secureWrite.js");
+    jest.resetModules();
+  });
+  afterEach(() => {
+    jest.dontMock("../../src/core/probe/sessionStore.js");
+    jest.dontMock("../../src/utils/securityLogger.js");
+    jest.dontMock("../../src/utils/secureWrite.js");
+    jest.resetModules();
+  });
+
+  // Lines 240-241, 250-251, 256-257, 264-265 are inside findOrphanReservations.
+  // They handle: mkdirSync/readdirSync failure, readFileSync failure,
+  // JSON.parse failure, and validation failure (parsed missing fields).
+  // We exercise the validation path by writing a malformed reservation
+  // file into the KASTELL probe targets dir.
+
+  it("findOrphanReservations ignores reservation file with missing sessionId field", async () => {
+    const env = createIsolatedKastellEnv();
+    try {
+      const result = await importWithIsolatedKastellDir(env, async () => {
+        const paths = (await import("../../src/utils/paths.js")) as unknown as {
+          PROBE_TARGETS_DIR: string;
+        };
+        // Write a reservation file that is valid JSON but missing both
+        // sessionId and targetKeyHash — exercises the validation skip at
+        // lines 258-265. The findOrphanReservations function must skip
+        // this entry without throwing.
+        mkdirSync(paths.PROBE_TARGETS_DIR, { recursive: true });
+        writeFileSync(
+          join(paths.PROBE_TARGETS_DIR, "invalid-no-sessionid.reservation.json"),
+          JSON.stringify({ unrelated: "field" }),
+        );
+        const mod = (await import("../../src/core/probe/diagnostics.js")) as unknown as ModuleUnderTest;
+        return mod.runProbeSessionMaintenance({ strict: false });
+      });
+      expect(result.diagnostics).toEqual([]);
+      expect(result.error).toBeUndefined();
+    } finally {
+      env.cleanup();
+    }
+  });
+
+  it("findOrphanReservations ignores reservation file with invalid JSON", async () => {
+    const env = createIsolatedKastellEnv();
+    try {
+      const result = await importWithIsolatedKastellDir(env, async () => {
+        const paths = (await import("../../src/utils/paths.js")) as unknown as {
+          PROBE_TARGETS_DIR: string;
+        };
+        mkdirSync(paths.PROBE_TARGETS_DIR, { recursive: true });
+        // Malformed JSON — exercises the JSON.parse catch at line 256-257.
+        writeFileSync(
+          join(paths.PROBE_TARGETS_DIR, "broken-json.reservation.json"),
+          "{ not valid json",
+        );
+        const mod = (await import("../../src/core/probe/diagnostics.js")) as unknown as ModuleUnderTest;
+        return mod.runProbeSessionMaintenance({ strict: false });
+      });
+      expect(result.diagnostics).toEqual([]);
+      expect(result.error).toBeUndefined();
+    } finally {
+      env.cleanup();
+    }
+  });
+
+  it("ensureKastellDir is best-effort — does not throw when secureMkdirSync fails (line 290-291)", async () => {
+    const env = createIsolatedKastellEnv();
+    try {
+      const result = await importWithIsolatedKastellDir(env, async () => {
+        // Force secureMkdirSync to throw inside ensureKastellDir.
+        // The try/catch at line 287-291 swallows the error so strict
+        // maintenance can still proceed to listProbeSessions (which
+        // may or may not itself throw; we just verify bootstrap does
+        // not propagate the mkdir failure directly).
+        jest.doMock("../../src/utils/secureWrite.js", () => {
+          const actual = jest.requireActual("../../src/utils/secureWrite.js");
+          return {
+            ...actual,
+            secureMkdirSync: () => {
+              throw new Error("mkdir-forbidden");
+            },
+          };
+        });
+        const mod = (await import("../../src/core/probe/diagnostics.js")) as unknown as ModuleUnderTest;
+        return mod.runProbeSessionMaintenance({ strict: false });
+      });
+      // The wrapper caught both mkdir failure AND listProbeSessions
+      // downstream failure (if any), bounded result returned.
+      expect(result.diagnostics).toEqual([]);
+      expect(result.cleanup.deletedSessionIds).toEqual([]);
+    } finally {
+      env.cleanup();
+    }
+  });
+});
+
+describe("classifyProbeSessions — per-record digest cache (code-review fix)", () => {
+  // After the code-review fix, classifyProbeSessions caches the handler
+  // digest within a single record's iteration (handler-mismatch + undecryptable
+  // share one resolve call) but NOT across records. Each record must be
+  // validated against live file state to detect mid-loop tampering (TOCTOU).
+  it("resolves handler digest at most once per record (shared by both checks)", async () => {
+    const callCounts: { perPath: Map<string, number> } = { perPath: new Map() };
+    const targetHandlerPath = "/probe/handler.js";
+
+    const dependencies = {
+      resolveCurrentHandlerDigest: async (record: { handlerPath: string }) => {
+        const n = (callCounts.perPath.get(record.handlerPath) ?? 0) + 1;
+        callCounts.perPath.set(record.handlerPath, n);
+        // Recorded sha256 is "abc"; resolved sha256 is "xyz" → mismatch.
+        // Also returns a defined value so the undecryptable branch does NOT run.
+        return "xyz-mismatch";
+      },
+    };
+
+    // Record that hits the mismatch branch (handlerSha256 set). state
+    // rolled-back without lastError also runs the undecryptable branch —
+    // shared cache means one resolve covers both.
+    const records = [
+      {
+        sessionId: "s1",
+        record: {
+          sessionId: "s1",
+          targetKeyHash: "h1",
+          state: "rolled-back" as const,
+          handlerPath: targetHandlerPath,
+          handlerSha256: "abc",
+          lastError: undefined,
+        },
+      },
+    ];
+
+    const result = await classifyProbeSessions(
+      records as unknown as Parameters<typeof classifyProbeSessions>[0],
+      dependencies,
+    );
+
+    expect(result.some((d) => d.kind === "handler-mismatch")).toBe(true);
+
+    // CRITICAL: digest resolved exactly ONCE for this record (cache hit on
+    // the second branch).
+    expect(callCounts.perPath.get(targetHandlerPath)).toBe(1);
+  });
+
+  it("does NOT cache across records (TOCTOU invariant: each record re-validates)", async () => {
+    const callCounts: { perPath: Map<string, number> } = { perPath: new Map() };
+    const sharedPath = "/probe/handler.js";
+
+    const dependencies = {
+      resolveCurrentHandlerDigest: async (record: { handlerPath: string }) => {
+        const n = (callCounts.perPath.get(record.handlerPath) ?? 0) + 1;
+        callCounts.perPath.set(record.handlerPath, n);
+        return "stable-hash";
+      },
+    };
+
+    // Three records, all pointing at the same handler path. Without the
+    // TOCTOU fix, classifyProbeSessions would resolve once and reuse the
+    // cached digest across all three — defeating mid-loop tamper detection.
+    const records = Array.from({ length: 3 }, (_, i) => ({
+      sessionId: `s${i}`,
+      record: {
+        sessionId: `s${i}`,
+        targetKeyHash: `h${i}`,
+        state: "rolled-back" as const,
+        handlerPath: sharedPath,
+        handlerSha256: "stable-hash",
+        lastError: undefined,
+      },
+    }));
+
+    await classifyProbeSessions(
+      records as unknown as Parameters<typeof classifyProbeSessions>[0],
+      dependencies,
+    );
+
+    // Each record must independently resolve — three resolutions, not one.
+    expect(callCounts.perPath.get(sharedPath)).toBe(3);
   });
 });

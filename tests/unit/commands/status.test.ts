@@ -454,9 +454,14 @@ describe("statusCommand", () => {
 
       await statusCommand("test-server");
 
-      // hint from mapProviderError is logged via logger.info (stdout)
+      // P147 T3: command boundary hints route through emitCommandHint →
+      // logger.warning → console.error (stderr). The hint must NOT pollute
+      // stdout because machine-output commands (--json) need stdout reserved
+      // for structured data.
+      const stderrOutput = stderrSpy.mock.calls.map((c) => c.join(" ")).join("\n");
       const stdoutOutput = consoleSpy.mock.calls.map((c) => c.join(" ")).join("\n");
-      expect(stdoutOutput).toContain("API token is invalid or expired");
+      expect(stderrOutput).toContain("API token is invalid or expired");
+      expect(stdoutOutput).not.toContain("API token is invalid or expired");
     });
 
     it("should log provider error hints only once", async () => {
@@ -473,8 +478,9 @@ describe("statusCommand", () => {
 
       await statusCommand("test-server");
 
-      const stdoutOutput = consoleSpy.mock.calls.map((c) => c.join(" ")).join("\n");
-      expect(stdoutOutput.match(/Check your API token/g)).toHaveLength(1);
+      // P147 T3: hints go to stderr (logger.warning). Check stderr, not stdout.
+      const stderrOutput = stderrSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+      expect(stderrOutput.match(/Check your API token/g)).toHaveLength(1);
     });
   });
 

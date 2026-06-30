@@ -1,7 +1,7 @@
 {
   "name": "kastell",
   "version": "2.3.0",
-  "description": "Server security auditing, hardening, and fleet management. 470+ security checks across 32 categories, CIS/PCI-DSS/HIPAA compliance, 24-step production hardening, and 17 MCP tools. Supports Hetzner, DigitalOcean, Vultr, Linode with Coolify, Dokploy, and bare VPS modes.",
+  "description": "Server security auditing, hardening, and fleet management. 449 security checks across 31 categories, CIS/PCI-DSS/HIPAA compliance, 24-step production hardening, and 17 MCP tools. Supports Hetzner, DigitalOcean, Vultr, Linode with Coolify, Dokploy, and bare VPS modes.",
   "author": {
     "name": "kastelldev",
     "email": "hello@omrfc.dev",

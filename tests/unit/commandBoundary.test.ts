@@ -1,17 +1,22 @@
+import { setMachineMode } from "../../src/utils/logger";
 import { withCommandBoundary, failWith, CommandFailure } from "../../src/utils/commandBoundary";
 
 describe("withCommandBoundary", () => {
   const previousExitCode = process.exitCode;
   let errorSpy: jest.SpyInstance;
+  let logSpy: jest.SpyInstance;
 
   beforeEach(() => {
     process.exitCode = undefined;
     errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    logSpy = jest.spyOn(console, "log").mockImplementation(() => {});
   });
 
   afterEach(() => {
+    setMachineMode(false);
     process.exitCode = previousExitCode;
     errorSpy.mockRestore();
+    logSpy.mockRestore();
   });
 
   it("should set exit code 1 when handler throws CommandFailure", async () => {
@@ -54,5 +59,32 @@ describe("withCommandBoundary", () => {
     const failure = new CommandFailure("Boundary fired", { cause: errorCause });
 
     expect(failure.cause).toBe(errorCause);
+  });
+
+  it("should emit command failure hints on stderr", async () => {
+    const run = withCommandBoundary(async () => {
+      throw new CommandFailure("Bad input", { hint: "Run kastell doctor" });
+    });
+
+    await run();
+
+    // withCommandBoundary calls markCommandFailed(), which owns process.exitCode.
+    expect(process.exitCode).toBe(1);
+    expect(logSpy).not.toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalledWith(expect.any(String), "Bad input");
+    expect(errorSpy).toHaveBeenCalledWith(expect.any(String), "Run kastell doctor");
+  });
+
+  it("should not write command failure hints to stdout in machine mode", async () => {
+    setMachineMode(true);
+    const run = withCommandBoundary(async () => {
+      throw new CommandFailure("Bad input", { hint: "Run kastell doctor" });
+    });
+
+    await run();
+
+    expect(process.exitCode).toBe(1);
+    expect(logSpy).not.toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalledWith(expect.any(String), "Run kastell doctor");
   });
 });

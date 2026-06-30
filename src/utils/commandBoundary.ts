@@ -3,13 +3,13 @@ import { markCommandFailed } from "./exitCode.js";
 
 /**
  * The boundary's typed error. `hint` is a non-fatal remediation cue that
- * the boundary surfaces via `logger.info` after `logger.error(message)`.
- * `cause` is the original error from upstream — preserved as the audit
- * trail for operator diagnostics. The boundary's `logger.error(message)`
- * call intentionally does NOT log `cause` to user output; cause is
- * forensic context for logs/telemetry, not part of the user-facing
- * message. Non-Error causes are defensively wrapped so they are not
- * silently dropped on the audit trail (ESLint preserve-caught-error
+ * the boundary surfaces via `logger.warning` (stderr) after
+ * `logger.error(message)`. `cause` is the original error from upstream —
+ * preserved as the audit trail for operator diagnostics. The boundary's
+ * `logger.error(message)` call intentionally does NOT log `cause` to user
+ * output; cause is forensic context for logs/telemetry, not part of the
+ * user-facing message. Non-Error causes are defensively wrapped so they
+ * are not silently dropped on the audit trail (ESLint preserve-caught-error
  * requires an Error for Error.cause).
  */
 export class CommandFailure extends Error {
@@ -38,6 +38,18 @@ export function failWith(message: string, hint?: string): never {
   throw new CommandFailure(message, hint ? { hint } : undefined);
 }
 
+/**
+ * Routes hints to stderr-safe channel in both human and machine mode.
+ * `logger.warning()` writes directly to `console.error` unconditionally
+ * (does not route through `diagnosticLog`), so hints stay on stderr
+ * regardless of `machineMode`. Earlier drafts used `logger.info`, which
+ * follows the `diagnosticLog` stdout/stderr split and contaminated JSON
+ * payloads on stdout when a `--json` command exited through the boundary.
+ */
+function emitCommandHint(hint: string): void {
+  logger.warning(hint);
+}
+
 export function withCommandBoundary<TArgs extends unknown[]>(
   handler: (...args: TArgs) => Promise<void> | void,
 ): (...args: TArgs) => Promise<void> {
@@ -47,7 +59,7 @@ export function withCommandBoundary<TArgs extends unknown[]>(
     } catch (error) {
       if (error instanceof CommandFailure) {
         if (!error.logged) logger.error(error.message);
-        if (error.hint) logger.info(error.hint);
+        if (error.hint) emitCommandHint(error.hint);
         markCommandFailed();
         return;
       }
@@ -56,12 +68,6 @@ export function withCommandBoundary<TArgs extends unknown[]>(
   };
 }
 
-// NOTE: hint emission (`logger.info(error.hint)`) is intentionally NOT
-// machine-mode-aware. The boundary fires after the command has surfaced its
-// machine output (stdout) and after `setMachineMode(false)` has reset state
-// in current call sites. If a future command combines `--json` / machineMode
-// with the boundary, it MUST reset machine mode (`setMachineMode(false)`)
-// before the boundary can fire — otherwise the hint is silently routed to
-// stderr (or swallowed if `2>&1` is not redirected) instead of contaminating
-// the JSON payload on stdout. A deeper refactor (per-call `isMachineMode()`
-// guard) is deferred to P147; today no command goes through both paths.
+// Hints now route through `emitCommandHint` → `logger.warning` → stderr,
+// independent of `machineMode`. No future command needs to reset machine
+// mode before the boundary fires for hint routing to stay correct.

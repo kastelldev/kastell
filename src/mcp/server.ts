@@ -22,8 +22,9 @@ import { serverPluginSchema, handleServerPlugin, serverPluginOutputSchema } from
 import { getPluginMcpTools } from "../plugin/registry.js";
 import { registerPluginMcpTools } from "./pluginTools.js";
 import { setMcpVersion } from "./utils.js";
-import { tryRunProbeSessionMaintenance } from "../core/probe/diagnostics.js";
+import { runProbeSessionMaintenance } from "../core/probe/diagnostics.js";
 import { readCheckCatalog, readCheckDetail } from "./resources/checks.js";
+import { describeAuditCatalog } from "../core/audit/explainCheck.js";
 import { readServerList, readServerAudit } from "./resources/servers.js";
 import { hardenPrompt, diagnosePrompt, setupPrompt } from "./prompts/workflows.js";
 import { debugLog } from "../utils/logger.js";
@@ -158,8 +159,10 @@ export const ALL_MCP_TOOLS: McpToolEntry[] = [
   },
   {
     name: "server_audit",
-    description:
-      "Run a security audit on a server. Scans 30 categories with 457 checks. Returns score (0-100), per-category scores, and quick wins. Formats: 'summary' (compact text), 'json' (full AuditResult), 'score' (number only). Supports compliance filtering (cis-level1, cis-level2, pci-dss, hipaa), category/severity filtering, snapshot save/compare, threshold gate, and profile filtering. Requires SSH access. For health trends use server_doctor instead.",
+    description: (() => {
+      const cat = describeAuditCatalog();
+      return `Run a security audit on a server. ${cat.description}. Returns score (0-100), per-category scores, and quick wins. Formats: 'summary' (compact text), 'json' (full AuditResult), 'score' (number only). Supports compliance filtering (cis-level1, cis-level2, pci-dss, hipaa), category/severity filtering, snapshot save/compare, threshold gate, and profile filtering. Requires SSH access. For health trends use server_doctor instead.`;
+    })(),
     inputSchema: serverAuditSchema,
     outputSchema: serverAuditOutputSchema,
     annotations: {
@@ -315,7 +318,7 @@ export async function createMcpServer(): Promise<McpServer> {
   await loadPlugins();
   // Best-effort Active Probe maintenance — must NOT block McpServer
   // construction. Classification + retention only; no probe lifecycle.
-  await tryRunProbeSessionMaintenance();
+  await runProbeSessionMaintenance({ strict: false });
   setMcpVersion(KASTELL_VERSION);
   const server = new McpServer(
     { name: "kastell", version: KASTELL_VERSION },
@@ -330,7 +333,7 @@ Tool routing:
 - server_provision: creates new billable cloud resources (requires SAFE_MODE=false)
 - server_manage: register existing servers (add), unregister (remove), permanently delete (destroy - requires SAFE_MODE=false)
 - server_lock: one-shot 24-step production hardening (SSH + fail2ban + UFW + sysctl + auditd + AIDE + Docker)
-- server_audit: 457-check security scan, 30 categories, CIS/PCI-DSS/HIPAA compliance filtering
+- server_audit: ${describeAuditCatalog().short}, CIS/PCI-DSS/HIPAA compliance filtering
 - server_secure: granular security (SSH hardening, firewall rules, domain/SSL)
 - server_backup: backup/restore + VPS snapshots
 - server_maintain: platform updates, restarts, full maintenance cycle
@@ -372,7 +375,7 @@ Bare servers: use service 'system' or 'docker' for logs (not 'coolify'). server_
   server.registerResource(
     "check-catalog",
     "kastell://checks",
-    { description: "Full audit check catalog (457 checks with id, name, category, severity)" },
+    { description: `Full audit check catalog (${describeAuditCatalog().resource})` },
     async () => readCheckCatalog(),
   );
 

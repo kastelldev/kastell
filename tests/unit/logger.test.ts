@@ -169,6 +169,115 @@ describe("logger", () => {
     expect(stdoutSpy).not.toHaveBeenCalled();
   });
 
+  it("should redact sensitive context before logging errors", () => {
+    logger.error("request failed", {
+      token: "dop_v1_aB3xK9mZ2qL5wR8n",
+      nested: { password: "p4ssw0rd" },
+      serverId: "srv_a1b2c3",
+    });
+
+    const output = stderrSpy.mock.calls
+      .map((call) => call.map((part: unknown) => String(part)).join(" "))
+      .join("\n");
+
+    expect(output).toContain("request failed");
+    expect(output).toContain("srv_a1b2c3");
+    expect(output).not.toContain("dop_v1_aB3xK9mZ2qL5wR8n");
+    expect(output).not.toContain("p4ssw0rd");
+    expect(output).toContain("[REDACTED]");
+  });
+
+  it("should redact secret-shaped strings in diagnostic logger methods", () => {
+    logger.info("Bearer eyJhbGciOiJIUzI1NiJ9.payload.sig");
+    logger.success("dop_v1_aB3xK9mZ2qL5wR8n");
+    logger.warning("hcic_f7d2c9e4b1a8g6h3");
+
+    const output = [...stdoutSpy.mock.calls, ...stderrSpy.mock.calls]
+      .map((call) => call.map((part: unknown) => String(part)).join(" "))
+      .join("\n");
+
+    expect(output).not.toContain("eyJhbGciOiJIUzI1NiJ9.payload.sig");
+    expect(output).not.toContain("dop_v1_aB3xK9mZ2qL5wR8n");
+    expect(output).not.toContain("hcic_f7d2c9e4b1a8g6h3");
+    expect(output).toContain("[REDACTED]");
+  });
+
+  it("should redact secrets embedded mid-string (substring redaction)", () => {
+    // Provider tokens embedded in longer messages — pre-fix, the
+    // whole-string-only redactString let these leak through stderr.
+    logger.error(`auth failed: token=hcic_aB3xK9mZ2qL5wR8n user=alice`);
+    logger.warning(`Re-run with HETZNER_TOKEN=hcic_f7d2c9e4b1a8g6h3 set`);
+    logger.info(`request url: /api/v1?token=dop_v1_aB3xK9mZ2qL5wR8n&page=1`);
+    // Bearer mid-string
+    logger.warning(`upstream returned Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c`);
+
+    const output = [...stdoutSpy.mock.calls, ...stderrSpy.mock.calls]
+      .map((call) => call.map((part: unknown) => String(part)).join(" "))
+      .join("\n");
+
+    expect(output).not.toContain("hcic_aB3xK9mZ2qL5wR8n");
+    expect(output).not.toContain("hcic_f7d2c9e4b1a8g6h3");
+    expect(output).not.toContain("dop_v1_aB3xK9mZ2qL5wR8n");
+    expect(output).not.toContain("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c");
+    // IPv4 addresses and other non-secret substrings remain visible
+    expect(output).toContain("auth failed");
+    expect(output).toContain("alice");
+  });
+
+  it("should redact multiple secrets in a single message", () => {
+    // Two Hetzner tokens in one message — global regex replaces every occurrence.
+    logger.error(
+      "rotating from hcic_oldOneAAA111 to hcic_newTwoBBB222 succeeded",
+    );
+    const out = stderrSpy.mock.calls
+      .map((call) => call.map((p: unknown) => String(p)).join(" "))
+      .join("\n");
+    expect(out).not.toContain("hcic_oldOneAAA111");
+    expect(out).not.toContain("hcic_newTwoBBB222");
+    expect(out).toContain("[REDACTED]");
+    expect(out).toContain("rotating from");
+    expect(out).toContain("succeeded");
+  });
+
+  it("should redact repeated secret-shaped substrings across separate log calls", () => {
+    logger.warning("first token=hcic_firstAAA111");
+    logger.warning("second token=hcic_secondBBB222");
+
+    const out = stderrSpy.mock.calls
+      .map((call) => call.map((p: unknown) => String(p)).join(" "))
+      .join("\n");
+
+    expect(out).not.toContain("hcic_firstAAA111");
+    expect(out).not.toContain("hcic_secondBBB222");
+    expect(out).toContain("first token=");
+    expect(out).toContain("second token=");
+  });
+
+  it("should redact JWT substring in the middle of a longer message", () => {
+    // JWT (3-segment base64url, each segment >=20 chars) embedded mid-string.
+    logger.error(
+      "request failed: jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c retry=3",
+    );
+    const out = stderrSpy.mock.calls
+      .map((call) => call.map((p: unknown) => String(p)).join(" "))
+      .join("\n");
+    expect(out).not.toContain(
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+    );
+    expect(out).toContain("request failed");
+    expect(out).toContain("retry=3");
+  });
+
+  it("should not redact IPv4 addresses (JWT_PATTERN length floor)", () => {
+    // Regression guard: pre-fix, JWT_PATTERN without min segment length matched
+    // IPv4 '203.0.113.42' as '203.0.113'. The 20-char floor prevents this.
+    logger.error("connected from 203.0.113.42 in 50ms");
+    const out = stderrSpy.mock.calls
+      .map((call) => call.map((p: unknown) => String(p)).join(" "))
+      .join("\n");
+    expect(out).toContain("203.0.113.42");
+  });
+
   it("should log title with empty lines before and after", () => {
     logger.title("My Title");
     expect(stdoutSpy).toHaveBeenCalledTimes(3);
@@ -178,6 +287,79 @@ describe("logger", () => {
     logger.step("doing something");
     expect(stdoutSpy).toHaveBeenCalledTimes(1);
     expect(stdoutSpy).toHaveBeenCalledWith(expect.any(String), "doing something");
+  });
+
+  // P147 Task 9 — coverage gaps G1/G2/G7
+  it("should not throw when logger.error receives an empty message", () => {
+    expect(() => logger.error("")).not.toThrow();
+    expect(stderrSpy).toHaveBeenCalled();
+    const flatOutput = stderrSpy.mock.calls
+      .map((call) => call.map((part: unknown) => String(part)).join(" "))
+      .join("\n");
+    // Empty message is preserved as-is (redactString("") === "" — looksLikeSecretValue returns false).
+    expect(flatOutput).toBeDefined();
+  });
+
+  it("should not throw when logger.error receives a circular reference in context", () => {
+    const ctx: Record<string, unknown> = { name: "test" };
+    ctx.self = ctx;
+    expect(() => logger.error("circular ctx", ctx)).not.toThrow();
+    const flatOutput = stderrSpy.mock.calls
+      .map((call) => call.map((part: unknown) => String(part)).join(" "))
+      .join("\n");
+    expect(flatOutput).toContain("[Circular]");
+    expect(flatOutput).toContain("circular ctx");
+  });
+
+  it("should not throw when logger.error context has a throwing getter", () => {
+    const evil: Record<string, unknown> = {};
+    Object.defineProperty(evil, "boom", {
+      get() {
+        throw new Error("getter exploded");
+      },
+      enumerable: true,
+    });
+    expect(() => logger.error("getter ctx", evil)).not.toThrow();
+    const flatOutput = stderrSpy.mock.calls
+      .map((call) => call.map((part: unknown) => String(part)).join(" "))
+      .join("\n");
+    expect(flatOutput).not.toContain("getter exploded");
+  });
+
+  it("should NOT collapse short Bearer messages as whole-string (P147 redaction length floor)", () => {
+    // 'Bearer missing' is a legitimate diagnostic — the entire string matches the
+    // WHOLE bearer shape but the token is < 8 chars and is not an actual secret.
+    // Pre-153c715 redesign this would have collapsed to [REDACTED]; the fix adds a
+    // minimum token length floor so diagnostic strings survive.
+    logger.error("Bearer missing in config");
+    const out = stderrSpy.mock.calls
+      .map((call) => call.map((p: unknown) => String(p)).join(" "))
+      .join("\n");
+    expect(out).toContain("Bearer missing");
+    expect(out).not.toContain("[REDACTED]");
+  });
+
+  it("should NOT redact identifier-internal 'Bearer' substring (P147 boundary anchor)", () => {
+    // 'XBearer abc' is an identifier, not an Authorization header. Pre-153c715 the
+    // substring pattern used a (^|\W) boundary anchor; the redesign dropped it.
+    // The boundary must be restored so identifier-internal matches don't leak.
+    logger.error("connection failed: XBearer abc invalid");
+    const out = stderrSpy.mock.calls
+      .map((call) => call.map((p: unknown) => String(p)).join(" "))
+      .join("\n");
+    expect(out).toContain("XBearer abc");
+  });
+
+  it("should not throw when logger.warning receives an empty message", () => {
+    expect(() => logger.warning("")).not.toThrow();
+    expect(stderrSpy).toHaveBeenCalled();
+  });
+
+  it("should not throw when logger.title receives an empty message in human mode", () => {
+    setMachineMode(false);
+    expect(() => logger.title("")).not.toThrow();
+    // 3 console.log calls (empty-line + title + empty-line) — each with the redacted title arg.
+    expect(stdoutSpy).toHaveBeenCalledTimes(3);
   });
 });
 

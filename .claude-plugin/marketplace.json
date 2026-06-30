@@ -11,7 +11,7 @@
         "source": "npm",
         "package": "kastell"
       },
-      "description": "Server security auditing, hardening, and fleet management for Claude Code. 457 checks, 30 categories, 17 MCP tools.",
+      "description": "Server security auditing, hardening, and fleet management for Claude Code. 449 checks, 31 categories, 17 MCP tools.",
       "homepage": "https://kastell.dev"
     }
   ]

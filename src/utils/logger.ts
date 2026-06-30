@@ -1,9 +1,6 @@
 import chalk from "chalk";
 import ora, { type Ora } from "ora";
 
-// CodeQL suppression: logger methods display user-facing messages only;
-// sensitive data is redacted via REDACT_PATTERNS in debugLog
-
 // ─── Machine mode (P146 Task 3) ───────────────────────────────────────────────
 //
 // When machine mode is enabled, diagnostic messages (info / success / step /
@@ -39,14 +36,6 @@ export async function withMachineMode<T>(fn: () => T | Promise<T>): Promise<T> {
   }
 }
 
-function diagnosticLog(...args: unknown[]): void {
-  if (machineMode) {
-    console.error(...args);
-  } else {
-    console.log(...args);
-  }
-}
-
 export const logger = {
   info: (message: string) => {
     diagnosticLog(chalk.blue("ℹ"), message);
@@ -57,24 +46,23 @@ export const logger = {
   },
 
   error: (message: string, context?: Record<string, unknown>) => {
-    if (context) {
-      console.error(chalk.red("✖"), message, context);
-    } else {
-      console.error(chalk.red("✖"), message);
-    }
+    const args = context
+      ? [chalk.red("✖"), message, context]
+      : [chalk.red("✖"), message];
+    console.error(...args.map(redactArg));
   },
 
   warning: (message: string) => {
-    console.error(chalk.yellow("⚠"), message);
+    console.error(chalk.yellow("⚠"), redactString(message));
   },
 
   title: (message: string) => {
+    const redactedMessage = redactString(message);
     if (machineMode) {
-      // Suppress decorative blank lines; emit only the title on stderr.
-      console.error(chalk.bold.cyan(message));
+      console.error(chalk.bold.cyan(redactedMessage));
     } else {
       console.log();
-      console.log(chalk.bold.cyan(message));
+      console.log(chalk.bold.cyan(redactedMessage));
       console.log();
     }
   },
@@ -83,6 +71,15 @@ export const logger = {
     diagnosticLog(chalk.gray("→"), message);
   },
 };
+
+function diagnosticLog(...args: unknown[]): void {
+  const redactedArgs = args.map(redactArg);
+  if (machineMode) {
+    console.error(...redactedArgs);
+  } else {
+    console.log(...redactedArgs);
+  }
+}
 
 export function createSpinner(text: string): Ora {
   return ora({
@@ -124,9 +121,48 @@ export const PROVIDER_TOKEN_PATTERNS: readonly RegExp[] = [
   /^dop_v1_[A-Za-z0-9]+$/, // DigitalOcean
 ];
 
-// String-shape patterns: matched anywhere in the value.
-const BEARER_PATTERN = /(^|\W)Bearer\s+[A-Za-z0-9._+/=_-]+/i;
-const JWT_PATTERN = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
+// String-shape patterns.
+//
+// WHOLE_STRING_PATTERNS: anchored regexes that match the entire value.
+// Used by looksLikeSecretValue() to detect "the whole value IS a secret"
+// (e.g. caller passes a JWT as the message string directly).
+//
+// SUBSTRING_PATTERNS: unanchored regexes that match anywhere in the value.
+// Used by redactString() for in-place replacement so embedded secrets
+// (e.g. `auth failed with token=hcic_xxx`) are scrubbed without losing
+// the surrounding diagnostic context.
+//
+// JWT min segment length 20 avoids false positives like IPv4 addresses
+// (e.g. "203.0.113.42" → "203.0.113" would match the 3-segment dot
+// pattern without the length floor).
+// WHOLE_STRING_PATTERNS: provider-token shapes (hcic_, dop_v1_) are NOT
+// duplicated here — `looksLikeSecretValue()` already checks
+// PROVIDER_TOKEN_PATTERNS first, so adding them here would create a
+// maintenance drift trap. Only WHOLE shapes that lack a PROVIDER_TOKEN
+// counterpart remain:
+//   - Bearer (Authorization header as the entire string), with a minimum
+//     8-char token floor so legitimate short diagnostic strings like
+//     "Bearer missing in config" are not collapsed to [REDACTED].
+//   - JWT (3-segment dot-separated with 20+ char segments — the floor
+//     prevents IPv4 like "203.0.113.42" matching "203.0.113").
+const WHOLE_STRING_PATTERNS: readonly RegExp[] = [
+  /^Bearer\s+[A-Za-z0-9._+/=_-]{8,}$/i,
+  /^[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}$/,
+];
+
+// SUBSTRING_PATTERNS: BEARER substring match uses a (^|\W) word-boundary
+// anchor to avoid identifier-internal false positives like "XBearer abc",
+// AND a minimum 8-char token floor so legitimate short diagnostic phrases
+// like "Bearer missing in config" are not collapsed. Pre-153c715 the pattern
+// had the anchor but no length floor; the redesign dropped the anchor.
+// Both guards are restored here. `replace` consumes the boundary character,
+// so "auth: Bearer xyz" → "auth[REDACTED]".
+const SUBSTRING_PATTERNS: readonly RegExp[] = [
+  /(^|\W)Bearer\s+[A-Za-z0-9._+/=_-]{8,}/gi,
+  /hcic_[A-Za-z0-9]+/g,
+  /dop_v1_[A-Za-z0-9]+/g,
+  /[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}/g,
+];
 
 function isSensitiveKey(key: string): boolean {
   return SENSITIVE_KEY_PATTERNS.some((re) => re.test(key));
@@ -134,14 +170,25 @@ function isSensitiveKey(key: string): boolean {
 
 function looksLikeSecretValue(value: string): boolean {
   if (PROVIDER_TOKEN_PATTERNS.some((re) => re.test(value))) return true;
-  if (BEARER_PATTERN.test(value)) return true;
-  if (JWT_PATTERN.test(value)) return true;
-  return false;
+  return WHOLE_STRING_PATTERNS.some((re) => re.test(value));
 }
 
 function redactString(value: string): string {
+  // Whole-string match: the entire value IS a secret → collapse to REDACTED.
   if (looksLikeSecretValue(value)) return REDACTED;
-  return value;
+
+  // Substring match: a secret is embedded inside a longer message
+  // (e.g. `auth failed with token=hcic_xxx`). Replace each occurrence in
+  // place, preserve surrounding context for operator diagnosis.
+  let result = value;
+  let changed = false;
+  for (const pattern of SUBSTRING_PATTERNS) {
+    if (pattern.test(result)) {
+      result = result.replace(pattern, REDACTED);
+      changed = true;
+    }
+  }
+  return changed ? result : value;
 }
 
 /**

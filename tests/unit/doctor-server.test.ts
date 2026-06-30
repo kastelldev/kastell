@@ -53,7 +53,7 @@ jest.mock("../../src/core/probe/diagnostics", () => {
   const actual = jest.requireActual("../../src/core/probe/diagnostics");
   return {
     ...actual,
-    tryRunProbeSessionMaintenance: jest.fn(),
+    runProbeSessionMaintenance: jest.fn(),
   };
 });
 import * as probeDiagnostics from "../../src/core/probe/diagnostics";
@@ -842,7 +842,7 @@ describe("runServerDoctor — Active Probe findings merge", () => {
       provider: FAKE_SERVER_RECORD.provider,
       ip: FAKE_SERVER_RECORD.ip,
     });
-    mockedProbeDiagnostics.tryRunProbeSessionMaintenance.mockResolvedValue({
+    mockedProbeDiagnostics.runProbeSessionMaintenance.mockResolvedValue({
       diagnostics: [
         {
           kind: "unresolved",
@@ -878,7 +878,7 @@ describe("runServerDoctor — Active Probe findings merge", () => {
       provider: FAKE_SERVER_RECORD.provider,
       ip: FAKE_SERVER_RECORD.ip,
     });
-    mockedProbeDiagnostics.tryRunProbeSessionMaintenance.mockResolvedValue({
+    mockedProbeDiagnostics.runProbeSessionMaintenance.mockResolvedValue({
       diagnostics: [
         {
           kind: "unresolved",
@@ -919,7 +919,7 @@ describe("runServerDoctor — Active Probe findings merge", () => {
       provider: FAKE_SERVER_RECORD.provider,
       ip: FAKE_SERVER_RECORD.ip,
     });
-    mockedProbeDiagnostics.tryRunProbeSessionMaintenance.mockResolvedValue({
+    mockedProbeDiagnostics.runProbeSessionMaintenance.mockResolvedValue({
       diagnostics: [
         {
           kind: "unresolved",
@@ -953,7 +953,7 @@ describe("runServerDoctor — Active Probe findings merge", () => {
       provider: FAKE_SERVER_RECORD.provider,
       ip: FAKE_SERVER_RECORD.ip,
     });
-    mockedProbeDiagnostics.tryRunProbeSessionMaintenance.mockResolvedValue({
+    mockedProbeDiagnostics.runProbeSessionMaintenance.mockResolvedValue({
       diagnostics: [
         {
           kind: "unresolved",
@@ -978,10 +978,10 @@ describe("runServerDoctor — Active Probe findings merge", () => {
     expect(withProbe.data!.score).toBe(86);
   });
 
-  it("does not call tryRunProbeSessionMaintenance when serverRecord is omitted (back-compat)", async () => {
+  it("does not call runProbeSessionMaintenance when serverRecord is omitted (back-compat)", async () => {
     const result = await runServerDoctor(VALID_IP, SERVER_NAME, { fresh: false });
     expect(result.success).toBe(true);
-    expect(mockedProbeDiagnostics.tryRunProbeSessionMaintenance).not.toHaveBeenCalled();
+    expect(mockedProbeDiagnostics.runProbeSessionMaintenance).not.toHaveBeenCalled();
     expect(result.data!.findings.filter((f) => f.id.startsWith("PROBE_"))).toHaveLength(0);
   });
 
@@ -995,7 +995,7 @@ describe("runServerDoctor — Active Probe findings merge", () => {
       provider: FAKE_SERVER_RECORD.provider,
       ip: FAKE_SERVER_RECORD.ip,
     });
-    mockedProbeDiagnostics.tryRunProbeSessionMaintenance.mockResolvedValue({
+    mockedProbeDiagnostics.runProbeSessionMaintenance.mockResolvedValue({
       diagnostics: [
         {
           kind: "undecryptable", // FORENSIC — must be excluded
@@ -1059,9 +1059,9 @@ describe("runServerDoctor — Active Probe findings merge", () => {
 
   it("uses only the read-only probe adapter surface (behavior assertion)", async () => {
     // Behavior complement to the static-import scan above. The mocked
-    // tryRunProbeSessionMaintenance is the ONLY probe module function
+    // runProbeSessionMaintenance is the ONLY probe module function
     // called by doctor.ts — that's the entire bootstrap surface.
-    mockedProbeDiagnostics.tryRunProbeSessionMaintenance.mockResolvedValue({
+    mockedProbeDiagnostics.runProbeSessionMaintenance.mockResolvedValue({
       diagnostics: [],
       cleanup: { deletedSessionIds: [], scannedAt: new Date().toISOString() },
     });
@@ -1074,21 +1074,21 @@ describe("runServerDoctor — Active Probe findings merge", () => {
     );
 
     expect(result.success).toBe(true);
-    expect(mockedProbeDiagnostics.tryRunProbeSessionMaintenance).toHaveBeenCalledTimes(1);
+    expect(mockedProbeDiagnostics.runProbeSessionMaintenance).toHaveBeenCalledTimes(1);
   });
 });
 
 describe("cleanupExpiredProbeSessions — retention policy", () => {
   // The actual retention policy is implemented in sessionStore.ts and exercised
   // there. Here we verify that doctor never triggers cleanup directly — only
-  // via the tryRunProbeSessionMaintenance wrapper that includes it.
+  // via the runProbeSessionMaintenance wrapper that includes it.
   it("cleanup result flows through but doctor does not act on the deletedSessionIds list", async () => {
     const targetHash = hashProbeTarget({
       serverId: FAKE_SERVER_RECORD.id,
       provider: FAKE_SERVER_RECORD.provider,
       ip: FAKE_SERVER_RECORD.ip,
     });
-    mockedProbeDiagnostics.tryRunProbeSessionMaintenance.mockResolvedValue({
+    mockedProbeDiagnostics.runProbeSessionMaintenance.mockResolvedValue({
       diagnostics: [],
       cleanup: {
         deletedSessionIds: ["old-rolled-back-session-1", "old-rolled-back-session-2"],

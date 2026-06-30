@@ -2,6 +2,7 @@ import inquirer from "inquirer";
 import { promptList, validateRequired, validateScore, validateColonPair } from "./shared.js";
 import { listAllProfileNames } from "../../core/audit/profiles.js";
 import { isValidPort } from "../../core/firewall.js";
+import { describeAuditCatalog } from "../../core/audit/explainCheck.js";
 
 export async function promptFirewall(): Promise<string[] | null> {
   const sub = await promptList("Firewall action:", [
@@ -342,7 +343,7 @@ export async function promptAudit(): Promise<string[] | null> {
 
     const category = await promptList("Category:", [
       ...TOP_CATEGORIES,
-      { name: "Show all 31 categories...", value: "__all__" },
+      { name: `Show all ${describeAuditCatalog().categories} categories...`, value: "__all__" },
     ]);
     if (!category) return null;
 

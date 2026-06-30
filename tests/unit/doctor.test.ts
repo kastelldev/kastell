@@ -62,12 +62,12 @@ jest.mock("../../src/core/probe/diagnostics", () => {
   const actual = jest.requireActual("../../src/core/probe/diagnostics");
   const stub = jest.fn();
   // Wrap runLocalProbeDoctorChecks so its internal call to
-  // tryRunProbeSessionMaintenance routes through the stub (the real
+  // runProbeSessionMaintenance routes through the stub (the real
   // implementation captures the local binding at module load, which
   // bypasses the jest.mock on the namespace). The wrapper re-imports
   // from the mocked namespace and forwards all args.
   const wrappedRunLocal = async (targetKeyHash?: string) => {
-    const result = (await stub()) ?? { diagnostics: [] };
+    const result = (await stub({ strict: false })) ?? { diagnostics: [] };
     const out: Array<{ name: string; status: "fail"; detail: string }> = [];
     for (const diagnostic of result.diagnostics) {
       if (
@@ -93,7 +93,7 @@ jest.mock("../../src/core/probe/diagnostics", () => {
   };
   return {
     ...actual,
-    tryRunProbeSessionMaintenance: stub,
+    runProbeSessionMaintenance: stub,
     runLocalProbeDoctorChecks: wrappedRunLocal,
   };
 });
@@ -1034,9 +1034,9 @@ describe("runLocalProbeDoctorChecks — adapter", () => {
     // factory) — this test sets the bootstrap wrapper's return value to
     // exercise the filter logic in `runLocalProbeDoctorChecks`.
     const diagnostics = jest.requireMock("../../src/core/probe/diagnostics") as {
-      tryRunProbeSessionMaintenance: jest.Mock;
+      runProbeSessionMaintenance: jest.Mock;
     };
-    diagnostics.tryRunProbeSessionMaintenance.mockResolvedValue({
+    diagnostics.runProbeSessionMaintenance.mockResolvedValue({
       diagnostics: [
         {
           kind: "unresolved",

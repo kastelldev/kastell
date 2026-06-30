@@ -19,7 +19,7 @@ import {
   hashProbeTarget,
 } from "./probe/sessionStore.js";
 import {
-  tryRunProbeSessionMaintenance,
+  runProbeSessionMaintenance,
   probeDiagnosticToDoctorFinding,
   DOCTOR_ACTIONABLE_KINDS,
 } from "./probe/diagnostics.js";
@@ -449,7 +449,7 @@ export async function runServerDoctor(
   // excluded — they surface via the dedicated probe commands, not doctor.
   let probeFindings: DoctorFinding[] = [];
   if (serverRecord) {
-    const bootstrap = await tryRunProbeSessionMaintenance();
+    const bootstrap = await runProbeSessionMaintenance({ strict: false });
     const targetHash = hashProbeTarget({
       serverId: serverRecord.id,
       provider: serverRecord.provider,
