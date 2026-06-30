@@ -121,14 +121,33 @@ export const PROVIDER_TOKEN_PATTERNS: readonly RegExp[] = [
   /^dop_v1_[A-Za-z0-9]+$/, // DigitalOcean
 ];
 
-// String-shape patterns: matched anywhere in the value.
-// JWT min segment length 20 avoids false positives like IPv4
-// (e.g. "203.0.113.42" → "203.0.113" matches the 3-segment dot pattern
-// without the length floor).
-const BEARER_PATTERN = /Bearer\s+[A-Za-z0-9._+/=_-]+/i;
-const JWT_PATTERN = /[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}/;
-const HETZNER_TOKEN_PATTERN = /hcic_[A-Za-z0-9]+/g;
-const DIGITALOCEAN_TOKEN_PATTERN = /dop_v1_[A-Za-z0-9]+/g;
+// String-shape patterns.
+//
+// WHOLE_STRING_PATTERNS: anchored regexes that match the entire value.
+// Used by looksLikeSecretValue() to detect "the whole value IS a secret"
+// (e.g. caller passes a JWT as the message string directly).
+//
+// SUBSTRING_PATTERNS: unanchored regexes that match anywhere in the value.
+// Used by redactString() for in-place replacement so embedded secrets
+// (e.g. `auth failed with token=hcic_xxx`) are scrubbed without losing
+// the surrounding diagnostic context.
+//
+// JWT min segment length 20 avoids false positives like IPv4 addresses
+// (e.g. "203.0.113.42" → "203.0.113" would match the 3-segment dot
+// pattern without the length floor).
+const WHOLE_STRING_PATTERNS: readonly RegExp[] = [
+  /^[A-Za-z0-9._-]*hcic_[A-Za-z0-9]+$/,
+  /^dop_v1_[A-Za-z0-9]+$/,
+  /^Bearer\s+[A-Za-z0-9._+/=_-]+$/i,
+  /^[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}$/,
+];
+
+const SUBSTRING_PATTERNS: readonly RegExp[] = [
+  /Bearer\s+[A-Za-z0-9._+/=_-]+/gi,
+  /hcic_[A-Za-z0-9]+/g,
+  /dop_v1_[A-Za-z0-9]+/g,
+  /[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}/g,
+];
 
 function isSensitiveKey(key: string): boolean {
   return SENSITIVE_KEY_PATTERNS.some((re) => re.test(key));
@@ -136,43 +155,24 @@ function isSensitiveKey(key: string): boolean {
 
 function looksLikeSecretValue(value: string): boolean {
   if (PROVIDER_TOKEN_PATTERNS.some((re) => re.test(value))) return true;
-  if (BEARER_PATTERN.test(value)) return true;
-  if (JWT_PATTERN.test(value)) return true;
-  return false;
+  return WHOLE_STRING_PATTERNS.some((re) => re.test(value));
 }
 
 function redactString(value: string): string {
-  // Whole-string match: the entire value IS a secret → collapse to REDACTED
+  // Whole-string match: the entire value IS a secret → collapse to REDACTED.
   if (looksLikeSecretValue(value)) return REDACTED;
 
   // Substring match: a secret is embedded inside a longer message
-  // (e.g. `auth failed with token=hcic_xxx`). Replace the secret token
-  // in place, preserve surrounding context for operator diagnosis.
+  // (e.g. `auth failed with token=hcic_xxx`). Replace each occurrence in
+  // place, preserve surrounding context for operator diagnosis.
   let result = value;
   let changed = false;
-
-  // Bearer: capture group keeps the leading non-word char (if any)
-  if (BEARER_PATTERN.test(result)) {
-    result = result.replace(BEARER_PATTERN, REDACTED);
-    changed = true;
+  for (const pattern of SUBSTRING_PATTERNS) {
+    if (pattern.test(result)) {
+      result = result.replace(pattern, REDACTED);
+      changed = true;
+    }
   }
-
-  // Provider tokens: global regex, replace every occurrence
-  if (HETZNER_TOKEN_PATTERN.test(result)) {
-    result = result.replace(HETZNER_TOKEN_PATTERN, REDACTED);
-    changed = true;
-  }
-  if (DIGITALOCEAN_TOKEN_PATTERN.test(result)) {
-    result = result.replace(DIGITALOCEAN_TOKEN_PATTERN, REDACTED);
-    changed = true;
-  }
-
-  // JWT: any 3-segment dot-separated base64url token
-  if (JWT_PATTERN.test(result)) {
-    result = result.replace(JWT_PATTERN, REDACTED);
-    changed = true;
-  }
-
   return changed ? result : value;
 }
 

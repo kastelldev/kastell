@@ -16,6 +16,7 @@ import {
   createIsolatedKastellEnv,
   type IsolatedKastellEnv,
 } from "../helpers/isolatedKastellEnv.js";
+import { classifyProbeSessions } from "../../src/core/probe/diagnostics.js";
 
 interface ModuleUnderTest {
   runProbeSessionMaintenance: typeof import("../../src/core/probe/diagnostics.js")["runProbeSessionMaintenance"];
@@ -620,5 +621,90 @@ describe("classifyProbeSessions + findOrphanReservations — branch coverage", (
     } finally {
       env.cleanup();
     }
+  });
+});
+
+describe("classifyProbeSessions — per-record digest cache (code-review fix)", () => {
+  // After the code-review fix, classifyProbeSessions caches the handler
+  // digest within a single record's iteration (handler-mismatch + undecryptable
+  // share one resolve call) but NOT across records. Each record must be
+  // validated against live file state to detect mid-loop tampering (TOCTOU).
+  it("resolves handler digest at most once per record (shared by both checks)", async () => {
+    const callCounts: { perPath: Map<string, number> } = { perPath: new Map() };
+    const targetHandlerPath = "/probe/handler.js";
+
+    const dependencies = {
+      resolveCurrentHandlerDigest: async (record: { handlerPath: string }) => {
+        const n = (callCounts.perPath.get(record.handlerPath) ?? 0) + 1;
+        callCounts.perPath.set(record.handlerPath, n);
+        // Recorded sha256 is "abc"; resolved sha256 is "xyz" → mismatch.
+        // Also returns a defined value so the undecryptable branch does NOT run.
+        return "xyz-mismatch";
+      },
+    };
+
+    // Record that hits the mismatch branch (handlerSha256 set). state
+    // rolled-back without lastError also runs the undecryptable branch —
+    // shared cache means one resolve covers both.
+    const records = [
+      {
+        sessionId: "s1",
+        record: {
+          sessionId: "s1",
+          targetKeyHash: "h1",
+          state: "rolled-back" as const,
+          handlerPath: targetHandlerPath,
+          handlerSha256: "abc",
+          lastError: undefined,
+        },
+      },
+    ];
+
+    const result = await classifyProbeSessions(
+      records as unknown as Parameters<typeof classifyProbeSessions>[0],
+      dependencies,
+    );
+
+    expect(result.some((d) => d.kind === "handler-mismatch")).toBe(true);
+
+    // CRITICAL: digest resolved exactly ONCE for this record (cache hit on
+    // the second branch).
+    expect(callCounts.perPath.get(targetHandlerPath)).toBe(1);
+  });
+
+  it("does NOT cache across records (TOCTOU invariant: each record re-validates)", async () => {
+    const callCounts: { perPath: Map<string, number> } = { perPath: new Map() };
+    const sharedPath = "/probe/handler.js";
+
+    const dependencies = {
+      resolveCurrentHandlerDigest: async (record: { handlerPath: string }) => {
+        const n = (callCounts.perPath.get(record.handlerPath) ?? 0) + 1;
+        callCounts.perPath.set(record.handlerPath, n);
+        return "stable-hash";
+      },
+    };
+
+    // Three records, all pointing at the same handler path. Without the
+    // TOCTOU fix, classifyProbeSessions would resolve once and reuse the
+    // cached digest across all three — defeating mid-loop tamper detection.
+    const records = Array.from({ length: 3 }, (_, i) => ({
+      sessionId: `s${i}`,
+      record: {
+        sessionId: `s${i}`,
+        targetKeyHash: `h${i}`,
+        state: "rolled-back" as const,
+        handlerPath: sharedPath,
+        handlerSha256: "stable-hash",
+        lastError: undefined,
+      },
+    }));
+
+    await classifyProbeSessions(
+      records as unknown as Parameters<typeof classifyProbeSessions>[0],
+      dependencies,
+    );
+
+    // Each record must independently resolve — three resolutions, not one.
+    expect(callCounts.perPath.get(sharedPath)).toBe(3);
   });
 });
