@@ -312,6 +312,30 @@ describe("logger", () => {
     expect(flatOutput).not.toContain("getter exploded");
   });
 
+  it("should NOT collapse short Bearer messages as whole-string (P147 redaction length floor)", () => {
+    // 'Bearer missing' is a legitimate diagnostic — the entire string matches the
+    // WHOLE bearer shape but the token is < 8 chars and is not an actual secret.
+    // Pre-153c715 redesign this would have collapsed to [REDACTED]; the fix adds a
+    // minimum token length floor so diagnostic strings survive.
+    logger.error("Bearer missing in config");
+    const out = stderrSpy.mock.calls
+      .map((call) => call.map((p: unknown) => String(p)).join(" "))
+      .join("\n");
+    expect(out).toContain("Bearer missing");
+    expect(out).not.toContain("[REDACTED]");
+  });
+
+  it("should NOT redact identifier-internal 'Bearer' substring (P147 boundary anchor)", () => {
+    // 'XBearer abc' is an identifier, not an Authorization header. Pre-153c715 the
+    // substring pattern used a (^|\W) boundary anchor; the redesign dropped it.
+    // The boundary must be restored so identifier-internal matches don't leak.
+    logger.error("connection failed: XBearer abc invalid");
+    const out = stderrSpy.mock.calls
+      .map((call) => call.map((p: unknown) => String(p)).join(" "))
+      .join("\n");
+    expect(out).toContain("XBearer abc");
+  });
+
   it("should not throw when logger.warning receives an empty message", () => {
     expect(() => logger.warning("")).not.toThrow();
     expect(stderrSpy).toHaveBeenCalled();

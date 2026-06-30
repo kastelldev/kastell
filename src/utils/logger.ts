@@ -135,15 +135,30 @@ export const PROVIDER_TOKEN_PATTERNS: readonly RegExp[] = [
 // JWT min segment length 20 avoids false positives like IPv4 addresses
 // (e.g. "203.0.113.42" → "203.0.113" would match the 3-segment dot
 // pattern without the length floor).
+// WHOLE_STRING_PATTERNS: provider-token shapes (hcic_, dop_v1_) are NOT
+// duplicated here — `looksLikeSecretValue()` already checks
+// PROVIDER_TOKEN_PATTERNS first, so adding them here would create a
+// maintenance drift trap. Only WHOLE shapes that lack a PROVIDER_TOKEN
+// counterpart remain:
+//   - Bearer (Authorization header as the entire string), with a minimum
+//     8-char token floor so legitimate short diagnostic strings like
+//     "Bearer missing in config" are not collapsed to [REDACTED].
+//   - JWT (3-segment dot-separated with 20+ char segments — the floor
+//     prevents IPv4 like "203.0.113.42" matching "203.0.113").
 const WHOLE_STRING_PATTERNS: readonly RegExp[] = [
-  /^[A-Za-z0-9._-]*hcic_[A-Za-z0-9]+$/,
-  /^dop_v1_[A-Za-z0-9]+$/,
-  /^Bearer\s+[A-Za-z0-9._+/=_-]+$/i,
+  /^Bearer\s+[A-Za-z0-9._+/=_-]{8,}$/i,
   /^[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}$/,
 ];
 
+// SUBSTRING_PATTERNS: BEARER substring match uses a (^|\W) word-boundary
+// anchor to avoid identifier-internal false positives like "XBearer abc",
+// AND a minimum 8-char token floor so legitimate short diagnostic phrases
+// like "Bearer missing in config" are not collapsed. Pre-153c715 the pattern
+// had the anchor but no length floor; the redesign dropped the anchor.
+// Both guards are restored here. `replace` consumes the boundary character,
+// so "auth: Bearer xyz" → "auth[REDACTED]".
 const SUBSTRING_PATTERNS: readonly RegExp[] = [
-  /Bearer\s+[A-Za-z0-9._+/=_-]+/gi,
+  /(^|\W)Bearer\s+[A-Za-z0-9._+/=_-]{8,}/gi,
   /hcic_[A-Za-z0-9]+/g,
   /dop_v1_[A-Za-z0-9]+/g,
   /[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}/g,
