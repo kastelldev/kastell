@@ -70,6 +70,33 @@ describe("buildSearchSource", () => {
     const choices = buildSearchSource("BACKUP");
     expect(choices.some((c: unknown) => typeof c === "object" && c !== null && "value" in c && (c as { value: string }).value === "backup")).toBe(true);
   });
+
+  it("matches original description text even when display descriptions are shortened", () => {
+    const choices = buildSearchSource("Hetzner", { columns: 32 });
+    const init = choices.find((c) => "value" in c && c.value === "init") as { description?: string };
+
+    expect(init).toBeDefined();
+    expect(init.description).toBeDefined();
+    expect(init.description).not.toContain("\n");
+    expect(init.description!.length).toBeLessThanOrEqual(29);
+  });
+
+  it("can hide descriptions on constrained terminals while preserving matches", () => {
+    const choices = buildSearchSource("provision", { columns: 20, includeDescriptions: false });
+    const init = choices.find((c) => "value" in c && c.value === "init") as { description?: string };
+
+    expect(init).toBeDefined();
+    expect(init.description).toBeUndefined();
+  });
+
+  it("preserves separator/exit invariants across broad and filtered states", () => {
+    const broad = buildSearchSource(undefined, { columns: 80 });
+    expect(broad.some((c) => "type" in c && c.type === "separator")).toBe(true);
+
+    const filtered = buildSearchSource("deploy", { columns: 80 });
+    expect(filtered.some((c) => "type" in c && c.type === "separator")).toBe(false);
+    expect(filtered.some((c) => "value" in c && c.value === "exit")).toBe(true);
+  });
 });
 
 describe("root search render config", () => {
