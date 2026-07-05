@@ -46,6 +46,7 @@ export const ROOT_SEARCH_PAGE_SIZE = {
   default: 12,
   max: 15,
   reservedRows: 6,
+  minRowsForDescriptions: 24,
 } as const;
 
 export function getRootSearchPageSize(rows = process.stdout.rows): number {
@@ -118,7 +119,7 @@ export async function interactiveMenu(): Promise<string[] | null> {
   for (;;) {
     const pageSize = getRootSearchPageSize();
     const columns = process.stdout.columns;
-    const includeDescriptions = (process.stdout.rows ?? ROOT_SEARCH_PAGE_SIZE.default) >= 24;
+    const includeDescriptions = (process.stdout.rows ?? ROOT_SEARCH_PAGE_SIZE.default) >= ROOT_SEARCH_PAGE_SIZE.minRowsForDescriptions;
 
     const { action } = await inquirer.prompt<{ action: string }>([
       {
