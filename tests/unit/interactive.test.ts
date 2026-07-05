@@ -107,6 +107,19 @@ describe("root search render config", () => {
     expect(getRootSearchPageSize(10)).toBe(ROOT_SEARCH_PAGE_SIZE.min);
     expect(getRootSearchPageSize(undefined)).toBe(ROOT_SEARCH_PAGE_SIZE.default);
   });
+
+  // M1 (P148 post-execute): explicit guard tests lock the
+  // `typeof rows !== "number" || !Number.isFinite(rows) || rows <= 0` branch
+  // independently of `process.stdout.rows` test-env coupling.
+  it.each([
+    ["zero", 0],
+    ["negative", -1],
+    ["NaN", NaN],
+    ["Infinity", Infinity],
+    ["-Infinity", -Infinity],
+  ])("returns default for %s rows", (_label, rows) => {
+    expect(getRootSearchPageSize(rows)).toBe(ROOT_SEARCH_PAGE_SIZE.default);
+  });
 });
 
 describe("interactiveMenu", () => {
