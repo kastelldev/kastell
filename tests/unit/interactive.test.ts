@@ -1,5 +1,10 @@
 import inquirer from "inquirer";
-import { interactiveMenu, buildSearchSource } from "../../src/commands/interactive/index.js";
+import {
+  interactiveMenu,
+  buildSearchSource,
+  getRootSearchPageSize,
+  ROOT_SEARCH_PAGE_SIZE,
+} from "../../src/commands/interactive/index.js";
 
 jest.mock("inquirer");
 
@@ -67,6 +72,16 @@ describe("buildSearchSource", () => {
   });
 });
 
+describe("root search render config", () => {
+  it("uses the spec page-size formula for common terminal heights", () => {
+    expect(getRootSearchPageSize(24)).toBe(10);
+    expect(getRootSearchPageSize(40)).toBe(15);
+    expect(getRootSearchPageSize(200)).toBe(15);
+    expect(getRootSearchPageSize(10)).toBe(ROOT_SEARCH_PAGE_SIZE.min);
+    expect(getRootSearchPageSize(undefined)).toBe(ROOT_SEARCH_PAGE_SIZE.default);
+  });
+});
+
 describe("interactiveMenu", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -82,6 +97,16 @@ describe("interactiveMenu", () => {
   it("returns null when exit is selected", async () => {
     mockedInquirer.prompt.mockResolvedValueOnce({ action: "exit" });
     expect(await interactiveMenu()).toBeNull();
+    expect(mockedInquirer.prompt).toHaveBeenCalledWith([
+      expect.objectContaining({
+        type: "search",
+        name: "action",
+        message: "What would you like to do?",
+        pageSize: expect.any(Number),
+      }),
+    ]);
+    const promptConfig = (mockedInquirer.prompt.mock.calls[0][0] as unknown as Array<{ pageSize: number }>)[0];
+    expect(promptConfig.pageSize).toBeLessThanOrEqual(ROOT_SEARCH_PAGE_SIZE.max);
   });
 
   it.each(["list", "add", "destroy", "restart", "remove", "restore", "export", "config"])(
