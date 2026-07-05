@@ -5,6 +5,9 @@ describe("interactive module exports", () => {
     const interactive = await import("../../src/commands/interactive/index.js");
     expect(interactive.interactiveMenu).toBeDefined();
     expect(interactive.buildSearchSource).toBeDefined();
+    expect(interactive.getRootSearchPageSize).toBeDefined();
+    expect(interactive.ROOT_SEARCH_PAGE_SIZE).toBeDefined();
+    expect(interactive.formatRootSearchDescription).toBeDefined();
   });
 });
 

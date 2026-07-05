@@ -1,5 +1,10 @@
 import inquirer from "inquirer";
-import { interactiveMenu, buildSearchSource } from "../../src/commands/interactive/index.js";
+import {
+  interactiveMenu,
+  buildSearchSource,
+  getRootSearchPageSize,
+  ROOT_SEARCH_PAGE_SIZE,
+} from "../../src/commands/interactive/index.js";
 
 jest.mock("inquirer");
 
@@ -65,6 +70,69 @@ describe("buildSearchSource", () => {
     const choices = buildSearchSource("BACKUP");
     expect(choices.some((c: unknown) => typeof c === "object" && c !== null && "value" in c && (c as { value: string }).value === "backup")).toBe(true);
   });
+
+  it("matches original description text even when display descriptions are shortened", () => {
+    const choices = buildSearchSource("Hetzner", { columns: 32 });
+    const init = choices.find((c) => "value" in c && c.value === "init") as { description?: string };
+
+    expect(init).toBeDefined();
+    expect(init.description).toBeDefined();
+    expect(init.description).not.toContain("\n");
+    expect(init.description!.length).toBeLessThanOrEqual(29);
+  });
+
+  it("can hide descriptions on constrained terminals while preserving matches", () => {
+    const choices = buildSearchSource("provision", { columns: 20, includeDescriptions: false });
+    const init = choices.find((c) => "value" in c && c.value === "init") as { description?: string };
+
+    expect(init).toBeDefined();
+    expect(init.description).toBeUndefined();
+  });
+
+  it("collapses whitespace-only descriptions to undefined (string|undefined contract)", () => {
+    // formatRootSearchDescription("   ") used to return "" — Inquirer renders "" as a
+    // visible blank description line. After fix, whitespace-only collapses to undefined
+    // (description key absent on the choice), matching the `string | undefined` contract.
+    expect(buildSearchSource).toBeDefined();
+    // Direct formatRootSearchDescription test:
+    const { formatRootSearchDescription } = jest.requireActual(
+      "../../src/commands/interactive/index.js",
+    ) as typeof import("../../src/commands/interactive/index.js");
+    expect(formatRootSearchDescription("   ")).toBeUndefined();
+    expect(formatRootSearchDescription("\n\t  \n")).toBeUndefined();
+  });
+
+  it("preserves separator/exit invariants across broad and filtered states", () => {
+    const broad = buildSearchSource(undefined, { columns: 80 });
+    expect(broad.some((c) => "type" in c && c.type === "separator")).toBe(true);
+
+    const filtered = buildSearchSource("deploy", { columns: 80 });
+    expect(filtered.some((c) => "type" in c && c.type === "separator")).toBe(false);
+    expect(filtered.some((c) => "value" in c && c.value === "exit")).toBe(true);
+  });
+});
+
+describe("root search render config", () => {
+  it("uses the spec page-size formula for common terminal heights", () => {
+    expect(getRootSearchPageSize(24)).toBe(10);
+    expect(getRootSearchPageSize(40)).toBe(15);
+    expect(getRootSearchPageSize(200)).toBe(15);
+    expect(getRootSearchPageSize(10)).toBe(ROOT_SEARCH_PAGE_SIZE.min);
+    expect(getRootSearchPageSize(undefined)).toBe(ROOT_SEARCH_PAGE_SIZE.default);
+  });
+
+  // M1 (P148 post-execute): explicit guard tests lock the
+  // `typeof rows !== "number" || !Number.isFinite(rows) || rows <= 0` branch
+  // independently of `process.stdout.rows` test-env coupling.
+  it.each([
+    ["zero", 0],
+    ["negative", -1],
+    ["NaN", NaN],
+    ["Infinity", Infinity],
+    ["-Infinity", -Infinity],
+  ])("returns default for %s rows", (_label, rows) => {
+    expect(getRootSearchPageSize(rows)).toBe(ROOT_SEARCH_PAGE_SIZE.default);
+  });
 });
 
 describe("interactiveMenu", () => {
@@ -82,6 +150,16 @@ describe("interactiveMenu", () => {
   it("returns null when exit is selected", async () => {
     mockedInquirer.prompt.mockResolvedValueOnce({ action: "exit" });
     expect(await interactiveMenu()).toBeNull();
+    expect(mockedInquirer.prompt).toHaveBeenCalledWith([
+      expect.objectContaining({
+        type: "search",
+        name: "action",
+        message: "What would you like to do?",
+        pageSize: expect.any(Number),
+      }),
+    ]);
+    const promptConfig = (mockedInquirer.prompt.mock.calls[0][0] as unknown as Array<{ pageSize: number }>)[0];
+    expect(promptConfig.pageSize).toBeLessThanOrEqual(ROOT_SEARCH_PAGE_SIZE.max);
   });
 
   it.each(["list", "add", "destroy", "restart", "remove", "restore", "export", "config"])(
