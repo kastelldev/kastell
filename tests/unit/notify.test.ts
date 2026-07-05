@@ -43,13 +43,9 @@ jest.mock("../../src/utils/secureWrite", () => ({
   secureWriteFileSync: jest.fn(),
 }));
 
-// NOTE: createSpinner needs a fresh ora mock impl after the global beforeEach's
-// jest.resetAllMocks() runs (D4 batch — P148 post-execute). The 4 unskipped
-// testChannel describe blocks re-install the impl on the ora default export
-// inside their own beforeEach, so testChannel can call createSpinner() safely.
-// Manual mock at tests/__mocks__/ora.ts provides the default impl on cold start;
-// after every resetAllMocks the impl is gone, so we re-create it inline below.
-// See TEST-NOTIFY-D4 fixture in describe blocks: telegram / discord / slack.
+// Manual ora mock at tests/__mocks__/ora.ts provides the default impl.
+// The global beforeEach re-installs it after jest.resetAllMocks() so
+// testChannel can call createSpinner() without per-describe reinstalls.
 import ora from "ora";
 import { createMockSpinner } from "../__mocks__/ora.js";
 
@@ -69,6 +65,7 @@ const mockedLoadNotifyChannels = loadNotifyChannels as jest.Mock;
 
 beforeEach(() => {
   jest.resetAllMocks();
+  (ora as jest.Mock).mockImplementation(() => createMockSpinner());
   mockedLoadNotifyChannels.mockReturnValue({});
   // Re-obtain fresh references after resetAllMocks rebuilds module mocks
   (mockedInquirerPrompt as jest.Mock).mockReset();
@@ -665,7 +662,6 @@ describe("testChannel — channel not configured", () => {
 
 describe("testChannel — telegram success", () => {
   beforeEach(() => {
-    (ora as jest.Mock).mockImplementation(() => createMockSpinner());
     mockedLoadNotifyChannels.mockReturnValue({
       telegram: { botToken: "123456:ABCdef_GHI-jkl", chatId: "-100123456" },
     });
@@ -686,7 +682,6 @@ describe("testChannel — telegram success", () => {
 
 describe("testChannel — telegram failure", () => {
   beforeEach(() => {
-    (ora as jest.Mock).mockImplementation(() => createMockSpinner());
     mockedLoadNotifyChannels.mockReturnValue({
       telegram: { botToken: "123456:ABCdef_GHI-jkl", chatId: "-100123456" },
     });
@@ -703,7 +698,6 @@ describe("testChannel — telegram failure", () => {
 
 describe("testChannel — discord success", () => {
   beforeEach(() => {
-    (ora as jest.Mock).mockImplementation(() => createMockSpinner());
     mockedLoadNotifyChannels.mockReturnValue({
       discord: { webhookUrl: "https://discord.com/api/webhooks/1/abc" },
     });
@@ -724,7 +718,6 @@ describe("testChannel — discord success", () => {
 
 describe("testChannel — slack success", () => {
   beforeEach(() => {
-    (ora as jest.Mock).mockImplementation(() => createMockSpinner());
     mockedLoadNotifyChannels.mockReturnValue({
       slack: { webhookUrl: "https://hooks.slack.com/services/T/B/s" },
     });
