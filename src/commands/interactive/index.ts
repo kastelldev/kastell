@@ -41,12 +41,45 @@ const DIRECT_COMMANDS = new Set([
   "regression-status", "regression-reset",
 ]);
 
-export function buildSearchSource(term: string | undefined): Choice[] {
-  const all = buildMainChoices();
-  if (!term) return all;
+export const ROOT_SEARCH_PAGE_SIZE = {
+  min: 6,
+  default: 12,
+  max: 15,
+  reservedRows: 6,
+} as const;
 
+export function getRootSearchPageSize(rows = process.stdout.rows): number {
+  if (typeof rows !== "number" || !Number.isFinite(rows) || rows <= 0) {
+    return ROOT_SEARCH_PAGE_SIZE.default;
+  }
+
+  const availableRows = Math.max(0, rows - ROOT_SEARCH_PAGE_SIZE.reservedRows);
+  const candidate = Math.floor(availableRows * 0.6);
+  return Math.min(ROOT_SEARCH_PAGE_SIZE.max, Math.max(ROOT_SEARCH_PAGE_SIZE.min, candidate));
+}
+
+export interface SearchSourceOptions {
+  columns?: number;
+  includeDescriptions?: boolean;
+}
+
+export function formatRootSearchDescription(
+  description: string | undefined,
+  options: SearchSourceOptions = {},
+): string | undefined {
+  if (!description || options.includeDescriptions === false) return undefined;
+
+  const singleLine = description.replace(/\s+/g, " ").trim();
+  const columns = typeof options.columns === "number" && options.columns > 0 ? options.columns : process.stdout.columns;
+  const maxLength = Math.max(24, Math.min(100, (columns ?? 80) - 3));
+
+  if (singleLine.length <= maxLength) return singleLine;
+  return `${singleLine.slice(0, maxLength - 3).trimEnd()}...`;
+}
+
+function filterRootSearchChoices(choices: Choice[], term: string): Choice[] {
   const lower = term.toLowerCase();
-  const filtered = all.filter((c) => {
+  return choices.filter((c) => {
     if ("type" in c && c.type === "separator") return false;
     const choice = c as { name: string; value: string; description?: string };
     return (
@@ -55,23 +88,44 @@ export function buildSearchSource(term: string | undefined): Choice[] {
       (choice.description?.toLowerCase().includes(lower) ?? false)
     );
   });
+}
 
-  if (!filtered.some((c) => "value" in c && c.value === "exit")) {
-    filtered.push({ name: chalk.dim("  Exit"), value: "exit" });
-  }
+function ensureExitChoice(choices: Choice[]): Choice[] {
+  if (choices.some((c) => "value" in c && c.value === "exit")) return choices;
+  return [...choices, { name: chalk.dim("  Exit"), value: "exit" }];
+}
 
-  return filtered;
+function formatChoiceForRootSearchDisplay(
+  choice: Choice,
+  options: SearchSourceOptions,
+): Choice {
+  if (!("description" in choice)) return choice;
+  return {
+    ...choice,
+    description: formatRootSearchDescription(choice.description, options),
+  };
+}
+
+export function buildSearchSource(term: string | undefined, options: SearchSourceOptions = {}): Choice[] {
+  const all = buildMainChoices();
+  const matches = !term ? all : filterRootSearchChoices(all, term);
+  const result = ensureExitChoice(matches);
+  return result.map((choice) => formatChoiceForRootSearchDisplay(choice, options));
 }
 
 export async function interactiveMenu(): Promise<string[] | null> {
   for (;;) {
+    const pageSize = getRootSearchPageSize();
+    const columns = process.stdout.columns;
+    const includeDescriptions = (process.stdout.rows ?? ROOT_SEARCH_PAGE_SIZE.default) >= 24;
+
     const { action } = await inquirer.prompt<{ action: string }>([
       {
         type: "search",
         name: "action",
         message: "What would you like to do?",
-        source: buildSearchSource,
-        pageSize: 25,
+        source: (term: string | undefined) => buildSearchSource(term, { columns, includeDescriptions }),
+        pageSize,
       },
     ]);
 
