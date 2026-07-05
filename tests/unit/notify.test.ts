@@ -43,9 +43,15 @@ jest.mock("../../src/utils/secureWrite", () => ({
   secureWriteFileSync: jest.fn(),
 }));
 
-// NOTE: createSpinner is NOT mocked — module mock doesn't apply reliably.
-// testChannel tests (all describe blocks at the end of the file) call createSpinner
-// which causes a TypeError. Those tests are marked with test.skip.
+// NOTE: createSpinner needs a fresh ora mock impl after the global beforeEach's
+// jest.resetAllMocks() runs (D4 batch — P148 post-execute). The 4 unskipped
+// testChannel describe blocks re-install the impl on the ora default export
+// inside their own beforeEach, so testChannel can call createSpinner() safely.
+// Manual mock at tests/__mocks__/ora.ts provides the default impl on cold start;
+// after every resetAllMocks the impl is gone, so we re-create it inline below.
+// See TEST-NOTIFY-D4 fixture in describe blocks: telegram / discord / slack.
+import ora from "ora";
+import { createMockSpinner } from "../__mocks__/ora.js";
 
 // Manual mock at tests/__mocks__/inquirer.ts takes precedence; no inline mock needed.
 // The manual mock exports: { prompt: jest.fn(), Separator } as default export.
@@ -657,15 +663,15 @@ describe("testChannel — channel not configured", () => {
   });
 });
 
-// testChannel requires createSpinner which cannot be mocked reliably (ESM module mock path issue)
-describe.skip("testChannel — telegram success", () => {
+describe("testChannel — telegram success", () => {
   beforeEach(() => {
+    (ora as jest.Mock).mockImplementation(() => createMockSpinner());
     mockedLoadNotifyChannels.mockReturnValue({
       telegram: { botToken: "123456:ABCdef_GHI-jkl", chatId: "-100123456" },
     });
   });
 
-  test.skip("sends a test message to configured telegram channel", async () => {
+  test("sends a test message to configured telegram channel", async () => {
     mockedAxiosPost.mockResolvedValue({ data: { ok: true }, status: 200 });
 
     await testChannel("telegram");
@@ -678,15 +684,15 @@ describe.skip("testChannel — telegram success", () => {
   });
 });
 
-// testChannel requires createSpinner which cannot be mocked reliably
-describe.skip("testChannel — telegram failure", () => {
+describe("testChannel — telegram failure", () => {
   beforeEach(() => {
+    (ora as jest.Mock).mockImplementation(() => createMockSpinner());
     mockedLoadNotifyChannels.mockReturnValue({
       telegram: { botToken: "123456:ABCdef_GHI-jkl", chatId: "-100123456" },
     });
   });
 
-  test.skip("logs error when telegram send fails", async () => {
+  test("logs error when telegram send fails", async () => {
     mockedAxiosPost.mockRejectedValue(new Error("Bot was blocked"));
 
     await testChannel("telegram");
@@ -695,9 +701,9 @@ describe.skip("testChannel — telegram failure", () => {
   });
 });
 
-// testChannel requires createSpinner which cannot be mocked reliably
-describe.skip("testChannel — discord success", () => {
+describe("testChannel — discord success", () => {
   beforeEach(() => {
+    (ora as jest.Mock).mockImplementation(() => createMockSpinner());
     mockedLoadNotifyChannels.mockReturnValue({
       discord: { webhookUrl: "https://discord.com/api/webhooks/1/abc" },
     });
@@ -716,9 +722,9 @@ describe.skip("testChannel — discord success", () => {
   });
 });
 
-// testChannel requires createSpinner which cannot be mocked reliably
-describe.skip("testChannel — slack success", () => {
+describe("testChannel — slack success", () => {
   beforeEach(() => {
+    (ora as jest.Mock).mockImplementation(() => createMockSpinner());
     mockedLoadNotifyChannels.mockReturnValue({
       slack: { webhookUrl: "https://hooks.slack.com/services/T/B/s" },
     });
