@@ -89,6 +89,19 @@ describe("buildSearchSource", () => {
     expect(init.description).toBeUndefined();
   });
 
+  it("collapses whitespace-only descriptions to undefined (string|undefined contract)", () => {
+    // formatRootSearchDescription("   ") used to return "" — Inquirer renders "" as a
+    // visible blank description line. After fix, whitespace-only collapses to undefined
+    // (description key absent on the choice), matching the `string | undefined` contract.
+    expect(buildSearchSource).toBeDefined();
+    // Direct formatRootSearchDescription test:
+    const { formatRootSearchDescription } = jest.requireActual(
+      "../../src/commands/interactive/index.js",
+    ) as typeof import("../../src/commands/interactive/index.js");
+    expect(formatRootSearchDescription("   ")).toBeUndefined();
+    expect(formatRootSearchDescription("\n\t  \n")).toBeUndefined();
+  });
+
   it("preserves separator/exit invariants across broad and filtered states", () => {
     const broad = buildSearchSource(undefined, { columns: 80 });
     expect(broad.some((c) => "type" in c && c.type === "separator")).toBe(true);

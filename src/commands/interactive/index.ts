@@ -70,6 +70,7 @@ export function formatRootSearchDescription(
   if (!description || options.includeDescriptions === false) return undefined;
 
   const singleLine = description.replace(/\s+/g, " ").trim();
+  if (singleLine.length === 0) return undefined;
   const columns = typeof options.columns === "number" && options.columns > 0 ? options.columns : process.stdout.columns;
   const maxLength = Math.max(24, Math.min(100, (columns ?? 80) - 3));
 
