@@ -1,7 +1,6 @@
 import inquirer from "inquirer";
-import chalk from "chalk";
 
-import { buildMainChoices, type Choice, SCHEDULE_COMMANDS } from "./menu.js";
+import { buildMainChoices, EXIT_CHOICE, type Choice, SCHEDULE_COMMANDS } from "./menu.js";
 import { promptInit, promptStatus, promptSsh, promptFleet } from "./server-management.js";
 import { promptFirewall, promptSecure, promptDomain, promptAudit, promptLock, promptFix, promptEvidence, promptAuth } from "./security.js";
 import { promptLogs, promptMonitor, promptDoctor, promptGuard } from "./monitoring.js";
@@ -93,18 +92,29 @@ function filterRootSearchChoices(choices: Choice[], term: string): Choice[] {
 }
 
 function ensureExitChoice(choices: Choice[]): Choice[] {
-  if (choices.some((c) => "value" in c && c.value === "exit")) return choices;
-  return [...choices, { name: chalk.dim("  Exit"), value: "exit" }];
+  if (choices.some((c) => "value" in c && c.value === "exit")) {
+    return choices;
+  }
+
+  return [...choices, EXIT_CHOICE];
 }
 
-function formatChoiceForRootSearchDisplay(
+export function formatChoiceForRootSearchDisplay(
   choice: Choice,
-  options: SearchSourceOptions,
+  options: SearchSourceOptions = {},
 ): Choice {
-  if (!("description" in choice)) return choice;
+  if (!("description" in choice)) {
+    return choice;
+  }
+
+  const description = formatRootSearchDescription(choice.description, options);
+  if (description === choice.description) {
+    return choice;
+  }
+
   return {
     ...choice,
-    description: formatRootSearchDescription(choice.description, options),
+    description,
   };
 }
 
@@ -117,9 +127,12 @@ export function buildSearchSource(term: string | undefined, options: SearchSourc
 
 export async function interactiveMenu(): Promise<string[] | null> {
   for (;;) {
-    const pageSize = getRootSearchPageSize();
+    const rows = process.stdout.rows;
+    const pageSize = getRootSearchPageSize(rows);
     const columns = process.stdout.columns;
-    const includeDescriptions = (process.stdout.rows ?? ROOT_SEARCH_PAGE_SIZE.default) >= ROOT_SEARCH_PAGE_SIZE.minRowsForDescriptions;
+    const includeDescriptions =
+      (rows ?? ROOT_SEARCH_PAGE_SIZE.default) >=
+      ROOT_SEARCH_PAGE_SIZE.minRowsForDescriptions;
 
     const { action } = await inquirer.prompt<{ action: string }>([
       {

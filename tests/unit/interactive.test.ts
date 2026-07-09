@@ -4,6 +4,7 @@ import {
   buildSearchSource,
   getRootSearchPageSize,
   ROOT_SEARCH_PAGE_SIZE,
+  formatChoiceForRootSearchDisplay,
 } from "../../src/commands/interactive/index.js";
 
 jest.mock("inquirer");
@@ -112,6 +113,33 @@ describe("buildSearchSource", () => {
   });
 });
 
+// ─── formatChoiceForRootSearchDisplay — identity preservation (D4) ───────────
+
+describe("formatChoiceForRootSearchDisplay", () => {
+  it("preserves choice identity when description formatting is unchanged", () => {
+    const choice = {
+      name: "Short",
+      value: "short",
+      description: "Short description",
+    };
+
+    expect(formatChoiceForRootSearchDisplay(choice, { columns: 80 })).toBe(choice);
+  });
+
+  it("returns a new choice when description formatting changes", () => {
+    const choice = {
+      name: "Long",
+      value: "long",
+      description: "This description is intentionally long enough to be truncated",
+    };
+
+    const result = formatChoiceForRootSearchDisplay(choice, { columns: 32 }) as { description?: string };
+
+    expect(result).not.toBe(choice);
+    expect(result.description).not.toBe(choice.description);
+  });
+});
+
 describe("root search render config", () => {
   it("uses the spec page-size formula for common terminal heights", () => {
     expect(getRootSearchPageSize(24)).toBe(10);
@@ -132,6 +160,44 @@ describe("root search render config", () => {
     ["-Infinity", -Infinity],
   ])("returns default for %s rows", (_label, rows) => {
     expect(getRootSearchPageSize(rows)).toBe(ROOT_SEARCH_PAGE_SIZE.default);
+  });
+});
+
+// ─── interactiveMenu — process.stdout.rows read count (D3) ────────────────────
+
+describe("interactiveMenu process.stdout.rows read", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.spyOn(console, "log").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("reads process.stdout.rows exactly once per exit-only loop iteration", async () => {
+    // process.stdout.rows has no descriptor on non-TTY streams; use define/restore.
+    const originalDescriptor = Object.getOwnPropertyDescriptor(process.stdout, "rows");
+    let accessCount = 0;
+    Object.defineProperty(process.stdout, "rows", {
+      configurable: true,
+      get() {
+        accessCount += 1;
+        return 40;
+      },
+    });
+
+    try {
+      mockedInquirer.prompt.mockResolvedValueOnce({ action: "exit" });
+      await interactiveMenu();
+      expect(accessCount).toBe(1);
+    } finally {
+      if (originalDescriptor) {
+        Object.defineProperty(process.stdout, "rows", originalDescriptor);
+      } else {
+        delete (process.stdout as { rows?: number }).rows;
+      }
+    }
   });
 });
 

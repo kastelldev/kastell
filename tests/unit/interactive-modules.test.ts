@@ -8,6 +8,14 @@ describe("interactive module exports", () => {
     expect(interactive.getRootSearchPageSize).toBeDefined();
     expect(interactive.ROOT_SEARCH_PAGE_SIZE).toBeDefined();
     expect(interactive.formatRootSearchDescription).toBeDefined();
+    expect(interactive.formatChoiceForRootSearchDisplay).toBeDefined();
+  });
+
+  it("re-exports EXIT_CHOICE from menu module", async () => {
+    const menu = await import("../../src/commands/interactive/menu.js");
+    expect(menu.EXIT_CHOICE).toBeDefined();
+    expect(menu.EXIT_CHOICE.value).toBe("exit");
+    expect(menu.EXIT_CHOICE.name).toContain("Exit");
   });
 });
 
