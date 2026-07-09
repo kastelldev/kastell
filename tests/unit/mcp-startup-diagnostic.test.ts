@@ -1,7 +1,7 @@
 jest.mock("../../src/utils/version.js", () => ({
   getPackageMetadata: jest.fn(() => ({
     version: "2.2.7",
-    mcpSdkVersion: "1.27.1",
+    mcpSdkVersion: "1.29.0",
   })),
   getKastellVersion: jest.fn(() => "2.2.7"),
   KASTELL_VERSION: "2.2.7",
@@ -14,27 +14,27 @@ describe("formatMcpStartupDiagnostic", () => {
   it("formats line with version, SDK, and SAFE_MODE when no buildIdentity", () => {
     const result = formatMcpStartupDiagnostic("true", {
       version: "2.3.0",
-      mcpSdkVersion: "1.27.1",
+      mcpSdkVersion: "1.29.0",
     });
-    expect(result).toBe("kastell-mcp v2.3.0 started (sdk=1.27.1, SAFE_MODE=true)");
+    expect(result).toBe("kastell-mcp v2.3.0 started (sdk=1.29.0, SAFE_MODE=true)");
   });
 
   it("includes buildIdentity segment when buildIdentity is present", () => {
     const result = formatMcpStartupDiagnostic("false", {
       version: "2.3.0",
-      mcpSdkVersion: "1.27.1",
+      mcpSdkVersion: "1.29.0",
       buildIdentity: "ci-abc123",
     });
     expect(result).toBe(
-      "kastell-mcp v2.3.0 started (sdk=1.27.1, build=ci-abc123, SAFE_MODE=false)",
+      "kastell-mcp v2.3.0 started (sdk=1.29.0, build=ci-abc123, SAFE_MODE=false)",
     );
   });
 
   it("handles unset SAFE_MODE", () => {
     const result = formatMcpStartupDiagnostic("unset", {
       version: "2.3.0",
-      mcpSdkVersion: "1.27.1",
+      mcpSdkVersion: "1.29.0",
     });
-    expect(result).toBe("kastell-mcp v2.3.0 started (sdk=1.27.1, SAFE_MODE=unset)");
+    expect(result).toBe("kastell-mcp v2.3.0 started (sdk=1.29.0, SAFE_MODE=unset)");
   });
 });
