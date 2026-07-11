@@ -1,49 +1,28 @@
 import {
+  getSkippedPluginWarnings,
   parsePluginBatchOutput,
 } from "../../src/core/audit/pluginAudit.js";
 import type { PluginRegistryEntry } from "../../src/plugin/registry.js";
-import type { PluginManifest, LoadedPluginCheck, PluginFix } from "../../src/plugin/sdk/types.js";
+import type { LoadedPluginCheck, PluginFix } from "../../src/plugin/sdk/types.js";
+import {
+  makeLoadedPluginCheck,
+  makePluginRegistryEntry,
+} from "../helpers/pluginFixtures.js";
 
 function entry(
   name: string,
   checks: LoadedPluginCheck[],
   fixes?: PluginFix[],
 ): PluginRegistryEntry {
-  const manifest: PluginManifest = {
-    name,
-    version: "1.0.0",
-    apiVersion: "2",
-    kastell: "*",
-    capabilities: fixes ? ["audit", "fix"] : ["audit"],
-    checkPrefix: "WP",
-    entry: "./index.js",
-    ...(fixes ? { fixes } : {}),
-  };
-  const checksById = new Map(checks.map((c) => [c.id, c]));
-  const fixesByCheckId = new Map((fixes ?? []).map((f) => [f.checkId, f]));
-  const readChecks = checks.filter((c): c is LoadedPluginCheck & { read: NonNullable<LoadedPluginCheck["read"]> } => c.read !== undefined);
-  return {
-    manifest,
-    checks,
-    readChecks,
-    status: "loaded",
-    checksById,
-    fixesByCheckId,
-    activeProbesByCheckId: new Map<string, never>(),
-  };
+  return makePluginRegistryEntry(name, checks, { fixes, checkPrefix: "WP" });
 }
 
 function check(id: string, opts: Partial<LoadedPluginCheck> = {}): LoadedPluginCheck {
-  return {
-    id,
+  return makeLoadedPluginCheck(id, {
     category: "WordPress",
     name: id,
-    severity: "warning",
-    description: "",
-    sourceApiVersion: "2",
-    checkCommand: { kind: "read", cmd: "echo x" },
     ...opts,
-  };
+  });
 }
 
 describe("parsePluginBatchOutput", () => {
@@ -364,5 +343,103 @@ describe("parsePluginBatchOutput", () => {
       const result = parsePluginBatchOutput(stdout, reg);
       expect(result.map((c) => c.name)).toEqual(["Plugin: z", "Plugin: a"]);
     });
+  });
+
+  it("P150 regression: preserves plugin ordering, section protocol, and skip behavior", () => {
+    const reg = new Map<string, PluginRegistryEntry>();
+
+    reg.set("kastell-plugin-alpha", entry("kastell-plugin-alpha", [
+      check("A-READ", { passPattern: "^alpha-ok$" }),
+      check("A-MUTATE", { checkCommand: { kind: "mutate-local", cmd: "systemctl restart nginx" } }),
+    ]));
+
+    reg.set("kastell-plugin-failed", entry("kastell-plugin-failed", [check("F-001")]));
+    reg.get("kastell-plugin-failed")!.status = "failed";
+
+    reg.set("kastell-plugin-beta", entry("kastell-plugin-beta", [
+      {
+        id: "B-READ",
+        category: "WordPress",
+        name: "B-READ",
+        severity: "warning",
+        description: "",
+        sourceApiVersion: "3",
+        read: { cmd: "echo beta-ok", passPattern: "^beta-ok$" },
+      },
+      {
+        id: "B-PROBE",
+        category: "WordPress",
+        name: "B-PROBE",
+        severity: "warning",
+        description: "",
+        sourceApiVersion: "3",
+        activeProbe: { handler: "./probe.js", risk: "low", timeoutMs: 5000 },
+      },
+    ]));
+
+    const stdout = [
+      "---SECTION:PLUGIN:kastell-plugin-ghost:GHOST-001---",
+      "ignored ghost output",
+      "---SECTION:PLUGIN:kastell-plugin-alpha:A-READ---",
+      "alpha-ok",
+      "---SECTION:PLUGIN:kastell-plugin-beta:B-READ---",
+      "beta-ok",
+      "---SECTION:PLUGIN:kastell-plugin-alpha:UNKNOWN---",
+      "ignored unknown check",
+      "---SECTION:PLUGIN:kastell-plugin-beta:---",
+      "ignored empty check id",
+    ].join("\n");
+
+    const result = parsePluginBatchOutput(stdout, reg);
+
+    expect(result.map((cat) => cat.name)).toEqual(["Plugin: alpha", "Plugin: beta"]);
+    expect(result[0].checks.map((check) => check.id)).toEqual(["A-READ", "A-MUTATE"]);
+    expect(result[1].checks.map((check) => check.id)).toEqual(["B-READ", "B-PROBE"]);
+
+    expect(result[0].checks[0]).toMatchObject({
+      id: "A-READ",
+      passed: true,
+      currentValue: "alpha-ok",
+    });
+    expect(result[0].checks[1]).toMatchObject({
+      id: "A-MUTATE",
+      passed: false,
+      currentValue: "",
+      skip: { code: "legacy-mutating", apiVersion: "2", kind: "mutate-local" },
+    });
+    expect(result[1].checks[0]).toMatchObject({
+      id: "B-READ",
+      passed: true,
+      currentValue: "beta-ok",
+    });
+    expect(result[1].checks[1]).toMatchObject({
+      id: "B-PROBE",
+      passed: false,
+      currentValue: "",
+      skip: { code: "active-probe", apiVersion: "3" },
+    });
+  });
+
+  it("P150 regression: warning stream preserves registry order for skipped plugin checks", () => {
+    const reg = new Map<string, PluginRegistryEntry>();
+    reg.set("kastell-plugin-alpha", entry("kastell-plugin-alpha", [
+      check("A-MUTATE", { checkCommand: { kind: "mutate-local", cmd: "systemctl restart nginx" } }),
+    ]));
+    reg.set("kastell-plugin-beta", entry("kastell-plugin-beta", [
+      {
+        id: "B-PROBE",
+        category: "WordPress",
+        name: "B-PROBE",
+        severity: "warning",
+        description: "",
+        sourceApiVersion: "3",
+        activeProbe: { handler: "./probe.js", risk: "low", timeoutMs: 5000 },
+      },
+    ]));
+
+    expect(getSkippedPluginWarnings(reg)).toEqual([
+      "Plugin kastell-plugin-alpha check A-MUTATE is mutate-local and is not run by kastell audit",
+      "Plugin kastell-plugin-beta check B-PROBE is probe-only and is not run by kastell audit",
+    ]);
   });
 });

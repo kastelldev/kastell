@@ -1,5 +1,5 @@
 import {
-  getSkippedMutatingPluginWarnings,
+  getSkippedPluginWarnings,
   hasLoadedPluginChecks,
   parsePluginBatchOutput,
 } from "../../../src/core/audit/pluginAudit.js";
@@ -102,18 +102,18 @@ describe("hasLoadedPluginChecks", () => {
   });
 });
 
-describe("getSkippedMutatingPluginWarnings", () => {
+describe("getSkippedPluginWarnings", () => {
   it("returns empty array for read-only registry", () => {
     const reg = new Map<string, PluginRegistryEntry>();
     reg.set("kastell-plugin-read", loadedEntry("kastell-plugin-read", [
       check("VP-READ-1"),
       check("VP-READ-2"),
     ]));
-    expect(getSkippedMutatingPluginWarnings(reg)).toEqual([]);
+    expect(getSkippedPluginWarnings(reg)).toEqual([]);
   });
 
   it("returns empty array for empty registry", () => {
-    expect(getSkippedMutatingPluginWarnings(new Map())).toEqual([]);
+    expect(getSkippedPluginWarnings(new Map())).toEqual([]);
   });
 
   it("returns warning per mutating check across plugins", () => {
@@ -125,7 +125,7 @@ describe("getSkippedMutatingPluginWarnings", () => {
     reg.set("kastell-plugin-b", loadedEntry("kastell-plugin-b", [
       check("VP-B-1", "mutate-global"),
     ]));
-    const warnings = getSkippedMutatingPluginWarnings(reg);
+    const warnings = getSkippedPluginWarnings(reg);
     expect(warnings).toHaveLength(2);
     expect(warnings[0]).toBe("Plugin kastell-plugin-a check VP-A-1 is mutate-local and is not run by kastell audit");
     expect(warnings[1]).toBe("Plugin kastell-plugin-b check VP-B-1 is mutate-global and is not run by kastell audit");
@@ -136,7 +136,7 @@ describe("getSkippedMutatingPluginWarnings", () => {
     reg.set("kastell-plugin-failed", failedEntry("kastell-plugin-failed"));
     reg.set("kastell-plugin-empty", loadedEntry("kastell-plugin-empty", []));
     reg.set("kastell-plugin-mut", loadedEntry("kastell-plugin-mut", [check("VP-M", "mutate-local")]));
-    const warnings = getSkippedMutatingPluginWarnings(reg);
+    const warnings = getSkippedPluginWarnings(reg);
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toContain("kastell-plugin-mut");
   });

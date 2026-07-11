@@ -489,6 +489,15 @@ describe("handleServerProvision — SAFE_MODE", () => {
   });
 });
 
+// ─── Round-trip schema helper ──────────────────────────────────────────────────
+
+async function expectProvisionStructuredContentToRoundTrip(response: { structuredContent?: unknown; content?: unknown; isError?: boolean }) {
+  const normalized = normalizeObjectSchema(serverProvisionOutputSchema);
+  expect(normalized).toBeDefined();
+  const parsed = await safeParseAsync(normalized!, response.structuredContent);
+  expect(parsed.success).toBe(true);
+}
+
 // ─── handleServerProvision — elicitation ─────────────────────────────────────
 
 describe("handleServerProvision — elicitation", () => {
@@ -498,11 +507,7 @@ describe("handleServerProvision — elicitation", () => {
       mockMcpServer({ action: "decline" }) as never,
     );
 
-    const parsed = await safeParseAsync(
-      normalizeObjectSchema(serverProvisionOutputSchema)!,
-      (response as { structuredContent?: unknown }).structuredContent,
-    );
-    expect(parsed.success).toBe(true);
+    await expectProvisionStructuredContentToRoundTrip(response);
     expect(JSON.parse(response.content[0].text)).toEqual(
       expect.objectContaining({ kind: "cancelled", status: "cancelled" }),
     );
@@ -555,6 +560,19 @@ describe("handleServerProvision — success", () => {
     expect(data.server.ip).toBe("pending");
     expect(data.readiness.status).toBe("pending");
     jest.useRealTimers();
+  });
+
+  it("validates created-persisted structuredContent against serverProvision outputSchema", async () => {
+    const response = await handleServerProvision({
+      provider: "hetzner",
+      region: "nbg1",
+      size: "cax11",
+      name: "schema-success",
+    });
+
+    await expectProvisionStructuredContentToRoundTrip(response);
+    const body = JSON.parse(response.content[0].text);
+    expect(body.kind).toBe("created-persisted");
   });
 });
 
@@ -1292,11 +1310,7 @@ describe("handleServerProvision — ProvisionPersistenceError recovery branch", 
       size: "cax11",
     });
 
-    const parsed = await safeParseAsync(
-      normalizeObjectSchema(serverProvisionOutputSchema)!,
-      (response as { structuredContent?: unknown }).structuredContent,
-    );
-    expect(parsed.success).toBe(true);
+    await expectProvisionStructuredContentToRoundTrip(response);
   });
 
   it("falls back to legacy error envelope when ProvisionPersistenceError has no internalResult (backward compat)", async () => {
@@ -1557,5 +1571,51 @@ describe("toProvisionPublicDto — orphan DTO sanitization (Task 3)", () => {
         ip: "5.6.7.8",
       }),
     });
+  });
+});
+
+// ─── Task 4: explicit public kind coverage ──────────────────────────────────
+
+describe("serverProvision outputSchema — every public kind", () => {
+  it("serverProvision outputSchema accepts every public result kind through the MCP wrapper", async () => {
+    const normalized = normalizeObjectSchema(serverProvisionOutputSchema);
+    expect(normalized).toBeDefined();
+    const createdPersisted = {
+      result: {
+        kind: "created-persisted",
+        success: true,
+        server: {
+          id: "srv-1",
+          name: "ok-srv",
+          provider: "hetzner",
+          ip: "5.6.7.8",
+          region: "nbg1",
+          size: "cax11",
+          mode: "coolify",
+          createdAt: "2026-07-11T00:00:00.000Z",
+        },
+      },
+    };
+    const createdOrphan = {
+      result: {
+        kind: "created-orphan",
+        provider: "hetzner",
+        providerId: "provider-1",
+        name: "orphan-srv",
+        ip: "203.0.113.10",
+        suggestedCommand: "kastell server_manage add --name orphan-srv --provider hetzner",
+      },
+    };
+    const cancelled = {
+      result: {
+        kind: "cancelled",
+        status: "cancelled",
+        message: "Provisioning cancelled by user.",
+      },
+    };
+
+    expect((await safeParseAsync(normalized!, createdPersisted)).success).toBe(true);
+    expect((await safeParseAsync(normalized!, createdOrphan)).success).toBe(true);
+    expect((await safeParseAsync(normalized!, cancelled)).success).toBe(true);
   });
 });

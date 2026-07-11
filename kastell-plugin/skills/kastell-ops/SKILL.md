@@ -9,7 +9,7 @@ memory: project
 
 # Kastell Architecture
 
-Kastell is a CLI toolkit for provisioning, securing, and managing self-hosted servers. TypeScript, ESM, strict mode. 31 CLI commands, 13 MCP tools, 4 cloud providers (hetzner, digitalocean, vultr, linode), 2 platform adapters (coolify, dokploy).
+Kastell is a CLI toolkit for provisioning, securing, and managing self-hosted servers. TypeScript, ESM, strict mode. CLI commands, first-party MCP tools, 4 cloud providers (hetzner, digitalocean, vultr, linode), 2 platform adapters (coolify, dokploy).
 
 ## Live Context
 
@@ -134,6 +134,6 @@ scripts/check_coverage.sh
 ## Reference Files
 
 - 31 CLI commands — see [references/commands.md](references/commands.md)
-- 13 MCP tools — see [references/mcp-tools.md](references/mcp-tools.md)
+- first-party MCP tools — see [references/mcp-tools.md](references/mcp-tools.md)
 - Patterns and test templates — see [references/patterns.md](references/patterns.md)
 - Known pitfalls — see [references/pitfalls.md](references/pitfalls.md)

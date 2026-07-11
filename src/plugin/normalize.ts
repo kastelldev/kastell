@@ -40,6 +40,7 @@ function normalizeV2Check(check: PluginCheckV2): LoadedPluginCheck {
     severity: check.severity,
     description: check.description ?? "",
     sourceApiVersion: "2",
+    checkCommand: check.checkCommand,
     read: {
       cmd: check.checkCommand.cmd,
       ...pickOptional({ passPattern: check.passPattern, failPattern: check.failPattern }),

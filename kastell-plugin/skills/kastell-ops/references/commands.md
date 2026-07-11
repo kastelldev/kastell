@@ -5,7 +5,7 @@ All commands follow the thin wrapper pattern: parse args in `src/commands/`, del
 | Command     | Description                                          | Key Arguments                              |
 |-------------|------------------------------------------------------|--------------------------------------------|
 | add         | Add existing server to kastell config                | --ip, --provider, --platform               |
-| audit       | Security audit (30 categories, 457 checks)           | --server, --category, --format, --explain  |
+| audit       | Security audit                            | --server, --category, --format, --explain  |
 | auth        | Authenticate with a cloud provider                   | --provider                                 |
 | backup      | Create a platform backup (DB + config files)         | --server                                   |
 | completions | Generate shell completions                           | --shell (bash/zsh/fish)                    |
@@ -21,7 +21,7 @@ All commands follow the thin wrapper pattern: parse args in `src/commands/`, del
 | init        | Initialize kastell and provision first server        | (interactive prompts)                      |
 | interactive | Launch interactive TUI menu                          | (none)                                     |
 | list        | List all configured servers                          | --format                                   |
-| lock        | One-shot 24-step server hardening                    | --server                                   |
+| lock        | One-shot server hardening                            | --server                                   |
 | logs        | View server or platform logs                         | --server, --lines, --service               |
 | maintain    | Run maintenance tasks (updates, cleanup)             | --server                                   |
 | monitor     | Real-time server monitoring                          | --server                                   |
