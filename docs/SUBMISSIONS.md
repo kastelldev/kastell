@@ -7,7 +7,7 @@ Tracking file for Kastell's MCP directory listings.
 - **Status:** submitted
 - **Submitted:** 2026-03-19
 - **Issue URL:** https://github.com/chatmcp/mcpso/issues/927
-- **Content:** Server provisioning, hardening and audit MCP server with 17 tools. 449-check security audit, 24-step hardening, CIS/PCI-DSS/HIPAA compliance. npm: `npx kastell-mcp`. GitHub: https://github.com/kastelldev/kastell
+- **Content:** Server provisioning, hardening and audit MCP server with first-party MCP tools. Full security audit, production hardening, CIS/PCI-DSS/HIPAA compliance. npm: `npx kastell-mcp`. GitHub: https://github.com/kastelldev/kastell
 
 ## Anthropic MCP Registry (registry.modelcontextprotocol.io)
 

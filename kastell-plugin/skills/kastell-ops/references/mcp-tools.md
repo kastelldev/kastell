@@ -1,4 +1,4 @@
-# Kastell MCP Tools (13)
+# Kastell MCP Tools
 
 All MCP tools are registered in `src/mcp/server.ts` and delegate to `src/core/` functions.
 
@@ -11,8 +11,8 @@ All MCP tools are registered in `src/mcp/server.ts` and delegate to `src/core/` 
 | server_secure    | serverSecure.ts      | SSH setup, firewall, domain management     | action: secure/firewall/domain, server      |
 | server_backup    | serverBackup.ts      | Backup creation and snapshot management    | action: backup/snapshot/restore, server     |
 | server_provision | serverProvision.ts   | New server provisioning                    | provider, name, size, region                |
-| server_audit     | serverAudit.ts       | Security audit (30 categories, 457 checks) | server, category?, format?                  |
-| server_lock      | serverLock.ts        | 24-step one-shot server hardening          | server                                      |
+| server_audit     | serverAudit.ts       | Security audit across all categories | server, category?, format?                  |
+| server_lock      | serverLock.ts        | One-shot server hardening          | server                                      |
 | server_evidence  | serverEvidence.ts    | Forensic evidence collection               | server                                      |
 | server_guard     | serverGuard.ts       | Autonomous security daemon control         | server, action: start/stop/status           |
 | server_doctor    | serverDoctor.ts      | Proactive health analysis                  | server                                      |
