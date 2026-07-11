@@ -23,6 +23,16 @@ export function makePluginRegistryEntry(
   options: { fixes?: PluginFix[]; apiVersion?: PluginManifest["apiVersion"]; checkPrefix?: string } = {},
 ): PluginRegistryEntry {
   const fixes = options.fixes ?? [];
+  const readChecks = checks
+    .filter((check) => check.read !== undefined || check.checkCommand?.kind === "read")
+    .map((check) => ({
+      ...check,
+      read: check.read ?? {
+        cmd: check.checkCommand!.cmd,
+        passPattern: check.passPattern,
+        failPattern: check.failPattern,
+      },
+    })) as Array<LoadedPluginCheck & { read: NonNullable<LoadedPluginCheck["read"]> }>;
   const manifest: PluginManifest = {
     name,
     version: "1.0.0",
@@ -36,7 +46,7 @@ export function makePluginRegistryEntry(
   return {
     manifest,
     checks,
-    readChecks: checks.filter((check): check is LoadedPluginCheck & { read: NonNullable<LoadedPluginCheck["read"]> } => check.read !== undefined),
+    readChecks,
     status: "loaded",
     checksById: new Map(checks.map((check) => [check.id, check])),
     fixesByCheckId: new Map(fixes.map((fix) => [fix.checkId, fix])),

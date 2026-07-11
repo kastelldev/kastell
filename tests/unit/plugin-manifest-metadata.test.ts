@@ -38,11 +38,20 @@ describe("Claude plugin public metadata", () => {
   it("does not publish drift-prone exact counts in plugin or marketplace descriptions", () => {
     const plugin = readJson(".claude-plugin/plugin.json");
     const marketplace = readJson(".claude-plugin/marketplace.json");
-    const text = `${collectText(plugin)}\n${collectText(marketplace)}`;
+    const bundledPlugin = readJson("kastell-plugin/.claude-plugin/plugin.json");
+    const text = `${collectText(plugin)}\n${collectText(marketplace)}\n${collectText(bundledPlugin)}`;
 
     expect(text).not.toMatch(/\b449\b/);
     expect(text).not.toMatch(/\b31 categories\b/i);
     expect(text).not.toMatch(/\b24-step\b/i);
     expect(text).not.toMatch(/\b17 MCP tools\b/i);
+  });
+
+  it("does not publish drift-prone exact counts in first-party MCP metadata", () => {
+    const text = readFileSync(join(repoRoot, "src/mcp/server.ts"), "utf8");
+
+    expect(text).not.toMatch(/\b27 categories\b/i);
+    expect(text).not.toMatch(/\b24 hardening steps\b/i);
+    expect(text).not.toMatch(/\b24-step\b/i);
   });
 });

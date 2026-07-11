@@ -208,7 +208,7 @@ export const ALL_MCP_TOOLS: McpToolEntry[] = [
   {
     name: "server_doctor",
     description:
-      "Run proactive health analysis on a server. Detects disk trending full, high swap, stale packages, elevated fail2ban bans, audit regression streaks, old backups, and reclaimable Docker space. Uses cached metrics by default — pass fresh=true to fetch live data via SSH. Returns findings grouped by severity (critical/warning/info) with remediation commands. For a full scored security audit across 27 categories, use server_audit instead.",
+      "Run proactive health analysis on a server. Detects disk trending full, high swap, stale packages, elevated fail2ban bans, audit regression streaks, old backups, and reclaimable Docker space. Uses cached metrics by default; pass fresh=true to fetch live data via SSH. Returns findings grouped by severity (critical/warning/info) with remediation commands. For a full scored security audit, use server_audit instead.",
     inputSchema: serverDoctorSchema,
     outputSchema: serverDoctorOutputSchema,
     annotations: {
@@ -223,7 +223,7 @@ export const ALL_MCP_TOOLS: McpToolEntry[] = [
   {
     name: "server_lock",
     description:
-      "Harden a server to production standard. Applies 24 hardening steps in a single SSH session covering SSH, fail2ban, UFW, sysctl, unattended-upgrades, Docker daemon, auditd, AIDE, and more. Requires production=true (safety gate). Pass dryRun=true to preview. Platform-aware: preserves Coolify/Dokploy ports. Shows audit score before and after. Requires SSH access. For fine-grained SSH/firewall/domain changes use server_secure instead.",
+      "Harden a server to production standard. Applies the production hardening sequence in a single SSH session covering SSH, fail2ban, UFW, sysctl, unattended-upgrades, Docker daemon, auditd, AIDE, and more. Requires production=true (safety gate). Pass dryRun=true to preview. Platform-aware: preserves Coolify/Dokploy ports. Shows audit score before and after. Requires SSH access. For fine-grained SSH/firewall/domain changes use server_secure instead.",
     inputSchema: serverLockSchema,
     outputSchema: serverLockOutputSchema,
     annotations: {
@@ -332,7 +332,7 @@ Tool routing:
 - server_info: read-only queries (list, status, health, sizes)
 - server_provision: creates new billable cloud resources (requires SAFE_MODE=false)
 - server_manage: register existing servers (add), unregister (remove), permanently delete (destroy - requires SAFE_MODE=false)
-- server_lock: one-shot 24-step production hardening (SSH + fail2ban + UFW + sysctl + auditd + AIDE + Docker)
+- server_lock: one-shot production hardening sequence (SSH + fail2ban + UFW + sysctl + auditd + AIDE + Docker)
 - server_audit: ${describeAuditCatalog().short}, CIS/PCI-DSS/HIPAA compliance filtering
 - server_secure: granular security (SSH hardening, firewall rules, domain/SSL)
 - server_backup: backup/restore + VPS snapshots
