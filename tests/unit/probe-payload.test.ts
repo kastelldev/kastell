@@ -15,6 +15,12 @@ import { MOCK_KEY } from "../helpers/encryption-factories.js";
 
 const key = MOCK_KEY;
 
+function corruptHexByte(value: string): string {
+  const bytes = Buffer.from(value, "hex");
+  bytes[0] ^= 0xff;
+  return bytes.toString("hex");
+}
+
 function buildSessionRecord(overrides: Partial<ProbeSessionRecord> = {}): ProbeSessionRecord {
   return {
     schemaVersion: 1,
@@ -136,7 +142,7 @@ describe("encryptProbePayload / decryptProbePayload", () => {
     const encrypted = encryptProbePayload({ rollbackToken: "secret" }, key);
     const corrupted = {
       ...encrypted,
-      tag: "AA" + encrypted.tag.slice(2),
+      tag: corruptHexByte(encrypted.tag),
     };
 
     expect(() => decryptProbePayload(corrupted, key)).toThrow(ProbePayloadAuthenticationError);
@@ -146,7 +152,7 @@ describe("encryptProbePayload / decryptProbePayload", () => {
     const encrypted = encryptProbePayload({ rollbackToken: "secret" }, key);
     const corrupted = {
       ...encrypted,
-      iv: "AA" + encrypted.iv.slice(2),
+      iv: corruptHexByte(encrypted.iv),
     };
 
     expect(() => decryptProbePayload(corrupted, key)).toThrow(ProbePayloadAuthenticationError);
