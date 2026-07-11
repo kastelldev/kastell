@@ -119,6 +119,7 @@ export const SENSITIVE_KEY_PATTERNS: readonly RegExp[] = [
 export const PROVIDER_TOKEN_PATTERNS: readonly RegExp[] = [
   /^[A-Za-z0-9._-]*hcic_[A-Za-z0-9]+$/, // Hetzner
   /^dop_v1_[A-Za-z0-9]+$/, // DigitalOcean
+  /^vltc[._-]?[A-Za-z0-9]{20,}$/, // Vultr v2 (security-cleanup-1) — `vltc` prefix + opt separator + 20+ alnum body
 ];
 
 // String-shape patterns.
@@ -145,9 +146,14 @@ export const PROVIDER_TOKEN_PATTERNS: readonly RegExp[] = [
 //     "Bearer missing in config" are not collapsed to [REDACTED].
 //   - JWT (3-segment dot-separated with 20+ char segments — the floor
 //     prevents IPv4 like "203.0.113.42" matching "203.0.113").
+//   - Long opaque token (security-cleanup-1) — 50+ char alphanumeric with
+//     no spaces/dots/slashes. Catches Linode-style tokens (no public prefix).
+//     The 50-char floor avoids false-positives on SHA-1 (40 hex), SHA-256
+//     truncated base64 (43 chars), and UUIDs (32-36 chars).
 const WHOLE_STRING_PATTERNS: readonly RegExp[] = [
   /^Bearer\s+[A-Za-z0-9._+/=_-]{8,}$/i,
   /^[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}$/,
+  /^[A-Za-z0-9]{50,}$/,
 ];
 
 // SUBSTRING_PATTERNS: BEARER substring match uses a (^|\W) word-boundary
@@ -161,6 +167,7 @@ const SUBSTRING_PATTERNS: readonly RegExp[] = [
   /(^|\W)Bearer\s+[A-Za-z0-9._+/=_-]{8,}/gi,
   /hcic_[A-Za-z0-9]+/g,
   /dop_v1_[A-Za-z0-9]+/g,
+  /vltc[._-]?[A-Za-z0-9]{20,}/g, // Vultr v2 embedded (security-cleanup-1)
   /[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}/g,
 ];
 
