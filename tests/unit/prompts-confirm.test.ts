@@ -12,7 +12,11 @@ describe("confirmOrCancel — ConfirmationDecision contract", () => {
   const originalIsTTY = process.stdin.isTTY;
 
   afterEach(() => {
-    Object.defineProperty(process.stdin, "isTTY", { value: originalIsTTY, writable: true });
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: originalIsTTY,
+      configurable: true,
+      writable: true,
+    });
     jest.restoreAllMocks();
   });
 
@@ -22,7 +26,11 @@ describe("confirmOrCancel — ConfirmationDecision contract", () => {
   });
 
   it("returns { confirmed: true, source: 'prompt' } when user accepts in TTY mode", async () => {
-    Object.defineProperty(process.stdin, "isTTY", { value: true, writable: true });
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: true,
+      configurable: true,
+      writable: true,
+    });
     const mockConfirm = jest.fn().mockResolvedValue(true);
 
     const decision = await confirmOrCancel("Continue?", false, undefined, mockConfirm);
@@ -31,7 +39,11 @@ describe("confirmOrCancel — ConfirmationDecision contract", () => {
   });
 
   it("returns { confirmed: false, reason: 'declined' } when user declines in TTY mode", async () => {
-    Object.defineProperty(process.stdin, "isTTY", { value: true, writable: true });
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: true,
+      configurable: true,
+      writable: true,
+    });
     const mockConfirm = jest.fn().mockResolvedValue(false);
 
     const decision = await confirmOrCancel("Continue?", false, undefined, mockConfirm);
@@ -44,7 +56,11 @@ describe("confirmOrCancel — ConfirmationDecision contract", () => {
   });
 
   it("returns { confirmed: false, reason: 'non-tty' } with explicit opt-in message in non-TTY mode", async () => {
-    Object.defineProperty(process.stdin, "isTTY", { value: false, writable: true });
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: false,
+      configurable: true,
+      writable: true,
+    });
     const { logger } = await import("../../src/utils/logger.js");
 
     const decision = await confirmOrCancel("Continue?", false, "Use --force to proceed in non-interactive mode.");
@@ -58,7 +74,11 @@ describe("confirmOrCancel — ConfirmationDecision contract", () => {
   });
 
   it("uses default cancel message containing explicit opt-in when none provided", async () => {
-    Object.defineProperty(process.stdin, "isTTY", { value: false, writable: true });
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: false,
+      configurable: true,
+      writable: true,
+    });
     const { logger } = await import("../../src/utils/logger.js");
 
     const decision = await confirmOrCancel("Continue?", false);
@@ -76,7 +96,11 @@ describe("confirmOrCancel — F-IMP-1 exit invariant", () => {
   const originalExitCode = process.exitCode;
 
   afterEach(() => {
-    Object.defineProperty(process.stdin, "isTTY", { value: originalIsTTY, writable: true });
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: originalIsTTY,
+      configurable: true,
+      writable: true,
+    });
     process.exitCode = originalExitCode;
     jest.restoreAllMocks();
   });
@@ -85,7 +109,11 @@ describe("confirmOrCancel — F-IMP-1 exit invariant", () => {
     const exitSpy = jest.spyOn(process, "exit").mockImplementation(((..._args: unknown[]) => {
       // no-op
     }) as never);
-    Object.defineProperty(process.stdin, "isTTY", { value: false, writable: true });
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: false,
+      configurable: true,
+      writable: true,
+    });
 
     await confirmOrCancel("Test?", false);
 
@@ -95,7 +123,11 @@ describe("confirmOrCancel — F-IMP-1 exit invariant", () => {
   it("never changes process.exitCode", async () => {
     process.exitCode = 0;
     const exitCodeSpy = jest.spyOn(process, "exitCode", "set");
-    Object.defineProperty(process.stdin, "isTTY", { value: false, writable: true });
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: false,
+      configurable: true,
+      writable: true,
+    });
 
     await confirmOrCancel("Test?", false);
 
@@ -104,7 +136,11 @@ describe("confirmOrCancel — F-IMP-1 exit invariant", () => {
 
   it("never calls markCommandFailed()", async () => {
     const markSpy = jest.spyOn({ markCommandFailed }, "markCommandFailed");
-    Object.defineProperty(process.stdin, "isTTY", { value: false, writable: true });
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: false,
+      configurable: true,
+      writable: true,
+    });
 
     await confirmOrCancel("Test?", false);
 

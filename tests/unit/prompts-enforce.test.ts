@@ -154,12 +154,20 @@ describe("confirmTypedNameInTty — typed-name second confirmation", () => {
   const originalIsTTY = process.stdin.isTTY;
 
   afterEach(() => {
-    Object.defineProperty(process.stdin, "isTTY", { value: originalIsTTY, writable: true });
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: originalIsTTY,
+      configurable: true,
+      writable: true,
+    });
     mockedInquirerPrompt.mockReset();
   });
 
   it("returns true when typed input matches expected name", async () => {
-    Object.defineProperty(process.stdin, "isTTY", { value: true, writable: true });
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: true,
+      configurable: true,
+      writable: true,
+    });
     mockedInquirerPrompt.mockResolvedValueOnce({ confirmName: "coolify-test" });
 
     const ok = await confirmTypedNameInTty({
@@ -180,7 +188,11 @@ describe("confirmTypedNameInTty — typed-name second confirmation", () => {
   });
 
   it("returns false when typed input does not match expected name", async () => {
-    Object.defineProperty(process.stdin, "isTTY", { value: true, writable: true });
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: true,
+      configurable: true,
+      writable: true,
+    });
     mockedInquirerPrompt.mockResolvedValueOnce({ confirmName: "wrong-name" });
 
     const ok = await confirmTypedNameInTty({
@@ -192,7 +204,11 @@ describe("confirmTypedNameInTty — typed-name second confirmation", () => {
   });
 
   it("trims whitespace before comparing", async () => {
-    Object.defineProperty(process.stdin, "isTTY", { value: true, writable: true });
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: true,
+      configurable: true,
+      writable: true,
+    });
     mockedInquirerPrompt.mockResolvedValueOnce({ confirmName: "  coolify-test  " });
 
     const ok = await confirmTypedNameInTty({
@@ -204,7 +220,11 @@ describe("confirmTypedNameInTty — typed-name second confirmation", () => {
   });
 
   it("throws in non-TTY environment (caller is responsible for filtering)", async () => {
-    Object.defineProperty(process.stdin, "isTTY", { value: false, writable: true });
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: false,
+      configurable: true,
+      writable: true,
+    });
 
     await expect(
       confirmTypedNameInTty({
