@@ -175,7 +175,7 @@ describe("interactiveMenu process.stdout.rows read", () => {
     jest.restoreAllMocks();
   });
 
-  it("reads process.stdout.rows exactly once per exit-only loop iteration", async () => {
+  it("reads process.stdout.rows exactly once per prompt loop iteration", async () => {
     // process.stdout.rows has no descriptor on non-TTY streams; use define/restore.
     const originalDescriptor = Object.getOwnPropertyDescriptor(process.stdout, "rows");
     let accessCount = 0;
@@ -188,9 +188,12 @@ describe("interactiveMenu process.stdout.rows read", () => {
     });
 
     try {
-      mockedInquirer.prompt.mockResolvedValueOnce({ action: "exit" });
+      mockedInquirer.prompt
+        .mockResolvedValueOnce({ action: "secure" })
+        .mockResolvedValueOnce({ answer: "__BACK__" })
+        .mockResolvedValueOnce({ action: "exit" });
       await interactiveMenu();
-      expect(accessCount).toBe(1);
+      expect(accessCount).toBe(2);
     } finally {
       if (originalDescriptor) {
         Object.defineProperty(process.stdout, "rows", originalDescriptor);
