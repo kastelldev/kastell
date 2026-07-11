@@ -16,7 +16,7 @@ export function mapPluginComplianceRefs(refs?: Array<{ framework: string; ref: s
   }));
 }
 
-export function getPluginBatchSkipReason(check: LoadedPluginCheck): PluginCheckSkipReason | undefined {
+function getPluginBatchSkipReason(check: LoadedPluginCheck): PluginCheckSkipReason | undefined {
   if (check.sourceApiVersion === "2" && check.checkCommand && check.checkCommand.kind !== "read") {
     return {
       code: "legacy-mutating",
@@ -35,7 +35,7 @@ export function getPluginBatchSkipReason(check: LoadedPluginCheck): PluginCheckS
   return undefined;
 }
 
-export function getPluginBatchSkipWarning(pluginName: string, check: LoadedPluginCheck): string | undefined {
+function getPluginBatchSkipWarning(pluginName: string, check: LoadedPluginCheck): string | undefined {
   const skip = getPluginBatchSkipReason(check);
   if (!skip) return undefined;
   if (skip.code === "legacy-mutating") {
@@ -45,11 +45,11 @@ export function getPluginBatchSkipWarning(pluginName: string, check: LoadedPlugi
 }
 
 /**
- * Collect human-readable warnings for v2 mutating checks (legacy), v3
+ * Collect human-readable warnings for v2 mutating checks (legacy) and v3
  * probe-only checks. Walks the registry in iteration order so the warning
  * stream matches the audit category order (P144 T5).
  */
-export function getSkippedMutatingPluginWarnings(
+export function getSkippedPluginWarnings(
   registry: ReadonlyMap<string, PluginRegistryEntry>,
 ): string[] {
   const warnings: string[] = [];
@@ -183,7 +183,8 @@ export function parsePluginBatchOutput(
           );
         } else {
           // Missing read section — runAudit's allUndetermined heuristic flags
-          // this plugin category as a batch failure.
+          // this plugin category as a batch failure. Entry omitted: fix
+          // metadata is not surfaced for undetermined results.
           checks.push(
             buildAuditCheck(checkDef, { passed: false, currentValue: "Unable to determine" }),
           );

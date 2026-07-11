@@ -17,7 +17,7 @@ import { extractVpsType, applyVpsAdjustments } from "./vps.js";
 import { AUDIT_VERSION } from "../../constants.js";
 import { getPluginRegistry } from "../../plugin/registry.js";
 import {
-  getSkippedMutatingPluginWarnings,
+  getSkippedPluginWarnings,
   hasLoadedPluginChecks,
   parsePluginBatchOutput,
 } from "./pluginAudit.js";
@@ -130,7 +130,7 @@ export async function runAudit(
     // Build warnings from batch errors
     const warnings: string[] = [
       ...batchErrors.map((e) => `SSH ${e.tier} batch failed: ${e.error}`),
-      ...getSkippedMutatingPluginWarnings(pluginRegistry),
+      ...getSkippedPluginWarnings(pluginRegistry),
     ];
 
     const auditResult: AuditResult = {

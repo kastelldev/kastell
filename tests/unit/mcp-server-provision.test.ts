@@ -492,10 +492,9 @@ describe("handleServerProvision — SAFE_MODE", () => {
 // ─── Round-trip schema helper ──────────────────────────────────────────────────
 
 async function expectProvisionStructuredContentToRoundTrip(response: { structuredContent?: unknown; content?: unknown; isError?: boolean }) {
-  const parsed = await safeParseAsync(
-    normalizeObjectSchema(serverProvisionOutputSchema)!,
-    response.structuredContent,
-  );
+  const normalized = normalizeObjectSchema(serverProvisionOutputSchema);
+  expect(normalized).toBeDefined();
+  const parsed = await safeParseAsync(normalized!, response.structuredContent);
   expect(parsed.success).toBe(true);
 }
 
@@ -1579,7 +1578,8 @@ describe("toProvisionPublicDto — orphan DTO sanitization (Task 3)", () => {
 
 describe("serverProvision outputSchema — every public kind", () => {
   it("serverProvision outputSchema accepts every public result kind through the MCP wrapper", async () => {
-    const normalized = normalizeObjectSchema(serverProvisionOutputSchema)!;
+    const normalized = normalizeObjectSchema(serverProvisionOutputSchema);
+    expect(normalized).toBeDefined();
     const createdPersisted = {
       result: {
         kind: "created-persisted",
@@ -1614,8 +1614,8 @@ describe("serverProvision outputSchema — every public kind", () => {
       },
     };
 
-    expect((await safeParseAsync(normalized, createdPersisted)).success).toBe(true);
-    expect((await safeParseAsync(normalized, createdOrphan)).success).toBe(true);
-    expect((await safeParseAsync(normalized, cancelled)).success).toBe(true);
+    expect((await safeParseAsync(normalized!, createdPersisted)).success).toBe(true);
+    expect((await safeParseAsync(normalized!, createdOrphan)).success).toBe(true);
+    expect((await safeParseAsync(normalized!, cancelled)).success).toBe(true);
   });
 });

@@ -1,5 +1,5 @@
 import {
-  getSkippedMutatingPluginWarnings,
+  getSkippedPluginWarnings,
   parsePluginBatchOutput,
 } from "../../src/core/audit/pluginAudit.js";
 import type { PluginRegistryEntry } from "../../src/plugin/registry.js";
@@ -437,7 +437,7 @@ describe("parsePluginBatchOutput", () => {
       },
     ]));
 
-    expect(getSkippedMutatingPluginWarnings(reg)).toEqual([
+    expect(getSkippedPluginWarnings(reg)).toEqual([
       "Plugin kastell-plugin-alpha check A-MUTATE is mutate-local and is not run by kastell audit",
       "Plugin kastell-plugin-beta check B-PROBE is probe-only and is not run by kastell audit",
     ]);
