@@ -118,6 +118,11 @@ export const MENU: MenuCategory[] = [
 type SeparatorInstance = InstanceType<typeof inquirer.Separator>;
 export type Choice = { name: string; value: string; description?: string } | SeparatorInstance;
 
+export const EXIT_CHOICE = {
+  name: chalk.dim("  Exit"),
+  value: "exit",
+} as const satisfies MenuAction;
+
 let _cachedChoices: Choice[] | undefined;
 
 export function clearChoicesCache(): void {
@@ -136,7 +141,7 @@ export function buildMainChoices(): Choice[] {
   }
 
   choices.push(new inquirer.Separator(" "));
-  choices.push({ name: chalk.dim("  Exit"), value: "exit" });
+  choices.push(EXIT_CHOICE);
 
   _cachedChoices = choices;
   return [...choices];

@@ -1,7 +1,7 @@
 jest.mock("../../src/utils/version.js", () => ({
   getPackageMetadata: jest.fn(() => ({
     version: "2.2.7",
-    mcpSdkVersion: "1.27.1",
+    mcpSdkVersion: "1.29.0",
   })),
   getKastellVersion: jest.fn(() => "2.2.7"),
   KASTELL_VERSION: "2.2.7",
@@ -33,14 +33,14 @@ describe("getPackageMetadata", () => {
     expect(mockedGetPackageMetadata).toHaveBeenCalled();
     expect(metadata).toMatchObject({
       version: "2.2.7",
-      mcpSdkVersion: "1.27.1",
+      mcpSdkVersion: "1.29.0",
     });
   });
 
   it("includes buildIdentity when KASTELL_BUILD_ID env is set", () => {
     mockedGetPackageMetadata.mockReturnValueOnce({
       version: "2.2.7",
-      mcpSdkVersion: "1.27.1",
+      mcpSdkVersion: "1.29.0",
       buildIdentity: "ci-abc123",
     });
     process.env.KASTELL_BUILD_ID = "ci-abc123";
@@ -51,7 +51,7 @@ describe("getPackageMetadata", () => {
   it("omits buildIdentity when KASTELL_BUILD_ID env is not set", () => {
     mockedGetPackageMetadata.mockReturnValueOnce({
       version: "2.2.7",
-      mcpSdkVersion: "1.27.1",
+      mcpSdkVersion: "1.29.0",
     });
     delete process.env.KASTELL_BUILD_ID;
     const metadata = getPackageMetadata();
@@ -109,7 +109,7 @@ describe("getPackageMetadata (real implementation)", () => {
     const metadata = JSON.parse(result.stdout) as { version: string; mcpSdkVersion: string; buildIdentity?: string };
     expect(metadata).toMatchObject({
       version: expect.any(String),
-      mcpSdkVersion: "1.27.1",
+      mcpSdkVersion: "1.29.0",
     });
     // Verify version matches the real package.json (sanity check the real read)
     const pkg = JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf-8")) as { version: string };
