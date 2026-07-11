@@ -278,6 +278,56 @@ describe("logger", () => {
     expect(out).toContain("203.0.113.42");
   });
 
+  it("should redact Vultr v2 token as whole-string (provider token gap)", () => {
+    // Vultr v2 API keys use the `vltc` prefix followed by an optional separator
+    // and 32-char alphanumeric body (per Vultr docs). Pre-fix, no PROVIDER_TOKEN
+    // pattern matched Vultr, so the whole token would leak to stderr.
+    const vultrKey = "vltc.AbCdEfGhIjKlMnOpQrStUvWxYz012345";
+    logger.error(vultrKey);
+    const out = stderrSpy.mock.calls
+      .map((call) => call.map((p: unknown) => String(p)).join(" "))
+      .join("\n");
+    expect(out).not.toContain(vultrKey);
+    expect(out).toContain("[REDACTED]");
+  });
+
+  it("should redact Vultr v2 token embedded mid-string (substring redaction)", () => {
+    // Substring path: provider token inside a longer diagnostic message.
+    const vultrKey = "vltc.AbCdEfGhIjKlMnOpQrStUvWxYz012345";
+    logger.error(`auth failed: token=${vultrKey} user=alice`);
+    const out = stderrSpy.mock.calls
+      .map((call) => call.map((p: unknown) => String(p)).join(" "))
+      .join("\n");
+    expect(out).not.toContain(vultrKey);
+    expect(out).toContain("auth failed");
+    expect(out).toContain("alice");
+  });
+
+  it("should redact long opaque tokens as whole-string (Linode-style, no public prefix)", () => {
+    // Linode doesn't publish its token prefix (security through obscurity).
+    // Tokens are long opaque alphanumeric strings used as Bearer auth, typically
+    // 50+ chars. The whole-string pattern catches them; the 50-char floor
+    // avoids false-positives on commit hashes (40 hex) and UUIDs (32-36 chars).
+    const linodeKey = "aB3cD4eF5gH6iJ7kL8mN9oP0qR1sT2uV3wX4yZ5aB6cD7eF8gH9";
+    logger.error(linodeKey);
+    const out = stderrSpy.mock.calls
+      .map((call) => call.map((p: unknown) => String(p)).join(" "))
+      .join("\n");
+    expect(out).not.toContain(linodeKey);
+    expect(out).toContain("[REDACTED]");
+  });
+
+  it("should NOT redact short hex hashes when length below the long-token floor", () => {
+    // Regression guard: SHA-1 (40 hex) and similar short identifiers must NOT
+    // be redacted. The 50-char whole-string floor keeps them visible.
+    const sha1 = "5d41402abc4b2a76b9719d911017c592";
+    logger.info(`commit ${sha1}`);
+    const out = stdoutSpy.mock.calls
+      .map((call) => call.map((p: unknown) => String(p)).join(" "))
+      .join("\n");
+    expect(out).toContain(sha1);
+  });
+
   it("should log title with empty lines before and after", () => {
     logger.title("My Title");
     expect(stdoutSpy).toHaveBeenCalledTimes(3);
