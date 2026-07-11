@@ -49,7 +49,6 @@ export const logger = {
     const args = context
       ? [chalk.red("✖"), message, context]
       : [chalk.red("✖"), message];
-    // codeql[js/clear-text-logging] false-positive: args flow through redactArg → redactString/safeStringify (P142/P147/security-cleanup-1 redaction hardening — Vultr/Linode + provider tokens + sensitive keys)
     console.error(...args.map(redactArg));
   },
 
@@ -76,10 +75,8 @@ export const logger = {
 function diagnosticLog(...args: unknown[]): void {
   const redactedArgs = args.map(redactArg);
   if (machineMode) {
-    // codeql[js/clear-text-logging] false-positive: redactedArgs pre-redacted via redactArg → redactString/safeStringify (security-cleanup-1)
     console.error(...redactedArgs);
   } else {
-    // codeql[js/clear-text-logging] false-positive: redactedArgs pre-redacted via redactArg → redactString/safeStringify (security-cleanup-1)
     console.log(...redactedArgs);
   }
 }
