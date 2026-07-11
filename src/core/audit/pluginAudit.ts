@@ -16,6 +16,34 @@ export function mapPluginComplianceRefs(refs?: Array<{ framework: string; ref: s
   }));
 }
 
+export function getPluginBatchSkipReason(check: LoadedPluginCheck): PluginCheckSkipReason | undefined {
+  if (check.sourceApiVersion === "2" && check.checkCommand && check.checkCommand.kind !== "read") {
+    return {
+      code: "legacy-mutating",
+      apiVersion: "2",
+      kind: check.checkCommand.kind,
+    };
+  }
+
+  if (check.sourceApiVersion === "3" && !check.read && check.activeProbe) {
+    return {
+      code: "active-probe",
+      apiVersion: "3",
+    };
+  }
+
+  return undefined;
+}
+
+export function getPluginBatchSkipWarning(pluginName: string, check: LoadedPluginCheck): string | undefined {
+  const skip = getPluginBatchSkipReason(check);
+  if (!skip) return undefined;
+  if (skip.code === "legacy-mutating") {
+    return `Plugin ${pluginName} check ${check.id} is ${skip.kind} and is not run by kastell audit`;
+  }
+  return `Plugin ${pluginName} check ${check.id} is probe-only and is not run by kastell audit`;
+}
+
 /**
  * Collect human-readable warnings for v2 mutating checks (legacy), v3
  * probe-only checks. Walks the registry in iteration order so the warning
@@ -28,11 +56,8 @@ export function getSkippedMutatingPluginWarnings(
   for (const [pluginName, entry] of registry) {
     if (entry.status !== PLUGIN_STATUS_LOADED) continue;
     for (const check of entry.checks) {
-      if (check.sourceApiVersion === "2" && check.checkCommand && check.checkCommand.kind !== "read") {
-        warnings.push(`Plugin ${pluginName} check ${check.id} is ${check.checkCommand.kind} and is not run by kastell audit`);
-      } else if (check.sourceApiVersion === "3" && !check.read && check.activeProbe) {
-        warnings.push(`Plugin ${pluginName} check ${check.id} is probe-only and is not run by kastell audit`);
-      }
+      const warning = getPluginBatchSkipWarning(pluginName, check);
+      if (warning) warnings.push(warning);
     }
   }
   return warnings;
@@ -150,33 +175,19 @@ export function parsePluginBatchOutput(
       if (section) {
         const passed = evaluateCheck(section.body, checkDef);
         checks.push(buildAuditCheck(checkDef, { passed, currentValue: section.body }, entry));
-      } else if (checkDef.sourceApiVersion === "2" && checkDef.checkCommand && checkDef.checkCommand.kind !== "read") {
-        // P142 Task 2: structured skip metadata replaces sentinel currentValue.
-        // Audit consumers gate on check.skip !== undefined (isSkippedCheck).
-        const skip: PluginCheckSkipReason = {
-          code: "legacy-mutating",
-          apiVersion: "2",
-          kind: checkDef.checkCommand.kind,
-        };
-        checks.push(
-          buildAuditCheck(checkDef, { passed: false, currentValue: "", skip }, entry),
-        );
-      } else if (checkDef.sourceApiVersion === "3" && !checkDef.read && checkDef.activeProbe) {
-        // P144 T5: v3 active-probe-only check (no `read.cmd`) never produces
-        // a batch section → surface as structured skip.
-        const skip: PluginCheckSkipReason = {
-          code: "active-probe",
-          apiVersion: "3",
-        };
-        checks.push(
-          buildAuditCheck(checkDef, { passed: false, currentValue: "", skip }, entry),
-        );
       } else {
-        // Missing read section — runAudit's allUndetermined heuristic flags
-        // this plugin category as a batch failure.
-        checks.push(
-          buildAuditCheck(checkDef, { passed: false, currentValue: "Unable to determine" }),
-        );
+        const skip = getPluginBatchSkipReason(checkDef);
+        if (skip) {
+          checks.push(
+            buildAuditCheck(checkDef, { passed: false, currentValue: "", skip }, entry),
+          );
+        } else {
+          // Missing read section — runAudit's allUndetermined heuristic flags
+          // this plugin category as a batch failure.
+          checks.push(
+            buildAuditCheck(checkDef, { passed: false, currentValue: "Unable to determine" }),
+          );
+        }
       }
     }
     categories.push({

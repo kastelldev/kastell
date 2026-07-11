@@ -3,48 +3,26 @@ import {
   parsePluginBatchOutput,
 } from "../../src/core/audit/pluginAudit.js";
 import type { PluginRegistryEntry } from "../../src/plugin/registry.js";
-import type { PluginManifest, LoadedPluginCheck, PluginFix } from "../../src/plugin/sdk/types.js";
+import type { LoadedPluginCheck, PluginFix } from "../../src/plugin/sdk/types.js";
+import {
+  makeLoadedPluginCheck,
+  makePluginRegistryEntry,
+} from "../helpers/pluginFixtures.js";
 
 function entry(
   name: string,
   checks: LoadedPluginCheck[],
   fixes?: PluginFix[],
 ): PluginRegistryEntry {
-  const manifest: PluginManifest = {
-    name,
-    version: "1.0.0",
-    apiVersion: "2",
-    kastell: "*",
-    capabilities: fixes ? ["audit", "fix"] : ["audit"],
-    checkPrefix: "WP",
-    entry: "./index.js",
-    ...(fixes ? { fixes } : {}),
-  };
-  const checksById = new Map(checks.map((c) => [c.id, c]));
-  const fixesByCheckId = new Map((fixes ?? []).map((f) => [f.checkId, f]));
-  const readChecks = checks.filter((c): c is LoadedPluginCheck & { read: NonNullable<LoadedPluginCheck["read"]> } => c.read !== undefined);
-  return {
-    manifest,
-    checks,
-    readChecks,
-    status: "loaded",
-    checksById,
-    fixesByCheckId,
-    activeProbesByCheckId: new Map<string, never>(),
-  };
+  return makePluginRegistryEntry(name, checks, { fixes, checkPrefix: "WP" });
 }
 
 function check(id: string, opts: Partial<LoadedPluginCheck> = {}): LoadedPluginCheck {
-  return {
-    id,
+  return makeLoadedPluginCheck(id, {
     category: "WordPress",
     name: id,
-    severity: "warning",
-    description: "",
-    sourceApiVersion: "2",
-    checkCommand: { kind: "read", cmd: "echo x" },
     ...opts,
-  };
+  });
 }
 
 describe("parsePluginBatchOutput", () => {
